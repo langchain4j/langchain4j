@@ -50,7 +50,7 @@ class AnthropicChatModelIT {
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded PDFs are huge
             .logResponses(true)
             .build();
 

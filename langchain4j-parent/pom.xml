@@ -74,7 +74,7 @@
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.14.2</mockito.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <openai-java.version>2.2.1</openai-java.version>
+        <openai-java.version>2.13.1</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <retrofit.version>2.9.0</retrofit.version>
