@@ -60,6 +60,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final boolean returnThinking;
+    private final boolean preserveThinking;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
 
@@ -95,6 +97,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.preserveThinking = getOrDefault(builder.preserveThinking, true); // TODO false by default?
         this.listeners = copy(builder.listeners);
     }
 
@@ -119,6 +123,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private Boolean returnThinking;
+        private Boolean preserveThinking;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -204,6 +210,26 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) { // TODO names
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public AnthropicStreamingChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names
+            this.preserveThinking = preserveThinking;
+            return this;
+        }
+
         public AnthropicStreamingChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -235,7 +261,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
-                true, // TODO
+                preserveThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true);

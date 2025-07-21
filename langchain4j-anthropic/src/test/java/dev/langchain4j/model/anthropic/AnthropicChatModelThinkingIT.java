@@ -34,16 +34,16 @@ class AnthropicChatModelThinkingIT {
 
     @ParameterizedTest
     @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-//            "CLAUDE_OPUS_4_20250514",
+            "CLAUDE_OPUS_4_20250514",
             "CLAUDE_SONNET_4_20250514",
-//            "CLAUDE_3_7_SONNET_20250219"
+            "CLAUDE_3_7_SONNET_20250219"
     })
     void should_return_and_preserve_thinking(AnthropicChatModelName modelName) { // TODO name
 
         // given
         boolean returnThinking = true;
         boolean preserveThinking = true;
-        // preserveThinking = true by default
+        // preserveThinking = true by default TODO
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -163,7 +163,7 @@ class AnthropicChatModelThinkingIT {
 
         // given
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // preserveThinking = true by default TODO
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -266,7 +266,7 @@ class AnthropicChatModelThinkingIT {
         AnthropicChatModelName modelName = CLAUDE_OPUS_4_20250514;
 
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // preserveThinking = true by default TODO
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")

@@ -59,7 +59,6 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
             @Override
             public void onPartialThinkingResponse(String partialThinkingResponse) {
                 thinkingBuilder.append(partialThinkingResponse);
-                System.out.println("OLOLOOOOOOO");
             }
 
             @Override

@@ -41,6 +41,7 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.THINKING;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
@@ -230,7 +231,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         try {
                             handler.onPartialResponse(text);
                         } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
+                            withLoggingExceptions(() -> handler.onError(e)); // TODO
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
@@ -240,6 +241,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         if (toolExecutionsIndex != null) {
                             AnthropicToolExecutionRequestBuilder toolExecutionRequestBuilder = toolExecutionRequestBuilderMap.get(toolExecutionsIndex);
                             toolExecutionRequestBuilder.appendArguments(partialJson);
+                        }
+                    }
+                } else if (currentContentBlockStartType.get() == THINKING) {
+                    String thinking = data.delta.thinking;
+                    if (isNotNullOrEmpty(thinking)) {
+//                        currentContentBuilder().append(thinking); // TODO
+                        try {
+                            handler.onPartialThinkingResponse(thinking);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
                         }
                     }
                 }
