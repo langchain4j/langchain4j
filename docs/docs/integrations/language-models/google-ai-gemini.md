@@ -88,7 +88,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 The `GeminiThinkingConfig` class supports:
 
 - `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
-- `thinkingBudget`: Integer specifying the thinking budget in milliseconds (optional, set to `null` to disable thinking).
+- `thinkingBudget`: Integer specifying the thinking budget in tokens (optional, set to `null` to disable thinking).
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.

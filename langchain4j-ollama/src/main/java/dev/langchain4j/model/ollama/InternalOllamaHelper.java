@@ -165,6 +165,7 @@ class InternalOllamaHelper {
                 .stream(stream)
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
+                .think(requestParameters.think())
                 .build();
     }
 
