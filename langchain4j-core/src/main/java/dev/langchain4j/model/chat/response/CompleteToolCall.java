@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
@@ -20,7 +21,7 @@ public class CompleteToolCall {
     private final ToolExecutionRequest toolExecutionRequest;
 
     public CompleteToolCall(int index, ToolExecutionRequest toolExecutionRequest) {
-        this.index = index;
+        this.index = ensureNotNegative(index, "index");
         this.toolExecutionRequest = ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
     }
 
