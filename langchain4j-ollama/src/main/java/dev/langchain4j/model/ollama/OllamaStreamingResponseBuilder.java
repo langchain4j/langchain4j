@@ -17,12 +17,12 @@ import dev.langchain4j.model.output.TokenUsage;
 class OllamaStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final ToolCallBuilder toolBuilder;
+    private final ToolCallBuilder toolCallBuilder;
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
 
-    public OllamaStreamingResponseBuilder(ToolCallBuilder toolBuilder) {
-        this.toolBuilder = toolBuilder;
+    public OllamaStreamingResponseBuilder(ToolCallBuilder toolCallBuilder) {
+        this.toolCallBuilder = toolCallBuilder;
     }
 
     void append(OllamaChatResponse partialResponse) {
@@ -52,11 +52,11 @@ class OllamaStreamingResponseBuilder {
     ChatResponse build(OllamaChatResponse ollamaChatResponse) {
         String text = contentBuilder.toString();
 
-        if (toolBuilder.hasRequests()) {
+        if (toolCallBuilder.hasRequests()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
                             .text(text.isEmpty() ? null : text)
-                            .toolExecutionRequests(toolBuilder.allRequests())
+                            .toolExecutionRequests(toolCallBuilder.allRequests())
                             .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();

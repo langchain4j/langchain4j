@@ -134,17 +134,17 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
-        ToolCallBuilder toolBuilder = new ToolCallBuilder();
+        ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse.parsedResponse(), toolBuilder, handler);
+                    handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
 
-                    if (toolBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                    if (toolCallBuilder.hasRequests()) {
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
                     ChatResponse chatResponse = openAiResponseBuilder.build();
@@ -162,7 +162,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private static void handle(ChatCompletionResponse partialResponse,
-                               ToolCallBuilder toolBuilder,
+                               ToolCallBuilder toolCallBuilder,
                                StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
@@ -197,17 +197,17 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             for (ToolCall toolCall : toolCalls) {
 
                 int index = toolCall.index();
-                if (toolBuilder.index() != index) {
-                    onCompleteToolCall(handler, toolBuilder.buildAndReset());
-                    toolBuilder.updateIndex(index);
+                if (toolCallBuilder.index() != index) {
+                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                    toolCallBuilder.updateIndex(index);
                 }
 
-                String id = toolBuilder.updateId(toolCall.id());
-                String name = toolBuilder.updateName(toolCall.function().name());
+                String id = toolCallBuilder.updateId(toolCall.id());
+                String name = toolCallBuilder.updateName(toolCall.function().name());
 
                 String partialArguments = toolCall.function().arguments();
                 if (isNotNullOrEmpty(partialArguments)) {
-                    toolBuilder.appendArguments(partialArguments);
+                    toolCallBuilder.appendArguments(partialArguments);
 
                     PartialToolCall partialToolRequest = PartialToolCall.builder()
                             .index(index)

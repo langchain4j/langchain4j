@@ -114,7 +114,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
 
-            final ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
@@ -214,9 +214,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    toolBuilder.updateIndex(toolBuilder.index() + 1);
-                    toolBuilder.updateId(data.contentBlock.id);
-                    toolBuilder.updateName(data.contentBlock.name);
+                    toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                    toolCallBuilder.updateId(data.contentBlock.id);
+                    toolCallBuilder.updateName(data.contentBlock.name);
                 }
             }
 
@@ -238,12 +238,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
-                        toolBuilder.appendArguments(partialJson);
+                        toolCallBuilder.appendArguments(partialJson);
 
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
-                                .index(toolBuilder.index())
-                                .id(toolBuilder.id())
-                                .name(toolBuilder.name())
+                                .index(toolCallBuilder.index())
+                                .id(toolCallBuilder.id())
+                                .name(toolCallBuilder.name())
                                 .partialArguments(partialJson)
                                 .build();
                         onPartialToolCall(handler, partialToolRequest);
@@ -256,7 +256,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     contents.add(currentContentBuilder().toString());
                     setCurrentContentBuilder(new StringBuffer());
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    CompleteToolCall completeToolCall = toolBuilder.buildAndReset();
+                    CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
 
                     if (completeToolCall.request().arguments().equals("{}")) {
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
@@ -310,8 +310,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 ChatResponseMetadata metadata = createMetadata(tokenUsage, finishReason);
 
-                if (toolBuilder.hasRequests()) {
-                    List<ToolExecutionRequest> toolExecutionRequests = toolBuilder.allRequests();
+                if (toolCallBuilder.hasRequests()) {
+                    List<ToolExecutionRequest> toolExecutionRequests = toolCallBuilder.allRequests();
 
                     AiMessage aiMessage = isNullOrBlank(text)
                             ? AiMessage.from(toolExecutionRequests)

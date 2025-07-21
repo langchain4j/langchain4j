@@ -149,8 +149,8 @@ class OllamaClient {
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            ToolCallBuilder toolBuilder = new ToolCallBuilder();
-            OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolBuilder);
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder);
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -177,24 +177,24 @@ class OllamaClient {
                     for (ToolCall toolCall : toolCalls) {
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
-                        if (toolBuilder.index() != index) {
-                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
-                            toolBuilder.updateIndex(index);
+                        if (toolCallBuilder.index() != index) {
+                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                            toolCallBuilder.updateIndex(index);
                         }
 
-                        toolBuilder.updateName(toolCall.getFunction().getName());
+                        toolCallBuilder.updateName(toolCall.getFunction().getName());
 
                         String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
                         if (isNotNullOrEmpty(partialArguments)) {
-                            toolBuilder.appendArguments(partialArguments);
+                            toolCallBuilder.appendArguments(partialArguments);
                         }
                     }
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
 
-                    if (toolBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                    if (toolCallBuilder.hasRequests()) {
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);

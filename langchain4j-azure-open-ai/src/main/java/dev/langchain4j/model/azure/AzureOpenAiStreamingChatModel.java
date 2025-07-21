@@ -221,8 +221,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(request.messages());
         }
 
-        ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, toolBuilder);
+        ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, toolCallBuilder);
 
         Flux<ChatCompletions> chatCompletionsStream = client.getChatCompletionsStream(parameters.modelName(), options);
 
@@ -232,7 +232,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         chatCompletionsStream.subscribe(
                 chatCompletion -> {
                     responseBuilder.append(chatCompletion);
-                    handle(chatCompletion, toolBuilder, handler);
+                    handle(chatCompletion, toolCallBuilder, handler);
 
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
@@ -246,8 +246,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     withLoggingExceptions(() -> handler.onError(mappedError));
                 },
                 () -> {
-                    if (toolBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                    if (toolCallBuilder.hasRequests()) {
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
@@ -271,7 +271,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private static void handle(ChatCompletions chatCompletions,
-                               ToolCallBuilder toolBuilder,
+                               ToolCallBuilder toolCallBuilder,
                                StreamingChatResponseHandler handler) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
@@ -297,21 +297,21 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             for (ChatCompletionsToolCall toolCall : toolCalls) {
                 if (toolCall instanceof ChatCompletionsFunctionToolCall functionToolCall) {
 
-                    int index = toolBuilder.index();
+                    int index = toolCallBuilder.index();
                     if (startOfNewToolCall(toolCall)) {
                         if (index > -1) {
-                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                         }
                         index++;
-                        toolBuilder.updateIndex(index);
+                        toolCallBuilder.updateIndex(index);
                     }
 
-                    String id = toolBuilder.updateId(toolCall.getId());
-                    String name = toolBuilder.updateName(functionToolCall.getFunction().getName());
+                    String id = toolCallBuilder.updateId(toolCall.getId());
+                    String name = toolCallBuilder.updateName(functionToolCall.getFunction().getName());
 
                     String partialArguments = functionToolCall.getFunction().getArguments();
                     if (isNotNullOrEmpty(partialArguments)) {
-                        toolBuilder.appendArguments(partialArguments);
+                        toolCallBuilder.appendArguments(partialArguments);
 
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
                                 .index(index)

@@ -57,16 +57,16 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
         ConverseResponseFromStreamBuilder responseBuilder = ConverseResponseFromStreamBuilder.builder();
-        ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
+        ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
                         .onContentBlockStart(event -> {
                             if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
-                                toolBuilder.updateIndex(toolBuilder.index() + 1);
-                                toolBuilder.updateId(event.start().toolUse().toolUseId());
-                                toolBuilder.updateName(event.start().toolUse().name());
+                                toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                                toolCallBuilder.updateId(event.start().toolUse().toolUseId());
+                                toolCallBuilder.updateName(event.start().toolUse().name());
                             }
                             responseBuilder.append(event);
                         })
@@ -81,14 +81,14 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
                                 String input = chunk.delta().toolUse().input();
                                 if (isNotNullOrEmpty(input)) {
-                                    toolBuilder.appendArguments(input);
+                                    toolCallBuilder.appendArguments(input);
                                 }
                             }
                             responseBuilder.append(chunk);
                         })
                         .onContentBlockStop(event -> {
                             if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
-                                onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                                onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                             }
                             responseBuilder.append(event);
                         })

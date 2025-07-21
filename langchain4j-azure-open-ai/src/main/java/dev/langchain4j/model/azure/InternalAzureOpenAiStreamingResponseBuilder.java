@@ -24,12 +24,12 @@ class InternalAzureOpenAiStreamingResponseBuilder {
 
     private final Integer inputTokenCount;
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final ToolCallBuilder toolBuilder;
+    private final ToolCallBuilder toolCallBuilder;
     private volatile CompletionsFinishReason finishReason;
 
-    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount, ToolCallBuilder toolBuilder) {
+    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount, ToolCallBuilder toolCallBuilder) {
         this.inputTokenCount = inputTokenCount;
-        this.toolBuilder = toolBuilder;
+        this.toolCallBuilder = toolCallBuilder;
     }
 
     void append(ChatCompletions completions) {
@@ -94,8 +94,8 @@ class InternalAzureOpenAiStreamingResponseBuilder {
         String content = contentBuilder.toString();
 
         List<ToolExecutionRequest> toolExecutionRequests = List.of();
-        if (toolBuilder != null) {
-            toolExecutionRequests = toolBuilder.allRequests();
+        if (toolCallBuilder != null) {
+            toolExecutionRequests = toolCallBuilder.allRequests();
         }
 
         AiMessage aiMessage = AiMessage.builder()

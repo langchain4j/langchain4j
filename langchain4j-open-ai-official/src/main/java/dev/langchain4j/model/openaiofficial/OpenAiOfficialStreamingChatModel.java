@@ -103,7 +103,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer textBuilder = new StringBuffer();
-            ToolCallBuilder toolBuilder = new ToolCallBuilder();
+            ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
             asyncClient
                     .chat()
@@ -119,7 +119,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     handler,
                                     responseMetadataBuilder,
                                     textBuilder,
-                                    toolBuilder);
+                                    toolCallBuilder);
                         }
 
                         @Override
@@ -127,15 +127,15 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {
-                                if (toolBuilder.hasRequests()) {
-                                    onCompleteToolCall(handler, toolBuilder.buildAndReset());
+                                if (toolCallBuilder.hasRequests()) {
+                                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                                 }
 
                                 String text = textBuilder.toString();
 
                                 AiMessage aiMessage = AiMessage.builder()
                                         .text(text.isEmpty() ? null : text)
-                                        .toolExecutionRequests(toolBuilder.allRequests())
+                                        .toolExecutionRequests(toolCallBuilder.allRequests())
                                         .build();
 
                                 ChatResponse chatResponse = ChatResponse.builder()
@@ -154,11 +154,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     private void manageChatCompletionChunks(
             ChatCompletionChunk chatCompletionChunk,
-            OpenAiOfficialChatRequestParameters parameters,
+            OpenAiOfficialChatRequestParameters parameters, // TODO parameters not used
             StreamingChatResponseHandler handler,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
-            ToolCallBuilder toolBuilder) {
+            ToolCallBuilder toolCallBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
         responseMetadataBuilder.modelName(chatCompletionChunk.model());
@@ -186,17 +186,17 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     if (toolCall.function().isPresent()) {
                         ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
                         int index = (int) toolCall.index();
-                        if (toolBuilder.index() != index) {
-                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
-                            toolBuilder.updateIndex(index);
+                        if (toolCallBuilder.index() != index) {
+                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                            toolCallBuilder.updateIndex(index);
                         }
 
-                        String id = toolBuilder.updateId(toolCall.id().orElse(null));
-                        String name = toolBuilder.updateName(function.name().orElse(null));
+                        String id = toolCallBuilder.updateId(toolCall.id().orElse(null));
+                        String name = toolCallBuilder.updateName(function.name().orElse(null));
 
                         String partialArguments = function.arguments().orElse(null);
                         if (isNotNullOrEmpty(partialArguments)) {
-                            toolBuilder.appendArguments(partialArguments);
+                            toolCallBuilder.appendArguments(partialArguments);
 
                             PartialToolCall partialToolRequest = PartialToolCall.builder()
                                     .index(index)
