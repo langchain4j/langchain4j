@@ -8,7 +8,7 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.sse.ServerSentEvent;

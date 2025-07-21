@@ -1,7 +1,7 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.CompleteToolCall;
-import dev.langchain4j.agent.tool.PartialToolCall;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;

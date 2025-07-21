@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;

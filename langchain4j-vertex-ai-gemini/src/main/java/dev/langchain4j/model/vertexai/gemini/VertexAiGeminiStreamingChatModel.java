@@ -22,7 +22,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.common.annotations.VisibleForTesting;
-import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;

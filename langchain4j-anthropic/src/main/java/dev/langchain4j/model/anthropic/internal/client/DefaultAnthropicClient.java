@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolCall;
-import dev.langchain4j.agent.tool.PartialToolCall;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;

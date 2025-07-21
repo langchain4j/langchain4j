@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**

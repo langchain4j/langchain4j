@@ -15,7 +15,7 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
-import dev.langchain4j.agent.tool.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ToolCallBuilder;

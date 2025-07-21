@@ -1,6 +1,7 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -12,7 +13,6 @@ import java.util.Objects;
  */
 @Experimental
 public class CompleteToolCall {
-    // TODO location
 
     private final int index;
     private final ToolExecutionRequest request;

@@ -1,4 +1,4 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.Experimental;
 
@@ -13,7 +13,6 @@ import java.util.Objects;
  */
 @Experimental
 public class PartialToolCall {
-    // TODO location
 
     private final int index;
     private final String id;
