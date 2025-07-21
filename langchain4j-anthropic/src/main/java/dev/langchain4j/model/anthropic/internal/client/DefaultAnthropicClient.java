@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -253,11 +254,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
 //                        currentContentBuilder().append(thinking); // TODO
-                        try {
-                            handler.onPartialThinkingResponse(thinking);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onPartialThinkingResponse(handler, thinking);
                     }
                 }
             }

@@ -222,7 +222,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         /**
          * TODO
-         * @param returnThinking
+         * @param preserveThinking
          * @return
          */
         public AnthropicStreamingChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names

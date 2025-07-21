@@ -1,8 +1,10 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -120,11 +122,7 @@ class GeminiService {
                     onPartialResponse(handler, text);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
-                    try {
-                        handler.onPartialThinkingResponse(thought);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e)); // TODO
-                    }
+                    onPartialThinkingResponse(handler, thought);
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
@@ -135,12 +133,8 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                ChatResponse chatResponse = responseBuilder.build();
-                try {
-                    handler.onCompleteResponse(chatResponse);
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                }
+                ChatResponse completeResponse = responseBuilder.build();
+                onCompleteResponse(handler, completeResponse);
             }
 
             @Override

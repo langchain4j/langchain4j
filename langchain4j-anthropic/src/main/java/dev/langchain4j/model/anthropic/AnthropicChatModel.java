@@ -253,7 +253,7 @@ public class AnthropicChatModel implements ChatModel {
 
         /**
          * TODO
-         * @param returnThinking
+         * @param preserveThinking
          * @return
          */
         public AnthropicChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names

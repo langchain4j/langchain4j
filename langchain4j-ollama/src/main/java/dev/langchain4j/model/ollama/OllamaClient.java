@@ -3,7 +3,10 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -165,20 +168,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    try {
-                        handler.onPartialResponse(content);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onPartialResponse(handler, content);
                 }
 
-                String thinking = ollamaChatResponse.getMessage().getThinking();
+                String thinking = message.getThinking();
                 if (returnThinking && !isNullOrEmpty(thinking)) {
-                    try {
-                        handler.onPartialThinkingResponse(content);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e)); // TODO
-                    }
+                    onPartialThinkingResponse(handler, thinking);
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();
@@ -201,17 +196,12 @@ class OllamaClient {
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
-
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
-                    ChatResponse response = responseBuilder.build(ollamaChatResponse);
-                    try {
-                        handler.onCompleteResponse(response);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
+                    onCompleteResponse(handler, completeResponse);
                 }
             }
 

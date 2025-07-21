@@ -26,7 +26,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
@@ -144,17 +147,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
-
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
-                    ChatResponse chatResponse = openAiResponseBuilder.build();
-                    try {
-                        handler.onCompleteResponse(chatResponse);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    ChatResponse completeResponse = openAiResponseBuilder.build();
+                    onCompleteResponse(handler, completeResponse);
                 })
                 .onError(throwable -> {
                     RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
@@ -164,8 +162,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private void handle(ChatCompletionResponse partialResponse,
-                               ToolCallBuilder toolCallBuilder,
-                               StreamingChatResponseHandler handler) {
+                        ToolCallBuilder toolCallBuilder,
+                        StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
@@ -187,20 +185,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            try {
-                handler.onPartialResponse(content);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e)); // TODO
-            }
+            onPartialResponse(handler, content);
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            try {
-                handler.onPartialThinkingResponse(reasoningContent);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e)); // TODO
-            }
+            onPartialThinkingResponse(handler, reasoningContent);
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
