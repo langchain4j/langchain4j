@@ -3,7 +3,7 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -97,7 +97,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
                                 String thinking = reasoningContent.text();
                                 if (isNotNullOrEmpty(thinking)) {
-                                    onPartialThinkingResponse(handler, thinking);
+                                    onPartialThinking(handler, thinking);
                                 }
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
                                 String input = delta.toolUse().input();

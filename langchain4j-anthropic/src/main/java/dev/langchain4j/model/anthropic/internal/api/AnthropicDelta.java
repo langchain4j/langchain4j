@@ -18,6 +18,7 @@ public class AnthropicDelta {
     public String partialJson;
     public String thinking;
     public String signature;
+    public String data;
 
     // when AnthropicStreamingData.type = "message_delta"
     public String stopReason;

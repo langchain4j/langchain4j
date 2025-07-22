@@ -23,11 +23,11 @@ public interface StreamingChatResponseHandler {
     /**
      * TODO
      *
-     * @param partialThinkingResponse TODO
+     * @param partialThinking TODO
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinkingResponse(String partialThinkingResponse) { // TODO names, order, wrap into obj?
+    default void onPartialThinking(PartialThinking partialThinking) { // TODO names, order
     }
 
     /**

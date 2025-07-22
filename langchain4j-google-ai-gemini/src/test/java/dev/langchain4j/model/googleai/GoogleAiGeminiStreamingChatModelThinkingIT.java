@@ -23,7 +23,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,7 +72,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
@@ -154,7 +153,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
         InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
@@ -201,7 +200,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
         InOrder inOrder3 = inOrder(spyHandler3);
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
         inOrder3.verifyNoMoreInteractions();
@@ -229,7 +228,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
         InOrder inOrder4 = inOrder(spyHandler4);
         if (!preserveThinking) {
-            inOrder4.verify(spyHandler4).onPartialThinkingResponse(any());
+            inOrder4.verify(spyHandler4).onPartialThinking(any());
         }
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());

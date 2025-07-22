@@ -94,7 +94,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
     }
 
     @Test
-    void should_answer_without_thinking_when_returnThinking_is_false() { // TODO name
+    void should_NOT_return_thinking_when_returnThinking_is_false() {
 
         // given
         Boolean returnThinking = false;

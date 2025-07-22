@@ -340,7 +340,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
-    void should_answer_without_thinking_when_returnThinking_is_false(String modelId) { // TODO name
+    void should_NOT_return_thinking_when_returnThinking_is_false(String modelId) {
 
         // given
         boolean returnThinking = false;

@@ -39,7 +39,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -120,7 +120,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final List<String> thinkings = synchronizedList(new ArrayList<>());
             final StringBuffer thinkingBuilder = new StringBuffer();
             final List<String> thinkingSignatures = synchronizedList(new ArrayList<>());
-            final StringBuffer thinkingSignatureBuilder = new StringBuffer(); // TODO simplify?
             final List<String> redactedThinkings = synchronizedList(new ArrayList<>());
 
             volatile String currentContentBlockStartType;
@@ -206,11 +205,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
-                        onPartialThinkingResponse(handler, thinking);
+                        onPartialThinking(handler, thinking);
                     }
                     String signature = data.contentBlock.signature;
                     if (isNotNullOrEmpty(signature)) {
-                        thinkingSignatureBuilder.append(signature);
+                        thinkingSignatures.add(signature);
                     }
                 } else if ("redacted_thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     String redactedThinking = data.contentBlock.data;
@@ -239,11 +238,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
-                        onPartialThinkingResponse(handler, thinking);
+                        onPartialThinking(handler, thinking);
                     }
                     String signature = data.delta.signature;
                     if (isNotNullOrEmpty(signature)) {
-                        thinkingSignatureBuilder.append(signature);
+                        thinkingSignatures.add(signature);
+                    }
+                } else if ("redacted_thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                    String redactedThinking = data.delta.data;
+                    if (isNotNullOrEmpty(redactedThinking)) {
+                        redactedThinkings.add(redactedThinking);
                     }
                 } else if ("tool_use".equals(currentContentBlockStartType)) {
                     String partialJson = data.delta.partialJson;
@@ -268,8 +272,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     thinkings.add(thinkingBuilder.toString());
                     thinkingBuilder.setLength(0);
-                    thinkingSignatures.add(thinkingSignatureBuilder.toString());
-                    thinkingSignatureBuilder.setLength(0);
                 } else if ("tool_use".equals(currentContentBlockStartType)) {
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
 

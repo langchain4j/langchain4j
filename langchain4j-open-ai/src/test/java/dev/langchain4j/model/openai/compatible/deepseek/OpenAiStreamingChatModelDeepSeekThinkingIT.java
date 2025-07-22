@@ -66,7 +66,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
@@ -120,6 +120,6 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
 
-        verify(spyHandler, never()).onPartialThinkingResponse(any());
+        verify(spyHandler, never()).onPartialThinking(any());
     }
 }

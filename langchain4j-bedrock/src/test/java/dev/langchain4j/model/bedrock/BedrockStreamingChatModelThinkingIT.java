@@ -18,7 +18,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -80,7 +79,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         }
 
         InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).get();
@@ -105,7 +104,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         }
 
         InOrder inOrder2 = inOrder(spyHandler2);
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verify(spyHandler2).get();
@@ -153,7 +152,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).get();
@@ -175,7 +174,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
 
         InOrder inOrder2 = inOrder(spyHandler2);
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verify(spyHandler2).get();
@@ -235,7 +234,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
         InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
@@ -283,7 +282,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
         InOrder inOrder3 = inOrder(spyHandler3);
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
         inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
@@ -367,7 +366,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
         InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
@@ -393,7 +392,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder2 = inOrder(spyHandler2);
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verify(spyHandler2).get();
@@ -420,7 +419,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
         InOrder inOrder3 = inOrder(spyHandler3);
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
@@ -446,7 +445,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verify(spyHandler4).get();
@@ -461,7 +460,7 @@ class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
-    void should_answer_without_thinking_when_returnThinking_is_false(String modelId) { // TODO name
+    void should_NOT_return_thinking_when_returnThinking_is_false(String modelId) {
 
         // given
         boolean returnThinking = false;

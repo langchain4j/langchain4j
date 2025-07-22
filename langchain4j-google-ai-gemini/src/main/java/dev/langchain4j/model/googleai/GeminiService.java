@@ -4,7 +4,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinkingResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -122,7 +122,7 @@ class GeminiService {
                     onPartialResponse(handler, text);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
-                    onPartialThinkingResponse(handler, thought);
+                    onPartialThinking(handler, thought);
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);

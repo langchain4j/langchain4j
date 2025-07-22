@@ -439,7 +439,7 @@ class AnthropicChatModelThinkingIT {
             "CLAUDE_SONNET_4_20250514",
             "CLAUDE_3_7_SONNET_20250219"
     })
-    void should_answer_without_thinking_when_returnThinking_is_false(AnthropicChatModelName modelName) { // TODO name
+    void should_NOT_return_thinking_when_returnThinking_is_false(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = false;

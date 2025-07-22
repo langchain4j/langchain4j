@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat;
 
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -52,8 +53,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialThinkingResponse(String partialThinkingResponse) {
-                handler.onPartialThinkingResponse(partialThinkingResponse);
+            public void onPartialThinking(PartialThinking partialThinking) {
+                handler.onPartialThinking(partialThinking);
             }
 
             @Override

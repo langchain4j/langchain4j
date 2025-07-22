@@ -9,11 +9,11 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 public class TestStreamingChatResponseHandler implements StreamingChatResponseHandler {
@@ -29,8 +29,8 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     }
 
     @Override
-    public void onPartialThinkingResponse(String partialThinkingResponse) {
-        thinkingBuilder.append(partialThinkingResponse);
+    public void onPartialThinking(PartialThinking partialThinking) {
+        thinkingBuilder.append(partialThinking.text());
     }
 
     @Override
