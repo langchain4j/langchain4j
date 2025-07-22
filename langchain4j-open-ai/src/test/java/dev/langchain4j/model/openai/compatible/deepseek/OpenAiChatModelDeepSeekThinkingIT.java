@@ -43,21 +43,21 @@ class OpenAiChatModelDeepSeekThinkingIT { // TODO abstract? Move into AbstractBa
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        ChatResponse chatResponse1 = model.chat(userMessage1);
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
+        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
-        ChatResponse chatResponse2 = model.chat(userMessage, aiMessage, userMessage2);
+        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
@@ -68,8 +68,8 @@ class OpenAiChatModelDeepSeekThinkingIT { // TODO abstract? Move into AbstractBa
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage.text()))
-                .doesNotContain(jsonify(aiMessage.thinking()));
+                .contains(jsonify(aiMessage1.text()))
+                .doesNotContain(jsonify(aiMessage1.thinking()));
     }
 
     @ParameterizedTest

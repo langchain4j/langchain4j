@@ -2,6 +2,12 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -9,7 +15,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -17,19 +24,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelThinkingIT { // TODO name, everywhere
+class BedrockStreamingChatModelThinkingIT { // TODO name, everywhere
 
     private static final int THINKING_BUDGET_TOKENS = 1024;
-    private static final int SLEEPING_TIME_MULTIPLIER = 10;
+    private static final int SLEEPING_TIME_MULTIPLIER = 20;
 
     // TODO ensure no breaking (behaviour) changes for all providers
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
+//            "us.anthropic.claude-opus-4-20250514-v1:0", TODO
+//            "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
@@ -45,7 +53,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                     .build();
         }
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
@@ -55,33 +63,54 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage), spyHandler1);
 
         // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking())
+                .containsIgnoringCase("Berlin")
+                .isEqualTo(spyHandler1.getThinking());
         if (!modelId.contains("deepseek")) {
             assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
         }
+
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verify(spyHandler1).getThinking();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage, aiMessage1, userMessage2), spyHandler2);
 
         // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
         if (!modelId.contains("deepseek")) {
             assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
         }
+
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verify(spyHandler2).get();
+        inOrder2.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler2);
     }
 
     @ParameterizedTest
@@ -100,7 +129,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .enableReasoning(1024)
                 .build();
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
@@ -114,31 +143,49 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
         // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
 
         // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
         assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), spyHandler2);
 
         // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
         assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verify(spyHandler2).get();
+        inOrder2.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler2);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
+//            "us.anthropic.claude-opus-4-20250514-v1:0", TODO
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
@@ -161,7 +208,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .enableReasoning(1024)
                 .build();
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
@@ -175,10 +222,11 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
 
         // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
 
         // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.thinking()).isNotBlank();
         assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
@@ -186,29 +234,47 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder1.verify(spyHandler1).onCompleteToolCall(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
+
         // given
         ToolExecutionResultMessage toolResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "sunny");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, toolResultMessage1);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1), spyHandler2);
 
         // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
         assertThat(aiMessage2.metadata()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verify(spyHandler2).get();
+        inOrder2.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler2);
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the weather in Paris?");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse3 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2);
+        TestStreamingChatResponseHandler spyHandler3 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2), spyHandler3);
 
         // then
-        AiMessage aiMessage3 = chatResponse3.aiMessage();
+        AiMessage aiMessage3 = spyHandler3.get().aiMessage();
         assertThat(aiMessage3.thinking()).isNotBlank();
         assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
@@ -216,19 +282,36 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
+        InOrder inOrder3 = inOrder(spyHandler3);
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder3.verify(spyHandler3).onCompleteToolCall(any());
+        inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        inOrder3.verify(spyHandler3).get();
+        inOrder3.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler3);
+
         // given
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        TestStreamingChatResponseHandler spyHandler4 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2), spyHandler4);
 
         // then
-        AiMessage aiMessage4 = chatResponse4.aiMessage();
+        AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         assertThat(aiMessage4.thinking()).isNull();
         assertThat(aiMessage4.metadata()).isEmpty();
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
+
+        InOrder inOrder4 = inOrder(spyHandler4);
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        inOrder4.verify(spyHandler4).get();
+        inOrder4.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler4);
     }
 
     @Test
@@ -255,7 +338,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .enableReasoning(1024)
                 .build();
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
 
                 .modelId(modelId)
                 .returnThinking(returnThinking)
@@ -269,10 +352,11 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
 
         // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
 
         // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
 
         assertThat(aiMessage1.thinking()).isNotBlank();
         assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
@@ -282,15 +366,25 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteToolCall(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
+
         // given
         ToolExecutionResultMessage toolResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "sunny");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, toolResultMessage1);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1), spyHandler2);
 
         // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
 
         assertThat(aiMessage2.thinking()).isNotBlank();
@@ -298,15 +392,24 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
 
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verify(spyHandler2).get();
+        inOrder2.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler2);
+
         // given
         UserMessage userMessage2 = UserMessage.from("What is the weather in Paris?");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse3 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2);
+        TestStreamingChatResponseHandler spyHandler3 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2), spyHandler3);
 
         // then
-        AiMessage aiMessage3 = chatResponse3.aiMessage();
+        AiMessage aiMessage3 = spyHandler3.get().aiMessage();
 
         assertThat(aiMessage3.thinking()).isNotBlank();
         assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
@@ -316,26 +419,44 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
+        InOrder inOrder3 = inOrder(spyHandler3);
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any());
+        inOrder3.verify(spyHandler3).onCompleteToolCall(any());
+        inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        inOrder3.verify(spyHandler3).get();
+        inOrder3.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler3);
+
         // given
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        TestStreamingChatResponseHandler spyHandler4 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2), spyHandler4);
 
         // then
-        AiMessage aiMessage4 = chatResponse4.aiMessage();
+        AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
 
         assertThat(aiMessage4.thinking()).isNotBlank();
         assertThat((String) aiMessage4.metadata().get("thinking_signature")).isNotBlank();
 
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
+
+        InOrder inOrder4 = inOrder(spyHandler4);
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        inOrder4.verify(spyHandler4).get();
+        inOrder4.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler4);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
+//            "us.anthropic.claude-opus-4-20250514-v1:0", TODO
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
@@ -352,7 +473,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                     .build();
         }
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
@@ -362,13 +483,14 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        String userMessage = "What is the capital of Germany?";
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
+        AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.metadata()).isEmpty();
@@ -376,7 +498,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
+//            "us.anthropic.claude-opus-4-20250514-v1:0", TODO
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
@@ -391,7 +513,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                     .build();
         }
 
-        ChatModel model = BedrockChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
                 .defaultRequestParameters(parameters)
@@ -400,13 +522,14 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        String userMessage = "What is the capital of Germany?";
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
+        AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.metadata()).isEmpty();

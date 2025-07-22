@@ -1,24 +1,41 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 public class TestStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
     private final StringBuffer responseBuilder = new StringBuffer();
+    private final StringBuffer thinkingBuilder = new StringBuffer();
+    private final Queue<CompleteToolCall> toolCalls = new ConcurrentLinkedQueue<>();
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
     @Override
     public void onPartialResponse(String partialResponse) {
         responseBuilder.append(partialResponse);
+    }
+
+    @Override
+    public void onPartialThinkingResponse(String partialThinkingResponse) {
+        thinkingBuilder.append(partialThinkingResponse);
+    }
+
+    @Override
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+        toolCalls.add(completeToolCall);
     }
 
     @Override
@@ -37,12 +54,20 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     public ChatResponse get() {
         try {
-            return futureResponse.get(30, SECONDS);
+            return futureResponse.get(60, SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String getThinking() {
+        return thinkingBuilder.toString();
+    }
+
+    public List<CompleteToolCall> getToolCalls() {
+        return new ArrayList<>(toolCalls);
     }
 }

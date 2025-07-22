@@ -205,7 +205,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     }
                 } else if (currentContentBlockStartType.get() == THINKING && options.returnThinking()) {
                     String thinking = data.contentBlock.thinking;
-                    if (isNotNullOrEmpty(thinking)) { // TODO are all onPartialThinkingResponse called only if returnThinking?
+                    if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
                         onPartialThinkingResponse(handler, thinking);
                     }

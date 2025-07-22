@@ -2,7 +2,6 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,7 +13,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -27,8 +25,6 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -50,7 +46,7 @@ class AnthropicStreamingChatModelThinkingIT {
             "CLAUDE_SONNET_4_20250514",
             "CLAUDE_3_7_SONNET_20250219"
     })
-    void should_return_and_preserve_thinking(AnthropicChatModelName modelName) throws Exception { // TODO name
+    void should_return_and_preserve_thinking(AnthropicChatModelName modelName) { // TODO name
 
         // given
         boolean returnThinking = true;
@@ -74,47 +70,25 @@ class AnthropicStreamingChatModelThinkingIT {
 
         UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
-        StringBuffer thinkingBuilder = new StringBuffer();
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        StreamingChatResponseHandler spyHandler1 = spy(new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-            }
-
-            @Override
-            public void onPartialThinkingResponse(String partialThinkingResponse) {
-                thinkingBuilder.append(partialThinkingResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
         // when
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
         model.chat(List.of(userMessage1), spyHandler1);
 
         // then
-        ChatResponse chatResponse1 = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking())
                 .containsIgnoringCase("Berlin")
-                .isEqualTo(thinkingBuilder.toString());
+                .isEqualTo(spyHandler1.getThinking());
         String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
         assertThat(signature1).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1).get();
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 

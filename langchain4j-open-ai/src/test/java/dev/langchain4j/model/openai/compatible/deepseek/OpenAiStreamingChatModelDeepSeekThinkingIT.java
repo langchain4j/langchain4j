@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai.compatible.deepseek;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -12,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
@@ -21,8 +19,6 @@ import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -55,55 +51,34 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        StringBuffer thinkingBuilder = new StringBuffer();
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        StreamingChatResponseHandler spyHandler = spy(new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-            }
-
-            @Override
-            public void onPartialThinkingResponse(String partialThinkingResponse) {
-                thinkingBuilder.append(partialThinkingResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
         // when
-        model.chat(List.of(userMessage), spyHandler);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
 
         // then
-        ChatResponse chatResponse = futureResponse.get(60, SECONDS);
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).isEqualTo(thinkingBuilder.toString());
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking())
+                .containsIgnoringCase("Berlin")
+                .isEqualTo(spyHandler1.getThinking());
 
-        InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialThinkingResponse(any());
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
-        inOrder.verify(spyHandler).onCompleteResponse(any());
-        inOrder.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(spyHandler);
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).getThinking();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
         TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
-        model.chat(List.of(userMessage, aiMessage, userMessage2), handler2);
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), handler2);
 
         // then
         AiMessage aiMessage2 = handler2.get().aiMessage();
@@ -114,8 +89,8 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage.text()))
-                .doesNotContain(jsonify(aiMessage.thinking()));
+                .contains(jsonify(aiMessage1.text()))
+                .doesNotContain(jsonify(aiMessage1.thinking()));
     }
 
     @ParameterizedTest
@@ -136,34 +111,12 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
 
         String userMessage = "What is the capital of Germany?";
 
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        StreamingChatResponseHandler spyHandler = spy(new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-            }
-
-            @Override
-            public void onPartialThinkingResponse(String partialThinkingResponse) {
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
         // when
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
         model.chat(userMessage, spyHandler);
 
         // then
-        ChatResponse chatResponse = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = chatResponse.aiMessage();
+        AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
 
