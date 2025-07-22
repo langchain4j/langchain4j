@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
@@ -50,8 +51,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         // given
         boolean returnThinking = true;
-        boolean preserveThinking = true;
-        // preserveThinking = true by default TODO
+        // preserveThinking = true by default
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -62,7 +62,6 @@ class AnthropicStreamingChatModelThinkingIT {
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
-                .preserveThinking(preserveThinking)
 
                 .logRequests(true)
                 .logResponses(true)
@@ -211,7 +210,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         // given
         boolean returnThinking = true;
-        // preserveThinking = true by default TODO
+        // preserveThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -356,7 +355,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AnthropicChatModelName modelName = CLAUDE_OPUS_4_20250514;
 
         boolean returnThinking = true;
-        // preserveThinking = true by default TODO
+        // preserveThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -513,6 +512,69 @@ class AnthropicStreamingChatModelThinkingIT {
         assertThat(httpRequests.get(3).body())
                 .contains(jsonify(thinking3))
                 .contains(jsonify(signature3));
+    }
+
+    @Test
+    void test_redacted_thinking() {
+
+        // given
+        boolean returnThinking = true;
+        // preserveThinking = true by default
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_7_SONNET_20250219)
+
+                .thinkingType("enabled")
+                .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
+                .maxTokens(THINKING_BUDGET_TOKENS + 100)
+                .returnThinking(returnThinking)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("ANTHROPIC_MAGIC_STRING_TRIGGER_REDACTED_THINKING_46C9A13E193C177646C7398A98432ECCCE4C1253D5E2D82641AC0E52CC2876CB");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
+
+        // then
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
+        assertThat(aiMessage1.text()).isNotBlank();
+        assertThat(aiMessage1.thinking()).isNull();
+        assertThat(aiMessage1.metadata()).hasSize(1);
+        List<String> redactedThinkings = (List<String>) aiMessage1.metadata().get("redacted_thinking");
+        assertThat(redactedThinkings).hasSize(2);
+        assertThat(redactedThinkings.get(0)).isNotBlank();
+
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), spyHandler2);
+
+        // then
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
+        assertThat(aiMessage2.text()).contains("Berlin");
+
+        // should preserve redacted thinking in the follow-up requests
+        List<HttpRequest> httpRequests = spyingHttpClient.requests();
+        assertThat(httpRequests).hasSize(2);
+        assertThat(httpRequests.get(1).body())
+                .contains(jsonify(aiMessage1.text()))
+                .contains(jsonify(redactedThinkings.get(0)))
+                .contains(jsonify(redactedThinkings.get(1)));
     }
 
     @ParameterizedTest

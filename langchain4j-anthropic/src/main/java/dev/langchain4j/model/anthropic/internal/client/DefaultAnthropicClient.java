@@ -16,7 +16,6 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
@@ -30,6 +29,7 @@ import dev.langchain4j.model.output.FinishReason;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,11 +47,9 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.THINKING;
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.REDACTED_THINKING_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
@@ -122,9 +120,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final List<String> thinkings = synchronizedList(new ArrayList<>());
             final StringBuffer thinkingBuilder = new StringBuffer();
             final List<String> thinkingSignatures = synchronizedList(new ArrayList<>());
-            final StringBuffer thinkingSignatureBuilder = new StringBuffer();
+            final StringBuffer thinkingSignatureBuilder = new StringBuffer(); // TODO simplify?
+            final List<String> redactedThinkings = synchronizedList(new ArrayList<>());
 
-            final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
+            volatile String currentContentBlockStartType;
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
 
@@ -195,15 +194,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                currentContentBlockStartType.set(data.contentBlock.type);
+                this.currentContentBlockStartType = data.contentBlock.type;
 
-                if (currentContentBlockStartType.get() == TEXT) {
+                if ("text".equals(currentContentBlockStartType)) {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text);
                     }
-                } else if (currentContentBlockStartType.get() == THINKING && options.returnThinking()) {
+                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -213,7 +212,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatureBuilder.append(signature);
                     }
-                } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                } else if ("redacted_thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                    String redactedThinking = data.contentBlock.data;
+                    if (isNotNullOrEmpty(redactedThinking)) {
+                        redactedThinkings.add(redactedThinking);
+                    }
+                } else if ("tool_use".equals(currentContentBlockStartType)) {
                     toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                     toolCallBuilder.updateId(data.contentBlock.id);
                     toolCallBuilder.updateName(data.contentBlock.name);
@@ -225,13 +229,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                if (currentContentBlockStartType.get() == TEXT) {
+                if ("text".equals(currentContentBlockStartType)) {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text);
                     }
-                } else if (currentContentBlockStartType.get() == THINKING && options.returnThinking()) {
+                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -241,7 +245,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatureBuilder.append(signature);
                     }
-                } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                } else if ("tool_use".equals(currentContentBlockStartType)) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
                         toolCallBuilder.appendArguments(partialJson);
@@ -258,15 +262,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleContentBlockStop() {
-                if (currentContentBlockStartType.get() == TEXT) {
+                if ("text".equals(currentContentBlockStartType)) {
                     contents.add(contentBuilder.toString());
                     contentBuilder.setLength(0);
-                } else if (currentContentBlockStartType.get() == THINKING && options.returnThinking()) {
+                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     thinkings.add(thinkingBuilder.toString());
                     thinkingBuilder.setLength(0);
                     thinkingSignatures.add(thinkingSignatureBuilder.toString());
                     thinkingSignatureBuilder.setLength(0);
-                } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                } else if ("tool_use".equals(currentContentBlockStartType)) {
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
 
                     if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
@@ -310,12 +314,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
 
-                Map<String, Object> metadata = Map.of();
+                Map<String, Object> metadata = new HashMap<>();
                 String thinkingSignature = thinkingSignatures.stream()
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
                 if (isNotNullOrBlank(thinkingSignature)) {
-                    metadata = Map.of(THINKING_SIGNATURE_KEY, thinkingSignature);
+                    metadata.put(THINKING_SIGNATURE_KEY, thinkingSignature);
+                }
+                if (!redactedThinkings.isEmpty()) {
+                    metadata.put(REDACTED_THINKING_KEY, redactedThinkings);
                 }
 
                 List<ToolExecutionRequest> toolExecutionRequests = List.of();

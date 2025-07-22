@@ -100,7 +100,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.preserveThinking = getOrDefault(builder.preserveThinking, true); // TODO false by default?
+        this.preserveThinking = getOrDefault(builder.preserveThinking, true);
         this.listeners = copy(builder.listeners);
     }
 

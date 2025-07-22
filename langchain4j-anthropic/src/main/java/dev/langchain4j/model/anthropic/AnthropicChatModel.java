@@ -90,7 +90,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.preserveThinking = getOrDefault(builder.preserveThinking, true); // TODO false by default?
+        this.preserveThinking = getOrDefault(builder.preserveThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
 
@@ -241,7 +241,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * TODO
+         * TODO def val, everywhere
          * @param returnThinking
          * @return
          */
@@ -251,7 +251,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * TODO
+         * TODO def val, everywhere
          * @param preserveThinking
          * @return
          */

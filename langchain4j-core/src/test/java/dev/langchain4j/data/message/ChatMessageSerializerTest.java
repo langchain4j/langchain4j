@@ -88,9 +88,10 @@ class ChatMessageSerializerTest {
                                 .metadata(new LinkedHashMap<>() {{
                                     put("name", "Klaus");
                                     put("age", 42);
+                                    put("extra", List.of("one", "two"));
                                 }})
                                 .build(),
-                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"metadata\":{\"name\":\"Klaus\",\"age\":42},\"type\":\"AI\"}"
+                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"metadata\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
