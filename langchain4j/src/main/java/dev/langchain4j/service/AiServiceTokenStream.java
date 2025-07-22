@@ -110,10 +110,11 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
+        ChatRequest chatRequest = context.chatRequestTransformer
+                .apply(ChatRequest.builder()
+                        .messages(messages)
+                        .toolSpecifications(toolSpecifications)
+                        .build(), memoryId);
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)

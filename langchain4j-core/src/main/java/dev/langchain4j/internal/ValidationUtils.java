@@ -185,6 +185,21 @@ public class ValidationUtils {
     }
 
     /**
+     * Ensures that the given integer is not negative.
+     * @param i The integer to check.
+     * @param name The logical name of the integer, to be used in the exception.
+     * @return The value if it is not negative.
+     * @throws IllegalArgumentException if the integer is negative.
+     */
+    public static int ensureNotNegative(Integer i, String name) {
+        if (i == null || i < 0) {
+            throw illegalArgument("%s must not be negative, but is: %s", name, i);
+        }
+
+        return i;
+    }
+
+    /**
      * Ensures that the given expression is true.
      * @param i The expression to check.
      * @param name The message to be used in the exception.

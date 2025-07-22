@@ -1,6 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
@@ -12,6 +14,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -28,13 +31,13 @@ import dev.langchain4j.model.output.FinishReason;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -47,7 +50,6 @@ import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 @Internal
 public class DefaultAnthropicClient extends AnthropicClient {
@@ -111,7 +113,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
             volatile StringBuffer currentContentBuilder = new StringBuffer();
 
             final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
-            final Map<Integer, AnthropicToolExecutionRequestBuilder> toolExecutionRequestBuilderMap = new ConcurrentHashMap<>();
+
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
@@ -211,10 +214,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    toolExecutionRequestBuilderMap.putIfAbsent(
-                            data.index,
-                            new AnthropicToolExecutionRequestBuilder(data.contentBlock.id, data.contentBlock.name)
-                    );
+                    toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                    toolCallBuilder.updateId(data.contentBlock.id);
+                    toolCallBuilder.updateName(data.contentBlock.name);
                 }
             }
 
@@ -236,18 +238,38 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
-                        Integer toolExecutionsIndex = data.index;
-                        if (toolExecutionsIndex != null) {
-                            AnthropicToolExecutionRequestBuilder toolExecutionRequestBuilder = toolExecutionRequestBuilderMap.get(toolExecutionsIndex);
-                            toolExecutionRequestBuilder.appendArguments(partialJson);
-                        }
+                        toolCallBuilder.appendArguments(partialJson);
+
+                        PartialToolCall partialToolRequest = PartialToolCall.builder()
+                                .index(toolCallBuilder.index())
+                                .id(toolCallBuilder.id())
+                                .name(toolCallBuilder.name())
+                                .partialArguments(partialJson)
+                                .build();
+                        onPartialToolCall(handler, partialToolRequest);
                     }
                 }
             }
 
             private void handleContentBlockStop() {
-                contents.add(currentContentBuilder().toString());
-                setCurrentContentBuilder(new StringBuffer());
+                if (currentContentBlockStartType.get() == TEXT) {
+                    contents.add(currentContentBuilder().toString());
+                    setCurrentContentBuilder(new StringBuffer());
+                } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                    CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
+
+                    if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
+                        PartialToolCall partialToolRequest = PartialToolCall.builder()
+                                .index(completeToolCall.index())
+                                .id(completeToolCall.toolExecutionRequest().id())
+                                .name(completeToolCall.toolExecutionRequest().name())
+                                .partialArguments(completeToolCall.toolExecutionRequest().arguments())
+                                .build();
+                        onPartialToolCall(handler, partialToolRequest);
+                    }
+
+                    onCompleteToolCall(handler, completeToolCall);
+                }
             }
 
             private void handleMessageDelta(AnthropicStreamingData data) {
@@ -288,16 +310,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 ChatResponseMetadata metadata = createMetadata(tokenUsage, finishReason);
 
-                if (toolExecutionRequestBuilderMap.isEmpty()) {
-                    return ChatResponse.builder()
-                            .aiMessage(AiMessage.from(text))
-                            .metadata(metadata)
-                            .build();
-                } else {
-                    List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderMap
-                            .values().stream()
-                            .map(AnthropicToolExecutionRequestBuilder::build)
-                            .collect(toList());
+                if (toolCallBuilder.hasRequests()) {
+                    List<ToolExecutionRequest> toolExecutionRequests = toolCallBuilder.allRequests();
 
                     AiMessage aiMessage = isNullOrBlank(text)
                             ? AiMessage.from(toolExecutionRequests)
@@ -305,6 +319,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                     return ChatResponse.builder()
                             .aiMessage(aiMessage)
+                            .metadata(metadata)
+                            .build();
+                } else {
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.from(text))
                             .metadata(metadata)
                             .build();
                 }

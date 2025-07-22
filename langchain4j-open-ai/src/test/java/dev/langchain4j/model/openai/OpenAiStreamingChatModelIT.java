@@ -57,7 +57,7 @@ class OpenAiStreamingChatModelIT {
             .modelName(GPT_4_1_NANO)
             .temperature(0.0)
             .maxTokens(50)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .build();
 

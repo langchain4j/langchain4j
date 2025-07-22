@@ -2,6 +2,7 @@ package dev.langchain4j;
 
 import java.lang.annotation.Target;
 
+import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.TYPE;
 
 /**
@@ -13,6 +14,6 @@ import static java.lang.annotation.ElementType.TYPE;
  * Usage of internal APIs by external code is strongly discouraged and may lead to
  * compatibility issues in future versions of the library.
  */
-@Target({TYPE})
+@Target({TYPE, METHOD})
 public @interface Internal {
 }

@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -39,7 +39,7 @@ class SqlDatabaseContentRetrieverIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
+            .modelName(GPT_4_1_NANO)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -47,7 +47,7 @@ class SqlDatabaseContentRetrieverIT {
 
     static ChatModel mistralAiChatModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MISTRAL_LARGE_LATEST)
+            .modelName(MISTRAL_SMALL_LATEST)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)

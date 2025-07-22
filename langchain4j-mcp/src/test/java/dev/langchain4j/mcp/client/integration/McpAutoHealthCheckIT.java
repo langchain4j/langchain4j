@@ -73,7 +73,7 @@ public class McpAutoHealthCheckIT {
         TimeUnit.MILLISECONDS.sleep(500);
         //Reconnect heartbeat detection
         process = startServerHttp("tools_mcp_server.java");
-        TimeUnit.MILLISECONDS.sleep(500);
+        TimeUnit.MILLISECONDS.sleep(5_000);
         executeAToolAndAssertSuccess();
     }
 

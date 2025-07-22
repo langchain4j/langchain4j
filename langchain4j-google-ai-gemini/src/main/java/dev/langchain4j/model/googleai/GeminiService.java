@@ -1,6 +1,8 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -8,6 +10,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -20,7 +24,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 
 class GeminiService {
@@ -106,17 +110,21 @@ class GeminiService {
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
+            AtomicInteger toolIndex = new AtomicInteger(0);
+
             @Override
             public void onEvent(ServerSentEvent event) {
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
-                Optional<String> maybeText = responseBuilder.append(response);
-                maybeText.ifPresent(text -> {
-                    try {
-                        handler.onPartialResponse(text);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
+                textAndTools.maybeText().ifPresent(text -> {
+                    onPartialResponse(handler, text);
                 });
+
+                for (ToolExecutionRequest tool : textAndTools.tools()) {
+                    CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
+                    onCompleteToolCall(handler, completeToolCall);
+                    toolIndex.incrementAndGet();
+                }
             }
 
             @Override

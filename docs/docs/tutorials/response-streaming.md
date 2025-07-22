@@ -24,6 +24,10 @@ public interface StreamingChatResponseHandler {
 
     void onPartialResponse(String partialResponse);
 
+    default void onPartialToolCall(PartialToolCall partialToolCall) {}
+
+    default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
+
     void onCompleteResponse(ChatResponse completeResponse);
 
     void onError(Throwable error);
@@ -31,10 +35,12 @@ public interface StreamingChatResponseHandler {
 ```
 
 By implementing `StreamingChatResponseHandler`, you can define actions for the following events:
-- When the next partial response is generated: `onPartialResponse(String partialResponse)` is invoked.
+- When the next partial textual response is generated: `onPartialResponse(String)` is invoked.
 Partial response can consist of a single or more tokens.
 For instance, you can send the token directly to the UI as soon as it becomes available.
-- When the LLM has completed generation: `onCompleteResponse(ChatResponse completeResponse)` is invoked.
+- When the next [partial tool call](/tutorials/tools#using-streaming-chat-model) is generated: `onPartialToolCall(PartialToolCall)` is invoked.
+- When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
+- When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
 
@@ -52,6 +58,16 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
     @Override
     public void onPartialResponse(String partialResponse) {
         System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {
+        System.out.println("onPartialToolCall: " + partialToolCall);
+    }
+
+    @Override
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+        System.out.println("onCompleteToolCall: " + completeToolCall);
     }
 
     @Override

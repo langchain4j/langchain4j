@@ -1,5 +1,7 @@
 package dev.langchain4j.model.chat.common;
 
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -10,8 +12,10 @@ import org.junit.jupiter.api.TestInstance;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -201,16 +206,30 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
+        Queue<PartialToolCall> partialToolCalls = new ConcurrentLinkedQueue<>();
+        Queue<CompleteToolCall> completeToolCalls = new ConcurrentLinkedQueue<>();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
-        chatModel.chat(chatRequest, new StreamingChatResponseHandler() {
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
             @Override
             public void onPartialResponse(String partialResponse) {
                 concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                partialToolCalls.add(partialToolCall);
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                completeToolCalls.add(completeToolCall);
                 threads.add(Thread.currentThread());
             }
 
@@ -226,7 +245,10 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 futureChatResponse.completeExceptionally(error);
                 threads.add(Thread.currentThread());
             }
-        });
+        };
+
+        StreamingChatResponseHandler spyHandler = spy(handler);
+        chatModel.chat(chatRequest, spyHandler);
 
         try {
             ChatResponse chatResponse = futureChatResponse.get(120, SECONDS);
@@ -234,8 +256,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
+                    new ArrayList<>(partialToolCalls),
+                    new ArrayList<>(completeToolCalls),
                     timesOnCompleteResponseWasCalled.get(),
-                    threads
+                    threads,
+                    spyHandler
             );
             return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
         } catch (Exception e) {

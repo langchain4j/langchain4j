@@ -258,10 +258,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = ChatRequest.builder()
-                                .messages(messages)
-                                .parameters(parameters)
-                                .build();
+                        ChatRequest chatRequest = context.chatRequestTransformer
+                                .apply(ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(), memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)

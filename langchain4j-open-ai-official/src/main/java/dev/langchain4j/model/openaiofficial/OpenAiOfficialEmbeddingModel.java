@@ -118,9 +118,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                 client.embeddings().create(embeddingCreateParamsBuilder.build());
 
         List<Embedding> embeddings = createEmbeddingResponse.data().stream()
-                .map(embeddingItem -> Embedding.from(embeddingItem.embedding().stream()
-                        .map(Double::floatValue)
-                        .toList()))
+                .map(embeddingItem -> Embedding.from(embeddingItem.embedding()))
                 .toList();
 
         return Response.from(embeddings, tokenUsageFrom(createEmbeddingResponse.usage()));
