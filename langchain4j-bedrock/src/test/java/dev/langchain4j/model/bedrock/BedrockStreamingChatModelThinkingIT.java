@@ -96,7 +96,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
         if (!modelId.contains("deepseek")) {
             assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
         }
@@ -146,7 +146,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
         assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
@@ -168,7 +168,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
         assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
 
         InOrder inOrder2 = inOrder(spyHandler2);

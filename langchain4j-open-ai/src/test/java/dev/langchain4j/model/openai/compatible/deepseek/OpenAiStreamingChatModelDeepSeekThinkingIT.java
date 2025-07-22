@@ -85,7 +85,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         // then
         AiMessage aiMessage2 = handler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
 
         // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();

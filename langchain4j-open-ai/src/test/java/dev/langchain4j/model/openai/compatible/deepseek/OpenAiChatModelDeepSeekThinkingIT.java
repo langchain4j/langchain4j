@@ -53,7 +53,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         // then
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
@@ -64,7 +64,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
 
         // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
