@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -9,7 +10,6 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -115,7 +115,8 @@ public class AnthropicMapper {
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
                         PdfFile pdfFile = pdfFileContent.pdfFile();
-                        return new AnthropicPdfContent(pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
+                        return new AnthropicPdfContent(
+                                pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }
@@ -155,14 +156,20 @@ public class AnthropicMapper {
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
-        return messages.stream()
+        List<SystemMessage> systemMessages = messages.stream()
                 .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .collect(toList());
+
+        SystemMessage lastSystemMessage =
+                systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
+        return systemMessages.stream()
                 .map(message -> {
-                    SystemMessage systemMessage = (SystemMessage) message;
-                    if (cacheType != AnthropicCacheType.NO_CACHE) {
-                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    boolean isLastItem = message.equals(lastSystemMessage);
+                    if (isLastItem && cacheType != AnthropicCacheType.NO_CACHE) {
+                        return new AnthropicTextContent(message.text(), cacheType.cacheControl());
                     }
-                    return new AnthropicTextContent(systemMessage.text());
+                    return new AnthropicTextContent(message.text());
                 })
                 .collect(toList());
     }
@@ -218,8 +225,16 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
+        ToolSpecification lastToolSpecification =
+                toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
-                .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
+                .map(toolSpecification -> {
+                    boolean isLastItem = toolSpecification.equals(lastToolSpecification);
+                    if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt);
+                    }
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
+                })
                 .collect(toList());
     }
 
@@ -247,10 +262,11 @@ public class AnthropicMapper {
             return null;
         }
 
-        AnthropicToolChoiceType toolChoiceType = switch (toolChoice) {
-            case AUTO -> AnthropicToolChoiceType.AUTO;
-            case REQUIRED -> AnthropicToolChoiceType.ANY;
-        };
+        AnthropicToolChoiceType toolChoiceType =
+                switch (toolChoice) {
+                    case AUTO -> AnthropicToolChoiceType.AUTO;
+                    case REQUIRED -> AnthropicToolChoiceType.ANY;
+                };
 
         return AnthropicToolChoice.from(toolChoiceType);
     }

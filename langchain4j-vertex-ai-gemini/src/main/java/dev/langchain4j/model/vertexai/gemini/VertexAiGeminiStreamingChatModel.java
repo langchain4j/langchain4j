@@ -1,29 +1,34 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
+import static dev.langchain4j.model.vertexai.gemini.FunctionCallHelper.fromFunctionCall;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import com.google.common.annotations.VisibleForTesting;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -45,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -362,47 +368,22 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         ChatRequestValidationUtils.validate(parameters.toolChoice());
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
-        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
-
-            @Override
-            public void onNext(String token) {
-                handler.onPartialResponse(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(response.content())
-                        .metadata(ChatResponseMetadata.builder()
-                                .tokenUsage(response.tokenUsage())
-                                .finishReason(response.finishReason())
-                                .build())
-                        .build();
-                handler.onCompleteResponse(chatResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
-
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (isNullOrEmpty(toolSpecifications)) {
-            generate(chatRequest.messages(), legacyHandler);
+            generate(chatRequest.messages(), handler);
         } else {
-            generate(chatRequest.messages(), toolSpecifications, legacyHandler);
+            generate(chatRequest.messages(), toolSpecifications, handler);
         }
     }
 
-    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
         generate(messages, Collections.emptyList(), handler);
     }
 
     private void generate(
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
-            StreamingResponseHandler<AiMessage> handler) {
+            StreamingChatResponseHandler handler) {
         String modelName = generativeModel.getModelName();
 
         List<Tool> tools = new ArrayList<>();
@@ -457,19 +438,40 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         });
 
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
-
         final GenerativeModel finalModel = model;
+        AtomicInteger toolIndex = new AtomicInteger(0);
 
         executor.execute(() -> {
             try {
                 finalModel.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
                     if (partialResponse.getCandidatesCount() > 0) {
-                        responseBuilder.append(partialResponse);
-                        handler.onNext(ResponseHandler.getText(partialResponse));
+                        StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
+
+                        String text = textAndFunctions.text();
+                        if (isNotNullOrEmpty(text)) {
+                            onPartialResponse(handler, text);
+                        }
+
+                        for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
+                            ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
+                            CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), toolExecutionRequest);
+                            onCompleteToolCall(handler, completeToolCall);
+                            toolIndex.incrementAndGet();
+                        }
                     }
                 });
+
                 Response<AiMessage> fullResponse = responseBuilder.build();
-                handler.onComplete(fullResponse);
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(fullResponse.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(fullResponse.tokenUsage())
+                                .finishReason(fullResponse.finishReason())
+                                .build())
+                        .build();
+
+                handler.onCompleteResponse(chatResponse);
 
                 ChatResponse listenerResponse = ChatResponse.builder()
                         .aiMessage(fullResponse.content())
@@ -502,6 +504,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                         logger.warn("Exception while calling model listener (onError)", t);
                     }
                 });
+
                 handler.onError(exception);
             }
         });
