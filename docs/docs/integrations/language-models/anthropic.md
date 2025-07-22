@@ -121,7 +121,7 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
-What is currently not supported:
+What is currently not supported: TODO
 - It not possible to get the thinking content from the LC4j API. It is only visible in logs.
 - Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
 - etc

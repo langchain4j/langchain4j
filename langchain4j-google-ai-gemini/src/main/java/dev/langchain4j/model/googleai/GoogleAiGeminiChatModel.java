@@ -62,7 +62,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.listeners,
                 builder.maxRetries,
                 builder.thinkingConfig,
-                builder.preserveThinking,
+                builder.sendThinking,
                 builder.defaultRequestParameters);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -226,7 +226,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
-        private Boolean preserveThinking;
+        private Boolean sendThinking;
         private Integer logprobs;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
@@ -356,8 +356,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder preserveThinking(Boolean preserveThinking) {
-            this.preserveThinking = preserveThinking;
+        public GoogleAiGeminiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

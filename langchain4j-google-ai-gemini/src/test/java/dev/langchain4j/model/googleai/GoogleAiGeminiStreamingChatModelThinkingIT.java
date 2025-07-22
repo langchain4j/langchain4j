@@ -35,9 +35,11 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
+    // TODO separate flags for enabling thoughts and returning them?
+
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void should_return_thinking(boolean preserveThinking) throws Exception { // TODO name
+    void should_return_thinking(boolean sendThinking) {
 
         // given
         boolean returnThinking = true;
@@ -51,8 +53,10 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
+
                 .thinkingConfig(thinkingConfig)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
+
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -92,11 +96,11 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage2.thinking()).isNotBlank();
         assertThat(aiMessage2.metadata()).isEmpty();
 
-        // should preserve thinking in the follow-up request
+        // should send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body()).contains(jsonify(aiMessage1.text()));
-        if (preserveThinking) {
+        if (sendThinking) {
             assertThat(httpRequests.get(1).body()).contains(jsonify(aiMessage1.thinking()));
         } else {
             assertThat(httpRequests.get(1).body()).doesNotContain(jsonify(aiMessage1.thinking()));
@@ -105,7 +109,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void should_return_thinking_with_tools(boolean preserveThinking) { // TODO name
+    void should_return_thinking_with_tools(boolean sendThinking) {
 
         // given
         boolean returnThinking = true;
@@ -127,11 +131,13 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
+
                 .thinkingConfig(thinkingConfig)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(ChatRequestParameters.builder()
                         .toolSpecifications(toolSpecification)
                         .build())
+
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -217,7 +223,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
-        if (preserveThinking) {
+        if (sendThinking) {
             assertThat(aiMessage4.thinking()).isNull();
             assertThat(aiMessage4.metadata()).isEmpty();
         } else {
@@ -227,7 +233,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
-        if (!preserveThinking) {
+        if (!sendThinking) {
             inOrder4.verify(spyHandler4).onPartialThinking(any());
         }
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
@@ -236,11 +242,11 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         verify(spyHandler4).get();
         verifyNoMoreInteractions(spyHandler4);
 
-        // should preserve thinking in the follow-up requests
+        // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
 
-        if (preserveThinking) {
+        if (sendThinking) {
             assertThat(httpRequests.get(1).body())
                     .contains(jsonify(thinking1))
                     .contains(jsonify(signature1));
@@ -250,7 +256,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                     .doesNotContain(jsonify(signature1));
         }
 
-        if (preserveThinking) {
+        if (sendThinking) {
             assertThat(httpRequests.get(3).body())
                     .contains(jsonify(thinking2))
                     .contains(jsonify(signature2));
@@ -261,9 +267,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         }
     }
 
-
     @Test
-    void should_NOT_return_thinking() { // TODO name TODO remove?
+    void should_NOT_return_thinking() {
 
         // given
         boolean returnThinking = false;
@@ -276,7 +281,9 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
+
                 .thinkingConfig(thinkingConfig)
+
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -300,7 +307,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         verifyNoMoreInteractions(spyHandler);
     }
 
-    // TODO other tests?
+    // TODO should not return thinking when not set
 
     @AfterEach
     void afterEach() throws InterruptedException {

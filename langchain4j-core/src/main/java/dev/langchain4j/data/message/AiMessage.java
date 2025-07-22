@@ -88,7 +88,7 @@ public class AiMessage implements ChatMessage {
      * TODO
      * @return
      */
-    public String thinking() { // TODO name
+    public String thinking() { // TODO name reasoning? thoughts?
         return thinking;
     }
 

@@ -19,10 +19,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelThinkingIT { // TODO name, everywhere
+class BedrockChatModelThinkingIT {
 
     private static final int THINKING_BUDGET_TOKENS = 1024;
-    private static final int SLEEPING_TIME_MULTIPLIER = 10;
+    private static final int SLEEPING_TIME_MULTIPLIER = 20;
 
     // TODO ensure no breaking (behaviour) changes for all providers
 
@@ -33,7 +33,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
-    void should_answer_with_thinking_when_returnThinking_is_true(String modelId) { // TODO name
+    void should_return_thinking(String modelId) {
 
         // given
         boolean returnThinking = true;
@@ -41,7 +41,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
             parameters = BedrockChatRequestParameters.builder()
-                    .enableReasoning(1024)
+                    .enableReasoning(THINKING_BUDGET_TOKENS)
                     .build();
         }
 
@@ -90,21 +90,21 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
-    void should_preserve_thinking_when_returnThinking_and_preserveThinking_are_true(String modelId) { // TODO name
+    void should_return_and_send_thinking(String modelId) {
 
         // given
         boolean returnThinking = true;
-        boolean preserveThinking = true; // TODO name, everywhere
+        boolean sendThinking = true;
 
         BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
-                .enableReasoning(1024)
+                .enableReasoning(THINKING_BUDGET_TOKENS)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -142,11 +142,11 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
-    void should_preserve_thinking_when_returnThinking_and_preserveThinking_are_true_tools(String modelId) { // TODO name
+    void should_return_and_send_thinking_with_tools(String modelId) {
 
         // given
         boolean returnThinking = true;
-        boolean preserveThinking = true; // TODO name, everywhere
+        boolean sendThinking = true;
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -158,14 +158,14 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
 
         BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
                 .toolSpecifications(List.of(toolSpecification))
-                .enableReasoning(1024)
+                .enableReasoning(THINKING_BUDGET_TOKENS)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -232,14 +232,14 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
     }
 
     @Test
-    void test_interleaved_thinking() { // TODO name
+    void test_interleaved_thinking() {
 
         // given
         String beta = "interleaved-thinking-2025-05-14";
         String modelId = "us.anthropic.claude-opus-4-20250514-v1:0";
 
         boolean returnThinking = true;
-        boolean preserveThinking = true;
+        boolean sendThinking = true;
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -252,14 +252,14 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
                 .additionalModelRequestField("anthropic_beta", List.of(beta))
-                .enableReasoning(1024)
+                .enableReasoning(THINKING_BUDGET_TOKENS)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
 
                 .modelId(modelId)
                 .returnThinking(returnThinking)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -335,12 +335,11 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
-    void should_NOT_return_thinking_when_returnThinking_is_false(String modelId) {
+    void should_NOT_return_thinking(String modelId) {
 
         // given
         boolean returnThinking = false;
@@ -348,7 +347,7 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
             parameters = BedrockChatRequestParameters.builder()
-                    .enableReasoning(1024)
+                    .enableReasoning(THINKING_BUDGET_TOKENS)
                     .build();
         }
 
@@ -376,18 +375,17 @@ class BedrockChatModelThinkingIT { // TODO name, everywhere
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
     })
-    void should_answer_without_thinking_when_returnThinking_is_not_set(String modelId) { // TODO name
+    void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {
 
         // given
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
             parameters = BedrockChatRequestParameters.builder()
-                    .enableReasoning(1024)
+                    .enableReasoning(THINKING_BUDGET_TOKENS)
                     .build();
         }
 

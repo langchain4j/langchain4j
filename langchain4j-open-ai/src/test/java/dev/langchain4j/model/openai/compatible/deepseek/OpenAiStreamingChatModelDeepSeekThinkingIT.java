@@ -31,12 +31,12 @@ import org.mockito.InOrder;
  * See <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek API Docs</a> for more info.
  */
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
-class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into AbstractBaseChatModelIT? name: OpenAiThinking...?
+class OpenAiStreamingChatModelDeepSeekThinkingIT {
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
-    void should_answer_with_reasoning_when_returnThinking_is_true() throws Exception { // TODO name
+    void should_return_thinking() {
 
         // given
         boolean returnThinking = true;
@@ -46,7 +46,9 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
+
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -85,7 +87,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
 
-        // should NOT preserve thinking in the follow-up request
+        // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -96,15 +98,16 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
     @ParameterizedTest
     @NullSource
     @ValueSource(booleans = false)
-    void should_answer_without_reasoning_when_returnThinking_is(Boolean returnThinking) throws Exception { // TODO name
+    void should_NOT_return_thinking(Boolean returnThinking) {
 
         // given
         StreamingChatModel model = OpenAiStreamingChatModel.builder()
-                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
+
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();

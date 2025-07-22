@@ -66,7 +66,7 @@ public class AnthropicMapper {
     public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
     public static final String REDACTED_THINKING_KEY = "redacted_thinking"; // do not change, will break backward compatibility!
 
-    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean preserveThinking) {
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean sendThinking) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -87,7 +87,7 @@ public class AnthropicMapper {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage aiMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, preserveThinking);
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, sendThinking);
                     anthropicMessages.add(new AnthropicMessage(ASSISTANT, contents));
                 }
             }
@@ -129,15 +129,15 @@ public class AnthropicMapper {
                 .collect(toList());
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean preserveThinking) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
-        if (preserveThinking && isNotNullOrBlank(message.thinking())) {
+        if (sendThinking && isNotNullOrBlank(message.thinking())) {
             String signature = (String) message.metadata().get(THINKING_SIGNATURE_KEY);
             contents.add(new AnthropicThinkingContent(message.thinking(), signature));
         }
 
-        if (preserveThinking && message.metadata().containsKey(REDACTED_THINKING_KEY)) {
+        if (sendThinking && message.metadata().containsKey(REDACTED_THINKING_KEY)) {
             List<String> redactedThinkings = (List<String>) message.metadata().get(REDACTED_THINKING_KEY);
             for (String redactedThinking : redactedThinkings) {
                 contents.add(new AnthropicRedactedThinkingContent(redactedThinking));

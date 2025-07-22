@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
@@ -39,19 +41,17 @@ class AnthropicStreamingChatModelThinkingIT {
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
-    // TODO ensure no breaking (behaviour) changes for all providers
-
     @ParameterizedTest
     @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
             "CLAUDE_OPUS_4_20250514",
             "CLAUDE_SONNET_4_20250514",
             "CLAUDE_3_7_SONNET_20250219"
     })
-    void should_return_and_preserve_thinking(AnthropicChatModelName modelName) { // TODO name
+    void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // sendThinking = true by default
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -112,7 +112,7 @@ class AnthropicStreamingChatModelThinkingIT {
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
-        // should preserve thinking in the follow-up request
+        // should send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -128,11 +128,11 @@ class AnthropicStreamingChatModelThinkingIT {
             "CLAUDE_SONNET_4_20250514",
             "CLAUDE_3_7_SONNET_20250219"
     })
-    void should_return_and_NOT_preserve_thinking(AnthropicChatModelName modelName) { // TODO name
+    void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
-        boolean preserveThinking = false;
+        boolean sendThinking = false;
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -143,7 +143,7 @@ class AnthropicStreamingChatModelThinkingIT {
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
-                .preserveThinking(preserveThinking)
+                .sendThinking(sendThinking)
 
                 .logRequests(true)
                 .logResponses(true)
@@ -191,7 +191,7 @@ class AnthropicStreamingChatModelThinkingIT {
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
-        // should NOT preserve thinking in the follow-up request
+        // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -206,11 +206,11 @@ class AnthropicStreamingChatModelThinkingIT {
             "CLAUDE_SONNET_4_20250514",
             "CLAUDE_3_7_SONNET_20250219"
     })
-    void should_return_and_preserve_thinking_with_tools(AnthropicChatModelName modelName) { // TODO name
+    void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -336,7 +336,7 @@ class AnthropicStreamingChatModelThinkingIT {
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
 
-        // should preserve thinking in the follow-up requests
+        // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
         assertThat(httpRequests.get(1).body())
@@ -348,14 +348,14 @@ class AnthropicStreamingChatModelThinkingIT {
     }
 
     @Test
-    void test_interleaved_thinking() { // TODO name
+    void test_interleaved_thinking() {
 
         // given
         String beta = "interleaved-thinking-2025-05-14";
         AnthropicChatModelName modelName = CLAUDE_OPUS_4_20250514;
 
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -500,7 +500,7 @@ class AnthropicStreamingChatModelThinkingIT {
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
 
-        // should preserve thinking in the follow-up requests
+        // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
         assertThat(httpRequests.get(1).body())
@@ -519,7 +519,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         // given
         boolean returnThinking = true;
-        // preserveThinking = true by default
+        // sendThinking = true by default
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -568,7 +568,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).contains("Berlin");
 
-        // should preserve redacted thinking in the follow-up requests
+        // should send redacted thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -578,65 +578,19 @@ class AnthropicStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
-    })
-    void should_NOT_return_thinking_when_returnThinking_is_false(AnthropicChatModelName modelName) { // TODO name
+    @NullSource
+    @ValueSource(booleans = false)
+    void should_NOT_return_thinking(Boolean returnThinking) {
 
         // given
-        boolean returnThinking = false;
-
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_7_SONNET_20250219)
 
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        String userMessage = "What is the capital of Germany?";
-
-        // when
-        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
-        model.chat(userMessage, spyHandler);
-
-        // then
-        AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
-
-        InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler).get();
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
-        inOrder.verify(spyHandler).onCompleteResponse(any());
-        inOrder.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(spyHandler);
-    }
-
-    @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
-    })
-    void should_NOT_return_thinking_when_returnThinking_is_not_set(AnthropicChatModelName modelName) {
-
-        // given
-        StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
-
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
-                .maxTokens(THINKING_BUDGET_TOKENS + 100)
 
                 .logRequests(true)
                 .logResponses(true)

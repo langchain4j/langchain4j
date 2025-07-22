@@ -45,7 +45,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.listeners,
                 null,
                 builder.thinkingConfig,
-                builder.preserveThinking,
+                builder.sendThinking,
                 builder.defaultRequestParameters);
     }
 
@@ -157,7 +157,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
-        private Boolean preserveThinking;
+        private Boolean sendThinking;
 
         GoogleAiGeminiStreamingChatModelBuilder() {}
 
@@ -293,8 +293,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
-        public GoogleAiGeminiStreamingChatModelBuilder preserveThinking(Boolean preserveThinking) {
-            this.preserveThinking = preserveThinking;
+        public GoogleAiGeminiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

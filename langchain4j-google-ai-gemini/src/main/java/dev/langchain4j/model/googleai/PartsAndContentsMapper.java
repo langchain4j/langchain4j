@@ -210,7 +210,7 @@ class PartsAndContentsMapper {
 
     static List<GeminiContent> fromMessageToGContent(List<ChatMessage> messages,
                                                      GeminiContent systemInstruction,
-                                                     boolean preserveThinking) {
+                                                     boolean sendThinking) {
         return messages.stream()
             .map(msg -> {
                 switch (msg.type()) {
@@ -229,7 +229,7 @@ class PartsAndContentsMapper {
 
                         List<GeminiPart> parts = new ArrayList<>();
 
-                        if (preserveThinking && isNotNullOrEmpty(aiMessage.thinking())) {
+                        if (sendThinking && isNotNullOrEmpty(aiMessage.thinking())) {
                             parts.add(GeminiPart.builder()
                                     .text(aiMessage.thinking())
                                     .thought(true)
@@ -244,7 +244,7 @@ class PartsAndContentsMapper {
 
                         if (aiMessage.hasToolExecutionRequests()) {
                             String thoughtSignature = null;
-                            if (preserveThinking) {
+                            if (sendThinking) {
                                 thoughtSignature = (String) aiMessage.metadata().get(THINKING_SIGNATURE_KEY);
                             }
                             parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));

@@ -80,7 +80,7 @@ abstract class AbstractBedrockChatModel {
     protected final Region region;
     protected final Duration timeout;
     protected final boolean returnThinking;
-    protected final boolean preserveThinking;
+    protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
 
@@ -88,7 +88,7 @@ abstract class AbstractBedrockChatModel {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.preserveThinking = getOrDefault(builder.preserveThinking, false); // TODO should be true by default?
+        this.sendThinking = getOrDefault(builder.sendThinking, false); // TODO should be true by default?
         this.listeners = copy(builder.listeners);
 
         ChatRequestParameters commonParameters;
@@ -192,7 +192,7 @@ abstract class AbstractBedrockChatModel {
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
 
-        if (preserveThinking && message.thinking() != null) {
+        if (sendThinking && message.thinking() != null) {
             ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
                     .reasoningText(ReasoningTextBlock.builder()
                             .text(message.thinking())
@@ -446,7 +446,7 @@ abstract class AbstractBedrockChatModel {
         protected String modelId;
         protected Duration timeout;
         protected Boolean returnThinking;
-        protected Boolean preserveThinking;
+        protected Boolean sendThinking;
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -484,11 +484,11 @@ abstract class AbstractBedrockChatModel {
 
         /**
          * TODO
-         * @param preserveThinking
+         * @param sendThinking
          * @return
          */
-        public T preserveThinking(Boolean preserveThinking) {
-            this.preserveThinking = preserveThinking;
+        public T sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return self();
         }
 

@@ -23,12 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
-    // TODO do not serialize empty collections and arrays
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
-    void should_answer_with_thinking() { // TODO name
+    void should_return_thinking_when_returnThinking_is_true() {
 
         // given
         Boolean returnThinking = true;
@@ -37,7 +36,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
-                .returnThinking(returnThinking) // TODO use the same name for all providers
+
+                .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -78,7 +79,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
 
-        // should NOT preserve thinking in the follow-up request
+        // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -95,7 +96,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -130,7 +133,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();

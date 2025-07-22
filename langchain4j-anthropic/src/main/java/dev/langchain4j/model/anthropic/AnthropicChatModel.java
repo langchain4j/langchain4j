@@ -68,7 +68,7 @@ public class AnthropicChatModel implements ChatModel {
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final boolean returnThinking;
-    private final boolean preserveThinking;
+    private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
@@ -90,7 +90,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.preserveThinking = getOrDefault(builder.preserveThinking, true);
+        this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
 
@@ -138,7 +138,7 @@ public class AnthropicChatModel implements ChatModel {
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean returnThinking;
-        private Boolean preserveThinking;
+        private Boolean sendThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -252,11 +252,11 @@ public class AnthropicChatModel implements ChatModel {
 
         /**
          * TODO def val, everywhere
-         * @param preserveThinking
+         * @param sendThinking
          * @return
          */
-        public AnthropicChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names
-            this.preserveThinking = preserveThinking;
+        public AnthropicChatModelBuilder sendThinking(Boolean sendThinking) { // TODO names
+            this.sendThinking = sendThinking;
             return this;
         }
 
@@ -301,7 +301,7 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
-                preserveThinking,
+                sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 false);

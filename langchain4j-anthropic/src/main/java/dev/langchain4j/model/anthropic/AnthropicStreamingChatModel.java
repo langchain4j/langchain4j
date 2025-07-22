@@ -63,7 +63,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final boolean returnThinking;
-    private final boolean preserveThinking;
+    private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
 
@@ -100,7 +100,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.preserveThinking = getOrDefault(builder.preserveThinking, true);
+        this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
     }
 
@@ -127,7 +127,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean returnThinking;
-        private Boolean preserveThinking;
+        private Boolean sendThinking;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -234,11 +234,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         /**
          * TODO
-         * @param preserveThinking
+         * @param sendThinking
          * @return
          */
-        public AnthropicStreamingChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names
-            this.preserveThinking = preserveThinking;
+        public AnthropicStreamingChatModelBuilder sendThinking(Boolean sendThinking) { // TODO names
+            this.sendThinking = sendThinking;
             return this;
         }
 
@@ -273,7 +273,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
-                preserveThinking,
+                sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true);

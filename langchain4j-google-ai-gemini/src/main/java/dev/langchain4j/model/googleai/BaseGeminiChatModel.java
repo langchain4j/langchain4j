@@ -31,7 +31,7 @@ abstract class BaseGeminiChatModel {
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
-    protected final Boolean preserveThinking;
+    protected final Boolean sendThinking;
     protected final Integer seed;
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
@@ -65,7 +65,7 @@ abstract class BaseGeminiChatModel {
             List<ChatModelListener> listeners,
             Integer maxRetries,
             GeminiThinkingConfig thinkingConfig,
-            Boolean preserveThinking,
+            Boolean sendThinking,
             ChatRequestParameters defaultRequestParameters) {
         ensureNotBlank(apiKey, "apiKey");
         this.geminiService = new GeminiService(
@@ -78,7 +78,7 @@ abstract class BaseGeminiChatModel {
         this.listeners = copy(listeners);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.thinkingConfig = thinkingConfig;
-        this.preserveThinking = getOrDefault(preserveThinking, false);
+        this.sendThinking = getOrDefault(sendThinking, false);
         this.seed = seed;
         this.responseLogprobs = getOrDefault(responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
@@ -110,7 +110,7 @@ abstract class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction, preserveThinking);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;

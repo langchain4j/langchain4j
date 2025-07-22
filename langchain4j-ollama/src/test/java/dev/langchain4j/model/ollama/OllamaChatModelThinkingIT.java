@@ -16,21 +16,24 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
+
     // TODO do not serialize empty collections and arrays
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
-    void should_answer_with_thinking() { // TODO name
+    void should_return_thinking() {
 
         // given
-        Boolean returnThinking = true;
+        boolean returnThinking = true;
 
         ChatModel model = OllamaChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
-                .returnThinking(returnThinking) // TODO use the same name for all providers
+
+                .returnThinking(returnThinking) // TODO a better way to set it? maybe enum? separate property for think?
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -58,7 +61,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
 
-        // should NOT preserve thinking in the follow-up request
+        // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -67,34 +70,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
     }
 
     @Test
-    void should_answer_with_thinking_merged_with_content_when_returnThinking_is_not_set() { // TODO name
-
-        // given
-        Boolean returnThinking = null;
-
-        ChatModel model = OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(MODEL_NAME)
-                .returnThinking(returnThinking)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        ChatResponse chatResponse = model.chat(userMessage);
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("Berlin")
-                .contains("<think>", "</think>");
-        assertThat(aiMessage.thinking()).isNull();
-    }
-
-    @Test
-    void should_NOT_return_thinking_when_returnThinking_is_false() {
+    void should_NOT_return_thinking() {
 
         // given
         Boolean returnThinking = false;
@@ -102,7 +78,9 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -117,6 +95,35 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNull();
+    }
+
+    @Test
+    void should_answer_with_thinking_merged_with_content_when_returnThinking_is_not_set() { // TODO name
+
+        // given
+        Boolean returnThinking = null;
+
+        ChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+
+                .returnThinking(returnThinking)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .contains("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
     }
 }
