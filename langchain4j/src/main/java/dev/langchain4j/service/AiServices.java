@@ -6,6 +6,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -20,6 +21,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -38,7 +40,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
@@ -176,6 +180,11 @@ public abstract class AiServices<T> {
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
         AiServiceContext context = new AiServiceContext(aiService);
+        return builder(context);
+    }
+
+    @Internal
+    public static <T> AiServices<T> builder(AiServiceContext context) {
         for (AiServicesFactory factory : loadFactories(AiServicesFactory.class)) {
             return factory.create(context);
         }
@@ -274,6 +283,35 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         context.initChatMemories(chatMemoryProvider);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the {@link ChatRequest} before it is sent to the LLM.
+     * <p>
+     * This can be used to modify the request, e.g., by adding additional messages or modifying existing ones.
+     *
+     * @param chatRequestTransformer A {@link UnaryOperator} that transforms the {@link ChatRequest}.
+     * @return builder
+     */
+    public AiServices<T> chatRequestTransformer(UnaryOperator<ChatRequest> chatRequestTransformer) {
+        context.chatRequestTransformer = (req, memId) -> chatRequestTransformer.apply(req);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the {@link ChatRequest} before it is sent to the LLM.
+     * <p>
+     * This can be used to modify the request, e.g., by adding additional messages or modifying existing ones.
+     * <p>
+     * The transformer receives the {@link ChatRequest} and the memory ID (the value of a method parameter annotated with @{@link MemoryId}),
+     * which can be used to retrieve additional information from the chat memory.
+     *
+     * @param chatRequestTransformer A {@link BiFunction} that transforms the {@link ChatRequest} and memory ID.
+     * @return builder
+     */
+    public AiServices<T> chatRequestTransformer(BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer) {
+        context.chatRequestTransformer = chatRequestTransformer;
         return this;
     }
 

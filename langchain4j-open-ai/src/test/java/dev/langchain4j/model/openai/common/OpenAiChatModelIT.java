@@ -276,7 +276,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         OpenAiChatResponseMetadata openAiChatResponseMetadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
         assertThat(openAiChatResponseMetadata.created()).isPositive();
         assertThat(openAiChatResponseMetadata.serviceTier()).isEqualTo(serviceTier);
-        assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank();
+        // assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank(); OpenAI stopped providing it
 
         OpenAiTokenUsage tokenUsage = openAiChatResponseMetadata.tokenUsage();
 

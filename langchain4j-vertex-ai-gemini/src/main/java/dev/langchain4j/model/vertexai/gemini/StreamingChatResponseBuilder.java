@@ -20,15 +20,20 @@ class StreamingChatResponseBuilder {
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
 
-    void append(GenerateContentResponse partialResponse) {
+    record TextAndFunctions(String text, List<FunctionCall> functionCalls) {}
+
+    TextAndFunctions append(GenerateContentResponse partialResponse) {
         if (partialResponse == null) {
-            return;
+            return new TextAndFunctions(null, List.of());
         }
 
         List<Candidate> candidates = partialResponse.getCandidatesList();
         if (candidates.isEmpty() || candidates.get(0) == null) {
-            return;
+            return new TextAndFunctions(null, List.of());
         }
+
+        String text = ResponseHandler.getText(partialResponse);
+        contentBuilder.append(text);
 
         List<FunctionCall> functionCalls = candidates.stream()
                 .map(Candidate::getContent)
@@ -40,8 +45,6 @@ class StreamingChatResponseBuilder {
 
         if (!functionCalls.isEmpty()) {
             this.functionCalls.addAll(functionCalls);
-        } else {
-            contentBuilder.append(ResponseHandler.getText(partialResponse));
         }
 
         if (partialResponse.hasUsageMetadata()) {
@@ -52,6 +55,8 @@ class StreamingChatResponseBuilder {
         if (finishReason != null) {
             this.finishReason = FinishReasonMapper.map(finishReason);
         }
+
+        return new TextAndFunctions(text, functionCalls);
     }
 
     Response<AiMessage> build() {
