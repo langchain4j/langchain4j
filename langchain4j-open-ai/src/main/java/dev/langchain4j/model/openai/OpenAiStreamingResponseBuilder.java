@@ -247,7 +247,7 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     private OpenAiChatResponseMetadata buildMetadata() {
-        OpenAiChatResponseMetadata metadata = OpenAiChatResponseMetadata.builder()
+        return OpenAiChatResponseMetadata.builder()
                 .id(id.get())
                 .modelName(model.get())
                 .tokenUsage(tokenUsage.get())
@@ -257,7 +257,6 @@ public class OpenAiStreamingResponseBuilder {
                 .systemFingerprint(systemFingerprint.get())
                 .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
-        return metadata;
     }
 
     private static class ToolExecutionRequestBuilder {

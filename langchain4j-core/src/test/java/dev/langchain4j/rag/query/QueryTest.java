@@ -90,7 +90,7 @@ class QueryTest {
                         + "chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
                         + "chatMemoryId = 42, "
                         + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, "
-                        + "AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], metadata = {} }] "
+                        + "AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }] "
                         + "} "
                         + "}");
     }

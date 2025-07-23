@@ -15,7 +15,7 @@ class AiMessageTest implements WithAssertions {
             assertThat(m.toolExecutionRequests()).isEmpty();
             assertThat(m.hasToolExecutionRequests()).isFalse();
 
-            assertThat(m).hasToString("AiMessage { text = \"text\", thinking = null, toolExecutionRequests = [], metadata = {} }");
+            assertThat(m).hasToString("AiMessage { text = \"text\", thinking = null, toolExecutionRequests = [], attributes = {} }");
         }
         {
             AiMessage m = new AiMessage(Arrays.asList(
@@ -28,7 +28,7 @@ class AiMessageTest implements WithAssertions {
 
             assertThat(m)
                     .hasToString(
-                            "AiMessage { text = null, thinking = null, toolExecutionRequests = [ToolExecutionRequest { id = \"foo\", name = null, arguments = null }, ToolExecutionRequest { id = \"bar\", name = null, arguments = null }], metadata = {} }");
+                            "AiMessage { text = null, thinking = null, toolExecutionRequests = [ToolExecutionRequest { id = \"foo\", name = null, arguments = null }, ToolExecutionRequest { id = \"bar\", name = null, arguments = null }], attributes = {} }");
         }
     }
 
