@@ -13,6 +13,7 @@ import static dev.langchain4j.model.vertexai.gemini.FunctionCallHelper.fromFunct
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
@@ -22,11 +23,11 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.common.annotations.VisibleForTesting;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -35,9 +36,9 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.gemini.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
@@ -163,14 +164,20 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             headers = Map.of("user-agent", "LangChain4j");
         }
 
-        this.vertexAI = new VertexAI.Builder()
+        VertexAI.Builder vertexAiBuilder = new VertexAI.Builder()
                 .setProjectId(ensureNotBlank(builder.project, "project"))
                 .setLocation(ensureNotBlank(builder.location, "location"))
-                .setCustomHeaders(headers)
-                .build();
+                .setCustomHeaders(headers);
 
-        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        if (builder.credentials != null) {
+            GoogleCredentials scopedCredentials =
+                    builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+            vertexAiBuilder.setCredentials(scopedCredentials);
+        }
+
+        this.vertexAI = vertexAiBuilder.build();
+
+        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
@@ -294,8 +301,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 .setCustomHeaders(headers)
                 .build();
 
-        this.generativeModel = new GenerativeModel(modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        this.generativeModel = new GenerativeModel(modelName, vertexAI).withGenerationConfig(generationConfig);
 
         if (logRequests != null) {
             this.logRequests = logRequests;
@@ -411,7 +417,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         try {
             model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
                 if (partialResponse.getCandidatesCount() > 0) {
-                    StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
+                    StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
+                            responseBuilder.append(partialResponse);
 
                     String text = textAndFunctions.text();
                     if (isNotNullOrEmpty(text)) {
@@ -524,6 +531,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
+        private GoogleCredentials credentials;
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -629,6 +637,18 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
          */
         public VertexAiGeminiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets the Google credentials to use for authentication.
+         * If not provided, the client will use Application Default Credentials.
+         *
+         * @param credentials the Google credentials to use
+         * @return this builder
+         */
+        public VertexAiGeminiStreamingChatModelBuilder credentials(GoogleCredentials credentials) {
+            this.credentials = credentials;
             return this;
         }
 
