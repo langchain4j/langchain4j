@@ -8,7 +8,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messageFromJson;
@@ -85,13 +84,13 @@ class ChatMessageSerializerTest {
                                         .name("weather")
                                         .arguments("{\"city\": \"Munich\"}")
                                         .build()))
-                                .metadata(new LinkedHashMap<>() {{
+                                .attributes(new LinkedHashMap<>() {{
                                     put("name", "Klaus");
                                     put("age", 42);
                                     put("extra", List.of("one", "two"));
                                 }})
                                 .build(),
-                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"metadata\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"
+                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
@@ -141,6 +140,6 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.text()).isNull();
         assertThat(deserialized.thinking()).isNull();
         assertThat(deserialized.toolExecutionRequests()).isEmpty();
-        assertThat(deserialized.metadata()).isEmpty();
+        assertThat(deserialized.attributes()).isEmpty();
     }
 }

@@ -16,15 +16,22 @@ import static java.util.Arrays.asList;
 
 /**
  * Represents a response message from an AI (language model).
- * The message can contain either a textual response or a request to execute one/multiple tool(s).
+ * This message can contain:
+ * <pre>
+ * - {@link #text()}: textual response
+ * - {@link #thinking()}: thinking/reasoning
+ * - {@link #toolExecutionRequests()}: requests to execute tools
+ * - {@link #attributes()}: additional attributes, typically provider-specific (e.g., "thinking_signature")
+ * </pre>
+ *
  * In the case of tool execution, the response to this message should be one/multiple {@link ToolExecutionResultMessage}.
  */
 public class AiMessage implements ChatMessage {
 
     private final String text;
-    private final String thinking; // TODO name: reasoning? thoughts?
+    private final String thinking;
     private final List<ToolExecutionRequest> toolExecutionRequests;
-    private final Map<String, Object> metadata; // TODO name: extra? custom? does not sound like metadata
+    private final Map<String, Object> attributes;
 
     /**
      * Create a new {@link AiMessage} with the given text.
@@ -35,7 +42,7 @@ public class AiMessage implements ChatMessage {
         this.text = ensureNotNull(text, "text");
         this.thinking = null;
         this.toolExecutionRequests = List.of();
-        this.metadata = Map.of();
+        this.attributes = Map.of();
     }
 
     /**
@@ -47,7 +54,7 @@ public class AiMessage implements ChatMessage {
         this.text = null;
         this.thinking = null;
         this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
-        this.metadata = Map.of();
+        this.attributes = Map.of();
     }
 
     /**
@@ -60,19 +67,14 @@ public class AiMessage implements ChatMessage {
         this.text = text;
         this.thinking = null;
         this.toolExecutionRequests = copy(toolExecutionRequests);
-        this.metadata = Map.of();
+        this.attributes = Map.of();
     }
 
-    /**
-     * Create a new {@link AiMessage} with the given TODO
-     *
-     * @param builder TODO
-     */
     public AiMessage(Builder builder) {
         this.text = builder.text;
         this.thinking = builder.thinking;
         this.toolExecutionRequests = copy(builder.toolExecutionRequests);
-        this.metadata = copy(builder.metadata);
+        this.attributes = copy(builder.attributes);
     }
 
     /**
@@ -85,8 +87,9 @@ public class AiMessage implements ChatMessage {
     }
 
     /**
-     * TODO
-     * @return
+     * Get the thinking/reasoning of the message.
+     *
+     * @return the thinking/reasoning of the message.
      */
     public String thinking() { // TODO name reasoning? thoughts?
         return thinking;
@@ -110,8 +113,15 @@ public class AiMessage implements ChatMessage {
         return !isNullOrEmpty(toolExecutionRequests);
     }
 
-    public Map<String, Object> metadata() { // TODO names
-        return metadata;
+    /**
+     * Returns additional attributes, typically provider-specific (e.g., "thinking_signature").
+     */
+    public Map<String, Object> attributes() { // TODO names
+        return attributes;
+    }
+
+    public <T> T attribute(String key, Class<T> type) {
+        return (T) attributes.get(key);
     }
 
     @Override
@@ -127,12 +137,12 @@ public class AiMessage implements ChatMessage {
         return Objects.equals(this.text, that.text)
                 && Objects.equals(this.thinking, that.thinking)
                 && Objects.equals(this.toolExecutionRequests, that.toolExecutionRequests)
-                && Objects.equals(this.metadata, that.metadata);
+                && Objects.equals(this.attributes, that.attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(text, thinking, toolExecutionRequests, metadata);
+        return Objects.hash(text, thinking, toolExecutionRequests, attributes);
     }
 
     @Override
@@ -141,7 +151,7 @@ public class AiMessage implements ChatMessage {
                 " text = " + quoted(text) +
                 ", thinking = " + quoted(thinking) + // TODO name
                 ", toolExecutionRequests = " + toolExecutionRequests +
-                ", metadata = " + metadata + // TODO name
+                ", attributes = " + attributes + // TODO name
                 " }";
     }
 
@@ -154,7 +164,7 @@ public class AiMessage implements ChatMessage {
         private String text;
         private String thinking;
         private List<ToolExecutionRequest> toolExecutionRequests;
-        private Map<String, Object> metadata;
+        private Map<String, Object> attributes;
 
         public Builder text(String text) {
             this.text = text;
@@ -171,13 +181,13 @@ public class AiMessage implements ChatMessage {
             return this;
         }
 
-        public Builder metadata(Map<String, Object> metadata) { // TODO names
-            this.metadata = metadata;
+        public Builder attributes(Map<String, Object> attributes) { // TODO names
+            this.attributes = attributes;
             return this;
         }
 
         public AiMessage build() {
-            return new AiMessage(this); // TODO ser/deser
+            return new AiMessage(this);
         }
     }
 

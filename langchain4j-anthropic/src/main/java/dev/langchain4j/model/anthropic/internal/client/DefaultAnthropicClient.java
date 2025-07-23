@@ -316,15 +316,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
 
-                Map<String, Object> metadata = new HashMap<>();
+                Map<String, Object> attributes = new HashMap<>();
                 String thinkingSignature = thinkingSignatures.stream()
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
                 if (isNotNullOrBlank(thinkingSignature)) {
-                    metadata.put(THINKING_SIGNATURE_KEY, thinkingSignature);
+                    attributes.put(THINKING_SIGNATURE_KEY, thinkingSignature);
                 }
                 if (!redactedThinkings.isEmpty()) {
-                    metadata.put(REDACTED_THINKING_KEY, redactedThinkings);
+                    attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
                 }
 
                 List<ToolExecutionRequest> toolExecutionRequests = List.of();
@@ -347,7 +347,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         .text(isNullOrEmpty(text) ? null : text)
                         .thinking(isNullOrEmpty(thinking) ? null : thinking)
                         .toolExecutionRequests(toolExecutionRequests)
-                        .metadata(metadata) // TODO names
+                        .attributes(attributes)
                         .build();
 
                 return ChatResponse.builder()

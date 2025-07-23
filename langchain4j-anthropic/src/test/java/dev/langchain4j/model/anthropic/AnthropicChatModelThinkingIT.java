@@ -68,7 +68,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         // given
@@ -81,7 +81,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         // should send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
@@ -128,7 +128,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         // given
@@ -141,7 +141,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         // should NOT send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
@@ -196,7 +196,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -213,7 +213,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         // given
@@ -226,7 +226,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage3 = chatResponse3.aiMessage();
         String thinking2 = aiMessage3.thinking();
         assertThat(thinking2).isNotBlank();
-        String signature2 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -243,7 +243,7 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage4 = chatResponse4.aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         assertThat(aiMessage4.thinking()).isNull();
-        assertThat(aiMessage4.metadata()).isEmpty();
+        assertThat(aiMessage4.attributes()).isEmpty();
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         // should send thinking in the follow-up requests
@@ -302,7 +302,7 @@ class AnthropicChatModelThinkingIT {
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
 
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
@@ -323,7 +323,7 @@ class AnthropicChatModelThinkingIT {
         String thinking2 = aiMessage2.thinking();
         assertThat(thinking2).isNotBlank();
 
-        String signature2 = (String) aiMessage2.metadata().get("thinking_signature");
+        String signature2 = aiMessage2.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
 
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
@@ -340,7 +340,7 @@ class AnthropicChatModelThinkingIT {
         String thinking3 = aiMessage3.thinking();
         assertThat(thinking3).isNotBlank();
 
-        String signature3 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature3 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature3).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
@@ -361,7 +361,7 @@ class AnthropicChatModelThinkingIT {
         String thinking4 = aiMessage4.thinking();
         assertThat(thinking4).isNotBlank();
 
-        String signature4 = (String) aiMessage4.metadata().get("thinking_signature");
+        String signature4 = aiMessage4.attribute("thinking_signature", String.class);
         assertThat(signature4).isNotBlank();
 
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
@@ -410,8 +410,8 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.text()).isNotBlank();
         assertThat(aiMessage1.thinking()).isNull();
-        assertThat(aiMessage1.metadata()).hasSize(1);
-        List<String> redactedThinkings = (List<String>) aiMessage1.metadata().get("redacted_thinking");
+        assertThat(aiMessage1.attributes()).hasSize(1);
+        List<String> redactedThinkings = aiMessage1.attribute("redacted_thinking", List.class);
         assertThat(redactedThinkings).hasSize(1);
         assertThat(redactedThinkings.get(0)).isNotBlank();
 
@@ -461,6 +461,6 @@ class AnthropicChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 }

@@ -204,7 +204,7 @@ class PartsAndContentsMapper {
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toToolExecutionRequests(functionCalls))
-                .metadata(isNullOrEmpty(thinkingSignature) ? null : Map.of(THINKING_SIGNATURE_KEY, thinkingSignature))
+                .attributes(isNullOrEmpty(thinkingSignature) ? null : Map.of(THINKING_SIGNATURE_KEY, thinkingSignature))
                 .build();
     }
 
@@ -245,7 +245,7 @@ class PartsAndContentsMapper {
                         if (aiMessage.hasToolExecutionRequests()) {
                             String thoughtSignature = null;
                             if (sendThinking) {
-                                thoughtSignature = (String) aiMessage.metadata().get(THINKING_SIGNATURE_KEY);
+                                thoughtSignature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
                             }
                             parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));
                         }

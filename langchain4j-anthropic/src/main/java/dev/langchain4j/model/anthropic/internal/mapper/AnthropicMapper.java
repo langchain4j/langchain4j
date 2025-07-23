@@ -133,12 +133,12 @@ public class AnthropicMapper {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
         if (sendThinking && isNotNullOrBlank(message.thinking())) {
-            String signature = (String) message.metadata().get(THINKING_SIGNATURE_KEY);
+            String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
             contents.add(new AnthropicThinkingContent(message.thinking(), signature));
         }
 
-        if (sendThinking && message.metadata().containsKey(REDACTED_THINKING_KEY)) {
-            List<String> redactedThinkings = (List<String>) message.metadata().get(REDACTED_THINKING_KEY);
+        if (sendThinking && message.attributes().containsKey(REDACTED_THINKING_KEY)) {
+            List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
             for (String redactedThinking : redactedThinkings) {
                 contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
             }
@@ -199,7 +199,7 @@ public class AnthropicMapper {
                 .collect(joining("\n"));
 
         String thinking = null;
-        Map<String, Object> metadata = new HashMap<>();;
+        Map<String, Object> attributes = new HashMap<>();;
         if (returnThinking) {
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
@@ -211,7 +211,7 @@ public class AnthropicMapper {
                     .map(content -> content.signature)
                     .collect(joining("\n"));
             if (isNotNullOrEmpty(signature)) {
-                metadata.put(THINKING_SIGNATURE_KEY, signature);
+                attributes.put(THINKING_SIGNATURE_KEY, signature);
             }
 
             List<String> redactedThinkings = contents.stream()
@@ -219,7 +219,7 @@ public class AnthropicMapper {
                     .map(content -> content.data)
                     .collect(toList());
             if (!redactedThinkings.isEmpty()) {
-                metadata.put(REDACTED_THINKING_KEY, redactedThinkings);
+                attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
             }
         }
 
@@ -236,7 +236,7 @@ public class AnthropicMapper {
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toolExecutionRequests)
-                .metadata(metadata)
+                .attributes(attributes)
                 .build();
     }
 

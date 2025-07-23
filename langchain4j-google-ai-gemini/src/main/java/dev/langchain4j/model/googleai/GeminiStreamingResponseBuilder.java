@@ -28,7 +28,7 @@ class GeminiStreamingResponseBuilder {
     private final boolean includeCodeExecutionOutput;
     private final StringBuilder contentBuilder;
     private final StringBuilder thoughtBuilder;
-    private final Map<String, Object> metadata = new ConcurrentHashMap<>();
+    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
     private final List<ToolExecutionRequest> functionCalls;
 
     private final AtomicReference<String> id = new AtomicReference<>();
@@ -139,7 +139,7 @@ class GeminiStreamingResponseBuilder {
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
-        metadata.putAll(message.metadata());
+        attributes.putAll(message.attributes());
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
@@ -153,7 +153,7 @@ class GeminiStreamingResponseBuilder {
                 .text(text.isEmpty() ? null : text)
                 .thinking(thought.isEmpty() ? null : thought)
                 .toolExecutionRequests(functionCalls)
-                .metadata(metadata)
+                .attributes(attributes)
                 .build();
     }
 }

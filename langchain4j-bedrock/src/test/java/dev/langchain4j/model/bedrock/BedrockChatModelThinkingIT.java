@@ -65,7 +65,7 @@ class BedrockChatModelThinkingIT {
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
         if (!modelId.contains("deepseek")) {
-            assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+            assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         }
 
         // given
@@ -80,7 +80,7 @@ class BedrockChatModelThinkingIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
         if (!modelId.contains("deepseek")) {
-            assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+            assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
         }
     }
 
@@ -120,7 +120,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
@@ -133,7 +133,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
     }
 
     @ParameterizedTest
@@ -180,7 +180,7 @@ class BedrockChatModelThinkingIT {
         // then
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
@@ -197,7 +197,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         // given
@@ -210,7 +210,7 @@ class BedrockChatModelThinkingIT {
         // then
         AiMessage aiMessage3 = chatResponse3.aiMessage();
         assertThat(aiMessage3.thinking()).isNotBlank();
-        assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
@@ -227,7 +227,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage4 = chatResponse4.aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         assertThat(aiMessage4.thinking()).isNull();
-        assertThat(aiMessage4.metadata()).isEmpty();
+        assertThat(aiMessage4.attributes()).isEmpty();
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
     }
 
@@ -275,7 +275,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
 
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -294,7 +294,7 @@ class BedrockChatModelThinkingIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
 
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
@@ -309,7 +309,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage3 = chatResponse3.aiMessage();
 
         assertThat(aiMessage3.thinking()).isNotBlank();
-        assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -328,7 +328,7 @@ class BedrockChatModelThinkingIT {
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
 
         assertThat(aiMessage4.thinking()).isNotBlank();
-        assertThat((String) aiMessage4.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage4.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
     }
@@ -370,7 +370,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 
     @ParameterizedTest
@@ -407,7 +407,7 @@ class BedrockChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 
     @AfterEach

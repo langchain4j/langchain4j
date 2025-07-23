@@ -79,7 +79,7 @@ class AnthropicStreamingChatModelThinkingIT {
         assertThat(aiMessage1.thinking())
                 .containsIgnoringCase("Berlin")
                 .isEqualTo(spyHandler1.getThinking());
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
@@ -102,7 +102,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
@@ -159,7 +159,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
@@ -181,7 +181,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
@@ -245,7 +245,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -275,7 +275,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder2 = inOrder(spyHandler2);
@@ -296,7 +296,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage3 = spyHandler3.get().aiMessage();
         String thinking2 = aiMessage3.thinking();
         assertThat(thinking2).isNotBlank();
-        String signature2 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -326,7 +326,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         assertThat(aiMessage4.thinking()).isNull();
-        assertThat(aiMessage4.metadata()).isEmpty();
+        assertThat(aiMessage4.attributes()).isEmpty();
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
@@ -393,7 +393,7 @@ class AnthropicStreamingChatModelThinkingIT {
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
 
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
@@ -427,7 +427,7 @@ class AnthropicStreamingChatModelThinkingIT {
         String thinking2 = aiMessage2.thinking();
         assertThat(thinking2).isNotBlank();
 
-        String signature2 = (String) aiMessage2.metadata().get("thinking_signature");
+        String signature2 = aiMessage2.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
 
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
@@ -453,7 +453,7 @@ class AnthropicStreamingChatModelThinkingIT {
         String thinking3 = aiMessage3.thinking();
         assertThat(thinking3).isNotBlank();
 
-        String signature3 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature3 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature3).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
@@ -487,7 +487,7 @@ class AnthropicStreamingChatModelThinkingIT {
         String thinking4 = aiMessage4.thinking();
         assertThat(thinking4).isNotBlank();
 
-        String signature4 = (String) aiMessage4.metadata().get("thinking_signature");
+        String signature4 = aiMessage4.attribute("thinking_signature", String.class);
         assertThat(signature4).isNotBlank();
 
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
@@ -545,8 +545,8 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).isNotBlank();
         assertThat(aiMessage1.thinking()).isNull();
-        assertThat(aiMessage1.metadata()).hasSize(1);
-        List<String> redactedThinkings = (List<String>) aiMessage1.metadata().get("redacted_thinking");
+        assertThat(aiMessage1.attributes()).hasSize(1);
+        List<String> redactedThinkings = aiMessage1.attribute("redacted_thinking", List.class);
         assertThat(redactedThinkings).hasSize(2);
         assertThat(redactedThinkings.get(0)).isNotBlank();
 
@@ -606,7 +606,7 @@ class AnthropicStreamingChatModelThinkingIT {
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler).get();

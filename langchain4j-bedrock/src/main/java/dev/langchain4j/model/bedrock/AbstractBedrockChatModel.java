@@ -196,7 +196,7 @@ abstract class AbstractBedrockChatModel {
             ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
                     .reasoningText(ReasoningTextBlock.builder()
                             .text(message.thinking())
-                            .signature((String) message.metadata().get(THINKING_SIGNATURE_KEY))
+                            .signature(message.attribute(THINKING_SIGNATURE_KEY, String.class))
                             .build())
                     .build();
             blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
@@ -315,7 +315,7 @@ abstract class AbstractBedrockChatModel {
 
         List<String> texts = new ArrayList<>();
         String thinking = null;
-        Map<String, Object> metadata = null;
+        Map<String, Object> attributes = null;
         List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
 
         for (ContentBlock cBlock : converseResponse.output().message().content()) {
@@ -339,7 +339,7 @@ abstract class AbstractBedrockChatModel {
                                 thinking = reasoningTextBlock.text();
                             }
                             if (isNotNullOrEmpty(reasoningTextBlock.signature())) {
-                                metadata = Map.of(THINKING_SIGNATURE_KEY, reasoningTextBlock.signature());
+                                attributes = Map.of(THINKING_SIGNATURE_KEY, reasoningTextBlock.signature());
                             }
                         }
                     }
@@ -355,7 +355,7 @@ abstract class AbstractBedrockChatModel {
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(thinking)
-                .metadata(metadata)
+                .attributes(attributes)
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
     }

@@ -73,7 +73,7 @@ class BedrockStreamingChatModelThinkingIT {
                 .containsIgnoringCase("Berlin")
                 .isEqualTo(spyHandler1.getThinking());
         if (!modelId.contains("deepseek")) {
-            assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+            assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         }
 
         InOrder inOrder1 = inOrder(spyHandler1);
@@ -98,7 +98,7 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
         if (!modelId.contains("deepseek")) {
-            assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+            assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
         }
 
         InOrder inOrder2 = inOrder(spyHandler2);
@@ -147,7 +147,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
@@ -169,7 +169,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
@@ -225,7 +225,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
@@ -252,7 +252,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder2 = inOrder(spyHandler2);
@@ -273,7 +273,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage3 = spyHandler3.get().aiMessage();
         assertThat(aiMessage3.thinking()).isNotBlank();
-        assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
@@ -300,7 +300,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         assertThat(aiMessage4.thinking()).isNull();
-        assertThat(aiMessage4.metadata()).isEmpty();
+        assertThat(aiMessage4.attributes()).isEmpty();
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
@@ -356,7 +356,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
 
         assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat((String) aiMessage1.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -385,7 +385,7 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
 
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat((String) aiMessage2.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
@@ -409,7 +409,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage3 = spyHandler3.get().aiMessage();
 
         assertThat(aiMessage3.thinking()).isNotBlank();
-        assertThat((String) aiMessage3.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -438,7 +438,7 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
 
         assertThat(aiMessage4.thinking()).isNotBlank();
-        assertThat((String) aiMessage4.metadata().get("thinking_signature")).isNotBlank();
+        assertThat(aiMessage4.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
@@ -489,7 +489,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 
     @ParameterizedTest
@@ -527,7 +527,7 @@ class BedrockStreamingChatModelThinkingIT {
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 
     @AfterEach

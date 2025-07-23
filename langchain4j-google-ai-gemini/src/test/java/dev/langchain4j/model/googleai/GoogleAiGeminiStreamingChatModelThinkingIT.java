@@ -72,7 +72,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage1.thinking())
                 .isNotBlank()
                 .isEqualTo(spyHandler1.getThinking());
-        assertThat(aiMessage1.metadata()).isEmpty();
+        assertThat(aiMessage1.attributes()).isEmpty();
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
@@ -94,7 +94,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = handler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
 
         // should send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
@@ -151,7 +151,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -177,7 +177,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         AiMessage aiMessage2 = spyHandler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder2 = inOrder(spyHandler2);
@@ -198,7 +198,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         AiMessage aiMessage3 = spyHandler3.get().aiMessage();
         String thinking2 = aiMessage3.thinking();
         assertThat(thinking2).isNotBlank();
-        String signature2 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -225,10 +225,10 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         if (sendThinking) {
             assertThat(aiMessage4.thinking()).isNull();
-            assertThat(aiMessage4.metadata()).isEmpty();
+            assertThat(aiMessage4.attributes()).isEmpty();
         } else {
             assertThat(aiMessage4.thinking()).isNotBlank();
-            assertThat((String) aiMessage4.metadata().get("thinking_signature")).isNotBlank();
+            assertThat(aiMessage4.attribute("thinking_signature", String.class)).isNotBlank();
         }
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
@@ -297,7 +297,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());

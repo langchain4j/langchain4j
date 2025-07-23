@@ -62,7 +62,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNotBlank();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
@@ -74,7 +74,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
 
         // should send thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
@@ -130,7 +130,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
-        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
@@ -147,7 +147,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
-        assertThat(aiMessage2.metadata()).isEmpty();
+        assertThat(aiMessage2.attributes()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         // given
@@ -160,7 +160,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage3 = chatResponse3.aiMessage();
         String thinking2 = aiMessage3.thinking();
         assertThat(thinking2).isNotBlank();
-        String signature2 = (String) aiMessage3.metadata().get("thinking_signature");
+        String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
@@ -178,7 +178,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         if (sendThinking) {
             assertThat(aiMessage4.thinking()).isNull();
-            assertThat(aiMessage4.metadata()).isEmpty();
+            assertThat(aiMessage4.attributes()).isEmpty();
         }
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
@@ -237,7 +237,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.thinking()).isNull();
-        assertThat(aiMessage.metadata()).isEmpty();
+        assertThat(aiMessage.attributes()).isEmpty();
     }
 
     // TODO should not return thinking when not set
