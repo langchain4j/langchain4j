@@ -31,12 +31,64 @@ class BedrockChatModelThinkingIT {
             "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            "us.deepseek.r1-v1:0"
     })
-    void should_return_thinking(String modelId) {
+    void should_return_and_send_thinking(String modelId) {
 
         // given
         boolean returnThinking = true;
+        // sendThinking = true by default
+
+        BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .enableReasoning(THINKING_BUDGET_TOKENS)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(modelId)
+
+                .returnThinking(returnThinking)
+                .defaultRequestParameters(parameters)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse1 = model.chat(userMessage1);
+
+        // then
+        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
+
+        // when
+        sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
+        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "us.anthropic.claude-opus-4-20250514-v1:0",
+            "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.deepseek.r1-v1:0"
+    })
+    void should_return_and_NOT_send_thinking(String modelId) {
+
+        // given
+        boolean returnThinking = true;
+        boolean sendThinking = false;
 
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
@@ -49,6 +101,7 @@ class BedrockChatModelThinkingIT {
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -90,63 +143,11 @@ class BedrockChatModelThinkingIT {
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
-    void should_return_and_send_thinking(String modelId) {
-
-        // given
-        boolean returnThinking = true;
-        boolean sendThinking = true;
-
-        BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
-                .enableReasoning(THINKING_BUDGET_TOKENS)
-                .build();
-
-        ChatModel model = BedrockChatModel.builder()
-                .modelId(modelId)
-
-                .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
-                .defaultRequestParameters(parameters)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
-
-        // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
-        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
-
-        // given
-        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
-
-        // when
-        sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
-
-        // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    })
     void should_return_and_send_thinking_with_tools(String modelId) {
 
         // given
         boolean returnThinking = true;
-        boolean sendThinking = true;
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -165,7 +166,6 @@ class BedrockChatModelThinkingIT {
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -239,7 +239,7 @@ class BedrockChatModelThinkingIT {
         String modelId = "us.anthropic.claude-opus-4-20250514-v1:0";
 
         boolean returnThinking = true;
-        boolean sendThinking = true;
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -259,7 +259,6 @@ class BedrockChatModelThinkingIT {
 
                 .modelId(modelId)
                 .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -382,6 +381,8 @@ class BedrockChatModelThinkingIT {
     void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {
 
         // given
+        Boolean returnThinking = null;
+
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
             parameters = BedrockChatRequestParameters.builder()
@@ -392,6 +393,7 @@ class BedrockChatModelThinkingIT {
         ChatModel model = BedrockChatModel.builder()
                 .modelId(modelId)
 
+                .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)

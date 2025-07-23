@@ -17,8 +17,6 @@ import org.junit.jupiter.api.Test;
 
 class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
 
-    // TODO do not serialize empty collections and arrays
-
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test

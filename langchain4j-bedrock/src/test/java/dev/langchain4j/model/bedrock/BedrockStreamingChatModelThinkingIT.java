@@ -36,12 +36,82 @@ class BedrockStreamingChatModelThinkingIT {
             "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            "us.deepseek.r1-v1:0"
     })
-    void should_return_thinking(String modelId) {
+    void should_return_and_send_thinking(String modelId) {
 
         // given
         boolean returnThinking = true;
+        // sendThinking = true by default
+
+        BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .enableReasoning(THINKING_BUDGET_TOKENS)
+                .build();
+
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId(modelId)
+
+                .returnThinking(returnThinking)
+                .defaultRequestParameters(parameters)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
+
+        // then
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
+        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
+
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verify(spyHandler1).get();
+        inOrder1.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler1);
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
+
+        // when
+        sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), spyHandler2);
+
+        // then
+        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
+        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
+        assertThat(aiMessage2.thinking()).isNotBlank();
+        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
+
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verify(spyHandler2).get();
+        inOrder2.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "us.anthropic.claude-opus-4-20250514-v1:0",
+            "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.deepseek.r1-v1:0"
+    })
+    void should_return_and_NOT_send_thinking(String modelId) {
+
+        // given
+        boolean returnThinking = true;
+        boolean sendThinking = false;
 
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
@@ -54,6 +124,7 @@ class BedrockStreamingChatModelThinkingIT {
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
+                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -116,81 +187,11 @@ class BedrockStreamingChatModelThinkingIT {
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
-    void should_return_and_send_thinking(String modelId) {
-
-        // given
-        boolean returnThinking = true;
-        boolean sendThinking = true;
-
-        BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
-                .enableReasoning(THINKING_BUDGET_TOKENS)
-                .build();
-
-        StreamingChatModel model = BedrockStreamingChatModel.builder()
-                .modelId(modelId)
-
-                .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
-                .defaultRequestParameters(parameters)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1), spyHandler1);
-
-        // then
-        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
-        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking()).isNotBlank();
-        assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
-
-        InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
-        inOrder1.verify(spyHandler1).onCompleteResponse(any());
-        inOrder1.verify(spyHandler1).get();
-        inOrder1.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(spyHandler1);
-
-        // given
-        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
-
-        // when
-        sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
-        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1, aiMessage1, userMessage2), spyHandler2);
-
-        // then
-        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).isNotBlank();
-        assertThat(aiMessage2.attribute("thinking_signature", String.class)).isNotBlank();
-
-        InOrder inOrder2 = inOrder(spyHandler2);
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
-        inOrder2.verify(spyHandler2).onCompleteResponse(any());
-        inOrder2.verify(spyHandler2).get();
-        inOrder2.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(spyHandler2);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    })
     void should_return_and_send_thinking_with_tools(String modelId) {
 
         // given
         boolean returnThinking = true;
-        boolean sendThinking = true;
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -209,7 +210,6 @@ class BedrockStreamingChatModelThinkingIT {
                 .modelId(modelId)
 
                 .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -319,7 +319,7 @@ class BedrockStreamingChatModelThinkingIT {
         String modelId = "us.anthropic.claude-opus-4-20250514-v1:0";
 
         boolean returnThinking = true;
-        boolean sendThinking = true;
+        // sendThinking = true by default
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeather")
@@ -339,7 +339,6 @@ class BedrockStreamingChatModelThinkingIT {
 
                 .modelId(modelId)
                 .returnThinking(returnThinking)
-                .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)
@@ -501,6 +500,8 @@ class BedrockStreamingChatModelThinkingIT {
     void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {
 
         // given
+        Boolean returnThinking = null;
+
         BedrockChatRequestParameters parameters = null;
         if (!modelId.contains("deepseek")) {
             parameters = BedrockChatRequestParameters.builder()
@@ -511,6 +512,7 @@ class BedrockStreamingChatModelThinkingIT {
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
 
+                .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
 
                 .logRequests(true)

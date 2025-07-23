@@ -88,7 +88,7 @@ abstract class AbstractBedrockChatModel {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.sendThinking = getOrDefault(builder.sendThinking, false); // TODO should be true by default?
+        this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
 
         ChatRequestParameters commonParameters;

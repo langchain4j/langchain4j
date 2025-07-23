@@ -394,6 +394,13 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
     }
 
     @AfterEach
