@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModelThinkingIT.THOUGHT_LENGTH_THRESHOLD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -35,17 +36,16 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
-    // TODO separate flags for enabling thoughts and returning them?
-
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void should_return_thinking(boolean sendThinking) {
+    void should_think_and_return_thinking(boolean sendThinking) {
 
         // given
+        boolean includeThoughts = true;
         boolean returnThinking = true;
 
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
-                .includeThoughts(returnThinking) // TODO name discrepancy, everywhere
+                .includeThoughts(includeThoughts)
                 .thinkingBudget(20)
                 .build();
 
@@ -55,6 +55,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .modelName("gemini-2.5-flash")
 
                 .thinkingConfig(thinkingConfig)
+                .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
 
                 .logRequestsAndResponses(true)
@@ -68,9 +69,12 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
-        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.text())
+                .containsIgnoringCase("Berlin")
+                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage1.thinking())
                 .isNotBlank()
+                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD)
                 .isEqualTo(spyHandler1.getThinking());
         assertThat(aiMessage1.attributes()).isEmpty();
 
@@ -92,8 +96,12 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
         // then
         AiMessage aiMessage2 = handler2.get().aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
-        assertThat(aiMessage2.thinking()).isNotBlank();
+        assertThat(aiMessage2.text())
+                .containsIgnoringCase("Paris")
+                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage2.thinking())
+                .isNotBlank()
+                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage2.attributes()).isEmpty();
 
         // should send thinking in the follow-up request
@@ -107,15 +115,61 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         }
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void should_return_thinking_with_tools(boolean sendThinking) {
+    @Test
+    void should_think_and_NOT_return_thinking() {
 
         // given
+        boolean includeThoughts = true;
+        boolean returnThinking = false;
+
+        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
+                .includeThoughts(includeThoughts)
+                .thinkingBudget(20)
+                .build();
+
+        StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+
+                .thinkingConfig(thinkingConfig)
+                .returnThinking(returnThinking)
+
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage), spyHandler);
+
+        // then
+        AiMessage aiMessage = spyHandler.get().aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attributes()).isEmpty();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler).get();
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void should_think_and_return_thinking_with_tools(boolean sendThinking) {
+
+        // given
+        boolean includeThoughts = true;
         boolean returnThinking = true;
 
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
-                .includeThoughts(returnThinking) // TODO name discrepancy, everywhere
+                .includeThoughts(includeThoughts)
                 .thinkingBudget(20)
                 .build();
 
@@ -133,6 +187,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .modelName("gemini-2.5-flash")
 
                 .thinkingConfig(thinkingConfig)
+                .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
                 .defaultRequestParameters(ChatRequestParameters.builder()
                         .toolSpecifications(toolSpecification)
@@ -268,15 +323,10 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
     }
 
     @Test
-    void should_NOT_return_thinking() {
+    void should_NOT_think() {
 
         // given
-        boolean returnThinking = false;
-
-        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
-                .includeThoughts(returnThinking) // TODO good name for generic?
-                .thinkingBudget(20)
-                .build();
+        GeminiThinkingConfig thinkingConfig = null;
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -295,7 +345,9 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
         // then
         AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text()).contains("Berlin");
+        assertThat(aiMessage.text())
+                .contains("Berlin")
+                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
 
@@ -307,7 +359,42 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         verifyNoMoreInteractions(spyHandler);
     }
 
-    // TODO should not return thinking when not set
+    @Test
+    void should_answer_with_thinking_prepended_to_content_when_returnThinking_is_not_set() {
+
+        // given
+        boolean includeThoughts = true;
+        Boolean returnThinking = null;
+
+        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
+                .includeThoughts(includeThoughts)
+                .thinkingBudget(20)
+                .build();
+
+        StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+
+                .thinkingConfig(thinkingConfig)
+                .returnThinking(returnThinking)
+
+                .logRequestsAndResponses(true)
+                .build();
+
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
+
+        // then
+        AiMessage aiMessage = spyHandler.get().aiMessage();
+        assertThat(aiMessage.text())
+                .contains("Berlin")
+                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attributes()).isEmpty();
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {

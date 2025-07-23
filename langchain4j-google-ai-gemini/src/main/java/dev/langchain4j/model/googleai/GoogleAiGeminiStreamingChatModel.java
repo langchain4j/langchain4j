@@ -45,6 +45,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.listeners,
                 null,
                 builder.thinkingConfig,
+                builder.returnThinking,
                 builder.sendThinking,
                 builder.defaultRequestParameters);
     }
@@ -102,6 +103,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 maxRetries,
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -117,7 +119,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
-        geminiService.generateContentStream(request.modelName(), geminiRequest, includeCodeExecutionOutput, handler);
+        geminiService.generateContentStream(request.modelName(), geminiRequest,
+                includeCodeExecutionOutput, returnThinking, handler);
     }
 
     @Override
@@ -157,6 +160,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
+        private Boolean returnThinking;
         private Boolean sendThinking;
 
         GoogleAiGeminiStreamingChatModelBuilder() {}
@@ -288,11 +292,41 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @param thinkingConfig
+         * @return
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
         public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
             this.thinkingConfig = thinkingConfig;
             return this;
         }
 
+        /**
+         * TODO
+         * TODO null (backward)
+         *
+         * @param returnThinking
+         * @return
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #sendThinking(Boolean)
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * TODO
+         *
+         * @param sendThinking
+         * @return
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #returnThinking(Boolean)
+         */
         public GoogleAiGeminiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             return this;

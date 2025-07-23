@@ -26,6 +26,8 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 class GeminiStreamingResponseBuilder {
 
     private final boolean includeCodeExecutionOutput;
+    private final Boolean returnThinking;
+
     private final StringBuilder contentBuilder;
     private final StringBuilder thoughtBuilder;
     private final Map<String, Object> attributes = new ConcurrentHashMap<>();
@@ -36,13 +38,9 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
 
-    /**
-     * Constructs a new GeminiStreamingResponseBuilder.
-     *
-     * @param includeCodeExecutionOutput whether to include code execution output in the response
-     */
-    GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput) {
+    GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
+        this.returnThinking = returnThinking;
         this.contentBuilder = new StringBuilder();
         this.thoughtBuilder = new StringBuilder();
         this.functionCalls = new ArrayList<>();
@@ -73,7 +71,7 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        AiMessage message = fromGPartsToAiMessage(content.getParts(), this.includeCodeExecutionOutput);
+        AiMessage message = fromGPartsToAiMessage(content.getParts(), includeCodeExecutionOutput, returnThinking);
         updateContentAndFunctionCalls(message);
 
         return new TextAndTools(

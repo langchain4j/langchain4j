@@ -1,6 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -28,8 +27,7 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        boolean returnThinking = getOrDefault(defaultRequestParameters().returnThinking(), false);
-        client.streamingChat(chatRequest, returnThinking, handler);
+        client.streamingChat(chatRequest, this.returnThinking, handler);
     }
 
     @Override

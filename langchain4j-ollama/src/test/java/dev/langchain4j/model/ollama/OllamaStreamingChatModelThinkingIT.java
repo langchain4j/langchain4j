@@ -27,16 +27,18 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
-    void should_return_thinking_when_returnThinking_is_true() {
+    void should_think_and_return_thinking() {
 
         // given
-        Boolean returnThinking = true;
+        boolean think = true;
+        boolean returnThinking = true;
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
+                .think(think)
                 .returnThinking(returnThinking)
 
                 .logRequests(true)
@@ -55,7 +57,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage1.thinking())
-                .containsIgnoringCase("Berlin")
+                .isNotBlank()
                 .isEqualTo(spyHandler1.getThinking());
 
         InOrder inOrder1 = inOrder(spyHandler1);
@@ -88,52 +90,17 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
     }
 
     @Test
-    void should_answer_with_thinking_merged_with_content_when_returnThinking_is_not_set() { // TODO name
+    void should_think_and_NOT_return_thinking() {
 
         // given
-        Boolean returnThinking = null;
+        boolean think = true;
+        boolean returnThinking = false;
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
-                .returnThinking(returnThinking)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        String userMessage = "What is the capital of Germany?";
-
-        // when
-        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
-        model.chat(userMessage, spyHandler);
-
-        // then
-        AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("Berlin")
-                .contains("<think>", "</think>");
-        assertThat(aiMessage.thinking()).isNull();
-
-        InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
-        inOrder.verify(spyHandler).onCompleteResponse(any());
-        inOrder.verifyNoMoreInteractions();
-        verify(spyHandler).get();
-        verifyNoMoreInteractions(spyHandler);
-    }
-
-    @Test
-    void should_NOT_return_thinking_when_returnThinking_is_false() {
-
-        // given
-        Boolean returnThinking = false;
-
-        StreamingChatModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(MODEL_NAME)
-
+                .think(think)
                 .returnThinking(returnThinking)
 
                 .logRequests(true)
@@ -151,6 +118,84 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNull();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
+
+        // TODO verify that raw SSE events contain "thinking" field and that it is not sent back on the follow-up request
+    }
+
+    @Test
+    void should_NOT_think() {
+
+        // given
+        boolean think = false;
+
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+
+                .think(think)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
+
+        // then
+        AiMessage aiMessage = spyHandler.get().aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNull();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
+
+        // TODO verify that raw SSE events do not contain "thinking" field
+    }
+
+    @Test
+    void should_answer_with_thinking_prepended_to_content_when_think_is_not_set() {
+
+        // given
+        Boolean think = null;
+
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+
+                .think(think)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
+
+        // then
+        AiMessage aiMessage = spyHandler.get().aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .contains("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
         InOrder inOrder = inOrder(spyHandler);

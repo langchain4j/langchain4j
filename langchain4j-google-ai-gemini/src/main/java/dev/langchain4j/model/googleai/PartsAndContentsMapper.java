@@ -136,7 +136,9 @@ class PartsAndContentsMapper {
         }
     }
 
-    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts, boolean includeCodeExecutionOutput) {
+    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts,
+                                           boolean includeCodeExecutionOutput,
+                                           Boolean returnThinking) {
         StringBuilder fullText = new StringBuilder();
         List<String> thoughts = new ArrayList<>();
         List<String> thoughtSignatures = new ArrayList<>();
@@ -175,9 +177,16 @@ class PartsAndContentsMapper {
             }
 
             String text = part.getText();
-            if (text != null && !text.isEmpty()) {
+            if (isNotNullOrEmpty(text)) {
                 if (Boolean.TRUE.equals(part.isThought())) {
-                    thoughts.add(text);
+                    if (Boolean.TRUE.equals(returnThinking)) {
+                        thoughts.add(text);
+                    } else if (returnThinking == null) { // for backward compatibility
+                        if (!fullText.isEmpty()) {
+                            fullText.append("\n\n");
+                        }
+                        fullText.append(text);
+                    }
                 } else {
                     if (!fullText.isEmpty()) {
                         fullText.append("\n\n");
@@ -187,7 +196,7 @@ class PartsAndContentsMapper {
             }
 
             String thoughtSignature = part.getThoughtSignature();
-            if (isNotNullOrEmpty(thoughtSignature)) {
+            if (Boolean.TRUE.equals(returnThinking) && isNotNullOrEmpty(thoughtSignature)) {
                 thoughtSignatures.add(thoughtSignature);
             }
 
@@ -249,7 +258,6 @@ class PartsAndContentsMapper {
                             }
                             parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));
                         }
-                        // TODO test multiple tool calls with signatures
 
                         return GeminiContent.builder()
                                 .role(GeminiRole.MODEL.toString())
@@ -286,7 +294,8 @@ class PartsAndContentsMapper {
             .collect(toList());
     }
 
-    private static List<GeminiPart> toGeminiParts(List<ToolExecutionRequest> toolExecutionRequests, String thoughtSignature) {
+    private static List<GeminiPart> toGeminiParts(List<ToolExecutionRequest> toolExecutionRequests,
+                                                  String thoughtSignature) {
         List<GeminiPart> geminiParts = new ArrayList<>();
         for (int i = 0; i < toolExecutionRequests.size(); i++) {
             ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);

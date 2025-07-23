@@ -85,9 +85,10 @@ class GeminiService {
             String modelName,
             GeminiGenerateContentRequest request,
             boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, handler);
+        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
@@ -104,11 +105,13 @@ class GeminiService {
             String apiKey,
             Object requestBody,
             boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String jsonBody = Json.toJson(requestBody);
         HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
 
-        GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
+        GeminiStreamingResponseBuilder responseBuilder =
+                new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
@@ -122,7 +125,11 @@ class GeminiService {
                     onPartialResponse(handler, text);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
-                    onPartialThinking(handler, thought);
+                    if (Boolean.TRUE.equals(returnThinking)) {
+                        onPartialThinking(handler, thought);
+                    } else if (returnThinking == null) {
+                        onPartialResponse(handler, thought); // TODO test backward comp
+                    }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);

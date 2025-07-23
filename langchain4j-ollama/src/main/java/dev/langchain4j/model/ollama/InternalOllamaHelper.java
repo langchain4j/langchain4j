@@ -127,9 +127,14 @@ class InternalOllamaHelper {
         }
     }
 
-    static AiMessage aiMessageFrom(Message message) {
+    static AiMessage aiMessageFrom(Message message, boolean returnThinking) {
         String content = message.getContent();
-        String thinking = message.getThinking();
+
+        String thinking = null;
+        if (returnThinking) {
+            thinking = message.getThinking();
+        }
+
         List<ToolCall> toolCalls = getOrDefault(message.getToolCalls(), List.of());
 
         return AiMessage.builder()
@@ -171,7 +176,7 @@ class InternalOllamaHelper {
                 .stream(stream)
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
-                .think(requestParameters.returnThinking())
+                .think(requestParameters.think())
                 .build();
     }
 

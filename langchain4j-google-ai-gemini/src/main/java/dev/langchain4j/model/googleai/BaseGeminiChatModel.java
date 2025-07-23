@@ -31,7 +31,8 @@ abstract class BaseGeminiChatModel {
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
-    protected final Boolean sendThinking;
+    protected final Boolean returnThinking;
+    protected final boolean sendThinking;
     protected final Integer seed;
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
@@ -65,6 +66,7 @@ abstract class BaseGeminiChatModel {
             List<ChatModelListener> listeners,
             Integer maxRetries,
             GeminiThinkingConfig thinkingConfig,
+            Boolean returnThinking,
             Boolean sendThinking,
             ChatRequestParameters defaultRequestParameters) {
         ensureNotBlank(apiKey, "apiKey");
@@ -78,6 +80,7 @@ abstract class BaseGeminiChatModel {
         this.listeners = copy(listeners);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.thinkingConfig = thinkingConfig;
+        this.returnThinking = returnThinking;
         this.sendThinking = getOrDefault(sendThinking, false);
         this.seed = seed;
         this.responseLogprobs = getOrDefault(responseLogprobs, false);

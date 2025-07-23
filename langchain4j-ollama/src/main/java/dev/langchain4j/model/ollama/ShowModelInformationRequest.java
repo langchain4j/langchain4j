@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_NULL)
+@JsonInclude(NON_EMPTY)
 @JsonNaming(SnakeCaseStrategy.class)
 class ShowModelInformationRequest {
 

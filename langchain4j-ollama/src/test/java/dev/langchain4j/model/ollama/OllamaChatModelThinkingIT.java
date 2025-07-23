@@ -22,9 +22,10 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
-    void should_return_thinking() {
+    void should_think_and_return_thinking() {
 
         // given
+        boolean think = true;
         boolean returnThinking = true;
 
         ChatModel model = OllamaChatModel.builder()
@@ -32,7 +33,8 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
-                .returnThinking(returnThinking) // TODO a better way to set it? maybe enum? separate property for think?
+                .think(think)
+                .returnThinking(returnThinking)
 
                 .logRequests(true)
                 .logResponses(true)
@@ -70,15 +72,17 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
     }
 
     @Test
-    void should_NOT_return_thinking() {
+    void should_think_and_NOT_return_thinking() {
 
         // given
-        Boolean returnThinking = false;
+        boolean think = true;
+        boolean returnThinking = false;
 
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
+                .think(think)
                 .returnThinking(returnThinking)
 
                 .logRequests(true)
@@ -96,19 +100,52 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
+
+        // TODO verify that raw HTTP response contains "thinking" field and that it is not sent back on the follow-up request
     }
 
     @Test
-    void should_answer_with_thinking_merged_with_content_when_returnThinking_is_not_set() { // TODO name
+    void should_NOT_think() {
 
         // given
-        Boolean returnThinking = null;
+        boolean think = false;
 
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
-                .returnThinking(returnThinking)
+                .think(think)
+
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNull();
+
+        // TODO verify that raw HTTP response does not contain "thinking" field
+    }
+
+    @Test
+    void should_answer_with_thinking_prepended_to_content_when_think_is_not_set() {
+
+        // given
+        Boolean think = null;
+
+        ChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+
+                .think(think)
 
                 .logRequests(true)
                 .logResponses(true)
