@@ -24,7 +24,7 @@ public class AiMessage implements ChatMessage {
     private final String text;
     private final String thinking; // TODO name: reasoning? thoughts?
     private final List<ToolExecutionRequest> toolExecutionRequests;
-    private final Map<String, Object> metadata; // TODO types: test ser/deser TODO name: extra? custom? does not sound like metadata
+    private final Map<String, Object> metadata; // TODO name: extra? custom? does not sound like metadata
 
     /**
      * Create a new {@link AiMessage} with the given text.
