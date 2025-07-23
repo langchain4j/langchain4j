@@ -227,7 +227,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * @param returnThinking
          * @return
          */
-        public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) { // TODO names
+        public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
             return this;
         }
@@ -237,7 +237,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * @param sendThinking
          * @return
          */
-        public AnthropicStreamingChatModelBuilder sendThinking(Boolean sendThinking) { // TODO names
+        public AnthropicStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             return this;
         }

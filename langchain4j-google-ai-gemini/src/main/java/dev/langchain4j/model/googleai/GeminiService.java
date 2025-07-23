@@ -128,7 +128,7 @@ class GeminiService {
                     if (Boolean.TRUE.equals(returnThinking)) {
                         onPartialThinking(handler, thought);
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought); // TODO test backward comp
+                        onPartialResponse(handler, thought); // for backward compatibility // TODO document special behaviour for Gemini and Ollama
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {

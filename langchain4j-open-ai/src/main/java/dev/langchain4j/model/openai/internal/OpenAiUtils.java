@@ -137,7 +137,6 @@ public class OpenAiUtils {
 
             return AssistantMessage.builder()
                     .content(aiMessage.text())
-                    .reasoningContent(aiMessage.thinking())
                     .toolCalls(toolCalls)
                     .build();
         }

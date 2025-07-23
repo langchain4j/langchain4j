@@ -245,7 +245,7 @@ public class AnthropicChatModel implements ChatModel {
          * @param returnThinking
          * @return
          */
-        public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) { // TODO names
+        public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
             return this;
         }
@@ -255,7 +255,7 @@ public class AnthropicChatModel implements ChatModel {
          * @param sendThinking
          * @return
          */
-        public AnthropicChatModelBuilder sendThinking(Boolean sendThinking) { // TODO names
+        public AnthropicChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             return this;
         }

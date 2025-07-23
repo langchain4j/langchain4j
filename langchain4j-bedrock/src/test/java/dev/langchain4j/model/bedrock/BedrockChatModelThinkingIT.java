@@ -24,8 +24,6 @@ class BedrockChatModelThinkingIT {
     private static final int THINKING_BUDGET_TOKENS = 1024;
     private static final int SLEEPING_TIME_MULTIPLIER = 20;
 
-    // TODO ensure no breaking (behaviour) changes for all providers
-
     @ParameterizedTest
     @ValueSource(strings = {
             "us.anthropic.claude-opus-4-20250514-v1:0",
