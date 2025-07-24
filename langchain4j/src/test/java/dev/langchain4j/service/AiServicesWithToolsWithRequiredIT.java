@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatModel;
@@ -48,6 +49,51 @@ class AiServicesWithToolsWithRequiredIT {
     interface Assistant {
 
         Result<String> chat(String userMessage);
+    }
+
+    @Test
+    void should_execute_tool_with_optional_parameter() {
+
+        // given
+        class ToolWithOptionalParameter {
+
+            @Tool
+            void process(@P("name") String name, @P(value = "age", required = false) Integer age) {
+                // this method is empty
+            }
+
+            static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                    .addStringProperty("arg0", "name")
+                    .addIntegerProperty("arg1", "age")
+                    .required("arg0")
+                    .build();
+        }
+
+        ToolWithOptionalParameter tool = spy(new ToolWithOptionalParameter());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        String text = "Use 'process' tool to process the following text: Klaus";
+
+        // when
+        assistant.chat(text);
+
+        // then
+        verify(tool).process("Klaus", null);
+        verifyNoMoreInteractions(tool);
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verifyNoMoreInteractionsFor(model);
+
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("process");
+        assertThat(toolSpecification.description()).isNull();
+        assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalParameter.EXPECTED_SCHEMA);
     }
 
     /**

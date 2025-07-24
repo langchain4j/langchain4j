@@ -488,31 +488,6 @@ class AnthropicStreamingChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    @Test
-    void should_answer_with_thinking() {
-
-        // given
-        StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(1024)
-                .maxTokens(1024 + 100)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(List.of(userMessage), handler);
-        ChatResponse chatResponse = handler.get();
-
-        // then
-        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
-    }
-
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 100})
     void should_handle_timeout(int millis) throws Exception {

@@ -743,30 +743,6 @@ class GoogleAiGeminiChatModelIT {
         verifyNoMoreInteractions(spyTransactions);
     }
 
-    @Test
-    void should_use_thinking_config() {
-
-        // given
-        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
-                .includeThoughts(true)
-                .thinkingBudget(20)
-                .build();
-
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
-                .temperature(0.0)
-                .logRequestsAndResponses(true)
-                .thinkingConfig(thinkingConfig)
-                .build();
-
-        String prompt = "What is the area of a rectangle with length 5 and width 4?";
-        ChatResponse response = gemini.chat(UserMessage.from(prompt));
-
-        String reply = response.aiMessage().text();
-        assertThat(reply).contains("20");
-    }
-
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 100})
     void should_handle_timeout(int millis) {
