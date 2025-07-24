@@ -335,7 +335,7 @@ class VertexAiGeminiStreamingChatModelIT {
                 .messages(allMessages)
                 .toolSpecifications(weatherToolSpec)
                 .build();
-        
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);
@@ -485,8 +485,7 @@ class VertexAiGeminiStreamingChatModelIT {
         modelWithResponseMimeType.chat(userMessage, onPartialResponse(accumulatedResponse::append));
 
         // then
-        assertThat(accumulatedResponse.toString())
-                .isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
+        assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
     }
 
     @Disabled("TODO fix")
@@ -509,8 +508,9 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
-                model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println))).actual();
+        Exception exception = assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -585,12 +585,10 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
-        
+
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);
@@ -627,11 +625,9 @@ class VertexAiGeminiStreamingChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
-        
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);

@@ -84,17 +84,22 @@ class DocumentTest implements WithAssertions {
     @ValueSource(strings = {"", " ", "\t"})
     @NullSource
     void constructor_should_fail_on_empty_text(String text) {
-        final var exception = assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> Document.from(text)).actual();
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text))
+                .actual();
         assertThat(exception).hasMessage("text cannot be null or blank");
 
-        final var exception2 =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> Document.from(text, mock(Metadata.class))).actual();
+        final var exception2 = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text, mock(Metadata.class)))
+                .actual();
         assertThat(exception2).hasMessage("text cannot be null or blank");
     }
 
     @Test
     void constructor_should_fail_on_empty_metadata() {
-        final var exception = assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> Document.from("ok", null)).actual();
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from("ok", null))
+                .actual();
         assertThat(exception).hasMessage("metadata cannot be null");
     }
 }

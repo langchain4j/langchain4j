@@ -1,11 +1,11 @@
 package dev.langchain4j.mcp.client.logging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class McpLogMessageTest {
 
@@ -39,5 +39,4 @@ class McpLogMessageTest {
             throw new RuntimeException(e);
         }
     }
-
 }

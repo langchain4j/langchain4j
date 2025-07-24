@@ -48,8 +48,9 @@ class WebSearchInformationResultTest {
 
     @Test
     void should_throw_illegalArgumentException() {
-        IllegalArgumentException exception =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> WebSearchInformationResult.from(null)).actual();
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> WebSearchInformationResult.from(null))
+                .actual();
         assertThat(exception.getMessage()).isEqualTo("totalResults cannot be null");
     }
 }

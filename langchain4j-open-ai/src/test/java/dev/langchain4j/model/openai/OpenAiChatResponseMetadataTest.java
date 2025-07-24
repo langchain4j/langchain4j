@@ -1,10 +1,10 @@
 package dev.langchain4j.model.openai;
 
-import org.junit.jupiter.api.Test;
-
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 class OpenAiChatResponseMetadataTest {
 
@@ -128,16 +128,14 @@ class OpenAiChatResponseMetadataTest {
                 .build();
 
         // then
-        assertThat(modified)
-                .isNotEqualTo(original)
-                .satisfies(metadata -> {
-                    assertThat(metadata.id()).isEqualTo("id-2");
-                    assertThat(metadata.modelName()).isEqualTo("model-2");
-                    assertThat(metadata.tokenUsage()).isEqualTo(newTokenUsage);
-                    assertThat(metadata.finishReason()).isEqualTo(LENGTH);
-                    assertThat(metadata.created()).isEqualTo(2000L);
-                    assertThat(metadata.serviceTier()).isEqualTo("tier-b");
-                    assertThat(metadata.systemFingerprint()).isEqualTo("fp-2");
-                });
+        assertThat(modified).isNotEqualTo(original).satisfies(metadata -> {
+            assertThat(metadata.id()).isEqualTo("id-2");
+            assertThat(metadata.modelName()).isEqualTo("model-2");
+            assertThat(metadata.tokenUsage()).isEqualTo(newTokenUsage);
+            assertThat(metadata.finishReason()).isEqualTo(LENGTH);
+            assertThat(metadata.created()).isEqualTo(2000L);
+            assertThat(metadata.serviceTier()).isEqualTo("tier-b");
+            assertThat(metadata.systemFingerprint()).isEqualTo("fp-2");
+        });
     }
 }

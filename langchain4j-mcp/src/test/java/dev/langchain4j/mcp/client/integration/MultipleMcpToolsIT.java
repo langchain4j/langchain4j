@@ -1,5 +1,10 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolProvider;
@@ -10,21 +15,15 @@ import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Set;
-import java.util.concurrent.TimeoutException;
-
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MultipleMcpToolsIT {
 
@@ -77,7 +76,10 @@ class MultipleMcpToolsIT {
 
     @Test
     void duplicatedTool() {
-        assertThatThrownBy(() -> McpToolProvider.builder().mcpClients(mcpBaseClient, mcpNumericClient).build().provideTools(null))
+        assertThatThrownBy(() -> McpToolProvider.builder()
+                        .mcpClients(mcpBaseClient, mcpNumericClient)
+                        .build()
+                        .provideTools(null))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("echoInteger");
     }
@@ -92,7 +94,9 @@ class MultipleMcpToolsIT {
 
         Set<ToolSpecification> tools = toolProviderResult.tools().keySet();
         assertThat(tools).hasSize(3);
-        assertThat(tools).extracting(ToolSpecification::name).containsExactlyInAnyOrder("longOperation", "error", "errorResponse");
+        assertThat(tools)
+                .extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("longOperation", "error", "errorResponse");
     }
 
     @Test
@@ -135,8 +139,8 @@ class MultipleMcpToolsIT {
         // Filter out the base-mcp version of echoInteger
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
-                .filter((mcpClient, tool) ->
-                        !tool.name().startsWith("echoInteger") || mcpClient.key().equals("numeric-mcp"))
+                .filter((mcpClient, tool) -> !tool.name().startsWith("echoInteger")
+                        || mcpClient.key().equals("numeric-mcp"))
                 .build()
                 .provideTools(null);
         assertThat(toolProviderResult.tools()).hasSize(9);
@@ -182,7 +186,8 @@ class MultipleMcpToolsIT {
         toolProvider.addFilter((mcpClient, tool) -> mcpClient.key().equals("numeric-mcp"));
         toolProviderResult = toolProvider.provideTools(null);
         assertThat(toolProviderResult.tools()).hasSize(1);
-        toolExecutionResultString = toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        toolExecutionResultString =
+                toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
         // use tool from mcpNumericClient
         assertThat(toolExecutionResultString).isEqualTo("3");
 
@@ -197,7 +202,8 @@ class MultipleMcpToolsIT {
         toolProviderResult = toolProvider.provideTools(null);
         // all filters are removed, so we have all tools from mcpNumericClient
         assertThat(toolProviderResult.tools()).hasSize(4);
-        toolExecutionResultString = toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        toolExecutionResultString =
+                toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
         // use tool from mcpNumericClient
         assertThat(toolExecutionResultString).isEqualTo("3");
     }

@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static org.assertj.core.api.Assertions.fail;
+
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
@@ -7,8 +9,6 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Verify that the MCP client with stdio transport doesn't get stuck when launching the subprocess fails.

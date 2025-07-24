@@ -100,8 +100,9 @@ class WebSearchRequestTest {
 
     @Test
     void should_throw_illegalArgumentException_without_searchTerms() {
-        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                WebSearchRequest.builder().build()).actual();
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> WebSearchRequest.builder().build())
+                .actual();
         assertThat(exception).hasMessage("searchTerms cannot be null or blank");
     }
 }

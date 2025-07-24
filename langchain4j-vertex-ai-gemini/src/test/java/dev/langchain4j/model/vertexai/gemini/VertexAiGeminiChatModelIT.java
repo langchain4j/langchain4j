@@ -393,9 +393,7 @@ class VertexAiGeminiChatModelIT {
         String inventoryStock =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(","));
 
-        assertThat(inventoryStock)
-                .containsIgnoringCase("ABC123")
-                .containsIgnoringCase("XYZ789");
+        assertThat(inventoryStock).containsIgnoringCase("ABC123").containsIgnoringCase("XYZ789");
 
         // when
         allMessages.add(messageResponse.aiMessage());
@@ -661,8 +659,9 @@ class VertexAiGeminiChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
-                model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!")).actual();
+        Exception exception = assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -938,10 +937,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         String textResponse = response.aiMessage().text();
-        assertThat(textResponse)
-                .contains("Berlin")
-                .contains("Paris")
-                .contains("Rome");
+        assertThat(textResponse).contains("Berlin").contains("Paris").contains("Rome");
     }
 
     @Test

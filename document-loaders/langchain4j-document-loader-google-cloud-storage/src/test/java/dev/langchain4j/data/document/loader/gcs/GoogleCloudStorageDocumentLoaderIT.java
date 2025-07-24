@@ -37,8 +37,9 @@ public class GoogleCloudStorageDocumentLoaderIT {
         final String DUMMY_FILE_NAME = "DUMMY_XYZ.txt";
 
         // when
-        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser())).actual();
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser()))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains(DUMMY_FILE_NAME);
@@ -66,8 +67,9 @@ public class GoogleCloudStorageDocumentLoaderIT {
                 .build();
 
         // then
-        StorageException exception = assertThatExceptionOfType(StorageException.class).isThrownBy(() ->
-                gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser())).actual();
+        StorageException exception = assertThatExceptionOfType(StorageException.class)
+                .isThrownBy(() -> gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser()))
+                .actual();
         assertThat(exception.getMessage()).contains("The specified bucket does not exist");
     }
 

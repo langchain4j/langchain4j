@@ -99,11 +99,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        ListNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ListNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -121,11 +121,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        SetNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(SetNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -143,11 +143,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        ResultNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -165,11 +165,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        ResultListNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -190,7 +190,8 @@ class TypeUtilsTest {
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -208,11 +209,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        ResultListWildcardTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListWildcardTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -230,11 +231,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(
-                        ResultListTypeParamTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListTypeParamTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build()).actual();
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())

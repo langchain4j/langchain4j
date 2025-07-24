@@ -177,8 +177,10 @@ class WebSearchOrganicResultTest {
 
     @Test
     void should_throw_illegalArgumentException_without_title() {
-        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content")).actual();
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(
+                        () -> WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content"))
+                .actual();
         assertThat(exception).hasMessage("title cannot be null or blank");
     }
 }
