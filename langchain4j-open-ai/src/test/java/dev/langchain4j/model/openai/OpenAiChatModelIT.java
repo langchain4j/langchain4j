@@ -73,7 +73,7 @@ class OpenAiChatModelIT {
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_O_MINI)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .build();
 

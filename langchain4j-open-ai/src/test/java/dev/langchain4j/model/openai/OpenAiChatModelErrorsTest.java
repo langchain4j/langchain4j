@@ -16,6 +16,7 @@ import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -97,6 +98,53 @@ class OpenAiChatModelErrorsTest {
         // when-then
         assertThatThrownBy(() -> model.chat(question))
                 .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_handle_refusal() {
+
+        // given
+        final var userMessage = "does not matter";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // copied from https://platform.openai.com/docs/guides/structured-outputs/refusals?api-mode=chat#refusals
+            // language=json
+            res.setBody("""
+                    {
+                      "id": "chatcmpl-9nYAG9LPNonX8DAyrkwYfemr3C8HC",
+                      "object": "chat.completion",
+                      "created": 1721596428,
+                      "model": "gpt-4o-2024-08-06",
+                      "choices": [
+                        {
+                          "index": 0,
+                          "message": {
+                            "role": "assistant",
+                            "refusal": "I'm sorry, I cannot assist with that request."
+                          },
+                          "logprobs": null,
+                          "finish_reason": "stop"
+                        }
+                      ],
+                      "usage": {
+                        "prompt_tokens": 81,
+                        "completion_tokens": 11,
+                        "total_tokens": 92,
+                        "completion_tokens_details": {
+                          "reasoning_tokens": 0,
+                          "accepted_prediction_tokens": 0,
+                          "rejected_prediction_tokens": 0
+                        }
+                      },
+                      "system_fingerprint": "fp_3407719c7f"
+                    }
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
+                .hasMessage("I'm sorry, I cannot assist with that request.");
     }
 
     @AfterEach
