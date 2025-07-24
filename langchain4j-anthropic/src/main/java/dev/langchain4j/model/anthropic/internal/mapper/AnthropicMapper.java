@@ -66,6 +66,10 @@ public class AnthropicMapper {
     public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
     public static final String REDACTED_THINKING_KEY = "redacted_thinking"; // do not change, will break backward compatibility!
 
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
+        return toAnthropicMessages(messages, false);
+    }
+
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean sendThinking) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
@@ -189,6 +193,10 @@ public class AnthropicMapper {
                     return new AnthropicTextContent(message.text());
                 })
                 .collect(toList());
+    }
+
+    public static AiMessage toAiMessage(List<AnthropicContent> contents) {
+        return toAiMessage(contents, false);
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents, boolean returnThinking) {

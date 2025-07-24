@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_EMPTY)
+@JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 class OllamaChatRequest {
 

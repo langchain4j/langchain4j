@@ -3,16 +3,11 @@ package dev.langchain4j.model.chat;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
@@ -20,7 +15,6 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     private final StringBuffer responseBuilder = new StringBuffer();
     private final StringBuffer thinkingBuilder = new StringBuffer();
-    private final Queue<CompleteToolCall> toolCalls = new ConcurrentLinkedQueue<>();
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
     @Override
@@ -31,11 +25,6 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     @Override
     public void onPartialThinking(PartialThinking partialThinking) {
         thinkingBuilder.append(partialThinking.text());
-    }
-
-    @Override
-    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        toolCalls.add(completeToolCall);
     }
 
     @Override
@@ -65,9 +54,5 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     public String getThinking() {
         return thinkingBuilder.toString();
-    }
-
-    public List<CompleteToolCall> getToolCalls() {
-        return new ArrayList<>(toolCalls);
     }
 }

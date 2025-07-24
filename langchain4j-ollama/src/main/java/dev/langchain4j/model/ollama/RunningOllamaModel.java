@@ -8,10 +8,10 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.time.OffsetDateTime;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_EMPTY)
+@JsonInclude(NON_NULL)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class RunningOllamaModel {
 

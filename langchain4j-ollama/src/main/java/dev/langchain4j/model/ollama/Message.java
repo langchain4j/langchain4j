@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_EMPTY)
+@JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 class Message {
 

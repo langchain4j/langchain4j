@@ -436,14 +436,13 @@ Both `GoogleAiGeminiChatModel` and `GoogleAiGeminiStreamingChatModel`
 support [thinking](https://ai.google.dev/gemini-api/docs/thinking).
 
 The following parameters also control thinking behaviour:
-- `thinkingConfig`
-  - `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
-  - `thinkingBudget`: Integer specifying the thinking budget in tokens (optional, set to `null` to disable thinking).
+- `GeminiThinkingConfig.includeThoughts` and `thinkingBudget`: enables thinking, see more details [here](https://ai.google.dev/gemini-api/docs/thinking).
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
   callbacks when using `GoogleAiGeminiStreamingChatModel`.
   Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
-- `sendThinking`: controls whether to send thinking and signatures to the LLM in follow-up requests. Disabled by default.
+- `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
+Disabled by default.
 
 :::note
 Please note that when `returnThinking` is not set (is `null`) and `thinkingConfig` is set,

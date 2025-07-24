@@ -123,7 +123,8 @@ It is controlled by the following parameters:
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
   callbacks when using `BedrockStreamingChatModel`.
   Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
-- `sendThinking`: controls whether to send thinking and signatures to the LLM in follow-up requests. Enabled by default.
+- `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
+Enabled by default.
 
 Here is an example of how to configure thinking:
 ```java

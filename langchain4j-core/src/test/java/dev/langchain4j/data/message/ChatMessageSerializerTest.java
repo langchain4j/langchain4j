@@ -67,14 +67,14 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"attributes\":{},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .name("weather")
                                 .arguments("{\"city\": \"Munich\"}")
                                 .build()),
-                        "{\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"type\":\"AI\"}"
+                        "{\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.builder()

@@ -114,11 +114,11 @@ To enable Claude thinking process, call `enableReasoning` on `BedrockChatRequest
 `defaultRequestParameters` when building the model:
 ```java
 BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
-        .enableReasoning(1024)
+        .enableReasoning(1024) // token budget
         .build();
 
 ChatModel model = BedrockChatModel.builder()
-        .modelId(modelId)
+        .modelId("us.anthropic.claude-sonnet-4-20250514-v1:0")
         .defaultRequestParameters(parameters)
         .returnThinking(true)
         .sendThinking(true)
@@ -130,4 +130,5 @@ The following parameters also control thinking behaviour:
 and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
 callbacks when using `BedrockStreamingChatModel`.
 Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
-- `sendThinking`: controls whether to send thinking and signatures to the LLM in follow-up requests. Enabled by default.
+- `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
+Enabled by default.

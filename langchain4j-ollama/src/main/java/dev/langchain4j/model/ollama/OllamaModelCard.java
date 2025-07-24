@@ -9,10 +9,10 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_EMPTY)
+@JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public class OllamaModelCard {
 

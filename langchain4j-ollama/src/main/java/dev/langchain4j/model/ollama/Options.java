@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -15,7 +15,7 @@ import java.util.List;
  * @see <a href="https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values">Ollama REST API Doc</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(NON_EMPTY)
+@JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 class Options {
 

@@ -267,7 +267,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          * <pre>
          * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
          * <code>false</code>: the LLM does not think
-         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by </code>&lt;think&gt;</code> and </code>&lt;/think&gt;</code>, to the actual response
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by <code>&lt;think&gt;</code> and <code>&lt;/think&gt;</code>, to the actual response
          * </pre>
          *
          * @see OllamaChatModel.Builder#returnThinking(Boolean)
