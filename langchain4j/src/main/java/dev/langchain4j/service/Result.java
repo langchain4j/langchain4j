@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -72,38 +73,51 @@ public class Result<T> {
         return content;
     }
 
+    /**
+     * Returns aggregate token usage over all calls to the {@link ChatModel}.
+     */
     public TokenUsage tokenUsage() {
         return tokenUsage;
     }
 
+    /**
+     * Returns all sources returned during RAG retrieval.
+     */
     public List<Content> sources() {
         return sources;
     }
 
+    /**
+     * Returns finish reason of the final {@link ChatModel} response (taken from {@link #finalResponse()}).
+     */
     public FinishReason finishReason() {
         return finishReason;
     }
 
+    /**
+     * Returns all tool executions that happened during AI Service invocation.
+     */
     public List<ToolExecution> toolExecutions() {
         return toolExecutions;
     }
 
     /**
-     * TODO
-     * @return
+     * Returns all intermediate chat responses that were returned by the {@link ChatModel}.
+     * All of these responses contain {@link ToolExecutionRequest}s.
+     *
      * @since 1.2.0
      */
-    // TODO expose intermediate and final separately?
-    public List<ChatResponse> intermediateResponses() { // TODO name
+    public List<ChatResponse> intermediateResponses() {
         return intermediateResponses;
     }
 
     /**
-     * TODO can differ from {@link #content()} in case guardrail changed it
-     * @return
+     * Returns final chat response returned by the {@link ChatModel}.
+     * This response does not contain {@link ToolExecutionRequest}s.
+     *
      * @since 1.2.0
      */
-    public ChatResponse finalResponse() { // TODO name
+    public ChatResponse finalResponse() {
         return finalResponse;
     }
 
