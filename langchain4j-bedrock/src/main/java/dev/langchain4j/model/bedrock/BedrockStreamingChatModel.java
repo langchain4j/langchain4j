@@ -105,13 +105,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .onMessageStop(responseBuilder::append)
                         .build())
                 .build();
+            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler)
+                    .exceptionally(ex->{
+                        RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
+                        withLoggingExceptions(() -> handler.onError(mappedError));
+                        return null;
+                    });
 
-        try {
-            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler).get();
-        } catch (Exception e) {
-            RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(e);
-            withLoggingExceptions(() -> handler.onError(mappedError));
-        }
     }
 
     @Override
