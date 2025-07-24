@@ -54,11 +54,6 @@ import java.util.List;
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * <br>
  * <br>
- * Sanitization is performed on the {@link ChatMessage}s provided to conform to Anthropic API requirements. This process
- * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
- * Any messages removed during sanitization are logged as warnings and not submitted to the API.
- * <br>
- * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
  */
 public class AnthropicChatModel implements ChatModel {
@@ -231,6 +226,10 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Enables thinking.
+         * See <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">this</a> for more details.
+         */
         public AnthropicChatModelBuilder thinkingType(String thinkingType) {
             this.thinkingType = thinkingType;
             return this;
@@ -242,13 +241,14 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * it only controls whether to parse the {@code thinking} field from the API response
+         * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
-         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
          *
          * @see #thinkingType(String)
          * @see #thinkingBudgetTokens(Integer)
@@ -260,10 +260,10 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Enabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
          * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
          *
          * @see #thinkingType(String)

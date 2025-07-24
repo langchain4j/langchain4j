@@ -288,10 +288,10 @@ params with the builder pattern:
 | `stop`                     | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>`            |                             |
 | `minP`                     |                                                                                                                                                                                   | `Double`                  |                             |
 | `responseFormat`           | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat`          |                             |
-| `think`                    |                                                                                                                                                                                   | `Boolean`                 |                             |
+| `think`                    | Controls [thinking](https://ollama.com/blog/thinking).                                                                                                                            | `Boolean`                 |                             |
 | `returnThinking`           |                                                                                                                                                                                   | `Boolean`                 |                             |
 | `timeout`                  | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`                | PT60S                       |
-| `customHeaders`            | Custom HTTP headers                                                                                                                                                               | `Map<String, String>`     |                             |
+| `customHeaders`            | Custom HTTP headers.                                                                                                                                                              | `Map<String, String>`     |                             |
 | `logRequests`              |                                                                                                                                                                                   | `Boolean`                 |                             |
 | `logResponses`             |                                                                                                                                                                                   | `Boolean`                 |                             |
 | `listeners`                | See [Chat Model Observability](https://docs.langchain4j.dev/tutorials/observability#chat-model-observability)                                                                     | `List<ChatModelListener>` |                             |
@@ -403,10 +403,32 @@ When `OllamaChatModel` is created with supported capability `RESPONSE_FORMAT_JSO
 
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
-    .baseUrl("...")
-    .modelName("...")
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
     .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)    
     .build();
+```
+
+### Thinking / Reasoning
+
+The [thinking](https://ollama.com/blog/thinking) feature is supported and is controlled by the following
+parameters:
+- `think`: controls whether the LLM thinks and how:
+  - `true`: the LLM thinks and returns thoughts in a separate `thinking` field
+  - `false`: the LLM does not think
+  - `null` (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by `<think>` and `</think>`, to the actual response
+- `returnThinking`: controls whether `thinking` field from the API response is parsed
+and returned in the `AiMessage.thinking()` and whether to invoke the `StreamingChatResponseHandler.onPartialThinking()`
+and `TokenStream.onPartialThinking()` callbacks when using `OllamaStreamingChatModel`. Disabled by default.
+
+Here is an example of how to configure thinking:
+```java
+ChatModel model = OllamaChatModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("qwen3:0.6b")
+        .think(true)
+        .returnThinking(true)
+        .build();
 ```
 
 ### Custom Messages

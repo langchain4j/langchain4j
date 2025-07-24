@@ -34,6 +34,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
@@ -457,6 +458,11 @@ abstract class AbstractBedrockChatModel {
             return (T) this;
         }
 
+        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return self();
+        }
+
         public T region(Region region) {
             this.region = region;
             return self();
@@ -467,20 +473,18 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
-        public T timeout(Duration timeout) {
-            this.timeout = timeout;
-            return self();
-        }
-
         /**
-         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * it only controls whether to parse the {@code REASONING_CONTENT} block from the API response
+         * and return it inside the {@link AiMessage}.
+         * To enable thinking, set {@link BedrockChatRequestParameters.Builder#enableReasoning(Integer)}
+         * via {@link #defaultRequestParameters(ChatRequestParameters)}.
          * <p>
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
-         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
          *
          * @see #sendThinking(Boolean)
          */
@@ -490,10 +494,10 @@ abstract class AbstractBedrockChatModel {
         }
 
         /**
-         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Enabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
          * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
          *
          * @see #returnThinking(Boolean)
@@ -503,8 +507,8 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
-        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
-            this.defaultRequestParameters = defaultRequestParameters;
+        public T timeout(Duration timeout) {
+            this.timeout = timeout;
             return self();
         }
 

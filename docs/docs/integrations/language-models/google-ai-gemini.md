@@ -103,7 +103,35 @@ The `GeminiThinkingConfig` class supports:
 - `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
 - `thinkingBudget`: Integer specifying the thinking budget in tokens (optional, set to `null` to disable thinking).
 
-TODO
+Here is an example of how to configure thinking:
+```java
+GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
+        .includeThoughts(true)
+        .thinkingBudget(250)
+        .build();
+
+ChatModel model = GoogleAiGeminiChatModel.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .modelName("gemini-2.5-flash")
+        .thinkingConfig(thinkingConfig)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
+```
+
+The following parameters also control thinking behaviour:
+- `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
+  and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
+  callbacks when using `GoogleAiGeminiStreamingChatModel`.
+  Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+- `sendThinking`: controls whether to send thinking and signatures to the LLM in follow-up requests. Disabled by default.
+
+:::note
+Please note that when `returnThinking` is not set (is `null`) and `thinkingConfig` is set,
+thinking text will be prepended to the actual response inside the `AiMessage.text()` field
+and `StreamingChatResponseHandler.onPartialResponse()` will be invoked
+instead of `StreamingChatResponseHandler.onPartialThinking()`.
+:::
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.

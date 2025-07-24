@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.Arrays;
@@ -305,16 +306,20 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * it only controls whether to parse the {@code thought} block from the API response
+         * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
-         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
-         *
-         * TODO null (backward)
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Please note that when {@code returnThinking} is not set (is {@code null}) and {@code thinkingConfig} is set,
+         * thinking/reasoning text will be prepended to the actual response inside the {@link AiMessage#text()} field
+         * and {@link StreamingChatResponseHandler#onPartialResponse(String)} will be invoked
+         * instead of {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)}.
          *
          * @see #thinkingConfig(GeminiThinkingConfig)
          * @see #sendThinking(Boolean)
@@ -325,10 +330,10 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Disabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
          * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
          *
          * @see #thinkingConfig(GeminiThinkingConfig)

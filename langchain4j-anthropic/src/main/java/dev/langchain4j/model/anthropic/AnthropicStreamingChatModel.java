@@ -29,6 +29,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import java.time.Duration;
@@ -47,11 +48,6 @@ import java.util.List;
  * <br>
  * <br>
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
- * <br>
- * <br>
- * Sanitization is performed on the {@link ChatMessage}s provided to ensure conformity with Anthropic API requirements.
- * This includes ensuring the first message is a {@link UserMessage} and that there are no consecutive {@link UserMessage}s.
- * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  * <br>
  * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
@@ -213,6 +209,10 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Enables thinking.
+         * See <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">this</a> for more details.
+         */
         public AnthropicStreamingChatModelBuilder thinkingType(String thinkingType) {
             this.thinkingType = thinkingType;
             return this;
@@ -224,14 +224,15 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * it only controls whether to parse the {@code thinking} field from the API response
+         * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
-         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
          *
          * @see #thinkingType(String)
          * @see #thinkingBudgetTokens(Integer)
@@ -243,10 +244,10 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Enabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
          * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
          *
          * @see #thinkingType(String)

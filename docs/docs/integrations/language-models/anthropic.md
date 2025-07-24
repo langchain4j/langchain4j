@@ -113,24 +113,30 @@ More info on caching can be found [here](https://docs.anthropic.com/en/docs/buil
 
 ## Thinking
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` support
+Both `AnthropicChatModel` and `AnthropicStreamingChatModel` support
 [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
-It can be enabled by setting the `thinkingType`, `thinkingBudgetTokens`, `returnThinking` and `sendThinking` parameters:
+
+It is controlled by the following parameters:
+- `thinkingType` and `thinkingBudgetTokens`: enable thinking,
+  see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+- `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
+  and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
+  callbacks when using `BedrockStreamingChatModel`.
+  Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+- `sendThinking`: controls whether to send thinking and signatures to the LLM in follow-up requests. Enabled by default.
+
+Here is an example of how to configure thinking:
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
         .modelName(CLAUDE_3_7_SONNET_20250219)
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
+        .maxTokens(1024 + 100)
         .returnThinking(true)
         .sendThinking(true)
-        .maxTokens(1024 + 100)
-        .logRequests(true)
-        .logResponses(true)
         .build();
 ```
-
-TODO
 
 ## Quarkus
 

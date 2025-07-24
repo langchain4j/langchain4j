@@ -189,6 +189,16 @@ When the `returnThinking` parameter is enabled for `OpenAiStreamingChatModel`,
 the `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
 callbacks will be invoked when the DeepSeek API streams `reasoning_content`.
 
+Here is an example of how to configure thinking:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.deepseek.com/v1")
+        .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+        .modelName("deepseek-reasoner")
+        .returnThinking(true)
+        .build();
+```
+
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
