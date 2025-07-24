@@ -20,7 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * - Aggregate {@link TokenUsage} over all calls to the {@link ChatModel}
  * - {@link FinishReason} of the final {@link ChatResponse}
  * - sources ({@link Content}s) retrieved during RAG retrieval
- * - all executed tools
+ * - all executed tools (both requests and results)
  * - all intermediate {@link ChatResponse}s
  * - final {@link ChatResponse}
  * </pre>
