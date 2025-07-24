@@ -23,16 +23,15 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-
 import java.time.Duration;
 import java.util.List;
 
@@ -69,6 +68,7 @@ public class AnthropicChatModel implements ChatModel {
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final AnthropicToolChoice toolChoice;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -88,6 +88,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
+        this.toolChoice = builder.toolChoice;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -102,10 +103,10 @@ public class AnthropicChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
-                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
+                .maxOutputTokens(
+                        getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
-                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .build();
     }
 
@@ -127,7 +128,7 @@ public class AnthropicChatModel implements ChatModel {
         private Integer maxTokens;
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
-        private ToolChoice toolChoice;
+        private AnthropicToolChoice toolChoice;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -204,7 +205,7 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder toolChoice(ToolChoice toolChoice) {
+        public AnthropicChatModelBuilder toolChoice(AnthropicToolChoice toolChoice) {
             this.toolChoice = toolChoice;
             return this;
         }
@@ -268,10 +269,12 @@ public class AnthropicChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
-        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
+        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+                chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
+                toolChoice,
                 false);
 
         AnthropicCreateMessageResponse response =

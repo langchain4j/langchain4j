@@ -44,13 +44,10 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -255,19 +252,5 @@ public class AnthropicMapper {
         }
 
         return toolBuilder.build();
-    }
-
-    public static AnthropicToolChoice toAnthropicToolChoice(ToolChoice toolChoice) {
-        if (toolChoice == null) {
-            return null;
-        }
-
-        AnthropicToolChoiceType toolChoiceType =
-                switch (toolChoice) {
-                    case AUTO -> AnthropicToolChoiceType.AUTO;
-                    case REQUIRED -> AnthropicToolChoiceType.ANY;
-                };
-
-        return AnthropicToolChoice.from(toolChoiceType);
     }
 }
