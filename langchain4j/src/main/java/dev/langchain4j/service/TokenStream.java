@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -31,7 +32,9 @@ public interface TokenStream {
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
+     * @since 1.2.0
      */
+    @Experimental
     default TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
         throw new UnsupportedOperationException("not implemented");
     }

@@ -1,5 +1,6 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 import java.util.List;
@@ -71,6 +72,9 @@ public class AiMessage implements ChatMessage {
         this.attributes = Map.of();
     }
 
+    /**
+     * @since 1.2.0
+     */
     public AiMessage(Builder builder) {
         this.text = builder.text;
         this.thinking = builder.thinking;
@@ -91,7 +95,9 @@ public class AiMessage implements ChatMessage {
      * Get the thinking/reasoning text of the message.
      *
      * @return the thinking/reasoning text of the message.
+     * @since 1.2.0
      */
+    @Experimental
     public String thinking() {
         return thinking;
     }
@@ -118,7 +124,9 @@ public class AiMessage implements ChatMessage {
      * Returns additional attributes, typically provider-specific.
      *
      * @see #attribute(String, Class)
+     * @since 1.2.0
      */
+    @Experimental
     public Map<String, Object> attributes() {
         return attributes;
     }
@@ -127,7 +135,9 @@ public class AiMessage implements ChatMessage {
      * Returns additional attribute by it's key.
      *
      * @see #attributes()
+     * @since 1.2.0
      */
+    @Experimental
     public <T> T attribute(String key, Class<T> type) {
         return (T) attributes.get(key);
     }
@@ -179,6 +189,10 @@ public class AiMessage implements ChatMessage {
             return this;
         }
 
+        /**
+         * @since 1.2.0
+         */
+        @Experimental
         public Builder thinking(String thinking) {
             this.thinking = thinking;
             return this;
@@ -189,6 +203,10 @@ public class AiMessage implements ChatMessage {
             return this;
         }
 
+        /**
+         * @since 1.2.0
+         */
+        @Experimental
         public Builder attributes(Map<String, Object> attributes) {
             this.attributes = attributes;
             return this;
