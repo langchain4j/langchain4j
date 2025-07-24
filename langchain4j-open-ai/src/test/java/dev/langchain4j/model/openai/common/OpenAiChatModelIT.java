@@ -3,6 +3,8 @@ package dev.langchain4j.model.openai.common;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -276,7 +278,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         OpenAiChatResponseMetadata openAiChatResponseMetadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
         assertThat(openAiChatResponseMetadata.created()).isPositive();
         assertThat(openAiChatResponseMetadata.serviceTier()).isEqualTo(serviceTier);
-        assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank();
+        // assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank(); OpenAI stopped providing it
 
         OpenAiTokenUsage tokenUsage = openAiChatResponseMetadata.tokenUsage();
 

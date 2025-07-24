@@ -13,6 +13,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -34,6 +35,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;
+    private Consumer<PartialThinking> partialThinkingHandler;
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
@@ -41,6 +43,7 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<Throwable> errorHandler;
 
     private int onPartialResponseInvoked;
+    private int onPartialThinkingInvoked;
     private int onIntermediateResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
@@ -70,6 +73,13 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onPartialResponse(Consumer<String> partialResponseHandler) {
         this.partialResponseHandler = partialResponseHandler;
         this.onPartialResponseInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
+        this.partialThinkingHandler = partialThinkingHandler;
+        this.onPartialThinkingInvoked++;
         return this;
     }
 
@@ -119,10 +129,11 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
+        ChatRequest chatRequest = context.chatRequestTransformer
+                .apply(ChatRequest.builder()
+                        .messages(messages)
+                        .toolSpecifications(toolSpecifications)
+                        .build(), memoryId);
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
@@ -134,6 +145,7 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 memoryId,
                 partialResponseHandler,
+                partialThinkingHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,
                 completeResponseHandler,
@@ -155,6 +167,9 @@ public class AiServiceTokenStream implements TokenStream {
     private void validateConfiguration() {
         if (onPartialResponseInvoked != 1) {
             throw new IllegalConfigurationException("onPartialResponse must be invoked on TokenStream exactly 1 time");
+        }
+        if (onPartialThinkingInvoked > 1) {
+            throw new IllegalConfigurationException("onPartialThinking can be invoked on TokenStream at most 1 time");
         }
         if (onIntermediateResponseInvoked > 1) {
             throw new IllegalConfigurationException("onIntermediateResponse can be invoked on TokenStream at most 1 time");
