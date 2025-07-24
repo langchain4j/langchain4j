@@ -1,7 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
@@ -10,11 +8,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.googleai.Json.toJson;
+import static dev.langchain4j.model.googleai.Json.toJsonWithoutIndent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 
 class FunctionMapper {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications, boolean allowCodeExecution) {
 
@@ -59,18 +57,12 @@ class FunctionMapper {
         return tool.build();
     }
 
-    static List<ToolExecutionRequest> fromToolExecReqToGFunCall(List<GeminiFunctionCall> functionCalls) {
+    static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {
         return functionCalls.stream()
-            .map(functionCall -> {
-                try {
-                    return ToolExecutionRequest.builder()
+                .map(functionCall -> ToolExecutionRequest.builder()
                         .name(functionCall.getName())
-                        .arguments(MAPPER.writeValueAsString(functionCall.getArgs()))
-                        .build();
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            })
-            .collect(Collectors.toList());
+                        .arguments(toJsonWithoutIndent(functionCall.getArgs()))
+                        .build())
+                .collect(Collectors.toList());
     }
 }

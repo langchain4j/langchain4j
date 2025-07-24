@@ -15,6 +15,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -41,6 +42,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Object methodKey;
 
     private final Consumer<String> partialResponseHandler;
+    private final Consumer<PartialThinking> partialThinkingHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
 
@@ -59,6 +61,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             AiServiceContext context,
             Object memoryId,
             Consumer<String> partialResponseHandler,
+            Consumer<PartialThinking> partialThinkingHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> completeResponseHandler,
             Consumer<Throwable> errorHandler,
@@ -74,6 +77,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.methodKey = methodKey;
 
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
+        this.partialThinkingHandler = partialThinkingHandler;
         this.completeResponseHandler = completeResponseHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
@@ -94,6 +98,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             responseBuffer.add(partialResponse);
         } else {
             partialResponseHandler.accept(partialResponse);
+        }
+    }
+
+    @Override
+    public void onPartialThinking(PartialThinking partialThinking) {
+        if (partialThinkingHandler != null) {
+            partialThinkingHandler.accept(partialThinking);
         }
     }
 
@@ -130,6 +141,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     context,
                     memoryId,
                     partialResponseHandler,
+                    partialThinkingHandler,
                     toolExecutionHandler,
                     completeResponseHandler,
                     errorHandler,
