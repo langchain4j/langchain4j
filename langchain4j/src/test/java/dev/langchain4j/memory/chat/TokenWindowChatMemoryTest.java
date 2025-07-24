@@ -2,9 +2,9 @@ package dev.langchain4j.memory.chat;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.JsonTestUtils.aiMessageWithTokens;
-import static dev.langchain4j.internal.JsonTestUtils.systemMessageWithTokens;
-import static dev.langchain4j.internal.JsonTestUtils.userMessageWithTokens;
+import static dev.langchain4j.internal.TestUtils.aiMessageWithTokens;
+import static dev.langchain4j.internal.TestUtils.systemMessageWithTokens;
+import static dev.langchain4j.internal.TestUtils.userMessageWithTokens;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
 

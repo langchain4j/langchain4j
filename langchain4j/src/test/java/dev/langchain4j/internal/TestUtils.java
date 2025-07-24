@@ -17,7 +17,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JsonTestUtils {
+public class TestUtils {
 
     private static final int EXTRA_TOKENS_PER_EACH_MESSAGE =
             3 /* extra tokens for each message */ + 1 /* extra token for 'role' */;
