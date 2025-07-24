@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolsExecutionContext;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,6 +34,16 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
+
+    /**
+     * The provided consumer will be invoked once streaming is complete and the response contains one or more tools to be executed.
+     * <p>
+     * The invocation happens before the tool methods are called.
+     *
+     * @param beforeToolsExecutionHandler lambda that consumes {@link BeforeToolsExecutionContext}
+     * @return token stream instance used to configure or start stream processing
+     */
+    TokenStream beforeToolsExecution(Consumer<BeforeToolsExecutionContext> beforeToolsExecutionHandler);
 
     /**
      * The provided consumer will be invoked if any tool is executed.

@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolsExecutionContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
+
+    static Consumer<BeforeToolsExecutionContext> DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER =
+            (beforeToolsExecutionContext) -> {};
 
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
 
@@ -71,6 +75,29 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onPartialResponse must be invoked on TokenStream exactly 1 time");
+    }
+
+    @Test
+    void start_beforeToolsExecutionInvoked_shouldNotThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_beforeToolsExecutionInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("beforeToolsExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
