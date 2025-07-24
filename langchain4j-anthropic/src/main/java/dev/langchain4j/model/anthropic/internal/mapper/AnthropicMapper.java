@@ -60,8 +60,10 @@ import java.util.Map;
 @Internal
 public class AnthropicMapper {
 
-    public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
-    public static final String REDACTED_THINKING_KEY = "redacted_thinking"; // do not change, will break backward compatibility!
+    public static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
+    public static final String REDACTED_THINKING_KEY =
+            "redacted_thinking"; // do not change, will break backward compatibility!
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -204,7 +206,8 @@ public class AnthropicMapper {
                 .collect(joining("\n"));
 
         String thinking = null;
-        Map<String, Object> attributes = new HashMap<>();;
+        Map<String, Object> attributes = new HashMap<>();
+        ;
         if (returnThinking) {
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
