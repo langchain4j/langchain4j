@@ -1,5 +1,15 @@
 package dev.langchain4j.model.vertexai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.Json.toJson;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.toList;
+
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.aiplatform.v1beta1.*;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
@@ -9,18 +19,9 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.vertexai.Json.toJson;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a Google Vertex AI embedding model, such as textembedding-gecko.
@@ -69,37 +70,49 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Boolean autoTruncate;
 
     public enum TaskType {
-        RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION,
-        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION, CODE_RETRIEVAL_QUERY
+        RETRIEVAL_QUERY,
+        RETRIEVAL_DOCUMENT,
+        SEMANTIC_SIMILARITY,
+        CLASSIFICATION,
+        CLUSTERING,
+        QUESTION_ANSWERING,
+        FACT_VERIFICATION,
+        CODE_RETRIEVAL_QUERY
     }
 
-    public VertexAiEmbeddingModel(String endpoint,
-                                  String project,
-                                  String location,
-                                  String publisher,
-                                  String modelName,
-                                  Integer maxRetries,
-                                  Integer maxSegmentsPerBatch,
-                                  Integer maxTokensPerBatch,
-                                  TaskType taskType,
-                                  String titleMetadataKey,
-                                  Integer outputDimensionality,
-                                  Boolean autoTruncate) {
+    public VertexAiEmbeddingModel(
+            String endpoint,
+            String project,
+            String location,
+            String publisher,
+            String modelName,
+            Integer maxRetries,
+            Integer maxSegmentsPerBatch,
+            Integer maxTokensPerBatch,
+            TaskType taskType,
+            String titleMetadataKey,
+            Integer outputDimensionality,
+            Boolean autoTruncate,
+            GoogleCredentials credentials) {
 
-        String regionWithBaseAPI = endpoint != null ? endpoint :
-            ensureNotBlank(location, "location") + DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX;
+        String regionWithBaseAPI =
+                endpoint != null ? endpoint : ensureNotBlank(location, "location") + DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX;
 
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
                 ensureNotBlank(project, "project"),
                 location,
                 ensureNotBlank(publisher, "publisher"),
-                ensureNotBlank(modelName, "modelName")
-        );
+                ensureNotBlank(modelName, "modelName"));
 
         try {
-            this.settings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(regionWithBaseAPI)
-                    .build();
+            PredictionServiceSettings.Builder settingsBuilder =
+                    PredictionServiceSettings.newBuilder().setEndpoint(regionWithBaseAPI);
+            if (credentials != null) {
+                GoogleCredentials scopedCredentials =
+                        credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
+            }
+            this.settings = settingsBuilder.build();
 
             this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()
                     .setEndpoint(settings.getEndpoint())
@@ -153,12 +166,13 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     instances.add(instanceBuilder.build());
                 }
 
-                VertexAiEmbeddingParameters parameters = new VertexAiEmbeddingParameters(
-                    outputDimensionality, getOrDefault(autoTruncate, false));
+                VertexAiEmbeddingParameters parameters =
+                        new VertexAiEmbeddingParameters(outputDimensionality, getOrDefault(autoTruncate, false));
                 Value.Builder parameterBuilder = Value.newBuilder();
                 JsonFormat.parser().merge(toJson(parameters), parameterBuilder);
 
-                PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameterBuilder.build()), maxRetries);
+                PredictResponse response = withRetryMappingExceptions(
+                        () -> client.predict(endpointName, instances, parameterBuilder.build()), maxRetries);
 
                 embeddings.addAll(response.getPredictionsList().stream()
                         .map(VertexAiEmbeddingModel::toEmbedding)
@@ -169,10 +183,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 }
             }
 
-            return Response.from(
-                    embeddings,
-                    new TokenUsage(inputTokenCount)
-            );
+            return Response.from(embeddings, new TokenUsage(inputTokenCount));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -190,8 +201,8 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
             // The computeTokens endpoint has a limit of up to 2048 input texts per request
             for (int i = 0; i < segments.size(); i += COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST) {
-                List<TextSegment> batch = segments.subList(i,
-                        Math.min(i + COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST, segments.size()));
+                List<TextSegment> batch =
+                        segments.subList(i, Math.min(i + COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST, segments.size()));
 
                 List<Value> instances = new ArrayList<>();
                 for (TextSegment segment : batch) {
@@ -207,9 +218,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
                 ComputeTokensResponse computeTokensResponse = utilClient.computeTokens(computeTokensRequest);
 
-                tokensCounts.addAll(computeTokensResponse
-                        .getTokensInfoList()
-                        .stream()
+                tokensCounts.addAll(computeTokensResponse.getTokensInfoList().stream()
                         .map(TokensInfo::getTokensCount)
                         .collect(toList()));
             }
@@ -236,8 +245,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<Integer> currentBatch = new ArrayList<>();
         int currentBatchSum = 0;
         for (Integer tokensCount : tokensCounts) {
-            if (currentBatchSum + tokensCount <= maxTokensPerBatch &&
-                    currentBatch.size() < maxSegmentsPerBatch) {
+            if (currentBatchSum + tokensCount <= maxTokensPerBatch && currentBatch.size() < maxSegmentsPerBatch) {
                 currentBatch.add(tokensCount);
                 currentBatchSum += tokensCount;
             } else {
@@ -253,15 +261,13 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         // returns the list of number of text segments for each batch of embedding calculations
 
-        return batches.stream()
-                .mapToInt(List::size)
-                .boxed()
-                .collect(toList());
+        return batches.stream().mapToInt(List::size).boxed().collect(toList());
     }
 
     private static Embedding toEmbedding(Value prediction) {
 
-        List<Float> vector = prediction.getStructValue()
+        List<Float> vector = prediction
+                .getStructValue()
                 .getFieldsMap()
                 .get("embeddings")
                 .getStructValue()
@@ -276,7 +282,8 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private static int extractTokenCount(Value prediction) {
-        return (int) prediction.getStructValue()
+        return (int) prediction
+                .getStructValue()
                 .getFieldsMap()
                 .get("embeddings")
                 .getStructValue()
@@ -309,6 +316,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String titleMetadataKey;
         private Integer outputDimensionality;
         private Boolean autoTruncate;
+        private GoogleCredentials credentials;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -370,6 +378,11 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        public Builder credentials(GoogleCredentials credentials) {
+            this.credentials = credentials;
+            return this;
+        }
+
         public VertexAiEmbeddingModel build() {
             return new VertexAiEmbeddingModel(
                     endpoint,
@@ -383,8 +396,8 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     taskType,
                     titleMetadataKey,
                     outputDimensionality,
-                    autoTruncate
-                );
+                    autoTruncate,
+                    credentials);
         }
     }
 }

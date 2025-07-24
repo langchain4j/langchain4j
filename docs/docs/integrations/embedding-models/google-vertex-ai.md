@@ -102,6 +102,7 @@ EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
                                // for the text segment to identify its document origin
     .autoTruncate(false)       // false by default: truncates segments longer than 2,048 input tokens
     .outputDimensionality(512) // for models that support different output vector dimensions
+    .credentials(credentials)  // custom Google Cloud credentials    
     .build();
 ```
 
