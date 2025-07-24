@@ -355,7 +355,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         }
 
         /**
-         * Specifies the config to enable thinking.
+         * Specifies the config to enable <a href="https://ai.google.dev/gemini-api/docs/thinking">thinking</a>.
          *
          * @see #returnThinking(Boolean)
          * @see #sendThinking(Boolean)

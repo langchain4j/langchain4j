@@ -210,14 +210,16 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Enables thinking.
-         * See <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">this</a> for more details.
+         * Enables <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
          */
         public AnthropicStreamingChatModelBuilder thinkingType(String thinkingType) {
             this.thinkingType = thinkingType;
             return this;
         }
 
+        /**
+         * Configures <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
+         */
         public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
