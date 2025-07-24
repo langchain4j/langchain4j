@@ -176,7 +176,12 @@ public class ToolService {
             aggregateTokenUsage = TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
-        return new ToolServiceResult(intermediateResponses, chatResponse, toolExecutions, aggregateTokenUsage);
+        return ToolServiceResult.builder()
+                .intermediateResponses(intermediateResponses)
+                .finalResponse(chatResponse)
+                .toolExecutions(toolExecutions)
+                .aggregateTokenUsage(aggregateTokenUsage)
+                .build();
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

@@ -1,13 +1,13 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.List;
+import java.util.Objects;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
-import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Internal
 public class ToolServiceResult {
@@ -20,24 +20,21 @@ public class ToolServiceResult {
     /**
      * @since 1.2.0
      */
-    public ToolServiceResult(List<ChatResponse> intermediateResponses,
-                             ChatResponse finalResponse,
-                             List<ToolExecution> toolExecutions,
-                             TokenUsage aggregateTokenUsage) {
-        this.intermediateResponses = copy(intermediateResponses);
-        this.finalResponse = ensureNotNull(finalResponse, "finalResponse");
-        this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
-        this.aggregateTokenUsage = aggregateTokenUsage;
+    public ToolServiceResult(Builder builder) {
+        this.intermediateResponses = copy(builder.intermediateResponses);
+        this.finalResponse = ensureNotNull(builder.finalResponse, "finalResponse");
+        this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
+        this.aggregateTokenUsage = builder.aggregateTokenUsage;
     }
 
     /**
-     * @deprecated Please use {@link #ToolServiceResult(List, ChatResponse, List, TokenUsage)} instead
+     * @deprecated Please use {@link #ToolServiceResult(Builder)} instead
      */
     @Deprecated(since = "1.2.0")
     public ToolServiceResult(ChatResponse chatResponse,
                              List<ToolExecution> toolExecutions) {
         this.intermediateResponses = List.of();
-        this.finalResponse = ensureNotNull(chatResponse, "chatResponse"); // TODO recalculate tokens
+        this.finalResponse = ensureNotNull(chatResponse, "chatResponse");
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
     }
@@ -111,5 +108,41 @@ public class ToolServiceResult {
                 ", toolExecutions=" + toolExecutions +
                 ", aggregateTokenUsage=" + aggregateTokenUsage +
                 '}';
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private List<ChatResponse> intermediateResponses;
+        private ChatResponse finalResponse;
+        private List<ToolExecution> toolExecutions;
+        private TokenUsage aggregateTokenUsage;
+
+        public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
+            this.intermediateResponses = intermediateResponses;
+            return this;
+        }
+
+        public Builder finalResponse(ChatResponse finalResponse) {
+            this.finalResponse = finalResponse;
+            return this;
+        }
+
+        public Builder toolExecutions(List<ToolExecution> toolExecutions) {
+            this.toolExecutions = toolExecutions;
+            return this;
+        }
+
+        public Builder aggregateTokenUsage(TokenUsage aggregateTokenUsage) {
+            this.aggregateTokenUsage = aggregateTokenUsage;
+            return this;
+        }
+
+        public ToolServiceResult build() {
+            return new ToolServiceResult(this);
+        }
     }
 }

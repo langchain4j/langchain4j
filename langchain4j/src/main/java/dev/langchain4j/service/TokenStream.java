@@ -51,17 +51,8 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
-     * The provided consumer will be invoked if any tool is executed.
-     * <p>
-     * The invocation happens after the tool method has finished and before any other tool is executed.
-     *
-     * @param toolExecuteHandler lambda that consumes {@link ToolExecution}
-     * @return token stream instance used to configure or start stream processing
-     */
-    TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
-
-    /**
-     * The provided consumer will be invoked when a language model finishes streaming <i>intermediate</i> chat response.
+     * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,
+     * as opposed to the final response (see {@link #onCompleteResponse(Consumer)}).
      * Intermediate chat responses contain {@link ToolExecutionRequest}s, AI service will execute them
      * after returning from this consumer.
      *
@@ -76,7 +67,18 @@ public interface TokenStream {
     }
 
     /**
-     * The provided consumer will be invoked when a language model finishes streaming <i>final</i> chat response.
+     * The provided consumer will be invoked if any tool is executed.
+     * <p>
+     * The invocation happens after the tool method has finished and before any other tool is executed.
+     *
+     * @param toolExecuteHandler lambda that consumes {@link ToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     */
+    TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
+
+    /**
+     * The provided consumer will be invoked when a language model finishes streaming the <i>final</i> chat response,
+     * as opposed to the intermediate response (see {@link #onIntermediateResponse(Consumer)}).
      * <p>
      * Please note that {@link ChatResponse#tokenUsage()} contains aggregate token usage across all calls to the LLM.
      * It is a sum of {@link ChatResponse#tokenUsage()}s of all intermediate responses
