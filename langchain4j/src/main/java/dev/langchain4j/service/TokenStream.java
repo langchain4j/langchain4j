@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -16,13 +17,24 @@ import java.util.function.Consumer;
 public interface TokenStream {
 
     /**
-     * The provided consumer will be invoked every time a new partial response (usually a single token)
+     * The provided consumer will be invoked every time a new partial textual response (usually a single token)
      * from a language model is available.
      *
-     * @param partialResponseHandler lambda that will be invoked when a model generates a new partial response
+     * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
+
+    /**
+     * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
+     * from a language model is available.
+     *
+     * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
+     * @return token stream instance used to configure or start stream processing
+     */
+    default TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 
     /**
      * The provided consumer will be invoked if any {@link Content}s are retrieved using {@link RetrievalAugmentor}.

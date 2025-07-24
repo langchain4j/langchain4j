@@ -1,8 +1,10 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -83,9 +85,10 @@ class GeminiService {
             String modelName,
             GeminiGenerateContentRequest request,
             boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, handler);
+        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
@@ -102,11 +105,13 @@ class GeminiService {
             String apiKey,
             Object requestBody,
             boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String jsonBody = Json.toJson(requestBody);
         HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
 
-        GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
+        GeminiStreamingResponseBuilder responseBuilder =
+                new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
@@ -119,7 +124,13 @@ class GeminiService {
                 textAndTools.maybeText().ifPresent(text -> {
                     onPartialResponse(handler, text);
                 });
-
+                textAndTools.maybeThought().ifPresent(thought -> {
+                    if (Boolean.TRUE.equals(returnThinking)) {
+                        onPartialThinking(handler, thought);
+                    } else if (returnThinking == null) {
+                        onPartialResponse(handler, thought); // for backward compatibility
+                    }
+                });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
                     onCompleteToolCall(handler, completeToolCall);
@@ -129,12 +140,8 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                ChatResponse chatResponse = responseBuilder.build();
-                try {
-                    handler.onCompleteResponse(chatResponse);
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                }
+                ChatResponse completeResponse = responseBuilder.build();
+                onCompleteResponse(handler, completeResponse);
             }
 
             @Override
