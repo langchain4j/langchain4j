@@ -31,7 +31,6 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -643,29 +642,6 @@ class AnthropicChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_answer_with_thinking() {
-
-        // given
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(1024)
-                .maxTokens(1024 + 100)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        ChatResponse chatResponse = model.chat(userMessage);
-
-        // then
-        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
     }
 
     @Test

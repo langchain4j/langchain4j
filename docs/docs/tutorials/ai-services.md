@@ -522,6 +522,7 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
 tokenStream.onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+    .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> System.out.println(response))

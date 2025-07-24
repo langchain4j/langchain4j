@@ -263,9 +263,14 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * Control whether to enable thinking (if the model supports it)
-         * @param think Enable thinking
-         * @return builder
+         * Controls <a href="https://ollama.com/blog/thinking">thinking</a>.
+         * <pre>
+         * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
+         * <code>false</code>: the LLM does not think
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by <code>&lt;think&gt;</code> and <code>&lt;/think&gt;</code>, to the actual response
+         * </pre>
+         *
+         * @see OllamaChatModel.Builder#returnThinking(Boolean)
          */
         public Builder think(Boolean think) {
             this.think = think;

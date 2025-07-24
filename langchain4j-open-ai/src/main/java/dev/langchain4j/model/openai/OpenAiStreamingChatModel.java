@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -26,7 +28,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
@@ -51,8 +56,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiClient client;
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -111,6 +117,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -133,7 +140,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                                 .build())
                         .build();
 
-        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
+        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
@@ -142,17 +149,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
-
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
-                    ChatResponse chatResponse = openAiResponseBuilder.build();
-                    try {
-                        handler.onCompleteResponse(chatResponse);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    ChatResponse completeResponse = openAiResponseBuilder.build();
+                    onCompleteResponse(handler, completeResponse);
                 })
                 .onError(throwable -> {
                     RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
@@ -161,9 +163,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               ToolCallBuilder toolCallBuilder,
-                               StreamingChatResponseHandler handler) {
+    private void handle(ChatCompletionResponse partialResponse,
+                        ToolCallBuilder toolCallBuilder,
+                        StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
@@ -185,11 +187,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            try {
-                handler.onPartialResponse(content);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e));
-            }
+            onPartialResponse(handler, content);
+        }
+
+        String reasoningContent = delta.reasoningContent();
+        if (returnThinking && !isNullOrEmpty(reasoningContent)) {
+            onPartialThinking(handler, reasoningContent);
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -265,6 +268,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private Boolean returnThinking;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -403,6 +407,23 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public OpenAiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 

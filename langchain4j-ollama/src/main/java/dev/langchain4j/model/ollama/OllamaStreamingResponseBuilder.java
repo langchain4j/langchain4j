@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMetadataFrom;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toFinishReason;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -17,12 +18,23 @@ import dev.langchain4j.model.output.TokenUsage;
 class OllamaStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+
+    private final boolean returnThinking;
+    private final StringBuffer thinkingBuilder;
+
     private final ToolCallBuilder toolCallBuilder;
+
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
 
-    public OllamaStreamingResponseBuilder(ToolCallBuilder toolCallBuilder) {
+    OllamaStreamingResponseBuilder(ToolCallBuilder toolCallBuilder, boolean returnThinking) {
         this.toolCallBuilder = toolCallBuilder;
+        this.returnThinking = returnThinking;
+        if (returnThinking) {
+            this.thinkingBuilder = new StringBuffer();
+        } else {
+            this.thinkingBuilder = null;
+        }
     }
 
     void append(OllamaChatResponse partialResponse) {
@@ -47,15 +59,26 @@ class OllamaStreamingResponseBuilder {
         if (content != null) {
             contentBuilder.append(content);
         }
+
+        String thinking = message.getThinking();
+        if (returnThinking && thinking != null) {
+            thinkingBuilder.append(thinking);
+        }
     }
 
     ChatResponse build(OllamaChatResponse ollamaChatResponse) {
         String text = contentBuilder.toString();
 
+        String thinking = null;
+        if (returnThinking) {
+            thinking = thinkingBuilder.toString();
+        }
+
         if (toolCallBuilder.hasRequests()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
-                            .text(text.isEmpty() ? null : text)
+                            .text(isNullOrEmpty(text) ? null : text)
+                            .thinking(isNullOrEmpty(thinking) ? null : thinking)
                             .toolExecutionRequests(toolCallBuilder.allRequests())
                             .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
@@ -64,7 +87,8 @@ class OllamaStreamingResponseBuilder {
 
         return ChatResponse.builder()
                 .aiMessage(AiMessage.builder()
-                        .text(text.isEmpty() ? null : text)
+                        .text(isNullOrEmpty(text) ? null : text)
+                        .thinking(isNullOrEmpty(thinking) ? null : thinking)
                         .build())
                 .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
                 .build();
