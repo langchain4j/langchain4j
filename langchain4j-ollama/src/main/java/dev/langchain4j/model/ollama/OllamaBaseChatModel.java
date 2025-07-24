@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
@@ -215,8 +216,6 @@ abstract class OllamaBaseChatModel {
          * TODO
          * TODO true/false/null
          *
-         * @param think
-         * @return
          * @see #returnThinking(Boolean)
          */
         public B think(Boolean think) {
@@ -225,10 +224,14 @@ abstract class OllamaBaseChatModel {
         }
 
         /**
-         * TODO
+         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
          *
-         * @param returnThinking
-         * @return
          * @see #think(Boolean)
          */
         public B returnThinking(Boolean returnThinking) {

@@ -11,23 +11,26 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 public interface StreamingChatResponseHandler {
 
     /**
-     * Invoked each time the model generates a partial text response, usually a single token.
+     * Invoked each time the model generates a partial textual response, usually a single token.
      * <p>
      * Please note that some LLM providers do not stream individual tokens, but send responses in batches.
      * In such cases, this callback may receive multiple tokens at once.
      *
-     * @param partialResponse A partial response, usually a single token.
+     * @param partialResponse A partial textual response, usually a single token.
      */
     void onPartialResponse(String partialResponse);
 
     /**
-     * TODO
+     * Invoked each time the model generates a partial thinking/reasoning text, usually a single token.
+     * <p>
+     * Please note that some LLM providers do not stream individual tokens, but send thinking tokens in batches.
+     * In such cases, this callback may receive multiple tokens at once.
      *
-     * @param partialThinking TODO
+     * @param partialThinking A partial thinking text, usually a single token.
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinking(PartialThinking partialThinking) { // TODO names, order
+    default void onPartialThinking(PartialThinking partialThinking) {
     }
 
     /**

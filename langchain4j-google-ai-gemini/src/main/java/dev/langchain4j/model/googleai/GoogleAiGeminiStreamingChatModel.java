@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -293,10 +294,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * TODO
+         * Specifies the config to enable thinking.
          *
-         * @param thinkingConfig
-         * @return
          * @see #returnThinking(Boolean)
          * @see #sendThinking(Boolean)
          */
@@ -306,11 +305,17 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * TODO
+         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         *
          * TODO null (backward)
          *
-         * @param returnThinking
-         * @return
          * @see #thinkingConfig(GeminiThinkingConfig)
          * @see #sendThinking(Boolean)
          */
@@ -320,10 +325,12 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * TODO
+         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
          *
-         * @param sendThinking
-         * @return
          * @see #thinkingConfig(GeminiThinkingConfig)
          * @see #returnThinking(Boolean)
          */

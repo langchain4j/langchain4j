@@ -64,23 +64,36 @@ String response = chatResponse.aiMessage().text();
 
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .httpClientBuilder(...)
+    .defaultRequestParameters(...)
     .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .baseUrl(...)
     .modelName("gemini-1.5-flash")
+    .maxRetries(...)
     .temperature(1.0)
     .topP(0.95)
     .topK(64)
     .seed(42)
+    .frequencyPenalty(...)
+    .presencePenalty(...)
     .maxOutputTokens(8192)
     .timeout(Duration.ofSeconds(60))
-    .candidateCount(1)
     .responseFormat(ResponseFormat.JSON) // or .responseFormat(ResponseFormat.builder()...build()) 
     .stopSequences(List.of(...))
     .toolConfig(GeminiFunctionCallingConfig.builder()...build()) // or below
     .toolConfig(GeminiMode.ANY, List.of("fnOne", "fnTwo"))
     .allowCodeExecution(true)
-    .includeCodeExecution(output)
+    .includeCodeExecution(true)
     .logRequestsAndResponses(true)
     .safetySettings(List<GeminiSafetySetting> or Map<GeminiHarmCategory, GeminiHarmBlockThreshold>)
+    .thinkingConfig(...)
+    .returnThinking(true)
+    .sendThinking(true)
+    .responseLogprobs(...)
+    .logprobs(...)
+    .enableEnhancedCivicAnswers(...)
+    .listeners(...)
+    .supportedCapabilities(...)
     .build();
 ```
 ### Thinking Configuration
@@ -89,6 +102,8 @@ The `GeminiThinkingConfig` class supports:
 
 - `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
 - `thinkingBudget`: Integer specifying the thinking budget in tokens (optional, set to `null` to disable thinking).
+
+TODO
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.

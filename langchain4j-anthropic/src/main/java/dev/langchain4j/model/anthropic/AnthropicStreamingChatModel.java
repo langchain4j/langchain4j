@@ -13,6 +13,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -223,9 +224,18 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * TODO
-         * @param returnThinking
-         * @return
+         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         *
+         * @see #thinkingType(String)
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #sendThinking(Boolean)
          */
         public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
@@ -233,9 +243,15 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * TODO
-         * @param sendThinking
-         * @return
+         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Enabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #thinkingType(String)
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #returnThinking(Boolean)
          */
         public AnthropicStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;

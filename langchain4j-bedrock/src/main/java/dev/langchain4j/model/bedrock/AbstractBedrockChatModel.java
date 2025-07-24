@@ -473,9 +473,16 @@ abstract class AbstractBedrockChatModel {
         }
 
         /**
-         * TODO
-         * @param returnThinking
-         * @return
+         * Specifies whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only determines whether to parse and return the thinking text inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned (inside the {@link AiMessage#attributes()}).
+         *
+         * @see #sendThinking(Boolean)
          */
         public T returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
@@ -483,9 +490,13 @@ abstract class AbstractBedrockChatModel {
         }
 
         /**
-         * TODO
-         * @param sendThinking
-         * @return
+         * Specifies whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Enabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the request to the LLM provider.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #returnThinking(Boolean)
          */
         public T sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;

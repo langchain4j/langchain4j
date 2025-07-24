@@ -31,6 +31,7 @@ System.out.println(answer);
 ### Customizing AnthropicChatModel
 ```java
 AnthropicChatModel model = AnthropicChatModel.builder()
+    .httpClientBuilder(...)
     .baseUrl(...)
     .apiKey(...)
     .version(...)
@@ -41,14 +42,20 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .topK(...)
     .maxTokens(...)
     .stopSequences(...)
+    .toolSpecifications(...)
+    .toolChoice(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
+    .returnThinking(...)
+    .sendThinking(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
     .logResponses(...)
+    .listeners(...)
+    .defaultRequestParameters(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
@@ -106,27 +113,24 @@ More info on caching can be found [here](https://docs.anthropic.com/en/docs/buil
 
 ## Thinking
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` have a **_limited_** support
-for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
-It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
+`AnthropicChatModel` and `AnthropicStreamingChatModel` support
+[thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+It can be enabled by setting the `thinkingType`, `thinkingBudgetTokens`, `returnThinking` and `sendThinking` parameters:
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
         .modelName(CLAUDE_3_7_SONNET_20250219)
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
+        .returnThinking(true)
+        .sendThinking(true)
         .maxTokens(1024 + 100)
         .logRequests(true)
         .logResponses(true)
         .build();
 ```
 
-What is currently not supported: TODO
-- It not possible to get the thinking content from the LC4j API. It is only visible in logs.
-- Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
-- etc
-
-More info on thinking can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+TODO
 
 ## Quarkus
 
