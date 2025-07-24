@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiChatResponseMetadataTest {
 
     @Test
-    public void should_modify_specific_properties_via_builder() {
+    void should_modify_specific_properties_via_builder() {
         // given
         OpenAiTokenUsage tokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(10)
@@ -47,7 +47,7 @@ class OpenAiChatResponseMetadataTest {
     }
 
     @Test
-    public void should_modify_parent_properties_via_builder() {
+    void should_modify_parent_properties_via_builder() {
         // given
         OpenAiTokenUsage originalTokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(10)
@@ -93,7 +93,7 @@ class OpenAiChatResponseMetadataTest {
     }
 
     @Test
-    public void should_modify_all_properties_via_builder() {
+    void should_modify_all_properties_via_builder() {
         // given
         OpenAiTokenUsage originalTokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(1)

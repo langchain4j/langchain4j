@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class McpLogMessageTest {
+class McpLogMessageTest {
 
     @Test
-    public void testLogMessageWithoutLogger() {
+    void logMessageWithoutLogger() {
         String json =
                 """
                 {

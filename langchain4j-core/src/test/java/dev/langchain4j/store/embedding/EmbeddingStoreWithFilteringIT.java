@@ -57,7 +57,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         embeddingStore().addAll(embeddings, segments);
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(embeddings.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(embeddings));
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
@@ -69,7 +69,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
 
         // then
-        assertThat(matches).hasSize(matchingMetadatas.size());
+        assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
         matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
     }
@@ -1300,7 +1300,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         embeddingStore().addAll(embeddings, segments);
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(embeddings.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(embeddings));
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
@@ -1312,7 +1312,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
 
         // then
-        assertThat(matches).hasSize(matchingMetadatas.size());
+        assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
         matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
     }

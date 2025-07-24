@@ -17,7 +17,7 @@ import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.DI
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
@@ -509,8 +509,8 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
+        Exception exception = assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
+                model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println))).actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");

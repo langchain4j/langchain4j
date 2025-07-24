@@ -143,7 +143,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.age).isEqualTo(0);
-        assertThat(person.height).isEqualTo(null);
+        assertThat(person.height).isNull();
         assertThat(person.married).isFalse();
         assertThat(person.map).isNullOrEmpty();
         assertThat(person.list).isNullOrEmpty();
@@ -1670,7 +1670,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         List<String> names = listOfStringsExtractor.extractPeopleNames(text);
 
         // then
-        assertThat(names.size()).isEqualTo(2);
+        assertThat(names).hasSize(2);
         assertThat(names.get(0)).contains("Klaus");
         assertThat(names.get(1)).contains("Franny");
 
@@ -1718,9 +1718,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         Set<String> names = setOfStringsExtractor.extractSetOfPeopleNames(text);
 
         // then
-        assertThat(names.size()).isEqualTo(2);
-        assertThat(names).contains("Klaus");
-        assertThat(names).contains("Franny");
+        assertThat(names)
+                .hasSize(2)
+                .contains("Klaus")
+                .contains("Franny");
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
@@ -1770,16 +1771,15 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         Set<PojoSetExtractor.Person> people = pojoSetExtractor.extractSetOfPojoFrom(text);
 
         // then
-        assertThat(people).hasSize(2);
-
-        assertThat(people).anyMatch(person ->
+        assertThat(people)
+                .hasSize(2)
+                .anyMatch(person ->
                 person.name.equals("Klaus") &&
                         person.age == 37 &&
                         person.height.equals(1.78) &&
                         !person.married
-        );
-
-        assertThat(people).anyMatch(person ->
+        )
+                .anyMatch(person ->
                 person.name.equals("Franny") &&
                         person.age == 35 &&
                         person.height.equals(1.65) &&

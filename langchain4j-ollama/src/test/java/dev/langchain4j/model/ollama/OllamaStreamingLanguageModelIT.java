@@ -14,7 +14,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 

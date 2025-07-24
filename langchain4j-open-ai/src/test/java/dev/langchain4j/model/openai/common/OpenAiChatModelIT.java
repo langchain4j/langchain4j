@@ -15,7 +15,6 @@ import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -204,7 +203,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         }
 
         // then
-        Assertions.assertThat(mockHttpClient.request().body())
+        assertThat(mockHttpClient.request().body())
                 .containsIgnoringWhitespaces("\"seed\": 12345")
                 .containsIgnoringWhitespaces("\"user\": \"Klaus\"")
                 .containsIgnoringWhitespaces("\"store\": true")
@@ -319,7 +318,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         }
 
         // then
-        Assertions.assertThat(mockHttpClient.request().headers())
+        assertThat(mockHttpClient.request().headers())
                 .containsEntry("key1", List.of("value1"))
                 .containsEntry("key2", List.of("value2"));
     }

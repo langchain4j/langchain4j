@@ -26,7 +26,7 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServer
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class MultipleMcpToolsIT {
+class MultipleMcpToolsIT {
 
     static McpClient mcpBaseClient;
     static McpClient mcpNumericClient;
@@ -76,14 +76,14 @@ public class MultipleMcpToolsIT {
     }
 
     @Test
-    public void duplicatedTool() {
+    void duplicatedTool() {
         assertThatThrownBy(() -> McpToolProvider.builder().mcpClients(mcpBaseClient, mcpNumericClient).build().provideTools(null))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("echoInteger");
     }
 
     @Test
-    public void filterTools() {
+    void filterTools() {
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
                 .filter((mcpClient, tool) -> !tool.name().startsWith("echo"))
@@ -96,7 +96,7 @@ public class MultipleMcpToolsIT {
     }
 
     @Test
-    public void filterToolsByName() {
+    void filterToolsByName() {
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
                 .filterToolNames("echoString", "echoLong")
@@ -109,7 +109,7 @@ public class MultipleMcpToolsIT {
     }
 
     @Test
-    public void useMultipleFilters() {
+    void useMultipleFilters() {
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
                 .filterToolNames("echoInteger")
@@ -131,7 +131,7 @@ public class MultipleMcpToolsIT {
     }
 
     @Test
-    public void filterDuplicatedTools() {
+    void filterDuplicatedTools() {
         // Filter out the base-mcp version of echoInteger
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
@@ -152,7 +152,7 @@ public class MultipleMcpToolsIT {
     }
 
     @Test
-    public void dynamicToolsUpdate() {
+    void dynamicToolsUpdate() {
         McpToolProvider toolProvider = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient)
                 .filterToolNames("echoInteger")

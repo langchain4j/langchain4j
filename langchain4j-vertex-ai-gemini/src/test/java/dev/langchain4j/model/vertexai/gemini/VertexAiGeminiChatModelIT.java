@@ -7,7 +7,7 @@ import static dev.langchain4j.model.vertexai.gemini.HarmCategory.*;
 import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
 import com.google.cloud.vertexai.VertexAI;
@@ -393,8 +393,9 @@ class VertexAiGeminiChatModelIT {
         String inventoryStock =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(","));
 
-        assertThat(inventoryStock).containsIgnoringCase("ABC123");
-        assertThat(inventoryStock).containsIgnoringCase("XYZ789");
+        assertThat(inventoryStock)
+                .containsIgnoringCase("ABC123")
+                .containsIgnoringCase("XYZ789");
 
         // when
         allMessages.add(messageResponse.aiMessage());
@@ -571,23 +572,25 @@ class VertexAiGeminiChatModelIT {
         String response = assistant.chat("What is the status of my payment transactions 001 and 002?");
 
         // then
-        assertThat(response).contains("001");
-        assertThat(response).contains("002");
-        assertThat(response).contains("pending");
-        assertThat(response).contains("approved");
-        assertThat(response).doesNotContain("003");
-        assertThat(response).doesNotContain("rejected");
+        assertThat(response)
+                .contains("001")
+                .contains("002")
+                .contains("pending")
+                .contains("approved")
+                .doesNotContain("003")
+                .doesNotContain("rejected");
 
         // when
         response = assistant.chat("What is the status of transactions 003?");
 
         // then
-        assertThat(response).doesNotContain("001");
-        assertThat(response).doesNotContain("002");
-        assertThat(response).doesNotContain("pending");
-        assertThat(response).doesNotContain("approved");
-        assertThat(response).contains("003");
-        assertThat(response).contains("rejected");
+        assertThat(response)
+                .doesNotContain("001")
+                .doesNotContain("002")
+                .doesNotContain("pending")
+                .doesNotContain("approved")
+                .contains("003")
+                .contains("rejected");
     }
 
     @ParameterizedTest
@@ -658,8 +661,8 @@ class VertexAiGeminiChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"));
+        Exception exception = assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
+                model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!")).actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -935,9 +938,10 @@ class VertexAiGeminiChatModelIT {
 
         // then
         String textResponse = response.aiMessage().text();
-        assertThat(textResponse).contains("Berlin");
-        assertThat(textResponse).contains("Paris");
-        assertThat(textResponse).contains("Rome");
+        assertThat(textResponse)
+                .contains("Berlin")
+                .contains("Paris")
+                .contains("Rome");
     }
 
     @Test

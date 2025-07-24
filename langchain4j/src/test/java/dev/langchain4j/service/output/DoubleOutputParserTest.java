@@ -72,7 +72,7 @@ class DoubleOutputParserTest {
     }
 
     @Test
-    void test_formatInstructions() {
+    void format_instructions() {
         // when
         String instructions = parser.formatInstructions();
 

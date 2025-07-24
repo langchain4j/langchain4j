@@ -649,7 +649,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                     }
                     previousToolCall = toolCall;
                 }
-                assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
+                assertThat(arguments).hasToString(toolExecutionRequest.arguments());
             }
 
             assertThat(metadata.completeToolCalls()).hasSize(1);
@@ -939,7 +939,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         }
                         previousToolCall = toolCall;
                     }
-                    assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
+                    assertThat(arguments).hasToString(toolExecutionRequests.get(i).arguments());
                 }
             }
 
