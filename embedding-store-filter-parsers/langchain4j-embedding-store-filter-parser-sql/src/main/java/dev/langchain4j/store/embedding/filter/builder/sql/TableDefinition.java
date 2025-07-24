@@ -1,12 +1,12 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
-import dev.langchain4j.Experimental;
-
-import java.util.ArrayList;
-import java.util.Collection;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
+import dev.langchain4j.Experimental;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Objects;
 
 @Experimental
 public class TableDefinition {
@@ -42,17 +42,9 @@ public class TableDefinition {
         if (!(o instanceof TableDefinition)) return false;
         final TableDefinition other = (TableDefinition) o;
         if (!other.canEqual((Object) this)) return false;
-        final Object this$name = this.name;
-        final Object other$name = other.name;
-        if (this$name == null ? other$name != null : !this$name.equals(other$name)) return false;
-        final Object this$description = this.description;
-        final Object other$description = other.description;
-        if (this$description == null ? other$description != null : !this$description.equals(other$description))
-            return false;
-        final Object this$columns = this.columns;
-        final Object other$columns = other.columns;
-        if (this$columns == null ? other$columns != null : !this$columns.equals(other$columns)) return false;
-        return true;
+        return Objects.equals(name, other.name)
+                && Objects.equals(description, other.description)
+                && Objects.equals(columns, other.columns);
     }
 
     protected boolean canEqual(final Object other) {
@@ -72,7 +64,8 @@ public class TableDefinition {
     }
 
     public String toString() {
-        return "TableDefinition(name=" + this.name + ", description=" + this.description + ", columns=" + this.columns + ")";
+        return "TableDefinition(name=" + this.name + ", description=" + this.description + ", columns=" + this.columns
+                + ")";
     }
 
     public static class Builder {
