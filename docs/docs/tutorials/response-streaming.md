@@ -24,6 +24,8 @@ public interface StreamingChatResponseHandler {
 
     void onPartialResponse(String partialResponse);
 
+    default void onPartialThinking(PartialThinking partialThinking) {}
+
     default void onPartialToolCall(PartialToolCall partialToolCall) {}
 
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
@@ -36,8 +38,10 @@ public interface StreamingChatResponseHandler {
 
 By implementing `StreamingChatResponseHandler`, you can define actions for the following events:
 - When the next partial textual response is generated: `onPartialResponse(String)` is invoked.
-Partial response can consist of a single or more tokens.
+Depending on the LLM provider, partial response text can consist of a single or more tokens.
 For instance, you can send the token directly to the UI as soon as it becomes available.
+- When the next partial thinking/reasoning text is generated: `onPartialThinking(PartialThinking)` is invoked.
+Depending on the LLM provider, partial thinking text can consist of a single or more tokens.
 - When the next [partial tool call](/tutorials/tools#using-streaming-chat-model) is generated: `onPartialToolCall(PartialToolCall)` is invoked.
 - When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
@@ -58,6 +62,11 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
     @Override
     public void onPartialResponse(String partialResponse) {
         System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onPartialThinking(PartialThinking partialThinking) {
+        System.out.println("onPartialThinking: " + partialThinking);
     }
 
     @Override
