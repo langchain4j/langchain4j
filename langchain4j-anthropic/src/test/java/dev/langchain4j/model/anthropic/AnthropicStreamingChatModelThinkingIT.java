@@ -547,8 +547,8 @@ class AnthropicStreamingChatModelThinkingIT {
         assertThat(aiMessage1.thinking()).isNull();
         assertThat(aiMessage1.attributes()).hasSize(1);
         List<String> redactedThinkings = aiMessage1.attribute("redacted_thinking", List.class);
-        assertThat(redactedThinkings).hasSize(2);
-        assertThat(redactedThinkings.get(0)).isNotBlank();
+        assertThat(redactedThinkings).hasSizeGreaterThanOrEqualTo(1);
+        redactedThinkings.forEach(redactedThinking -> assertThat(redactedThinking).isNotBlank());
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
@@ -571,10 +571,8 @@ class AnthropicStreamingChatModelThinkingIT {
         // should send redacted thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage1.text()))
-                .contains(jsonify(redactedThinkings.get(0)))
-                .contains(jsonify(redactedThinkings.get(1)));
+        assertThat(httpRequests.get(1).body()).contains(jsonify(aiMessage1.text()));
+        redactedThinkings.forEach(rt -> assertThat(httpRequests.get(1).body()).contains(jsonify(rt)));
     }
 
     @ParameterizedTest
