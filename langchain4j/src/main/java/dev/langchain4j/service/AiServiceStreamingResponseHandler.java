@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import dev.langchain4j.service.tool.ToolServiceResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +115,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
+            boolean immediateToolReturn = true;
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 String toolName = toolExecutionRequest.name();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
@@ -129,6 +131,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             .build();
                     toolExecutionHandler.accept(toolExecution);
                 }
+
+                immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
+            }
+
+            if (immediateToolReturn) {
+                completeResponseHandler.accept(finalResponse(completeResponse, null));
+                return;
             }
 
             ChatRequest chatRequest = ChatRequest.builder()
@@ -155,13 +164,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
             if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(aiMessage)
-                        .metadata(completeResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        completeResponse.metadata().tokenUsage()))
-                                .build())
-                        .build();
+                ChatResponse finalChatResponse = finalResponse(completeResponse, aiMessage);
 
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
@@ -193,6 +196,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
+    }
+
+    private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(completeResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsage.add(
+                                completeResponse.metadata().tokenUsage()))
+                        .build())
+                .build();
     }
 
     private ChatMemory getMemory() {

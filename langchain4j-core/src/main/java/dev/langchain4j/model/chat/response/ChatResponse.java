@@ -13,7 +13,7 @@ public class ChatResponse {
     private final ChatResponseMetadata metadata;
 
     protected ChatResponse(Builder builder) {
-        this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
+        this.aiMessage = builder.aiMessage;
 
         ChatResponseMetadata.Builder<?> metadataBuilder = ChatResponseMetadata.builder();
         if (builder.id != null) {
