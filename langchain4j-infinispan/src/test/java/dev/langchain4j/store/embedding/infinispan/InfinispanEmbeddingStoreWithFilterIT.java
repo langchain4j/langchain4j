@@ -8,14 +8,14 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.commons.util.Version;
 import org.infinispan.server.test.core.InfinispanContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
-class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
+class InfinispanEmbeddingStoreWithFilterIT extends EmbeddingStoreWithFilteringIT {
 
     static InfinispanContainer infinispan = new InfinispanContainer(IMAGE_BASENAME + ":" + Version.getVersion());
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -47,6 +47,7 @@ class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
                 .cacheName("my-cache")
                 .dimension(embeddingModel.dimension())
                 .infinispanConfigBuilder(builder)
+                .distance(100)
                 .build();
         embeddingStoreInf.clearCache();
         embeddingStore = embeddingStoreInf;
