@@ -20,10 +20,18 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import com.azure.ai.openai.OpenAIAsyncClient;
+import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
+import com.azure.ai.openai.models.ChatCompletionStreamOptions;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
@@ -33,7 +41,6 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -49,14 +56,10 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import dev.langchain4j.model.output.TokenUsage;
 import reactor.core.publisher.Flux;
 
 /**
@@ -208,6 +211,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
                 .setSeed(seed);
+        // if a token count estimator was provided, do not request to include the usage
+        if (tokenCountEstimator == null) {
+            ChatCompletionsOptionsAccessHelper.setStream(options, true);
+            ChatCompletionsOptionsAccessHelper.setStreamOptions(options,
+                    new ChatCompletionStreamOptions().setIncludeUsage(true));
+        }
 
         if (!parameters.toolSpecifications().isEmpty()) {
             options.setTools(toToolDefinitions(parameters.toolSpecifications()));
@@ -228,6 +237,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModelName = new AtomicReference<>();
+        AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
 
         chatCompletionsStream.subscribe(
                 chatCompletion -> {
@@ -240,6 +250,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     if (isNotNullOrBlank(chatCompletion.getModel())) {
                         responseModelName.set(chatCompletion.getModel());
                     }
+                    if (chatCompletion.getUsage() != null) {
+                        tokenUsage.set(new TokenUsage(
+                                chatCompletion.getUsage().getPromptTokens(),
+                                chatCompletion.getUsage().getCompletionTokens()));
+                    }
                 },
                 error -> {
                     RuntimeException mappedError = AzureOpenAiExceptionMapper.INSTANCE.mapException(error);
@@ -250,7 +265,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
-                    Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
+                    Response<AiMessage> response = responseBuilder.build(tokenCountEstimator, tokenUsage.get());
 
                     ChatResponse chatResponse = ChatResponse.builder()
                             .aiMessage(response.content())

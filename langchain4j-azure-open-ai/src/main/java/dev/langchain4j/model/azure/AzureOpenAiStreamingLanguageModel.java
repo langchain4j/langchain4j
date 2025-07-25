@@ -8,6 +8,8 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncCli
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.implementation.accesshelpers.CompletionsOptionsAccessHelper;
+import com.azure.ai.openai.models.ChatCompletionStreamOptions;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
@@ -21,10 +23,12 @@ import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -139,17 +143,28 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setStop(stop)
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
+        //if no token estimator provided, then request token usage
+        if (tokenCountEstimator == null) {
+            CompletionsOptionsAccessHelper.setStream(options, true);
+            CompletionsOptionsAccessHelper.setStreamOptions(options,
+                    new ChatCompletionStreamOptions().setIncludeUsage(true));
+        }
 
         Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
         InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, null);
-
+        AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
                 responseBuilder.append(completions);
                 handle(completions, handler);
+                if (completions.getUsage() != null) {
+                    tokenUsage.set(new TokenUsage(
+                            completions.getUsage().getCompletionTokens(),
+                            completions.getUsage().getPromptTokens()));
+                }
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
+            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator, tokenUsage.get());
 
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));

@@ -89,7 +89,7 @@ class InternalAzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
+    Response<AiMessage> build(TokenCountEstimator tokenCountEstimator, TokenUsage tokenUsage) {
 
         String content = contentBuilder.toString();
 
@@ -103,7 +103,7 @@ class InternalAzureOpenAiStreamingResponseBuilder {
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
 
-        TokenUsage tokenUsage = null;
+        // for backward compatibility, if token count estimator is provided, compute token usage based on it
         if (tokenCountEstimator != null) {
             int outputTokenCount = tokenCountEstimator.estimateTokenCountInMessage(aiMessage);
             tokenUsage = new TokenUsage(inputTokenCount, outputTokenCount);
