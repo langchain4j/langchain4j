@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
@@ -12,21 +16,16 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Given a natural language {@link Query}, this class creates a suitable {@link Filter} using a language model.
  * <br>
  * This approach is also known as
- * <a href="https://python.langchain.com/docs/modules/data_connection/retrievers/self_query">self-querying</a>.
+ * <a href="https://python.langchain.com/docs/how_to/self_query/">self-querying</a>.
  * <br>
  * It is useful for improving retrieval from an {@link EmbeddingStore} by narrowing down the search space.
  * <br>
@@ -85,23 +84,21 @@ public class LanguageModelSqlFilterBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(LanguageModelSqlFilterBuilder.class);
 
-    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "### Instructions:\n" +
-                    "Your task is to convert a question into a SQL query, given a Postgres database schema.\n" +
-                    "Adhere to these rules:\n" +
-                    "- **Deliberately go through the question and database schema word by word** to appropriately answer the question\n" +
-                    "- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.\n" +
-                    "- When creating a ratio, always cast the numerator as float\n" +
-                    "\n" +
-                    "### Input:\n" +
-                    "Generate a SQL query that answers the question `{{query}}`.\n" +
-                    "This query will run on a database whose schema is represented in this string:\n" +
-                    "{{create_table_statement}}\n" +
-                    "\n" +
-                    "### Response:\n" +
-                    "Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:\n" +
-                    "```sql"
-    );
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("### Instructions:\n"
+            + "Your task is to convert a question into a SQL query, given a Postgres database schema.\n"
+            + "Adhere to these rules:\n"
+            + "- **Deliberately go through the question and database schema word by word** to appropriately answer the question\n"
+            + "- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.\n"
+            + "- When creating a ratio, always cast the numerator as float\n"
+            + "\n"
+            + "### Input:\n"
+            + "Generate a SQL query that answers the question `{{query}}`.\n"
+            + "This query will run on a database whose schema is represented in this string:\n"
+            + "{{create_table_statement}}\n"
+            + "\n"
+            + "### Response:\n"
+            + "Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:\n"
+            + "```sql");
 
     protected final ChatModel chatModel;
     protected final TableDefinition tableDefinition;
@@ -109,15 +106,15 @@ public class LanguageModelSqlFilterBuilder {
     protected final PromptTemplate promptTemplate;
     protected final SqlFilterParser sqlFilterParser;
 
-    public LanguageModelSqlFilterBuilder(ChatModel chatModel,
-                                         TableDefinition tableDefinition) {
+    public LanguageModelSqlFilterBuilder(ChatModel chatModel, TableDefinition tableDefinition) {
         this(chatModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
     }
 
-    private LanguageModelSqlFilterBuilder(ChatModel chatModel,
-                                          TableDefinition tableDefinition,
-                                          PromptTemplate promptTemplate,
-                                          SqlFilterParser sqlFilterParser) {
+    private LanguageModelSqlFilterBuilder(
+            ChatModel chatModel,
+            TableDefinition tableDefinition,
+            PromptTemplate promptTemplate,
+            SqlFilterParser sqlFilterParser) {
         this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.tableDefinition = ensureNotNull(tableDefinition, "tableDefinition");
         this.createTableStatement = format(tableDefinition);
@@ -237,8 +234,7 @@ public class LanguageModelSqlFilterBuilder {
         private PromptTemplate promptTemplate;
         private SqlFilterParser sqlFilterParser;
 
-        LanguageModelSqlFilterBuilderBuilder() {
-        }
+        LanguageModelSqlFilterBuilderBuilder() {}
 
         public LanguageModelSqlFilterBuilderBuilder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
@@ -261,11 +257,14 @@ public class LanguageModelSqlFilterBuilder {
         }
 
         public LanguageModelSqlFilterBuilder build() {
-            return new LanguageModelSqlFilterBuilder(this.chatModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
+            return new LanguageModelSqlFilterBuilder(
+                    this.chatModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
         }
 
         public String toString() {
-            return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatModel=" + this.chatModel + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate + ", sqlFilterParser=" + this.sqlFilterParser + ")";
+            return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatModel=" + this.chatModel
+                    + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate
+                    + ", sqlFilterParser=" + this.sqlFilterParser + ")";
         }
     }
 }
