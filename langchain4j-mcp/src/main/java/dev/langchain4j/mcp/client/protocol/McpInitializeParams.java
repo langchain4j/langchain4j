@@ -1,8 +1,10 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 
-public class InitializeParams {
+@Internal
+public class McpInitializeParams {
 
     private String protocolVersion;
     private Capabilities capabilities;

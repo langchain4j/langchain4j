@@ -1,10 +1,16 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -14,14 +20,17 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamResponseHandler;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlockDelta;
 
 /**
  * BedrockStreamingChatModel uses the Bedrock ConverseAPI.
@@ -33,6 +42,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
 
     private final BedrockRuntimeAsyncClient client;
+    private final boolean logResponses;
 
     public BedrockStreamingChatModel(String modelId) {
         this(builder().modelId(modelId));
@@ -43,6 +53,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
+        this.logResponses = getOrDefault(builder.logResponses, false);
     }
 
     @Override
@@ -51,42 +62,83 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
-        ConverseResponseFromStreamBuilder responseBuilder = ConverseResponseFromStreamBuilder.builder();
+        ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
+        ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+        AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                        .onContentBlockStart(responseBuilder::append)
-                        .onContentBlockDelta(chunk -> {
-                            if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-                                try {
-                                    handler.onPartialResponse(chunk.delta().text());
-                                } catch (Exception e) {
-                                    withLoggingExceptions(() -> handler.onError(e));
+                        .onMessageStart(event -> {
+                            if (logResponses) {
+                                log.debug("onMessageStart: {}", event);
+                            }
+                            responseBuilder.append(event);
+                        })
+                        .onContentBlockStart(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockStart: {}", event);
+                            }
+                            if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
+                                toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                                toolCallBuilder.updateId(event.start().toolUse().toolUseId());
+                                toolCallBuilder.updateName(event.start().toolUse().name());
+                            }
+                            responseBuilder.append(event);
+                        })
+                        .onContentBlockDelta(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockDelta: {}", event);
+                            }
+                            ContentBlockDelta delta = event.delta();
+                            currentContentType.set(delta.type());
+                            if (currentContentType.get() == ContentBlockDelta.Type.TEXT) {
+                                onPartialResponse(handler, delta.text());
+                            } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
+                                ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
+                                String thinking = reasoningContent.text();
+                                if (isNotNullOrEmpty(thinking)) {
+                                    onPartialThinking(handler, thinking);
+                                }
+                            } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                String input = delta.toolUse().input();
+                                if (isNotNullOrEmpty(input)) {
+                                    toolCallBuilder.appendArguments(input);
                                 }
                             }
-                            responseBuilder.append(chunk);
+                            responseBuilder.append(delta);
                         })
-                        .onContentBlockStop(responseBuilder::append)
-                        .onMetadata(chunk -> {
-                            responseBuilder.append(chunk);
-                            ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
-                            try {
-                                handler.onCompleteResponse(response);
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
+                        .onContentBlockStop(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockStop: {}", event);
                             }
+                            if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                            }
+                            responseBuilder.append(event);
                         })
-                        .onMessageStart(responseBuilder::append)
-                        .onMessageStop(responseBuilder::append)
+                        .onMessageStop(event -> {
+                            if (logResponses) {
+                                log.debug("onMessageStop: {}", event);
+                            }
+                            responseBuilder.append(event);
+                        })
+                        .onMetadata(event -> {
+                            if (logResponses) {
+                                log.debug("onMetadata: {}", event);
+                            }
+                            responseBuilder.append(event);
+                            ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
+                            onCompleteResponse(handler, response);
+                        })
                         .build())
                 .build();
+            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler)
+                    .exceptionally(ex->{
+                        RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
+                        withLoggingExceptions(() -> handler.onError(mappedError));
+                        return null;
+                    });
 
-        try {
-            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler).get();
-        } catch (Exception e) {
-            RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(e);
-            withLoggingExceptions(() -> handler.onError(mappedError));
-        }
     }
 
     @Override

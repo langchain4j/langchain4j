@@ -244,7 +244,7 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void arrayWithAnyOf() throws JsonProcessingException {
+    void arrayWithAnyOf() throws JsonProcessingException {
         // trimmed version of the tool from @modelcontextprotocol/server-github
         String text =
                 // language=json
@@ -323,7 +323,7 @@ class ToolSpecificationHelperTest {
         JsonArraySchema comments = (JsonArraySchema) parameters.properties().get("comments");
         assertThat(comments.items()).isInstanceOf(JsonAnyOfSchema.class);
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) comments.items();
-        assertThat(anyOf.anyOf().size()).isEqualTo(2);
+        assertThat(anyOf.anyOf()).hasSize(2);
 
         JsonSchemaElement option1 = anyOf.anyOf().get(0);
         assertThat(option1).isInstanceOf(JsonObjectSchema.class);
@@ -335,7 +335,7 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void nullTypeName() throws JsonProcessingException {
+    void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
         String text =
                 """
@@ -365,7 +365,7 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void nullType() throws JsonProcessingException {
+    void nullType() throws JsonProcessingException {
         // the 'type' parameter is "null" and so most not be present
         // trimmed version from Atalassian's MCP server
         String text =

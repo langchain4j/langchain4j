@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -140,7 +141,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setFrequencyPenalty(frequencyPenalty);
 
         Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, null);
 
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
@@ -160,7 +161,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     private static void handle(Completions completions, StreamingResponseHandler<String> handler) {
 
         List<Choice> choices = completions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         String content = choices.get(0).getText();

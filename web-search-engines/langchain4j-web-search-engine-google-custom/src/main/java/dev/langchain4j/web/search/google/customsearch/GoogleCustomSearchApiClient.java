@@ -15,7 +15,7 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class GoogleCustomSearchApiClient {
 
@@ -34,14 +34,10 @@ class GoogleCustomSearchApiClient {
                                 boolean logResponses) {
 
         try {
-            if (isNullOrBlank(apiKey)) {
-                throw new IllegalArgumentException("Google Custom Search API Key must be defined. " +
-                        "It can be generated here: https://console.developers.google.com/apis/credentials");
-            }
-            if (isNullOrBlank(csi)) {
-                throw new IllegalArgumentException("Google Custom Search Engine ID must be defined. " +
-                        "It can be created here: https://cse.google.com/cse/create/new");
-            }
+            ensureNotBlank(apiKey, "%s", "Google Custom Search API Key must be defined. " +
+                    "It can be generated here: https://console.developers.google.com/apis/credentials");
+            ensureNotBlank(csi, "%s", "Google Custom Search Engine ID must be defined. " +
+                    "It can be created here: https://cse.google.com/cse/create/new");
 
             this.logResponses = logResponses;
 

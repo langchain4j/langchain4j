@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.model.chat.ChatModel;
@@ -99,11 +99,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                ListNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ListNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -121,11 +121,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                SetNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(SetNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -143,11 +143,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                ResultNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -165,11 +165,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                ResultListNoParametrizedTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListNoParametrizedTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -187,10 +187,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(
-                IllegalArgumentException.class, () -> AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -208,11 +209,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                ResultListWildcardTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListWildcardTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
@@ -230,11 +231,11 @@ class TypeUtilsTest {
         ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException =
-                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
-                                ResultListTypeParamTypeInvalidServiceDefinition.class)
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(ResultListTypeParamTypeInvalidServiceDefinition.class)
                         .chatModel(stubModel)
-                        .build());
+                        .build())
+                .actual();
 
         // Then
         assertThat(illegalArgumentException.getMessage())
