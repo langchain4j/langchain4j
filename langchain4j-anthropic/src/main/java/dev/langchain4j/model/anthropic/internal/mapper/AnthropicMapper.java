@@ -207,7 +207,6 @@ public class AnthropicMapper {
 
         String thinking = null;
         Map<String, Object> attributes = new HashMap<>();
-        ;
         if (returnThinking) {
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
