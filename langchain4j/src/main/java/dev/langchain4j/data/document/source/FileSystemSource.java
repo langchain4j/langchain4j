@@ -52,6 +52,6 @@ public class FileSystemSource implements DocumentSource {
 
     @Override
     public String toString() {
-        return "FileSystemSource [path=" + path + "]";
+        return "FileSystemSource { path = " + path + " }";
     }
 }
