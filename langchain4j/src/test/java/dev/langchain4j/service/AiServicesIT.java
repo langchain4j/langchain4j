@@ -40,7 +40,6 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -981,9 +980,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)

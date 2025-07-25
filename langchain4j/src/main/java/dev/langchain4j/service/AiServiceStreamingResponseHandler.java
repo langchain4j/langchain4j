@@ -9,10 +9,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
@@ -168,8 +168,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
                         .metadata(chatResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        chatResponse.metadata().tokenUsage()))
+                                .tokenUsage(
+                                        tokenUsage.add(chatResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
 

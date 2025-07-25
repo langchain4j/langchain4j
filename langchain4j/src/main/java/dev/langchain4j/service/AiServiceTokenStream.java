@@ -7,10 +7,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
@@ -129,11 +129,12 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        ChatRequest chatRequest = context.chatRequestTransformer
-                .apply(ChatRequest.builder()
+        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                ChatRequest.builder()
                         .messages(messages)
                         .toolSpecifications(toolSpecifications)
-                        .build(), memoryId);
+                        .build(),
+                memoryId);
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
@@ -172,7 +173,8 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onPartialThinking can be invoked on TokenStream at most 1 time");
         }
         if (onIntermediateResponseInvoked > 1) {
-            throw new IllegalConfigurationException("onIntermediateResponse can be invoked on TokenStream at most 1 time");
+            throw new IllegalConfigurationException(
+                    "onIntermediateResponse can be invoked on TokenStream at most 1 time");
         }
         if (onCompleteResponseInvoked > 1) {
             throw new IllegalConfigurationException("onCompleteResponse can be invoked on TokenStream at most 1 time");
