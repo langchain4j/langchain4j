@@ -121,6 +121,20 @@ class AiServiceTokenStreamTest {
                 .hasMessage("onCompleteResponse can be invoked on TokenStream at most 1 time");
     }
 
+    @Test
+    void start_onIntermediateResponseInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .ignoreErrors()
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onIntermediateResponse can be invoked on TokenStream at most 1 time");
+    }
+
     private AiServiceTokenStream setupAiServiceTokenStream() {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         ChatModel chatModel = mock(ChatModel.class);

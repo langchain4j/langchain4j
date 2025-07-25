@@ -1,7 +1,7 @@
 package dev.langchain4j.mcp.client.integration;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -45,7 +45,7 @@ public abstract class McpResourcesAsToolsTestBase {
 
         // check that the tool provider has two tools: list_resources and get_resource
         ToolProviderResult toolProviderResult = toolProvider.provideTools(null);
-        assertThat(toolProviderResult.tools().size()).isEqualTo(2);
+        assertThat(toolProviderResult.tools()).hasSize(2);
         List<String> toolNames = toolProviderResult.tools().keySet().stream()
                 .map(ToolSpecification::name)
                 .collect(Collectors.toList());
