@@ -55,12 +55,13 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
                 }
             }
             logger.debug(
-                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}{}",
+                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- query parameters: {}\n- body: {}",
                     request.method(),
                     request.getUri(),
                     request.headers(),
-                    body,
-                    request.rawQueryParameters());
+                    request.rawQueryParameters(),
+                    body
+            );
         }
     }
 

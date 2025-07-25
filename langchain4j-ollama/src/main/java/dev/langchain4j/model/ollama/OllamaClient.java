@@ -3,7 +3,10 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -70,7 +73,7 @@ class OllamaClient {
         return new Builder();
     }
 
-    public CompletionResponse completion(CompletionRequest request) {
+    CompletionResponse completion(CompletionRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -85,7 +88,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), CompletionResponse.class);
     }
 
-    public OllamaChatResponse chat(OllamaChatRequest request) {
+    OllamaChatResponse chat(OllamaChatRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -100,7 +103,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), OllamaChatResponse.class);
     }
 
-    public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
+    void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -135,7 +138,7 @@ class OllamaClient {
         });
     }
 
-    public void streamingChat(ChatRequest request, StreamingChatResponseHandler handler) {
+    void streamingChat(ChatRequest request, boolean returnThinking, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
@@ -150,7 +153,7 @@ class OllamaClient {
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder);
+            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -165,11 +168,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    try {
-                        handler.onPartialResponse(content);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onPartialResponse(handler, content);
+                }
+
+                String thinking = message.getThinking();
+                if (returnThinking && !isNullOrEmpty(thinking)) {
+                    onPartialThinking(handler, thinking);
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();
@@ -192,17 +196,12 @@ class OllamaClient {
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
-
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
 
-                    ChatResponse response = responseBuilder.build(ollamaChatResponse);
-                    try {
-                        handler.onCompleteResponse(response);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
+                    onCompleteResponse(handler, completeResponse);
                 }
             }
 
@@ -214,7 +213,7 @@ class OllamaClient {
         });
     }
 
-    public EmbeddingResponse embed(EmbeddingRequest request) {
+    EmbeddingResponse embed(EmbeddingRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -229,7 +228,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
-    public ModelsListResponse listModels() {
+    ModelsListResponse listModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -243,7 +242,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), ModelsListResponse.class);
     }
 
-    public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
+    OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -258,7 +257,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), OllamaModelCard.class);
     }
 
-    public RunningModelsListResponse listRunningModels() {
+    RunningModelsListResponse listRunningModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -272,7 +271,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), RunningModelsListResponse.class);
     }
 
-    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+    Void deleteModel(DeleteModelRequest deleteModelRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(DELETE)

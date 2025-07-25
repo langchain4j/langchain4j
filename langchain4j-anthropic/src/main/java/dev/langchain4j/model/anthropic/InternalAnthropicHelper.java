@@ -46,6 +46,7 @@ class InternalAnthropicHelper {
 
     static AnthropicCreateMessageRequest createAnthropicRequest(ChatRequest chatRequest,
                                                                 AnthropicThinking thinking,
+                                                                boolean sendThinking,
                                                                 AnthropicCacheType cacheType,
                                                                 AnthropicCacheType toolsCacheType,
                                                                 boolean stream) {
@@ -53,7 +54,7 @@ class InternalAnthropicHelper {
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder()
                 .stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages()))
+                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking))
                 .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
