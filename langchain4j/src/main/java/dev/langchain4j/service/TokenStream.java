@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -50,6 +51,22 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
+     * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,
+     * as opposed to the final response (see {@link #onCompleteResponse(Consumer)}).
+     * Intermediate chat responses contain {@link ToolExecutionRequest}s, AI service will execute them
+     * after returning from this consumer.
+     *
+     * @param intermediateResponseHandler lambda that consumes intermediate chat responses
+     * @return token stream instance used to configure or start stream processing
+     * @see #onCompleteResponse(Consumer)
+     * @since 1.2.0
+     */
+    default TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
+        throw new UnsupportedOperationException("Consuming intermediate responses is not supported " +
+                "by this implementation of TokenStream: " + this.getClass().getName());
+    }
+
+    /**
      * The provided consumer will be invoked if any tool is executed.
      * <p>
      * The invocation happens after the tool method has finished and before any other tool is executed.
@@ -60,10 +77,16 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
-     * The provided handler will be invoked when a language model finishes streaming a response.
+     * The provided consumer will be invoked when a language model finishes streaming the <i>final</i> chat response,
+     * as opposed to the intermediate response (see {@link #onIntermediateResponse(Consumer)}).
+     * <p>
+     * Please note that {@link ChatResponse#tokenUsage()} contains aggregate token usage across all calls to the LLM.
+     * It is a sum of {@link ChatResponse#tokenUsage()}s of all intermediate responses
+     * ({@link #onIntermediateResponse(Consumer)}).
      *
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
+     * @see #onIntermediateResponse(Consumer)
      */
     TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
 

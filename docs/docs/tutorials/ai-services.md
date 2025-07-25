@@ -262,8 +262,10 @@ Any type can be additionally wrapped into a `Result<T>` to get extra metadata ab
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
 the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
-- Executed [tools](/tutorials/ai-services#tools-function-calling)
-- `FinishReason`
+- All [tools](/tutorials/ai-services#tools-function-calling) executed during AI Service invocation (both requests and results)
+- `FinishReason` of the final chat response
+- All intermediate `ChatResponse`s
+- The final `ChatResponse`
 
 An example:
 ```java
@@ -521,9 +523,11 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+tokenStream
+    .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
     .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> System.out.println(response))
     .onError((Throwable error) -> error.printStackTrace())
