@@ -123,8 +123,7 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         String jsonText = response.aiMessage().text();
-        assertThat(jsonText).contains("\"firstname\"");
-        assertThat(jsonText).contains("\"John\"");
+        assertThat(jsonText).contains("\"firstname\"").contains("\"John\"");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -409,8 +408,7 @@ class GoogleAiGeminiChatModelIT {
 
         String allArgs =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(" "));
-        assertThat(allArgs).contains("ABC");
-        assertThat(allArgs).contains("XYZ");
+        assertThat(allArgs).contains("ABC").contains("XYZ");
     }
 
     @Disabled("TODO fix")

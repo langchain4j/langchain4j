@@ -14,8 +14,6 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -36,6 +34,8 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
@@ -609,7 +609,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         if (assertToolId(model)) {
             assertThat(toolExecutionRequest.id()).isNotBlank();
         }
@@ -649,12 +650,13 @@ public abstract class AbstractBaseChatModelIT<M> {
                     }
                     previousToolCall = toolCall;
                 }
-                assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
+                assertThat(arguments).hasToString(toolExecutionRequest.arguments());
             }
 
             assertThat(metadata.completeToolCalls()).hasSize(1);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest())
+                    .isEqualTo(toolExecutionRequest);
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
@@ -714,7 +716,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
+    protected void verifyToolCallbacks(
+            StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
         verifyToolCallbacks(handler, io, id);
     }
 
@@ -730,9 +733,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from("What is the time now?");
 
-        ToolSpecification timeTool = ToolSpecification.builder()
-                .name("get_current_time")
-                .build();
+        ToolSpecification timeTool =
+                ToolSpecification.builder().name("get_current_time").build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -749,7 +751,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         if (assertToolId(model)) {
             assertThat(toolExecutionRequest.id()).isNotBlank();
         }
@@ -784,7 +787,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             assertThat(metadata.completeToolCalls()).hasSize(1);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest())
+                    .isEqualTo(toolExecutionRequest);
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
@@ -860,12 +864,13 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_multiple_tools_in_parallel_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the weather in Munich and time in France? " +
-                "Call tools simultaneously (in parallel)");
+        UserMessage userMessage = UserMessage.from(
+                "What is the weather in Munich and time in France? " + "Call tools simultaneously (in parallel)");
 
         ToolSpecification timeTool = ToolSpecification.builder()
                 .name("getTime")
-                .parameters(JsonObjectSchema.builder().addStringProperty("country").build())
+                .parameters(
+                        JsonObjectSchema.builder().addStringProperty("country").build())
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -918,10 +923,12 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(metadata.partialToolCalls()).hasSizeGreaterThanOrEqualTo(2);
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
-                assertThat(metadata.partialToolCalls().get(metadata.partialToolCalls().size() - 1).index()).isEqualTo(1);
+                assertThat(metadata.partialToolCalls()
+                                .get(metadata.partialToolCalls().size() - 1)
+                                .index())
+                        .isEqualTo(1);
 
-                List<List<PartialToolCall>> partialToolCallPartitions =
-                        partitionByIndex(metadata.partialToolCalls());
+                List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
                 assertThat(partialToolCallPartitions).hasSize(2);
 
                 for (int i = 0; i < partialToolCallPartitions.size(); i++) {
@@ -929,8 +936,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                     StringBuilder arguments = new StringBuilder();
                     PartialToolCall previousToolCall = null;
                     for (PartialToolCall toolCall : partialToolCallPartition) {
-                        assertThat(toolCall.id()).isEqualTo(toolExecutionRequests.get(i).id());
-                        assertThat(toolCall.name()).isEqualTo(toolExecutionRequests.get(i).name());
+                        assertThat(toolCall.id())
+                                .isEqualTo(toolExecutionRequests.get(i).id());
+                        assertThat(toolCall.name())
+                                .isEqualTo(toolExecutionRequests.get(i).name());
                         assertThat(toolCall.partialArguments()).isNotBlank();
                         arguments.append(toolCall.partialArguments());
                         if (previousToolCall != null) {
@@ -939,19 +948,27 @@ public abstract class AbstractBaseChatModelIT<M> {
                         }
                         previousToolCall = toolCall;
                     }
-                    assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
+                    assertThat(arguments)
+                            .hasToString(toolExecutionRequests.get(i).arguments());
                 }
             }
 
             assertThat(metadata.completeToolCalls()).hasSize(2);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequests.get(0));
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest())
+                    .isEqualTo(toolExecutionRequests.get(0));
             assertThat(metadata.completeToolCalls().get(1).index()).isEqualTo(1);
-            assertThat(metadata.completeToolCalls().get(1).toolExecutionRequest()).isEqualTo(toolExecutionRequests.get(1));
+            assertThat(metadata.completeToolCalls().get(1).toolExecutionRequest())
+                    .isEqualTo(toolExecutionRequests.get(1));
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id(), (StreamingChatModel) model);
+            verifyToolCallbacks(
+                    handler,
+                    inOrder,
+                    toolExecutionRequests.get(0).id(),
+                    toolExecutionRequests.get(1).id(),
+                    (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
@@ -971,8 +988,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         userMessage,
                         aiMessage,
                         ToolExecutionResultMessage.from(toolExecutionRequests.get(0), "sunny"),
-                        ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "14:35")
-                )
+                        ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "14:35"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL, timeTool)
                         .build())
@@ -1012,7 +1028,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
+    protected void verifyToolCallbacks(
+            StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
         verifyToolCallbacks(handler, io, id1, id2);
     }
 
@@ -1030,11 +1047,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected static CompleteToolCall complete(int index, String id, String name, String args) {
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id(id)
-                .name(name)
-                .arguments(args)
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().id(id).name(name).arguments(args).build();
         return new CompleteToolCall(index, toolExecutionRequest);
     }
 
