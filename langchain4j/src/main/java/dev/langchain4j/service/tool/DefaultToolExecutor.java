@@ -85,6 +85,19 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
+    public Object invoke(ToolExecutionRequest toolExecutionRequest, Object memoryId) throws Throwable {
+        Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
+        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
+        try {
+            methodToInvoke.setAccessible(true);
+            return methodToInvoke.invoke(object, arguments);
+        } catch (IllegalAccessException e) {
+            throw e;
+        } catch (InvocationTargetException e) {
+            throw e.getCause();
+        }
+    }
+
     private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
         Class<?> returnType = methodToInvoke.getReturnType();
