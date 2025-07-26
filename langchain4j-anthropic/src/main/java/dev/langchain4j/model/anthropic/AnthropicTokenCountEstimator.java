@@ -1,8 +1,10 @@
 package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicRole;
@@ -10,7 +12,11 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
@@ -46,12 +52,31 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
 
     @Override
     public int estimateTokenCountInMessage(final ChatMessage message) {
-        throw new UnsupportedOperationException("This method is not implemented yet.");
+        return estimateTokenCountInMessages(singletonList(message));
     }
 
     @Override
     public int estimateTokenCountInMessages(final Iterable<ChatMessage> messages) {
-        throw new UnsupportedOperationException("This method is not implemented yet.");
+        List<ChatMessage> systemMessages = new ArrayList<>();
+        List<ChatMessage> otherMessages = new ArrayList<>();
+        for (ChatMessage message : messages) {
+            if (message.type() == ChatMessageType.SYSTEM) {
+                systemMessages.add(message);
+            } else {
+                otherMessages.add(message);
+            }
+        }
+
+        AnthropicCountTokensRequest.Builder requestBuilder = AnthropicCountTokensRequest.builder().model(this.modelName);
+
+        if (!systemMessages.isEmpty()) {
+            requestBuilder.system(toAnthropicSystemPrompt(systemMessages, AnthropicCacheType.NO_CACHE));
+        }
+        if (!otherMessages.isEmpty()) {
+            requestBuilder.messages(toAnthropicMessages(otherMessages));
+        }
+
+        return client.countTokens(requestBuilder.build()).getInputTokens();
     }
 
     private static Builder builder() {
