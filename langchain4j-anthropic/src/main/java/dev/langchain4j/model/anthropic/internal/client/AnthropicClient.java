@@ -27,7 +27,9 @@ public abstract class AnthropicClient {
 
     public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler);
 
-    public abstract MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request);
+    public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request){
+        throw new UnsupportedOperationException("Token counting is not implemented");
+    }
 
     @SuppressWarnings("rawtypes")
     public static AnthropicClient.Builder builder() {
