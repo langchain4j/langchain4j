@@ -79,7 +79,7 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
         return client.countTokens(requestBuilder.build()).getInputTokens();
     }
 
-    private static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -134,8 +134,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
+        public Builder modelName(AnthropicChatModelName modelName) {
+            this.modelName = modelName.toString();
             return this;
         }
 
