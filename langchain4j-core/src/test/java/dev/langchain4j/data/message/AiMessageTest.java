@@ -15,7 +15,9 @@ class AiMessageTest implements WithAssertions {
             assertThat(m.toolExecutionRequests()).isEmpty();
             assertThat(m.hasToolExecutionRequests()).isFalse();
 
-            assertThat(m).hasToString("AiMessage { text = \"text\", thinking = null, toolExecutionRequests = [], attributes = {} }");
+            assertThat(m)
+                    .hasToString(
+                            "AiMessage { text = \"text\", thinking = null, toolExecutionRequests = [], attributes = {} }");
         }
         {
             AiMessage m = new AiMessage(Arrays.asList(

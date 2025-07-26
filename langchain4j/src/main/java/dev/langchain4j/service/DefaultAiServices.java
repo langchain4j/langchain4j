@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -258,11 +257,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = context.chatRequestTransformer
-                                .apply(ChatRequest.builder()
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
-                                        .build(), memoryId);
+                                        .build(),
+                                memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
@@ -284,7 +284,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(),
+                                method,
+                                aggregateResponse,
+                                chatExecutor,
+                                commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             return response;
@@ -297,7 +301,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .content(parsedResponse)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(toolServiceResult.finalResponse().finishReason())
+                                    .finishReason(
+                                            toolServiceResult.finalResponse().finishReason())
                                     .toolExecutions(toolServiceResult.toolExecutions())
                                     .intermediateResponses(toolServiceResult.intermediateResponses())
                                     .finalResponse(toolServiceResult.finalResponse())

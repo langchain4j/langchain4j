@@ -1,24 +1,5 @@
 package dev.langchain4j.model.chat.common;
 
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
@@ -28,6 +9,24 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * Contains all the common tests that every {@link StreamingChatModel} must successfully pass.
@@ -109,8 +108,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -161,8 +159,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -260,8 +257,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     new ArrayList<>(completeToolCalls),
                     timesOnCompleteResponseWasCalled.get(),
                     threads,
-                    spyHandler
-            );
+                    spyHandler);
             return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
         } catch (Exception e) {
             throw new RuntimeException(e);

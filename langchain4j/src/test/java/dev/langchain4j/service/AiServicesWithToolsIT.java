@@ -609,7 +609,8 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        Result<String> result = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        Result<String> result =
+                assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
         assertThat(result.content()).contains("2028");
 
         verify(calculator).xyz(2027);
@@ -646,10 +647,10 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        assertThat(
-                assertThrows(IllegalConfigurationException.class,
-                        () -> assistant.chat("Apply the function xyz on the number 2027"))
-        ).hasMessageContaining("xyz");
+        assertThat(assertThrows(
+                        IllegalConfigurationException.class,
+                        () -> assistant.chat("Apply the function xyz on the number 2027")))
+                .hasMessageContaining("xyz");
     }
 
     private static Map<String, Object> toMap(String arguments) {
@@ -739,8 +740,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
-    void should_execute_multiple_tools_sequentially_and_context_included_in_result(
-            ChatModel chatModel) {
+    void should_execute_multiple_tools_sequentially_and_context_included_in_result(ChatModel chatModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
@@ -881,10 +881,10 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(tools);
     }
 
-
     interface RouterAgent {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
             then forward the request as it is to the corresponding expert provided as a tool.
             Finally return the answer that you received from the expert without any modification.
@@ -896,7 +896,8 @@ class AiServicesWithToolsIT {
 
     interface MedicalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a medical expert.
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -907,7 +908,8 @@ class AiServicesWithToolsIT {
 
     interface LegalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a legal expert.
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -918,7 +920,8 @@ class AiServicesWithToolsIT {
 
     interface TechnicalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a technical expert.
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -930,15 +933,12 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @MethodSource("models")
     void tools_as_agents_tests(ChatModel model) {
-        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
-                .chatModel(model)
-                .build());
-        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
-                .chatModel(model)
-                .build());
-        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
-                .chatModel(model)
-                .build());
+        MedicalExpert medicalExpert =
+                spy(AiServices.builder(MedicalExpert.class).chatModel(model).build());
+        LegalExpert legalExpert =
+                spy(AiServices.builder(LegalExpert.class).chatModel(model).build());
+        TechnicalExpert technicalExpert =
+                spy(AiServices.builder(TechnicalExpert.class).chatModel(model).build());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
@@ -990,10 +990,14 @@ class AiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?");
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(exceptionMessage)));
+        verify(spyModel)
+                .chat(argThat(
+                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel)
+                .chat(argThat(
+                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                                && toolResult.text().equals(exceptionMessage)));
         ignoreOtherInvocations(spyModel);
         verifyNoMoreInteractions(spyModel);
     }

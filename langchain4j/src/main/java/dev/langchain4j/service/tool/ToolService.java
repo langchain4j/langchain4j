@@ -26,7 +26,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 
 @Internal
@@ -63,7 +62,8 @@ public class ToolService {
             }
 
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class).ifPresent( toolMethod -> processToolMethod(objectWithTool, toolMethod) );
+                getAnnotatedMethod(method, Tool.class)
+                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
             }
         }
     }
@@ -71,8 +71,7 @@ public class ToolService {
     private void processToolMethod(Object objectWithTool, Method method) {
         ToolSpecification toolSpecification = toolSpecificationFrom(method);
         if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException(
-                    "Duplicated definition for tool: " + toolSpecification.name());
+            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
         }
         toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
         toolSpecifications.add(toolSpecificationFrom(method));
@@ -84,9 +83,9 @@ public class ToolService {
 
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
-            return this.toolSpecifications.isEmpty() ?
-                    new ToolServiceContext(null, null) :
-                    new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
+            return this.toolSpecifications.isEmpty()
+                    ? new ToolServiceContext(null, null)
+                    : new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
@@ -173,7 +172,8 @@ public class ToolService {
                     .build();
 
             chatResponse = chatModel.chat(chatRequest);
-            aggregateTokenUsage = TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
+            aggregateTokenUsage =
+                    TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
         return ToolServiceResult.builder()

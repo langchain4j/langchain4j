@@ -3,13 +3,13 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import dev.langchain4j.Internal;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**
  * Internal helper that helps to build partial and complete tool calls during streaming.

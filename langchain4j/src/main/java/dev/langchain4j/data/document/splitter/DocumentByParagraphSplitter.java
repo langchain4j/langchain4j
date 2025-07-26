@@ -2,6 +2,7 @@ package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.MetadataKeys;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.TokenCountEstimator;
 
@@ -23,32 +24,30 @@ import dev.langchain4j.model.TokenCountEstimator;
  * place them into multiple segments.
  * Such segments contain only the parts of the split long paragraph.
  * <p>
- * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an "index" metadata key
+ * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an {@link MetadataKeys#INDEX} metadata key
  * representing its position within the document (starting from 0).
  */
 public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
-                                       int maxOverlapSizeInChars) {
+    public DocumentByParagraphSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
-                                       int maxOverlapSizeInChars,
-                                       DocumentSplitter subSplitter) {
+    public DocumentByParagraphSplitter(
+            int maxSegmentSizeInChars, int maxOverlapSizeInChars, DocumentSplitter subSplitter) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
-                                       int maxOverlapSizeInTokens,
-                                       TokenCountEstimator tokenCountEstimator) {
+    public DocumentByParagraphSplitter(
+            int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
-                                       int maxOverlapSizeInTokens,
-                                       TokenCountEstimator tokenCountEstimator,
-                                       DocumentSplitter subSplitter) {
+    public DocumentByParagraphSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
     }
 

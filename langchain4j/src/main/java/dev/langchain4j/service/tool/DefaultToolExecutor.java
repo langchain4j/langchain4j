@@ -1,9 +1,10 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -14,8 +15,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -81,7 +80,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 return e2.getCause().getMessage();
             }
         } catch (InvocationTargetException e) {
-            return  e.getCause().getMessage();
+            return e.getCause().getMessage();
         }
     }
 

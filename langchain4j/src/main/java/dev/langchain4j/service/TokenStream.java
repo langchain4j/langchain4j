@@ -62,8 +62,8 @@ public interface TokenStream {
      * @since 1.2.0
      */
     default TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
-        throw new UnsupportedOperationException("Consuming intermediate responses is not supported " +
-                "by this implementation of TokenStream: " + this.getClass().getName());
+        throw new UnsupportedOperationException("Consuming intermediate responses is not supported "
+                + "by this implementation of TokenStream: " + this.getClass().getName());
     }
 
     /**
