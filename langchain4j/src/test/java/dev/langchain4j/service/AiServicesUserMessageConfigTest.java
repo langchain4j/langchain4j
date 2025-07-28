@@ -8,8 +8,10 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -56,6 +58,10 @@ class AiServicesUserMessageConfigTest {
 
         @UserMessage("What is the capital of {{arg0}}?")
         String chat8(String country);
+
+        String chat9(@UserMessage String userMessage, @UserMessage ImageContent images);
+
+        String chat10(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
 
         // illegal configuration
 
@@ -188,6 +194,33 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
+    }
+
+    private static final Image image = Image.builder().url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg").build();
+    private static final ImageContent imageContent = ImageContent.from(image);
+
+    @Test
+    void user_message_configuration_9() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat9("Count the number of cars in this image", imageContent))
+                .isNotBlank();
+    }
+
+    @Test
+    void user_message_configuration_10() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat10("Count the number of cars in this image", List.of(imageContent)))
+                .isNotBlank();
     }
 
     @Test

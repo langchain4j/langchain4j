@@ -10,6 +10,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
@@ -168,6 +169,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        Optional<List<Content>> userContentMessageOptional = findUserContentMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
@@ -209,6 +211,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
 
+                        if (userContentMessageOptional.isPresent()) {
+                            final String name = userMessage.name();
+                            final List<Content> contents = userMessage.contents();
+                            List<Content> allContents = new ArrayList<>();
+                            allContents.addAll(userContentMessageOptional.get());
+                            allContents.addAll(contents);
+                            userMessage = UserMessage.from(name, allContents);
+                        }
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
@@ -476,6 +486,24 @@ class DefaultAiServices<T> extends AiServices<T> {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(UserName.class)) {
                 return Optional.of(args[i].toString());
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * find user content message template from annotated parameter
+     */
+    private static Optional<List<Content>> findUserContentMessageTemplateFromAnnotatedParameter(
+            Parameter[] parameters, Object[] args) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content) {
+                    return Optional.of(List.of((Content) args[i]));
+                }
+                if (args[i] instanceof List && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
+                    return Optional.of((List<Content>) args[i]);
+                }
             }
         }
         return Optional.empty();
