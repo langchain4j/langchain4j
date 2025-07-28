@@ -78,8 +78,12 @@ class PlaywrightDocumentLoaderIT {
         Document document = loader.load(url, parser);
 
         assertThat(document.text()).contains("LangChain4j");
-//        assertThat(document.text()).doesNotContain("<head>"); TODO fix
+        assertThat(document.text()).contains("<head>");
         assertThat(document.metadata().getString(Document.URL)).isEqualTo(url);
+
+        Document textDocument = extractor.transform(document);
+        assertThat(textDocument.text()).doesNotContain("<head>");
+        assertThat(textDocument.text()).contains("LangChain4j");
     }
 
     @Test
