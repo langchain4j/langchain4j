@@ -1,46 +1,37 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.TokenCountEstimator;
-import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.LinkedList;
-import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static java.util.Collections.singletonList;
 
-public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.TokenCountEstimator;
+import java.time.Duration;
+import java.util.LinkedList;
+import java.util.List;
 
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiTokenCountEstimator.class);
+public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
     private final GeminiService geminiService;
     private final String modelName;
-    private final String apiKey;
     private final Integer maxRetries;
 
-    GoogleAiGeminiTokenCountEstimator(
-            String modelName,
-            String apiKey,
-            Boolean logRequestsAndResponses,
-            Duration timeout,
-            Integer maxRetries
-    ) {
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.maxRetries = getOrDefault(maxRetries, 2);
+    public GoogleAiGeminiTokenCountEstimator(Builder builder) {
         this.geminiService = new GeminiService(
-                getOrDefault(logRequestsAndResponses, false) ? log : null,
-                timeout != null ? timeout : Duration.ofSeconds(60)
-        );
+                builder.httpClientBuilder,
+                ensureNotBlank(builder.apiKey, "apiKey"),
+                builder.baseUrl,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                builder.timeout);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static Builder builder() {
@@ -69,7 +60,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         List<ChatMessage> allMessages = new LinkedList<>();
         messages.forEach(allMessages::add);
 
-        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null, false);
 
         GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest();
         countTokensRequest.setContents(geminiContentList);
@@ -81,11 +72,11 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         List<ToolSpecification> allTools = new LinkedList<>();
         toolSpecifications.forEach(allTools::add);
 
-        GeminiContent dummyContent = GeminiContent.builder().parts(
-                singletonList(GeminiPart.builder()
+        GeminiContent dummyContent = GeminiContent.builder()
+                .parts(singletonList(GeminiPart.builder()
                         .text("Dummy content") // This string contains 2 tokens
-                        .build())
-        ).build();
+                        .build()))
+                .build();
 
         GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest();
         countTokensRequestWithDummyContent.setGenerateContentRequest(GeminiGenerateContentRequest.builder()
@@ -95,25 +86,34 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 .build());
 
         // The API doesn't allow us to make a request to count the tokens of the tool specifications only.
-        // Instead, we take the approach of adding a dummy content in the request, and subtract the tokens for the dummy request.
+        // Instead, we take the approach of adding a dummy content in the request, and subtract the tokens for the dummy
+        // request.
         // The string "Dummy content" accounts for 2 tokens. So let's subtract 2 from the overall count.
         return estimateTokenCount(countTokensRequestWithDummyContent) - 2;
     }
 
     private int estimateTokenCount(GeminiCountTokensRequest countTokensRequest) {
-        GeminiCountTokensResponse countTokensResponse = withRetry(() -> this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
+        GeminiCountTokensResponse countTokensResponse = withRetryMappingExceptions(
+                () -> this.geminiService.countTokens(this.modelName, countTokensRequest), this.maxRetries);
         return countTokensResponse.getTotalTokens();
     }
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String modelName;
         private String apiKey;
+
+        private String baseUrl;
         private Boolean logRequestsAndResponses;
         private Duration timeout;
         private Integer maxRetries;
 
-        Builder() {
+        Builder() {}
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public Builder modelName(String modelName) {
@@ -123,6 +123,11 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
@@ -142,11 +147,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         }
 
         public GoogleAiGeminiTokenCountEstimator build() {
-            return new GoogleAiGeminiTokenCountEstimator(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
-        }
-
-        public String toString() {
-            return "GoogleAiGeminiTokenCountEstimator.Builder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ")";
+            return new GoogleAiGeminiTokenCountEstimator(this);
         }
     }
 }

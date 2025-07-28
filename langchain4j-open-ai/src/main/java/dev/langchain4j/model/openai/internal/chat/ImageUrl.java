@@ -25,6 +25,14 @@ public class ImageUrl {
         this.detail = builder.detail;
     }
 
+    public String getUrl() {
+        return url;
+    }
+
+    public ImageDetail getDetail() {
+        return detail;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;

@@ -1,31 +1,36 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamResponseHandler;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlockDelta;
 
 /**
  * BedrockStreamingChatModel uses the Bedrock ConverseAPI.
@@ -33,53 +38,107 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRespon
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
 public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatModel {
+
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
+
     private final BedrockRuntimeAsyncClient client;
+    private final boolean logResponses;
 
     public BedrockStreamingChatModel(String modelId) {
         this(builder().modelId(modelId));
     }
 
-    private BedrockStreamingChatModel(Builder builder) {
+    public BedrockStreamingChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
+        this.logResponses = getOrDefault(builder.logResponses, false);
     }
 
     @Override
-    public void doChat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
-        final ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(
-                chatRequest.messages(), chatRequest.parameters().toolSpecifications(), chatRequest.parameters());
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        validate(chatRequest.parameters());
 
-        ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
-        final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
+        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+
+        ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
+        ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+        AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
+
+        ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                        .onContentBlockStart(converseResponseBuilder::append)
-                        .onContentBlockDelta(chunk -> {
-                            if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-                                handler.onPartialResponse(chunk.delta().text());
+                        .onMessageStart(event -> {
+                            if (logResponses) {
+                                log.debug("onMessageStart: {}", event);
                             }
-                            converseResponseBuilder.append(chunk);
+                            responseBuilder.append(event);
                         })
-                        .onContentBlockStop(converseResponseBuilder::append)
-                        .onMetadata(chunk -> {
-                            converseResponseBuilder.append(chunk);
-                            final ChatResponse completeResponse =
-                                    chatResponseFrom(converseResponseBuilder.build(), converseStreamRequest.modelId());
-                            handler.onCompleteResponse(completeResponse);
+                        .onContentBlockStart(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockStart: {}", event);
+                            }
+                            if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
+                                toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                                toolCallBuilder.updateId(event.start().toolUse().toolUseId());
+                                toolCallBuilder.updateName(event.start().toolUse().name());
+                            }
+                            responseBuilder.append(event);
                         })
-                        .onMessageStart(converseResponseBuilder::append)
-                        .onMessageStop(converseResponseBuilder::append)
+                        .onContentBlockDelta(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockDelta: {}", event);
+                            }
+                            ContentBlockDelta delta = event.delta();
+                            currentContentType.set(delta.type());
+                            if (currentContentType.get() == ContentBlockDelta.Type.TEXT) {
+                                onPartialResponse(handler, delta.text());
+                            } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
+                                ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
+                                String thinking = reasoningContent.text();
+                                if (isNotNullOrEmpty(thinking)) {
+                                    onPartialThinking(handler, thinking);
+                                }
+                            } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                String input = delta.toolUse().input();
+                                if (isNotNullOrEmpty(input)) {
+                                    toolCallBuilder.appendArguments(input);
+                                }
+                            }
+                            responseBuilder.append(delta);
+                        })
+                        .onContentBlockStop(event -> {
+                            if (logResponses) {
+                                log.debug("onContentBlockStop: {}", event);
+                            }
+                            if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                            }
+                            responseBuilder.append(event);
+                        })
+                        .onMessageStop(event -> {
+                            if (logResponses) {
+                                log.debug("onMessageStop: {}", event);
+                            }
+                            responseBuilder.append(event);
+                        })
+                        .onMetadata(event -> {
+                            if (logResponses) {
+                                log.debug("onMetadata: {}", event);
+                            }
+                            responseBuilder.append(event);
+                            ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
+                            onCompleteResponse(handler, response);
+                        })
                         .build())
-                .onError(handler::onError)
                 .build();
+            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler)
+                    .exceptionally(ex->{
+                        RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
+                        withLoggingExceptions(() -> handler.onError(mappedError));
+                        return null;
+                    });
 
-        try {
-            this.client.converseStream(converseStreamRequest, built).get();
-        } catch (ExecutionException | InterruptedException e) {
-            log.error("Can't invoke '{}': {}", modelId, e.getCause().getMessage());
-        }
     }
 
     @Override
@@ -87,24 +146,18 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return defaultRequestParameters;
     }
 
-    private ConverseStreamRequest buildConverseStreamRequest(
-            List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
-        final String model =
-                isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
-
-        if (nonNull(parameters)) validate(parameters);
-
+    private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
         return ConverseStreamRequest.builder()
-                .modelId(model)
-                .inferenceConfig(inferenceConfigurationFrom(parameters))
-                .system(extractSystemMessages(messages))
-                .messages(extractRegularMessages(messages))
-                .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
-                .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
+                .modelId(chatRequest.modelName())
+                .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
+                .system(extractSystemMessages(chatRequest.messages()))
+                .messages(extractRegularMessages(chatRequest.messages()))
+                .toolConfig(extractToolConfigurationFrom(chatRequest))
+                .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }
 
-    private ChatResponse chatResponseFrom(ConverseResponse converseResponse, String modelId) {
+    private ChatResponse responseFrom(ConverseResponse converseResponse, String modelId) {
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
                 .metadata(ChatResponseMetadata.builder()
@@ -143,6 +196,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     public static class Builder extends AbstractBuilder<Builder> {
+
         private BedrockRuntimeAsyncClient client;
 
         public Builder client(BedrockRuntimeAsyncClient client) {

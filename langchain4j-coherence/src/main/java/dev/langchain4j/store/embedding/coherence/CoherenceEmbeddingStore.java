@@ -1,6 +1,8 @@
 package dev.langchain4j.store.embedding.coherence;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.stream.Collectors.toSet;
 
@@ -106,9 +108,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("ids cannot be null or empty");
-        }
+        ensureNotEmpty(ids, "ids");
 
         Set<DocumentChunk.Id> chunkIds =
                 ids.stream().map(DocumentChunk.Id::parse).collect(toSet());
@@ -118,9 +118,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
-        if (filter == null) {
-            throw new IllegalArgumentException("filter cannot be null");
-        }
+        ensureNotNull(filter, "filter");
 
         Filter<DocumentChunk> chunkFilter = CoherenceMetadataFilterMapper.map(filter);
         documentChunks.invokeAll(chunkFilter, CacheProcessors.removeBlind());
@@ -339,7 +337,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return this builder for fluent method calls
          */
         public Builder name(String name) {
-            this.name = name == null || name.isEmpty() ? DEFAULT_MAP_NAME : name;
+            this.name = isNullOrEmpty(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
 

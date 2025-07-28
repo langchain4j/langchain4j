@@ -1,9 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
@@ -13,6 +14,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -27,9 +29,12 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
@@ -42,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -56,6 +62,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
@@ -65,38 +73,49 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
+@Internal
 abstract class AbstractBedrockChatModel {
+
+    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+
     protected final Region region;
-    protected final String modelId;
-    protected final Integer maxRetries;
     protected final Duration timeout;
+    protected final boolean returnThinking;
+    protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
-        this.modelId = ensureNotBlank(
-                getOrDefault(
-                        builder.modelId,
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.modelName()
-                                : null),
-                "modelId");
-        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
-        this.listeners = getOrDefault(builder.listeners, List.of());
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, true);
+        this.listeners = copy(builder.listeners);
 
+        ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
-            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
-                    .overrideWith(builder.defaultRequestParameters)
-                    .modelName(this.modelId)
-                    .build();
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
-                    .modelName(this.modelId)
-                    .build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
+
+        BedrockChatRequestParameters bedrockParameters = builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters ?
+                bedrockChatRequestParameters :
+                BedrockChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = BedrockChatRequestParameters.builder()
+                // common parameters
+                .modelName(getOrDefault(builder.modelId, commonParameters.modelName()))
+                .temperature(commonParameters.temperature())
+                .topP(commonParameters.topP())
+                .maxOutputTokens(commonParameters.maxOutputTokens())
+                .stopSequences(commonParameters.stopSequences())
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                // Bedrock-specific parameters
+                .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
+                .build();
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
@@ -174,6 +193,16 @@ abstract class AbstractBedrockChatModel {
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
 
+        if (sendThinking && message.thinking() != null) {
+            ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
+                    .reasoningText(ReasoningTextBlock.builder()
+                            .text(message.thinking())
+                            .signature(message.attribute(THINKING_SIGNATURE_KEY, String.class))
+                            .build())
+                    .build();
+            blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
+        }
+
         if (message.text() != null) {
             blocks.add(ContentBlock.builder().text(message.text()).build());
         }
@@ -201,7 +230,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<ContentBlock> convertContents(List<Content> contents) {
-        if (contents == null || contents.isEmpty()) {
+        if (isNullOrEmpty(contents)) {
             return emptyList();
         }
 
@@ -245,8 +274,10 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
-    protected ToolConfiguration extractToolConfigurationFrom(
-            List<ToolSpecification> toolSpecifications, ChatRequestParameters parameters) {
+    protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
+        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
+        ChatRequestParameters parameters = chatRequest.parameters();
+
         final List<Tool> allTools = new ArrayList<>();
         final ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder();
 
@@ -282,29 +313,52 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected AiMessage aiMessageFrom(ConverseResponse converseResponse) {
-        ArrayList<ToolExecutionRequest> toolExecRequests = new ArrayList<>();
-        String textAnswer = "";
+
+        List<String> texts = new ArrayList<>();
+        String thinking = null;
+        Map<String, Object> attributes = null;
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
         for (ContentBlock cBlock : converseResponse.output().message().content()) {
             if (cBlock.type() == ContentBlock.Type.TOOL_USE) {
-                toolExecRequests.add(ToolExecutionRequest.builder()
+                toolExecutionRequests.add(ToolExecutionRequest.builder()
                         .name(cBlock.toolUse().name())
                         .id(cBlock.toolUse().toolUseId())
                         .arguments(documentToJson(cBlock.toolUse().input()))
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
-                textAnswer = cBlock.text();
+                 if (isNotNullOrEmpty(cBlock.text())) {
+                     texts.add(cBlock.text());
+                 }
             } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
-                // TODO Implement full support of reasoning in lc4j
+                if (returnThinking) {
+                    ReasoningContentBlock reasoningContentBlock = cBlock.reasoningContent();
+                    if (reasoningContentBlock != null) {
+                        ReasoningTextBlock reasoningTextBlock = reasoningContentBlock.reasoningText();
+                        if (reasoningTextBlock != null) {
+                            if (isNotNullOrEmpty(reasoningTextBlock.text())) {
+                                thinking = reasoningTextBlock.text();
+                            }
+                            if (isNotNullOrEmpty(reasoningTextBlock.signature())) {
+                                attributes = Map.of(THINKING_SIGNATURE_KEY, reasoningTextBlock.signature());
+                            }
+                        }
+                    }
+                }
             } else {
                 throw new IllegalArgumentException(
                         "Unsupported content in LLM response. Content type: " + cBlock.type());
             }
         }
-        if (!toolExecRequests.isEmpty()) {
-            if (isNullOrEmpty(textAnswer)) return AiMessage.aiMessage(toolExecRequests);
-            else return AiMessage.aiMessage(textAnswer, toolExecRequests);
-        }
-        return AiMessage.aiMessage(textAnswer);
+
+        String text = texts.stream().collect(Collectors.joining("\n\n"));
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(text) ? null : text)
+                .thinking(thinking)
+                .attributes(attributes)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
     }
 
     protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
@@ -329,25 +383,13 @@ abstract class AbstractBedrockChatModel {
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
     }
 
-    protected InferenceConfiguration inferenceConfigurationFrom(ChatRequestParameters chatRequestParameters) {
-        if (nonNull(chatRequestParameters)) {
-            return InferenceConfiguration.builder()
-                    .maxTokens(getOrDefault(
-                            chatRequestParameters.maxOutputTokens(), this.defaultRequestParameters.maxOutputTokens()))
-                    .temperature(dblToFloat(getOrDefault(
-                            chatRequestParameters.temperature(), this.defaultRequestParameters.temperature())))
-                    .topP(dblToFloat(getOrDefault(chatRequestParameters.topP(), this.defaultRequestParameters.topP())))
-                    .stopSequences(getOrDefault(
-                            chatRequestParameters.stopSequences(), this.defaultRequestParameters.stopSequences()))
-                    .build();
-        } else {
-            return InferenceConfiguration.builder()
-                    .maxTokens(this.defaultRequestParameters.maxOutputTokens())
-                    .temperature(dblToFloat(this.defaultRequestParameters.temperature()))
-                    .topP(dblToFloat(this.defaultRequestParameters.topP()))
-                    .stopSequences(this.defaultRequestParameters.stopSequences())
-                    .build();
-        }
+    protected InferenceConfiguration inferenceConfigFrom(ChatRequestParameters parameters) {
+        return InferenceConfiguration.builder()
+                .maxTokens(parameters.maxOutputTokens())
+                .temperature(dblToFloat(parameters.temperature()))
+                .topP(dblToFloat(parameters.topP()))
+                .stopSequences(parameters.stopSequences())
+                .build();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
@@ -400,10 +442,12 @@ abstract class AbstractBedrockChatModel {
 
     // Abstract builder class
     public abstract static class AbstractBuilder<T extends AbstractBuilder<T>> {
+
         protected Region region;
         protected String modelId;
-        protected Integer maxRetries;
         protected Duration timeout;
+        protected Boolean returnThinking;
+        protected Boolean sendThinking;
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -412,6 +456,11 @@ abstract class AbstractBedrockChatModel {
         @SuppressWarnings("unchecked")
         public T self() {
             return (T) this;
+        }
+
+        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return self();
         }
 
         public T region(Region region) {
@@ -424,18 +473,42 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
-        public T maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code REASONING_CONTENT} block from the API response
+         * and return it inside the {@link AiMessage}.
+         * To enable thinking, set {@link BedrockChatRequestParameters.Builder#enableReasoning(Integer)}
+         * via {@link #defaultRequestParameters(ChatRequestParameters)}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         *
+         * @see #sendThinking(Boolean)
+         */
+        public T returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return self();
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Enabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #returnThinking(Boolean)
+         */
+        public T sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return self();
         }
 
         public T timeout(Duration timeout) {
             this.timeout = timeout;
-            return self();
-        }
-
-        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
-            this.defaultRequestParameters = defaultRequestParameters;
             return self();
         }
 

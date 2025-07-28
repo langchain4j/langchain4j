@@ -5,13 +5,12 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
@@ -37,6 +36,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -58,6 +58,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class GoogleAiGeminiStreamingChatModelIT {
@@ -120,7 +122,7 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .responseFormat(ResponseFormat.JSON)
                 .logRequestsAndResponses(true)
                 .build();
-        
+
         UserMessage userMessage = UserMessage.from("What is the firstname of the John Doe?\n"
                 + "Reply in JSON following with the following format: {\"firstname\": string}");
 
@@ -132,8 +134,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         // then
         String jsonText = response.aiMessage().text();
 
-        assertThat(jsonText).contains("\"firstname\"");
-        assertThat(jsonText).contains("\"John\"");
+        assertThat(jsonText).contains("\"firstname\"").contains("\"John\"");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -249,7 +250,8 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .includeCodeExecutionOutput(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result.");
+        UserMessage userMessage =
+                UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result.");
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         gemini.chat(List.of(userMessage), handler);
@@ -277,16 +279,14 @@ class GoogleAiGeminiStreamingChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getFirstNFibonacciNumbers")
                 .description("Get the first n fibonacci numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addNumberProperty("n")
-                        .build())
+                .parameters(JsonObjectSchema.builder().addNumberProperty("n").build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
                 .messages(allMessages)
                 .toolSpecifications(toolSpecification)
                 .build();
-        
+
         // when
         TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
         gemini.chat(request, handler1);
@@ -354,8 +354,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         String allArgs =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(" "));
-        assertThat(allArgs).contains("ABC");
-        assertThat(allArgs).contains("XYZ");
+        assertThat(allArgs).contains("ABC").contains("XYZ");
     }
 
     @RetryingTest(5)
@@ -670,6 +669,46 @@ class GoogleAiGeminiStreamingChatModelIT {
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-1.5-flash")
+                .logRequestsAndResponses(true)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hello, how are you?", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

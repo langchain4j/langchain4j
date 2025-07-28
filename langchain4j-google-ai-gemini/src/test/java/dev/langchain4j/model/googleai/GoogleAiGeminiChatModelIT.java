@@ -9,6 +9,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -56,6 +57,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class GoogleAiGeminiChatModelIT {
@@ -120,8 +123,7 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         String jsonText = response.aiMessage().text();
-        assertThat(jsonText).contains("\"firstname\"");
-        assertThat(jsonText).contains("\"John\"");
+        assertThat(jsonText).contains("\"firstname\"").contains("\"John\"");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -406,8 +408,7 @@ class GoogleAiGeminiChatModelIT {
 
         String allArgs =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(" "));
-        assertThat(allArgs).contains("ABC");
-        assertThat(allArgs).contains("XYZ");
+        assertThat(allArgs).contains("ABC").contains("XYZ");
     }
 
     @Disabled("TODO fix")
@@ -586,8 +587,7 @@ class GoogleAiGeminiChatModelIT {
                 @JsonProperty("red") int red,
                 @JsonProperty("green") int green,
                 @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted
-        ) {
+                @JsonProperty("muted") boolean muted) {
             this.name = name;
             this.red = red;
             this.green = green;
@@ -739,6 +739,26 @@ class GoogleAiGeminiChatModelIT {
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-1.5-flash")
+                .logRequestsAndResponses(true)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

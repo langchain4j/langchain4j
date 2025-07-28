@@ -3,9 +3,11 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiPart {
+
     private String text;
     private GeminiBlob inlineData;
     private GeminiFunctionCall functionCall;
@@ -13,6 +15,8 @@ class GeminiPart {
     private GeminiFileData fileData;
     private GeminiExecutableCode executableCode;
     private GeminiCodeExecutionResult codeExecutionResult;
+    private Boolean thought;
+    private String thoughtSignature;
 
     @JsonCreator
     GeminiPart(
@@ -22,7 +26,9 @@ class GeminiPart {
             @JsonProperty("functionResponse") GeminiFunctionResponse functionResponse,
             @JsonProperty("fileData") GeminiFileData fileData,
             @JsonProperty("executableCode") GeminiExecutableCode executableCode,
-            @JsonProperty("codeExecutionResult") GeminiCodeExecutionResult codeExecutionResult
+            @JsonProperty("codeExecutionResult") GeminiCodeExecutionResult codeExecutionResult,
+            @JsonProperty("thought") Boolean thought,
+            @JsonProperty("thoughtSignature") String thoughtSignature
     ) {
         this.text = text;
         this.inlineData = inlineData;
@@ -31,6 +37,8 @@ class GeminiPart {
         this.fileData = fileData;
         this.executableCode = executableCode;
         this.codeExecutionResult = codeExecutionResult;
+        this.thought = thought;
+        this.thoughtSignature = thoughtSignature;
     }
 
     public static GeminiPartBuilder builder() {
@@ -65,6 +73,14 @@ class GeminiPart {
         return this.codeExecutionResult;
     }
 
+    public Boolean isThought() {
+        return thought;
+    }
+
+    public String getThoughtSignature() {
+        return thoughtSignature;
+    }
+
     public void setText(String text) {
         this.text = text;
     }
@@ -93,69 +109,53 @@ class GeminiPart {
         this.codeExecutionResult = codeExecutionResult;
     }
 
-    public boolean equals(final Object o) {
-        if (o == this) return true;
-        if (!(o instanceof GeminiPart)) return false;
-        final GeminiPart other = (GeminiPart) o;
-        if (!other.canEqual((Object) this)) return false;
-        final Object this$text = this.getText();
-        final Object other$text = other.getText();
-        if (this$text == null ? other$text != null : !this$text.equals(other$text)) return false;
-        final Object this$inlineData = this.getInlineData();
-        final Object other$inlineData = other.getInlineData();
-        if (this$inlineData == null ? other$inlineData != null : !this$inlineData.equals(other$inlineData))
-            return false;
-        final Object this$functionCall = this.getFunctionCall();
-        final Object other$functionCall = other.getFunctionCall();
-        if (this$functionCall == null ? other$functionCall != null : !this$functionCall.equals(other$functionCall))
-            return false;
-        final Object this$functionResponse = this.getFunctionResponse();
-        final Object other$functionResponse = other.getFunctionResponse();
-        if (this$functionResponse == null ? other$functionResponse != null : !this$functionResponse.equals(other$functionResponse))
-            return false;
-        final Object this$fileData = this.getFileData();
-        final Object other$fileData = other.getFileData();
-        if (this$fileData == null ? other$fileData != null : !this$fileData.equals(other$fileData)) return false;
-        final Object this$executableCode = this.getExecutableCode();
-        final Object other$executableCode = other.getExecutableCode();
-        if (this$executableCode == null ? other$executableCode != null : !this$executableCode.equals(other$executableCode))
-            return false;
-        final Object this$codeExecutionResult = this.getCodeExecutionResult();
-        final Object other$codeExecutionResult = other.getCodeExecutionResult();
-        if (this$codeExecutionResult == null ? other$codeExecutionResult != null : !this$codeExecutionResult.equals(other$codeExecutionResult))
-            return false;
-        return true;
+    public void setThought(Boolean thought) {
+        this.thought = thought;
     }
 
-    protected boolean canEqual(final Object other) {
-        return other instanceof GeminiPart;
+    public void setThoughtSignature(String thoughtSignature) {
+        this.thoughtSignature = thoughtSignature;
     }
 
+    @Override
+    public boolean equals(final Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        GeminiPart that = (GeminiPart) object;
+        return Objects.equals(text, that.text)
+                && Objects.equals(inlineData, that.inlineData)
+                && Objects.equals(functionCall, that.functionCall)
+                && Objects.equals(functionResponse, that.functionResponse)
+                && Objects.equals(fileData, that.fileData)
+                && Objects.equals(executableCode, that.executableCode)
+                && Objects.equals(codeExecutionResult, that.codeExecutionResult)
+                && Objects.equals(thought, that.thought)
+                && Objects.equals(thoughtSignature, that.thoughtSignature);
+    }
+
+    @Override
     public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        final Object $text = this.getText();
-        result = result * PRIME + ($text == null ? 43 : $text.hashCode());
-        final Object $inlineData = this.getInlineData();
-        result = result * PRIME + ($inlineData == null ? 43 : $inlineData.hashCode());
-        final Object $functionCall = this.getFunctionCall();
-        result = result * PRIME + ($functionCall == null ? 43 : $functionCall.hashCode());
-        final Object $functionResponse = this.getFunctionResponse();
-        result = result * PRIME + ($functionResponse == null ? 43 : $functionResponse.hashCode());
-        final Object $fileData = this.getFileData();
-        result = result * PRIME + ($fileData == null ? 43 : $fileData.hashCode());
-        final Object $executableCode = this.getExecutableCode();
-        result = result * PRIME + ($executableCode == null ? 43 : $executableCode.hashCode());
-        final Object $codeExecutionResult = this.getCodeExecutionResult();
-        result = result * PRIME + ($codeExecutionResult == null ? 43 : $codeExecutionResult.hashCode());
-        return result;
+        return Objects.hash(text, inlineData, functionCall, functionResponse, fileData,
+                executableCode, codeExecutionResult, thought, thoughtSignature);
     }
 
+    @Override
     public String toString() {
-        return "GeminiPart(text=" + this.getText() + ", inlineData=" + this.getInlineData() + ", functionCall=" + this.getFunctionCall() + ", functionResponse=" + this.getFunctionResponse() + ", fileData=" + this.getFileData() + ", executableCode=" + this.getExecutableCode() + ", codeExecutionResult=" + this.getCodeExecutionResult() + ")";
+        return "GeminiPart{" +
+                "text='" + text + '\'' +
+                ", inlineData=" + inlineData +
+                ", functionCall=" + functionCall +
+                ", functionResponse=" + functionResponse +
+                ", fileData=" + fileData +
+                ", executableCode=" + executableCode +
+                ", codeExecutionResult=" + codeExecutionResult +
+                ", thought=" + thought +
+                ", thoughtSignature='" + thoughtSignature + '\'' +
+                '}';
     }
 
     public static class GeminiPartBuilder {
+
         private String text;
         private GeminiBlob inlineData;
         private GeminiFunctionCall functionCall;
@@ -163,6 +163,8 @@ class GeminiPart {
         private GeminiFileData fileData;
         private GeminiExecutableCode executableCode;
         private GeminiCodeExecutionResult codeExecutionResult;
+        private Boolean thought;
+        private String thoughtSignature;
 
         GeminiPartBuilder() {
         }
@@ -202,12 +204,19 @@ class GeminiPart {
             return this;
         }
 
-        public GeminiPart build() {
-            return new GeminiPart(this.text, this.inlineData, this.functionCall, this.functionResponse, this.fileData, this.executableCode, this.codeExecutionResult);
+        public GeminiPartBuilder thought(Boolean thought) {
+            this.thought = thought;
+            return this;
         }
 
-        public String toString() {
-            return "GeminiPart.GeminiPartBuilder(text=" + this.text + ", inlineData=" + this.inlineData + ", functionCall=" + this.functionCall + ", functionResponse=" + this.functionResponse + ", fileData=" + this.fileData + ", executableCode=" + this.executableCode + ", codeExecutionResult=" + this.codeExecutionResult + ")";
+        public GeminiPartBuilder thoughtSignature(String thoughtSignature) {
+            this.thoughtSignature = thoughtSignature;
+            return this;
+        }
+
+        public GeminiPart build() {
+            return new GeminiPart(this.text, this.inlineData, this.functionCall, this.functionResponse, this.fileData,
+                    this.executableCode, this.codeExecutionResult, this.thought, this.thoughtSignature);
         }
     }
 }

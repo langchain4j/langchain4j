@@ -1,17 +1,12 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
@@ -20,7 +15,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-1.5-flash-8b")
+            .modelName("gemini-2.0-flash-lite")
             .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
@@ -29,82 +24,36 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
     protected String customModelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.0-flash";
     }
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-
-                // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .topK(parameters.topK())
-                .maxOutputTokens(parameters.maxOutputTokens())
-                .stopSequences(parameters.stopSequences())
-                .responseFormat(parameters.responseFormat())
-
+                .defaultRequestParameters(parameters)
+                .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
+                .logRequestsAndResponses(true)
                 .build();
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder() // TODO return Gemini-specific params
-                .maxOutputTokens(maxOutputTokens)
-                .build();
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
+        return false; // Gemini does not support tools and response format simultaneously
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false; // TODO fix
-    }
-
-    @Disabled("Gemini cannot do it properly")
-    @Override
-    @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsTools")
-    protected void should_execute_a_tool_then_answer(ChatModel model) {
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 }

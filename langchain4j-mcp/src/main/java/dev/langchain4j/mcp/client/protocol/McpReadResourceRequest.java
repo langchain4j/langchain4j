@@ -1,14 +1,16 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+@Internal
 public class McpReadResourceRequest extends McpClientMessage {
 
     @JsonInclude
-    public final ClientMethod method = ClientMethod.RESOURCES_READ;
+    public final McpClientMethod method = McpClientMethod.RESOURCES_READ;
 
     @JsonInclude
     private Map<String, Object> params;

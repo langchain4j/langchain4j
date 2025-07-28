@@ -1,11 +1,15 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
@@ -49,6 +53,21 @@ public interface StreamingChatModel {
             }
 
             @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                handler.onPartialThinking(partialThinking);
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                handler.onPartialToolCall(partialToolCall);
+            }
+
+            @Override
+            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                handler.onCompleteToolCall(completeToolCall);
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
@@ -70,7 +89,7 @@ public interface StreamingChatModel {
     }
 
     default ChatRequestParameters defaultRequestParameters() {
-        return ChatRequestParameters.builder().build();
+        return DefaultChatRequestParameters.EMPTY;
     }
 
     default List<ChatModelListener> listeners() {

@@ -5,10 +5,12 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
 import java.util.Objects;
 
 public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
+
+    public static final OllamaChatRequestParameters EMPTY =
+            OllamaChatRequestParameters.builder().build();
 
     private final Integer mirostat;
     private final Double mirostatEta;
@@ -19,6 +21,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Integer seed;
     private final Double minP;
     private final Integer keepAlive;
+    private final Boolean think;
 
     private OllamaChatRequestParameters(Builder builder) {
         super(builder);
@@ -31,6 +34,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.seed = builder.seed;
         this.minP = builder.minP;
         this.keepAlive = builder.keepAlive;
+        this.think = builder.think;
     }
 
     public Integer mirostat() {
@@ -69,6 +73,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return keepAlive;
     }
 
+    public Boolean think() {
+        return think;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -82,7 +90,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(minP, that.minP)
-                && Objects.equals(keepAlive, that.keepAlive);
+                && Objects.equals(keepAlive, that.keepAlive)
+                && Objects.equals(think, that.think);
     }
 
     @Override
@@ -97,7 +106,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 repeatPenalty,
                 seed,
                 minP,
-                keepAlive);
+                keepAlive,
+                think);
     }
 
     @Override
@@ -123,6 +133,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", seed=" + seed
                 + ", minP=" + minP
                 + ", keepAlive=" + keepAlive
+                + ", think=" + think
                 + '}';
     }
 
@@ -149,6 +160,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Integer seed;
         private Double minP;
         private Integer keepAlive;
+        private Boolean think;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -163,6 +175,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
+                think(getOrDefault(ollamaChatRequestParameters.think, think));
             }
             return this;
         }
@@ -246,6 +259,21 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder keepAlive(Integer keepAlive) {
             this.keepAlive = keepAlive;
+            return this;
+        }
+
+        /**
+         * Controls <a href="https://ollama.com/blog/thinking">thinking</a>.
+         * <pre>
+         * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
+         * <code>false</code>: the LLM does not think
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by <code>&lt;think&gt;</code> and <code>&lt;/think&gt;</code>, to the actual response
+         * </pre>
+         *
+         * @see OllamaChatModel.Builder#returnThinking(Boolean)
+         */
+        public Builder think(Boolean think) {
+            this.think = think;
             return this;
         }
 

@@ -31,9 +31,7 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -51,7 +49,7 @@ class AnthropicChatModelIT {
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded PDFs are huge
             .logResponses(true)
             .build();
 
@@ -70,20 +68,6 @@ class AnthropicChatModelIT {
                     .addIntegerProperty("first")
                     .addIntegerProperty("second")
                     .required("first", "second")
-                    .build())
-            .build();
-
-    ToolSpecification weather = ToolSpecification.builder()
-            .name("weather")
-            .description("returns a weather forecast for a given location")
-            .parameters(JsonObjectSchema.builder()
-                    .addProperty(
-                            "location",
-                            JsonObjectSchema.builder()
-                                    .addStringProperty("city")
-                                    .required("city")
-                                    .build())
-                    .required("location")
                     .build())
             .build();
 
@@ -241,7 +225,7 @@ class AnthropicChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("hello");
         assertThat(response.aiMessage().text()).doesNotContainIgnoringCase("world");
 
-        assertThat(response.finishReason()).isEqualTo(OTHER);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -338,7 +322,7 @@ class AnthropicChatModelIT {
         // then
         assertThatThrownBy(() -> model.chat(
                         systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
-                .isExactlyInstanceOf(dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.InvalidRequestException.class)
                 .hasMessage(
                         "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
     }
@@ -423,8 +407,7 @@ class AnthropicChatModelIT {
 
         assertThatThrownBy(() -> AnthropicChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. "
-                        + "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("apiKey cannot be null or blank");
     }
 
     @Test
@@ -662,23 +645,27 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_answer_with_thinking() {
+    void should_allow_non_user_message_as_first_message_and_consecutive_user_messages() {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(1024)
-                .maxTokens(1024 + 100)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        AiMessage.from("Hi"),
+                        UserMessage.from("What is the"),
+                        UserMessage.from("capital of"),
+                        UserMessage.from("Germany?")
+                )
+                .build();
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");

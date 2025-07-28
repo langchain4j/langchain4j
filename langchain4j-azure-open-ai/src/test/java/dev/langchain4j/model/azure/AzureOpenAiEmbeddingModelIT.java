@@ -1,27 +1,25 @@
 package dev.langchain4j.model.azure;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
-
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiEmbeddingModelIT {
 
-    EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    EmbeddingModel model = AzureModelBuilders.embeddingModelBuilder()
             .deploymentName("text-embedding-3-small")
-            .logRequestsAndResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -64,18 +62,24 @@ class AzureOpenAiEmbeddingModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(value = AzureOpenAiEmbeddingModelName.class,
-            mode = EXCLUDE, names = {"TEXT_EMBEDDING_ADA_002_2", "TEXT_EMBEDDING_3_SMALL", "TEXT_EMBEDDING_3_SMALL_1", "TEXT_EMBEDDING_3_LARGE", "TEXT_EMBEDDING_ADA_002", "TEXT_EMBEDDING_ADA_002_1"})
+    @EnumSource(
+            value = AzureOpenAiEmbeddingModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "TEXT_EMBEDDING_ADA_002_2",
+                "TEXT_EMBEDDING_3_SMALL",
+                "TEXT_EMBEDDING_3_SMALL_1",
+                "TEXT_EMBEDDING_3_LARGE",
+                "TEXT_EMBEDDING_ADA_002",
+                "TEXT_EMBEDDING_ADA_002_1"
+            })
     void should_support_all_string_model_names(AzureOpenAiEmbeddingModelName modelName) {
 
         // given
         String modelNameString = modelName.toString();
 
-        EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        EmbeddingModel model = AzureModelBuilders.embeddingModelBuilder()
                 .deploymentName(modelNameString)
-                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -91,12 +95,9 @@ class AzureOpenAiEmbeddingModelIT {
         // given
         int dimensions = 100;
 
-        EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        EmbeddingModel model = AzureModelBuilders.embeddingModelBuilder()
                 .deploymentName("text-embedding-3-large")
                 .dimensions(dimensions)
-                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
