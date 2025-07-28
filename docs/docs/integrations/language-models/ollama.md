@@ -268,22 +268,35 @@ class OllamaStreamingChatLocalModelTest {
 `OllamaChatModel` and `OllamaStreamingChatModel` classes can be instantiated with the following
 params with the builder pattern:
 
-| Parameter        | Description                                                                                                                                                                       | Type             | Example                |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|------------------------|
-| `baseUrl`        | The base URL of Ollama server.                                                                                                                                                    | `String`         | http://localhost:11434 |
-| `modelName`      | The name of the model to use from Ollama server.                                                                                                                                  | `String`         |                        |
-| `temperature`    | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`         |                        |
-| `topK`           | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`        |                        |
-| `topP`           | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`         |                        |
-| `repeatPenalty`  | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`         |                        |
-| `seed`           | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`        |                        |
-| `numPredict`     | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`        |                        |
-| `stop`           | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>`   |                        |
-| `format`         | The desired format for the generated output. (**Depracated** see **responseFormat**)                                                                                              | `String`         |                        |
-| `responseFormat` | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat` |                        |
-| `supportedCapabilities` | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Capability` | RESPONSE_FORMAT_JSON_SCHEMA |
-| `timeout`        | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`       | PT60S                  |
-| `maxRetries`     | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`        |                        |
+| Parameter                  | Description                                                                                                                                                                       | Type                      | Example                     |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|-----------------------------|
+| `httpClientBuilder`        | See [Customizable HTTP Client](https://docs.langchain4j.dev/tutorials/customizable-http-client)                                                                                   | `HttpClientBuilder`       |                             |
+| `baseUrl`                  | The base URL of Ollama server.                                                                                                                                                    | `String`                  | http://localhost:11434      |
+| `defaultRequestParameters` |                                                                                                                                                                                   | `ChatRequestParameters`   |                             |
+| `modelName`                | The name of the model to use from Ollama server.                                                                                                                                  | `String`                  |                             |
+| `temperature`              | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`                  |                             |
+| `topK`                     | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`                 |                             |
+| `topP`                     | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`                  |                             |
+| `mirostat`                 |                                                                                                                                                                                   | `Integer`                 |                             |
+| `mirostatEta`              |                                                                                                                                                                                   | `Double`                  |                             |
+| `mirostatTau`              |                                                                                                                                                                                   | `Double`                  |                             |
+| `repeatLastN`              |                                                                                                                                                                                   | `Integer`                 |                             |
+| `repeatPenalty`            | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`                  |                             |
+| `seed`                     | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`                 |                             |
+| `numPredict`               | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`                 |                             |
+| `numCtx`                   |                                                                                                                                                                                   | `Integer`                 |                             |
+| `stop`                     | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>`            |                             |
+| `minP`                     |                                                                                                                                                                                   | `Double`                  |                             |
+| `responseFormat`           | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat`          |                             |
+| `think`                    | Controls [thinking](https://ollama.com/blog/thinking).                                                                                                                            | `Boolean`                 |                             |
+| `returnThinking`           |                                                                                                                                                                                   | `Boolean`                 |                             |
+| `timeout`                  | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`                | PT60S                       |
+| `customHeaders`            | Custom HTTP headers.                                                                                                                                                              | `Map<String, String>`     |                             |
+| `logRequests`              |                                                                                                                                                                                   | `Boolean`                 |                             |
+| `logResponses`             |                                                                                                                                                                                   | `Boolean`                 |                             |
+| `listeners`                | See [Chat Model Observability](https://docs.langchain4j.dev/tutorials/observability#chat-model-observability)                                                                     | `List<ChatModelListener>` |                             |
+| `supportedCapabilities`    | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Set<Capability>`         | RESPONSE_FORMAT_JSON_SCHEMA |
+| `maxRetries`               | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`                 |                             |
 
 #### Usage Example
 ```java
@@ -390,10 +403,32 @@ When `OllamaChatModel` is created with supported capability `RESPONSE_FORMAT_JSO
 
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
-    .baseUrl("...")
-    .modelName("...")
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
     .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)    
     .build();
+```
+
+### Thinking / Reasoning
+
+The [thinking](https://ollama.com/blog/thinking) feature is supported and is controlled by the following
+parameters:
+- `think`: controls whether the LLM thinks and how:
+  - `true`: the LLM thinks and returns thoughts in a separate `thinking` field
+  - `false`: the LLM does not think
+  - `null` (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by `<think>` and `</think>`, to the actual response
+- `returnThinking`: controls whether `thinking` field from the API response is parsed
+and returned in the `AiMessage.thinking()` and whether to invoke the `StreamingChatResponseHandler.onPartialThinking()`
+and `TokenStream.onPartialThinking()` callbacks when using `OllamaStreamingChatModel`. Disabled by default.
+
+Here is an example of how to configure thinking:
+```java
+ChatModel model = OllamaChatModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("qwen3:0.6b")
+        .think(true)
+        .returnThinking(true)
+        .build();
 ```
 
 ### Custom Messages

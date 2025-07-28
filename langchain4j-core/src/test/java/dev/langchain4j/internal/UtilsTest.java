@@ -17,7 +17,6 @@ import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationHandler;
@@ -40,6 +39,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings({"ObviousNullCheck", "ConstantValue"})
 class UtilsTest {
+
     @Test
     void get_or_default() {
         assertThat(Utils.getOrDefault("foo", "bar")).isEqualTo("foo");
@@ -144,6 +144,27 @@ class UtilsTest {
         assertThat(Utils.isNullOrEmpty((Iterable<?>) emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty((Iterable<?>) Collections.singletonList("abc")))
                 .isFalse();
+    }
+
+    @Test
+    void array_is_null_or_empty() {
+        // Null array
+        assertThat(Utils.isNullOrEmpty((Object[]) null)).isTrue();
+
+        // Empty array
+        assertThat(Utils.isNullOrEmpty(new Object[0])).isTrue();
+
+        // Non-empty array with one element
+        assertThat(Utils.isNullOrEmpty(new Object[] {"abc"})).isFalse();
+
+        // Non-empty array with multiple elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {"a", "b", "c"})).isFalse();
+
+        // Array with a null element (still non-empty)
+        assertThat(Utils.isNullOrEmpty(new Object[] {null})).isFalse();
+
+        // Mixed null and non-null elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {null, "xyz"})).isFalse();
     }
 
     @Test
@@ -357,13 +378,42 @@ class UtilsTest {
         assertThat(result).containsEntry("key1", null);
     }
 
-    @Retention(RUNTIME)
-    @Target({METHOD})
-    public @interface MyAnnotation { }
+    @MethodSource
+    @ParameterizedTest
+    void test_firstNotNull(Object[] values, Object expected) {
+        assertThat(Utils.firstNotNull("testParam", values)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> test_firstNotNull() {
+        return Stream.of(
+                Arguments.of(new Object[] {"first", "second"}, "first"),
+                Arguments.of(new Object[] {null, "second"}, "second"),
+                Arguments.of(new Object[] {null, null, "third"}, "third"),
+                Arguments.of(new Object[] {42, null}, 42),
+                Arguments.of(new Object[] {null, true}, true));
+    }
+
+    @Test
+    void firstNotNull_throwsWhenAllValuesAreNull() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Utils.firstNotNull("testParam", (Object) null, null))
+                .withMessageContaining("At least one of the given 'testParam' values must be not null");
+    }
+
+    @Test
+    void firstNotNull_throwsWhenValuesArrayIsEmpty() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Utils.firstNotNull("testParam"))
+                .withMessageContaining("testParam values cannot be null or empty");
+    }
 
     @Retention(RUNTIME)
     @Target({METHOD})
-    public @interface AnotherAnnotation { }
+    public @interface MyAnnotation {}
+
+    @Retention(RUNTIME)
+    @Target({METHOD})
+    public @interface AnotherAnnotation {}
 
     public interface MyInterface {
         @MyAnnotation
@@ -380,9 +430,7 @@ class UtilsTest {
     @Test
     void shouldRetrieveAnnotationOnProxyMethod() throws NoSuchMethodException {
         Object proxyInstance = Proxy.newProxyInstance(
-                MyInterface.class.getClassLoader(),
-                new Class<?>[] {MyInterface.class},
-                new InvocationHandler() {
+                MyInterface.class.getClassLoader(), new Class<?>[] {MyInterface.class}, new InvocationHandler() {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
                         return null;

@@ -34,27 +34,6 @@ public class MistralAiModels {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
-    /**
-     * @deprecated please use {@link #MistralAiModels(MistralAiModelsBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiModels(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
-        this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-        this.maxRetries = getOrDefault(maxRetries, 2);
-    }
-
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

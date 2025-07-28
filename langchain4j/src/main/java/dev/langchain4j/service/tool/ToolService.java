@@ -115,10 +115,12 @@ public class ToolService {
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors) {
-        TokenUsage tokenUsageAccumulator = chatResponse.metadata().tokenUsage();
-        int executionsLeft = maxSequentialToolsInvocations;
-        List<ToolExecution> toolExecutions = new ArrayList<>();
 
+        TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
+        List<ToolExecution> toolExecutions = new ArrayList<>();
+        List<ChatResponse> intermediateResponses = new ArrayList<>();
+
+        int executionsLeft = maxSequentialToolsInvocations;
         while (true) {
 
             if (executionsLeft-- == 0) {
@@ -138,6 +140,8 @@ public class ToolService {
             if (!aiMessage.hasToolExecutionRequests()) {
                 break;
             }
+
+            intermediateResponses.add(chatResponse);
 
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
@@ -169,19 +173,15 @@ public class ToolService {
                     .build();
 
             chatResponse = chatModel.chat(chatRequest);
-
-            tokenUsageAccumulator = TokenUsage.sum(
-                    tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
+            aggregateTokenUsage = TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
-        chatResponse = ChatResponse.builder()
-                .aiMessage(chatResponse.aiMessage())
-                .metadata(chatResponse.metadata().toBuilder()
-                        .tokenUsage(tokenUsageAccumulator)
-                        .build())
+        return ToolServiceResult.builder()
+                .intermediateResponses(intermediateResponses)
+                .finalResponse(chatResponse)
+                .toolExecutions(toolExecutions)
+                .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
-
-        return new ToolServiceResult(chatResponse, toolExecutions);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

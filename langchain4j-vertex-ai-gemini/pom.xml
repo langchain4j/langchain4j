@@ -22,7 +22,7 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>26.60.0</version>
+                <version>26.63.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -41,7 +41,6 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-vertexai</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 
@@ -63,14 +62,6 @@
             <version>1.2.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Retry flaky tests -->
-        <dependency>
-            <groupId>org.junit-pioneer</groupId>
-            <artifactId>junit-pioneer</artifactId>
-            <version>1.9.1</version>
             <scope>test</scope>
         </dependency>
 

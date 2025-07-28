@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -29,12 +31,8 @@ public final class McpBlobResourceContents implements McpResourceContents {
             @JsonProperty("blob") String blob,
             @JsonProperty("mimeType") String mimeType
     ) {
-        if (uri == null) {
-            throw new IllegalArgumentException("uri must not be null");
-        }
-        if (blob == null) {
-            throw new IllegalArgumentException("blob must not be null");
-        }
+        ensureNotNull(uri, "uri");
+        ensureNotNull(blob, "blob");
         this.uri = uri;
         this.blob = blob;
         this.mimeType = mimeType;

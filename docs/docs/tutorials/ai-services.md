@@ -260,10 +260,12 @@ AI service will parse LLM-generated output into a desired type before returning
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
-the LLM (e.g., because tools were executed), it will summ token usages of all calls.
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
-- Executed [tools](/tutorials/ai-services#tools-function-calling)
-- `FinishReason`
+- All [tools](/tutorials/ai-services#tools-function-calling) executed during AI Service invocation (both requests and results)
+- `FinishReason` of the final chat response
+- All intermediate `ChatResponse`s
+- The final `ChatResponse`
 
 An example:
 ```java
@@ -521,8 +523,11 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+tokenStream
+    .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+    .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> System.out.println(response))
     .onError((Throwable error) -> error.printStackTrace())
@@ -685,8 +690,36 @@ More RAG examples can be found [here](https://github.com/langchain4j/langchain4j
 
 
 ## Auto-Moderation
+
+AI Services can automatically perform content moderation. When inappropriate content is detected, a `ModerationException` is thrown, which contains the original `Moderation` object.
+This object includes information about the flagged content, such as the specific text that was flagged.
+
+Auto-moderation can be configured when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
+```
+
+
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
+## Programmatic ChatRequest rewriting
+
+In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
+
+It is possible to do so by configuring the AI Service with a `UnaryOperator<ChatRequest>` implementing the transformation that be applied to the `ChatRequest`:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
+    .build();
+```
+
+In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
 
 ## Chaining multiple AI Services
 The more complex the logic of your LLM-powered application becomes,

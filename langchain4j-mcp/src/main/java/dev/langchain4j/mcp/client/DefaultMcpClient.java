@@ -14,10 +14,10 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
-import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.client.protocol.McpGetPromptRequest;
+import dev.langchain4j.mcp.client.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
@@ -25,20 +25,25 @@ import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.protocol.McpPingRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
+import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,50 +75,78 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
+    private final Boolean autoHealthCheck;
+    private final Duration autoHealthCheckInterval;
+    private final ScheduledExecutorService healthCheckScheduler;
+    private final ReentrantLock initializationLock = new ReentrantLock();
+    private final AtomicReference<List<McpRoot>> mcpRoots;
 
     public DefaultMcpClient(Builder builder) {
-        transport = ensureNotNull(builder.transport, "transport");
-        key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
-        clientName = getOrDefault(builder.clientName, "langchain4j");
-        clientVersion = getOrDefault(builder.clientVersion, "1.0");
-        protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
-        initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
-        toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
-        resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
-        promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
-        logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
-        pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
-        reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
-        toolExecutionTimeoutErrorMessage =
-                getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
-        RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
-        messageHandler = new McpOperationHandler(
-                pendingOperations, transport, logHandler::handleLogMessage, () -> toolListOutOfDate.set(true));
-        ((ObjectNode) RESULT_TIMEOUT)
-                .putObject("result")
-                .putArray("content")
-                .addObject()
-                .put("type", "text")
-                .put("text", toolExecutionTimeoutErrorMessage);
-        transport.onFailure(() -> {
-            if (!closed) {
-                try {
-                    TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+        try {
+            transport = ensureNotNull(builder.transport, "transport");
+            key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
+            clientName = getOrDefault(builder.clientName, "langchain4j");
+            clientVersion = getOrDefault(builder.clientVersion, "1.0");
+            protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
+            initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
+            toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
+            resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
+            promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
+            logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
+            pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
+            reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
+            autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
+            autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
+            healthCheckScheduler = autoHealthCheck
+                    ? Executors.newSingleThreadScheduledExecutor(r -> {
+                        Thread t = new Thread(r, "mcp-server-health-checker");
+                        t.setDaemon(true);
+                        return t;
+                    })
+                    : null;
+            toolExecutionTimeoutErrorMessage =
+                    getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
+            mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
+            RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
+            messageHandler = new McpOperationHandler(
+                    pendingOperations,
+                    mcpRoots::get,
+                    transport,
+                    logHandler::handleLogMessage,
+                    () -> toolListOutOfDate.set(true));
+            ((ObjectNode) RESULT_TIMEOUT)
+                    .putObject("result")
+                    .putArray("content")
+                    .addObject()
+                    .put("type", "text")
+                    .put("text", toolExecutionTimeoutErrorMessage);
+            transport.onFailure(() -> {
+                if (!closed) {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    log.info("Trying to reconnect...");
+                    triggerReconnection();
                 }
-                log.info("Trying to reconnect...");
-                initialize();
-            }
-        });
-        initialize();
+            });
+            initialize();
+            startAutoHealthCheck();
+        } catch (RuntimeException e) {
+            // Mark the client as closed if initialization fails,
+            // so that the transport callback won't try to
+            // reinitialize it (indefinitely).
+            closed = true;
+            throw e;
+        }
     }
 
     private void initialize() {
         transport.start(messageHandler);
         long operationId = idGenerator.getAndIncrement();
         McpInitializeRequest request = new McpInitializeRequest(operationId);
-        InitializeParams params = createInitializeParams();
+        McpInitializeParams params = createInitializeParams();
         request.setParams(params);
         try {
             JsonNode capabilities =
@@ -126,18 +159,18 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private InitializeParams createInitializeParams() {
-        InitializeParams params = new InitializeParams();
+    private McpInitializeParams createInitializeParams() {
+        McpInitializeParams params = new McpInitializeParams();
         params.setProtocolVersion(protocolVersion);
 
-        InitializeParams.ClientInfo clientInfo = new InitializeParams.ClientInfo();
+        McpInitializeParams.ClientInfo clientInfo = new McpInitializeParams.ClientInfo();
         clientInfo.setName(clientName);
         clientInfo.setVersion(clientVersion);
         params.setClientInfo(clientInfo);
 
-        InitializeParams.Capabilities capabilities = new InitializeParams.Capabilities();
-        InitializeParams.Capabilities.Roots roots = new InitializeParams.Capabilities.Roots();
-        roots.setListChanged(false); // TODO: listChanged is not supported yet
+        McpInitializeParams.Capabilities capabilities = new McpInitializeParams.Capabilities();
+        McpInitializeParams.Capabilities.Roots roots = new McpInitializeParams.Capabilities.Roots();
+        roots.setListChanged(true);
         capabilities.setRoots(roots);
         params.setCapabilities(capabilities);
 
@@ -151,6 +184,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<ToolSpecification> listTools() {
+        assertNotClosed();
         if (toolListOutOfDate.get()) {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
@@ -177,6 +211,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public String executeTool(ToolExecutionRequest executionRequest) {
+        assertNotClosed();
         ObjectNode arguments = null;
         try {
             String args = executionRequest.arguments();
@@ -196,7 +231,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(operation);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            transport.executeOperationWithoutResponse(new CancellationNotification(operationId, "Timeout"));
+            transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -208,6 +243,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpResource> listResources() {
+        assertNotClosed();
         if (resourceRefs.get() == null) {
             obtainResourceList();
         }
@@ -216,6 +252,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpReadResourceResult readResource(String uri) {
+        assertNotClosed();
         final long operationId = idGenerator.getAndIncrement();
         McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
@@ -234,6 +271,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpPrompt> listPrompts() {
+        assertNotClosed();
         if (promptRefs.get() == null) {
             obtainPromptList();
         }
@@ -242,6 +280,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+        assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
         McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
@@ -260,6 +299,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void checkHealth() {
+        assertNotClosed();
         transport.checkHealth();
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
@@ -274,7 +314,14 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
+    public void setRoots(final List<McpRoot> roots) {
+        this.mcpRoots.set(roots);
+        transport.executeOperationWithoutResponse(new McpRootsListChangedNotification());
+    }
+
+    @Override
     public List<McpResourceTemplate> listResourceTemplates() {
+        assertNotClosed();
         if (resourceTemplateRefs.get() == null) {
             obtainResourceTemplateList();
         }
@@ -336,6 +383,35 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private void startAutoHealthCheck() {
+        if (Boolean.FALSE.equals(autoHealthCheck)) {
+            return;
+        }
+        Runnable healthCheckTask = () -> {
+            try {
+                checkHealth();
+            } catch (Exception e) {
+                log.warn("mcp server health check failed. Attempting to reconnect...", e);
+                triggerReconnection();
+            }
+        };
+        healthCheckScheduler.scheduleAtFixedRate(
+                healthCheckTask,
+                autoHealthCheckInterval.toMillis(),
+                autoHealthCheckInterval.toMillis(),
+                TimeUnit.MILLISECONDS);
+    }
+
+    private void triggerReconnection() {
+        if (initializationLock.tryLock()) {
+            try {
+                initialize();
+            } finally {
+                initializationLock.unlock();
+            }
+        }
+    }
+
     private synchronized void obtainPromptList() {
         if (promptRefs.get() != null) {
             return;
@@ -358,10 +434,19 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void close() {
         closed = true;
+        if (healthCheckScheduler != null) {
+            healthCheckScheduler.shutdownNow();
+        }
         try {
             transport.close();
         } catch (Exception e) {
             log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    private void assertNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("The client is closed");
         }
     }
 
@@ -380,7 +465,16 @@ public class DefaultMcpClient implements McpClient {
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
         private Duration reconnectInterval;
+        private Boolean autoHealthCheck;
+        private Duration autoHealthCheckInterval;
+        private List<McpRoot> roots;
 
+        /**
+         * Sets the transport protocol to use for communicating with the
+         * MCP server. This is a mandatory parameter. A successfully
+         * constructed DefaultMcpClient takes over the resource ownership
+         * of this transport and will close it when it itself is closed.
+         */
         public Builder transport(McpTransport transport) {
             this.transport = transport;
             return this;
@@ -500,6 +594,35 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder reconnectInterval(Duration reconnectInterval) {
             this.reconnectInterval = reconnectInterval;
+            return this;
+        }
+
+        /**
+         * Enables or disables the automatic health check feature.
+         * When enabled, the client will periodically send ping messages to the server
+         * to ensure the connection is alive, and will attempt to reconnect if it's not.
+         * The default is enabled
+         */
+        public Builder autoHealthCheck(boolean autoHealthCheck) {
+            this.autoHealthCheck = autoHealthCheck;
+            return this;
+        }
+
+        /**
+         * Sets the interval for the automatic health checks.
+         * This is only used when the auto health check feature is enabled.
+         * The default is 30 seconds
+         */
+        public Builder autoHealthCheckInterval(Duration interval) {
+            this.autoHealthCheckInterval = interval;
+            return this;
+        }
+
+        /**
+         * Specify the initial set of roots that are available to the server upon its request.
+         */
+        public Builder roots(List<McpRoot> roots) {
+            this.roots = new ArrayList<>(roots);
             return this;
         }
 
