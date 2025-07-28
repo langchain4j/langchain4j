@@ -45,7 +45,7 @@ public interface TextSegmentTransformer {
      */
     default List<TextSegment> transformAll(TextSegment... textSegments) {
         if (Utils.isNullOrEmpty(textSegments)) {
-            return List.of(); // Return empty immutable list
+            return List.of();
         }
         return transformAll(Arrays.asList(textSegments));
     }
