@@ -13,14 +13,15 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
-public class OpenAiEmbeddingDeserializer extends JsonDeserializer<List<Float>> {
+class OpenAiEmbeddingDeserializer extends JsonDeserializer<List<Float>> {
+    private static final TypeReference<List<Float>> FLOAT_LIST_TYPE_REFERENCE = new TypeReference<>() {};
 
     @Override
     public List<Float> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
             throws IOException, JacksonException {
         JsonToken token = jsonParser.currentToken();
         if (token == JsonToken.START_ARRAY) {
-            return jsonParser.readValueAs(new TypeReference<List<Float>>() {});
+            return jsonParser.readValueAs(FLOAT_LIST_TYPE_REFERENCE);
         } else if (token == JsonToken.VALUE_STRING) {
             String base64 = jsonParser.getValueAsString();
             byte[] decodedBytes = Base64.getDecoder().decode(base64);
