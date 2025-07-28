@@ -1,4 +1,4 @@
-package dev.langchain4j.azure.aca.dynamicsessions;
+package dev.langchain4j.code.azure.acads;
 
 /**
  * Test Suite for SessionsREPLTool

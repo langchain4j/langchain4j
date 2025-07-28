@@ -1,9 +1,10 @@
-package dev.langchain4j.azure.aca.dynamicsessions;
+package dev.langchain4j.code.azure.acads;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.Tool;
@@ -14,13 +15,20 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.spi.ServiceHelper;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -76,6 +84,11 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     private static final String API_VERSION = "2024-02-02-preview";
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    // TypeReferences for type-safe JSON deserialization
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REF = new TypeReference<Map<String, Object>>() {};
+    private static final TypeReference<List<Map<String, Object>>> LIST_MAP_TYPE_REF =
+            new TypeReference<List<Map<String, Object>>>() {};
 
     private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");
     private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(\\s|`)*$");
@@ -309,12 +322,13 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), Map.class);
-                return (Map<String, Object>) responseJson.get("properties");
+                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), MAP_TYPE_REF);
+                return getNestedMapProperty(responseJson, "properties");
             } else {
                 throw new RuntimeException(
                         "Request failed with status code " + response.statusCode() + ": " + response.body());
             }
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to execute code.", e);
         }
@@ -379,8 +393,9 @@ public class SessionsREPLTool implements CodeExecutionEngine {
                     throw new IOException("Unexpected code " + response);
                 }
 
-                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), Map.class);
-                List<Map<String, Object>> valueList = (List<Map<String, Object>>) responseJson.get("value");
+                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), MAP_TYPE_REF);
+                List<Map<String, Object>> valueList =
+                        OBJECT_MAPPER.convertValue(responseJson.get("value"), LIST_MAP_TYPE_REF);
                 Map<String, Object> fileMetadataMap = valueList.get(0);
                 return RemoteFileMetadata.fromDict(fileMetadataMap);
 
@@ -505,6 +520,17 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         }
     }
 
+    private static Map<String, Object> getNestedMapProperty(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Map) {
+            // This is safe because we know the structure from Azure API
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) value;
+            return result;
+        }
+        return null;
+    }
+
     /**
      * Represents metadata of a remote file.
      */
@@ -557,7 +583,15 @@ public class SessionsREPLTool implements CodeExecutionEngine {
          * @return a RemoteFileMetadata instance
          */
         public static RemoteFileMetadata fromDict(Map<String, Object> data) {
-            Map<String, Object> properties = (Map<String, Object>) data.get("properties");
+            Object propertiesObj = data.get("properties");
+            if (!(propertiesObj instanceof Map)) {
+                throw new IllegalArgumentException("Data does not contain a valid properties map");
+            }
+
+            // This cast is safe because we checked the type above
+            @SuppressWarnings("unchecked")
+            Map<String, Object> properties = (Map<String, Object>) propertiesObj;
+
             String filename = (String) properties.get("filename");
             Number size = (Number) properties.get("size");
             return new RemoteFileMetadata(filename, size.longValue());
