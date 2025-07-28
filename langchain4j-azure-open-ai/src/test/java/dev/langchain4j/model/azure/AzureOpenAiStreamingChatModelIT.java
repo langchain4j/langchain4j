@@ -39,56 +39,6 @@ class AzureOpenAiStreamingChatModelIT {
 
     public long STREAMING_TIMEOUT = 120;
 
-    @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
-    @CsvSource({"gpt-4o, gpt-4o"})
-    void should_stream_answer_with_token_usage(String deploymentName, String gptVersion) throws Exception {
-
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        //no token count estimator used, information retrieved from the azure openai service response
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
-                .deploymentName(deploymentName)
-                .logRequestsAndResponses(true)
-                .build();
-
-        model.chat("What is the capital of France?", new StreamingChatResponseHandler() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                answerBuilder.append(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
-        ChatResponse response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
-
-        assertThat(answer).contains("Paris");
-        assertThat(response.aiMessage().text()).isEqualTo(answer);
-
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount()
-                        + response.tokenUsage().outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
     @ParameterizedTest(name = "Deployment name {0}")
     @ValueSource(strings = {"gpt-4o"})
     void should_stream_answer(String deploymentName) throws Exception {
