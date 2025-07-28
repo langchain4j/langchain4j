@@ -89,7 +89,7 @@ class InternalAzureOpenAiHelperTest {
 
         List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
 
-        assertThat(openAiMessages).hasSize(messages.size());
+        assertThat(openAiMessages).hasSameSizeAs(messages);
         assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
     }
 
@@ -103,7 +103,7 @@ class InternalAzureOpenAiHelperTest {
 
         List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);
 
-        assertThat(tools).hasSize(toolSpecifications.size());
+        assertThat(tools).hasSameSizeAs(toolSpecifications);
         assertThat(tools.get(0)).isInstanceOf(ChatCompletionsFunctionToolDefinition.class);
         assertThat(((ChatCompletionsFunctionToolDefinition) tools.get(0))
                         .getFunction()

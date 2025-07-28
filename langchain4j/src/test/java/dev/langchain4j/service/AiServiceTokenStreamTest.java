@@ -9,6 +9,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
-
+    static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
-
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
@@ -95,6 +95,20 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
+    void start_onPartialThinkingInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onPartialThinking(DUMMY_PARTIAL_THINKING_HANDLER)
+                .onPartialThinking(DUMMY_PARTIAL_THINKING_HANDLER)
+                .ignoreErrors()
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onPartialThinking can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
     void start_onCompleteResponseInvokedMultipleTimes_shouldThrowException() {
         tokenStream
                 .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
@@ -105,6 +119,20 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onCompleteResponse can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onIntermediateResponseInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .ignoreErrors()
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onIntermediateResponse can be invoked on TokenStream at most 1 time");
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {

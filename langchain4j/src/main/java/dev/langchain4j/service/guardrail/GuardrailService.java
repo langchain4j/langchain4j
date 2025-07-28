@@ -8,9 +8,11 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
@@ -93,14 +95,24 @@ public interface GuardrailService {
 
     /**
      * Creates a new instance of {@link Builder} for the specified AI service class.
+     * <p>
+     *     Attempts to retrieve an instance through a {@link dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory}, if available.
+     *     If no factory is present, it uses its own default instance.
+     * </p>
      *
      * @param aiServiceClass The {@code Class} object representing the AI service for which the builder is being created.
      * @return A {@link Builder} instance initialized with the specified AI service class.
      */
     static Builder builder(Class<?> aiServiceClass) {
-        return new GuardrailServiceBuilder(aiServiceClass);
+        return ServiceLoader.load(GuardrailServiceBuilderFactory.class)
+                .findFirst()
+                .map(builderFactory -> builderFactory.getBuilder(aiServiceClass))
+                .orElseGet(() -> new GuardrailServiceBuilder(aiServiceClass));
     }
 
+    /**
+     * Builder class for building {@link GuardrailService} instances
+     */
     interface Builder {
         /**
          * Configures the input guardrails for the builder.
