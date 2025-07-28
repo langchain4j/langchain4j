@@ -5,8 +5,10 @@ import static java.util.Collections.synchronizedList;
 import static java.util.Collections.synchronizedSet;
 import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -18,6 +20,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -719,5 +722,184 @@ public abstract class HttpClientIT {
             verify(spyListener).onError(any());
             verifyNoMoreInteractions(spyListener);
         }
+    }
+
+    @Test
+    void should_return_successful_http_response_with_retry() {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ]
+                            }
+                            """)
+                    .build();
+
+            // when
+            SuccessfulHttpResponse response = client.executeWithRetry(request, 2);
+
+            // then
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers()).isNotEmpty();
+            assertThat(response.body()).contains("Berlin");
+        }
+    }
+
+    @Test
+    void should_throw_400_with_retry() {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            String invalidBody =
+                    """
+                    {
+                        "model": "gpt-4o-mini"
+                    }
+                    """; // missing "messages"
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(invalidBody)
+                    .build();
+
+            // when
+            try {
+                client.executeWithRetry(request, 2);
+                fail("Should have thrown an exception");
+            } catch (Exception e) {
+                // then
+                assertThat(e).isExactlyInstanceOf(HttpException.class);
+                HttpException httpException = (HttpException) e;
+                assertThat(httpException.statusCode()).isEqualTo(400);
+                assertThat(httpException.getMessage()).contains("Missing required parameter: 'messages'");
+            }
+        }
+    }
+
+    @Test
+    void should_throw_401_with_retry() {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            String incorrectApiKey = "banana";
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + incorrectApiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ]
+                            }
+                            """)
+                    .build();
+
+            // when
+            try {
+                client.executeWithRetry(request, 3);
+                fail("Should have thrown an exception");
+            } catch (Exception e) {
+                // then
+                assertThat(e).isExactlyInstanceOf(HttpException.class);
+                HttpException httpException = (HttpException) e;
+                assertThat(httpException.statusCode()).isEqualTo(401);
+                assertThat(httpException.getMessage()).contains("Incorrect API key provided");
+            }
+        }
+    }
+
+    @Test
+    void should_retry_until_success() {
+        // given
+        HttpClient client = mock(HttpClient.class);
+
+        HttpRequest request = HttpRequest.builder()
+                .method(HttpMethod.POST)
+                .url("https://fake-url.com/retry")
+                .build();
+
+        HttpException transientError = new HttpException(500, "Internal Server Error");
+
+        SuccessfulHttpResponse successfulResponse = SuccessfulHttpResponse.builder()
+                .body("{\"result\":\"ok\"}")
+                .statusCode(200)
+                .build();
+
+        // First attempt throws, second returns success
+        when(client.execute(request)).thenThrow(transientError).thenReturn(successfulResponse);
+
+        // Wrap with real default retry logic (since client is mocked)
+        HttpClient retryingClient = new HttpClient() {
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest req) {
+                return client.execute(req);
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {}
+        };
+
+        // when
+        SuccessfulHttpResponse result = retryingClient.executeWithRetry(request, 2);
+
+        // then
+        assertThat(result.statusCode()).isEqualTo(200);
+        assertThat(result.body()).contains("ok");
+
+        // verify execute was called exactly twice
+        verify(client, times(2)).execute(request);
+    }
+
+    @Test
+    void should_throw_illegal_argument_exception_when_retry_count_is_negative() {
+        // given
+        HttpClient client = new HttpClient() {
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                throw new UnsupportedOperationException("Should not be called");
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                // not needed for this test
+            }
+        };
+
+        HttpRequest dummyRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url("https://fake-url.com")
+                .build();
+
+        // when / then
+        assertThatThrownBy(() -> client.executeWithRetry(dummyRequest, -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxRetries must be >= 0");
     }
 }
