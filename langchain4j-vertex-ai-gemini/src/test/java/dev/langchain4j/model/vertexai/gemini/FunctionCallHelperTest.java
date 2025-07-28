@@ -142,4 +142,36 @@ class FunctionCallHelperTest {
         // then
         assertThat(newExecutionRequest).isEqualTo(sameExecutionRequest);
     }
+
+    @Test
+    void should_convert_function_calls_to_tool_execution_requests_and_back_without_args() {
+        // given
+        FunctionCall functionCall = FunctionCall.newBuilder()
+                .setName("getDataSources")
+                .setArgs(Struct.newBuilder())
+                .build();
+
+        // when
+        List<ToolExecutionRequest> toolExecutionRequest =
+                FunctionCallHelper.fromFunctionCalls(Collections.singletonList(functionCall));
+        FunctionCall sameFunctionCall = FunctionCallHelper.fromToolExecutionRequest(toolExecutionRequest.get(0));
+
+        // then
+        assertThat(functionCall).isEqualTo(sameFunctionCall);
+
+        // given
+        ToolExecutionRequest newExecutionRequest = ToolExecutionRequest.builder()
+                .name("getDataSources")
+                .arguments("{}")
+                .build();
+
+        // when
+        FunctionCall newFunctionCall = FunctionCallHelper.fromToolExecutionRequest(newExecutionRequest);
+        ToolExecutionRequest sameExecutionRequest = FunctionCallHelper.fromFunctionCalls(
+                        Collections.singletonList(newFunctionCall))
+                .get(0);
+
+        // then
+        assertThat(newExecutionRequest).isEqualTo(sameExecutionRequest);
+    }
 }

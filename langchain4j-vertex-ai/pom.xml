@@ -17,7 +17,7 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>google-cloud-discoveryengine-bom</artifactId>
-                <version>0.59.0</version>
+                <version>0.64.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -36,7 +36,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.64.0</version>
+            <version>3.69.0</version>
         </dependency>
 
         <!-- Ranking API -->

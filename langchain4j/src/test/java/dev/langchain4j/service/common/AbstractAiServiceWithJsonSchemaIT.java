@@ -1,6 +1,15 @@
 package dev.langchain4j.service.common;
 
-import dev.langchain4j.model.chat.ChatModel;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -14,11 +23,6 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,23 +31,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @TestInstance(PER_CLASS)
 public abstract class AbstractAiServiceWithJsonSchemaIT {
     // TODO test the same for streaming models
 
     protected abstract List<ChatModel> models();
-
 
     interface PersonExtractor1 {
 
@@ -67,8 +64,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor1 personExtractor = AiServices.create(PersonExtractor1.class, model);
 
-        String text = "Extract the person's information from the following text: " +
-                "Klaus is 37 years old, 1.78m height and single";
+        String text = "Extract the person's information from the following text: "
+                + "Klaus is 37 years old, 1.78m height and single";
 
         // when
         PersonExtractor1.Person person = personExtractor.extractPersonFrom(text);
@@ -109,8 +106,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 MARRIED
             }
 
-            record Address(String street) {
-            }
+            record Address(String street) {}
 
             class Person {
 
@@ -134,8 +130,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, spyModel);
 
-        String text = "Extract the person's information from the following text. Do not include missing fields! " +
-                "Text: 'Klaus'";
+        String text = "Extract the person's information from the following text. Do not include missing fields! "
+                + "Text: 'Klaus'";
 
         // when
         PersonExtractor.Person person = personExtractor.extractPersonFrom(text);
@@ -143,14 +139,15 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.age).isEqualTo(0);
-        assertThat(person.height).isEqualTo(null);
+        assertThat(person.height).isNull();
         assertThat(person.married).isFalse();
         assertThat(person.map).isNullOrEmpty();
         assertThat(person.list).isNullOrEmpty();
         assertThat(person.array).isNullOrEmpty();
         assertThat(person.address).isNull();
         if (!isStrictJsonSchemaEnabled(model)) {
-            // LLMs in strict JSON schema mode return enums for some reason, even if it is optional and no data available
+            // LLMs in strict JSON schema mode return enums for some reason, even if it is optional and no data
+            // available
             assertThat(person.maritalStatus).isNull();
         }
         assertThat(person.localDate).isNull();
@@ -167,23 +164,33 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .addIntegerProperty("age")
                                                 .addNumberProperty("height")
                                                 .addBooleanProperty("married")
-                                                .addProperty("map", JsonObjectSchema.builder()
-                                                        .build())
-                                                .addProperty("list", JsonArraySchema.builder()
-                                                        .items(new JsonStringSchema())
-                                                        .build())
-                                                .addProperty("array", JsonArraySchema.builder()
-                                                        .items(new JsonStringSchema())
-                                                        .build())
-                                                .addProperty("address", JsonObjectSchema.builder()
-                                                        .addStringProperty("street")
-                                                        .build())
+                                                .addProperty(
+                                                        "map",
+                                                        JsonObjectSchema.builder()
+                                                                .build())
+                                                .addProperty(
+                                                        "list",
+                                                        JsonArraySchema.builder()
+                                                                .items(new JsonStringSchema())
+                                                                .build())
+                                                .addProperty(
+                                                        "array",
+                                                        JsonArraySchema.builder()
+                                                                .items(new JsonStringSchema())
+                                                                .build())
+                                                .addProperty(
+                                                        "address",
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("street")
+                                                                .build())
                                                 .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
-                                                .addProperty("localDate", JsonObjectSchema.builder()
-                                                        .addIntegerProperty("year")
-                                                        .addIntegerProperty("month")
-                                                        .addIntegerProperty("day")
-                                                        .build())
+                                                .addProperty(
+                                                        "localDate",
+                                                        JsonObjectSchema.builder()
+                                                                .addIntegerProperty("year")
+                                                                .addIntegerProperty("month")
+                                                                .addIntegerProperty("day")
+                                                                .build())
                                                 .build())
                                         .build())
                                 .build())
@@ -221,9 +228,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor2 personExtractor = AiServices.create(PersonExtractor2.class, model);
 
-        String text = "Extract the person's information from the following text. " +
-                "Fill in all the fields where the information is available! " +
-                "Text: 'Klaus wants a delivery to Langley Falls, but billing address should be New York'";
+        String text = "Extract the person's information from the following text. "
+                + "Fill in all the fields where the information is available! "
+                + "Text: 'Klaus wants a delivery to Langley Falls, but billing address should be New York'";
 
         // when
         PersonExtractor2.Person person = personExtractor.extractPersonFrom(text);
@@ -582,11 +589,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
     @MethodSource("models")
     protected void should_extract_pojo_with_set_of_pojos(ChatModel model) {
 
-        record Pet(String name) {
-        }
+        record Pet(String name) {}
 
-        record Person(String name, Set<Pet> pets) {
-        }
+        record Person(String name, Set<Pet> pets) {}
 
         interface PersonExtractor {
 
@@ -604,10 +609,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         Person person = personExtractor.extractPersonFrom(text);
 
         // then
-        assertThat(person).isEqualTo(new Person("Klaus", Set.of(
-                new Pet("Peanut"),
-                new Pet("Muffin")
-        )));
+        assertThat(person).isEqualTo(new Person("Klaus", Set.of(new Pet("Peanut"), new Pet("Muffin"))));
 
         verify(model)
                 .chat(ChatRequest.builder()
@@ -840,9 +842,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor13 personExtractor = AiServices.create(PersonExtractor13.class, model);
 
-        String text = "Extract the person's information from the following text." +
-                "Fill in all the fields where the information is available! " +
-                "Text: 'Klaus was born at 14:43 on 12th of August 1976'";
+        String text = "Extract the person's information from the following text."
+                + "Fill in all the fields where the information is available! "
+                + "Text: 'Klaus was born at 14:43 on 12th of August 1976'";
 
         // when
         PersonExtractor13.Person person = personExtractor.extractPersonFrom(text);
@@ -868,91 +870,72 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         put(
                                                                 "birthDate",
                                                                 JsonObjectSchema.builder()
-                                                                        .addProperties(
-                                                                                new LinkedHashMap<>() {
-                                                                                    {
-                                                                                        put(
-                                                                                                "year",
-                                                                                                new JsonIntegerSchema());
-                                                                                        put(
-                                                                                                "month",
-                                                                                                new JsonIntegerSchema());
-                                                                                        put(
-                                                                                                "day",
-                                                                                                new JsonIntegerSchema());
-                                                                                    }
-                                                                                })
+                                                                        .addProperties(new LinkedHashMap<>() {
+                                                                            {
+                                                                                put("year", new JsonIntegerSchema());
+                                                                                put("month", new JsonIntegerSchema());
+                                                                                put("day", new JsonIntegerSchema());
+                                                                            }
+                                                                        })
                                                                         .build());
                                                         put(
                                                                 "birthTime",
                                                                 JsonObjectSchema.builder()
-                                                                        .addProperties(
-                                                                                new LinkedHashMap<>() {
-                                                                                    {
-                                                                                        put(
-                                                                                                "hour",
-                                                                                                new JsonIntegerSchema());
-                                                                                        put(
-                                                                                                "minute",
-                                                                                                new JsonIntegerSchema());
-                                                                                        put(
-                                                                                                "second",
-                                                                                                new JsonIntegerSchema());
-                                                                                        put(
-                                                                                                "nano",
-                                                                                                new JsonIntegerSchema());
-                                                                                    }
-                                                                                })
+                                                                        .addProperties(new LinkedHashMap<>() {
+                                                                            {
+                                                                                put("hour", new JsonIntegerSchema());
+                                                                                put("minute", new JsonIntegerSchema());
+                                                                                put("second", new JsonIntegerSchema());
+                                                                                put("nano", new JsonIntegerSchema());
+                                                                            }
+                                                                        })
                                                                         .build());
                                                         put(
                                                                 "birthDateTime",
                                                                 JsonObjectSchema.builder()
-                                                                        .addProperties(
-                                                                                new LinkedHashMap<>() {
-                                                                                    {
-                                                                                        put(
-                                                                                                "date",
-                                                                                                JsonObjectSchema
-                                                                                                        .builder()
-                                                                                                        .addProperties(
-                                                                                                                new LinkedHashMap<>() {
-                                                                                                                    {
-                                                                                                                        put(
-                                                                                                                                "year",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                        put(
-                                                                                                                                "month",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                        put(
-                                                                                                                                "day",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                    }
-                                                                                                                })
-                                                                                                        .build());
-                                                                                        put(
-                                                                                                "time",
-                                                                                                JsonObjectSchema
-                                                                                                        .builder()
-                                                                                                        .addProperties(
-                                                                                                                new LinkedHashMap<>() {
-                                                                                                                    {
-                                                                                                                        put(
-                                                                                                                                "hour",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                        put(
-                                                                                                                                "minute",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                        put(
-                                                                                                                                "second",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                        put(
-                                                                                                                                "nano",
-                                                                                                                                new JsonIntegerSchema());
-                                                                                                                    }
-                                                                                                                })
-                                                                                                        .build());
-                                                                                    }
-                                                                                })
+                                                                        .addProperties(new LinkedHashMap<>() {
+                                                                            {
+                                                                                put(
+                                                                                        "date",
+                                                                                        JsonObjectSchema.builder()
+                                                                                                .addProperties(
+                                                                                                        new LinkedHashMap<>() {
+                                                                                                            {
+                                                                                                                put(
+                                                                                                                        "year",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                                put(
+                                                                                                                        "month",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                                put(
+                                                                                                                        "day",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                            }
+                                                                                                        })
+                                                                                                .build());
+                                                                                put(
+                                                                                        "time",
+                                                                                        JsonObjectSchema.builder()
+                                                                                                .addProperties(
+                                                                                                        new LinkedHashMap<>() {
+                                                                                                            {
+                                                                                                                put(
+                                                                                                                        "hour",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                                put(
+                                                                                                                        "minute",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                                put(
+                                                                                                                        "second",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                                put(
+                                                                                                                        "nano",
+                                                                                                                        new JsonIntegerSchema());
+                                                                                                            }
+                                                                                                        })
+                                                                                                .build());
+                                                                            }
+                                                                        })
                                                                         .build());
                                                     }
                                                 })
@@ -1032,8 +1015,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
 
-        String text = "Extract the person's information from the following text: " +
-                "Francine has 2 children: Steve and Hayley";
+        String text = "Extract the person's information from the following text: "
+                + "Francine has 2 children: Steve and Hayley";
 
         // when
         PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
@@ -1072,10 +1055,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                         "children",
                                                                         JsonArraySchema.builder()
                                                                                 .items(
-                                                                                        JsonReferenceSchema
-                                                                                                .builder()
-                                                                                                .reference(
-                                                                                                        reference)
+                                                                                        JsonReferenceSchema.builder()
+                                                                                                .reference(reference)
                                                                                                 .build())
                                                                                 .build())
                                                                 .build()))
@@ -1106,7 +1087,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
 
-        String text = """
+        String text =
+                """
                 Klaus can be identified by the following IDs:
                 - 12345
                 - 567b229a-6b0a-4f1e-9006-448cd9dfbfda
@@ -1137,7 +1119,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-
     // Primitives
 
     @ParameterizedTest
@@ -1163,19 +1144,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(isAMan).isTrue();
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract if the person from the following text is a man: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("boolean")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addBooleanProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract if the person from the following text is a man: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("boolean")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addBooleanProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1202,19 +1185,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(isAMan).isTrue();
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract if the person from the following text is a man: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("boolean")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addBooleanProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract if the person from the following text is a man: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("boolean")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addBooleanProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1233,8 +1218,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         IntExtractor intExtractor = AiServices.create(IntExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         int numberOfPeople = intExtractor.extractNumberOfPeople(text);
@@ -1242,19 +1227,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(numberOfPeople).isEqualTo(2);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract number of people mentioned in the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("integer")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addIntegerProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract number of people mentioned in the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("integer")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addIntegerProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1273,8 +1260,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         IntegerExtractor intExtractor = AiServices.create(IntegerExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         Integer numberOfPeople = intExtractor.extractNumberOfPeople(text);
@@ -1282,19 +1269,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(numberOfPeople).isEqualTo(2);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract number of people mentioned in the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("integer")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addIntegerProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract number of people mentioned in the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("integer")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addIntegerProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1313,8 +1302,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         LongExtractor intExtractor = AiServices.create(LongExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         long numberOfPeople = intExtractor.extractNumberOfPeople(text);
@@ -1322,19 +1311,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(numberOfPeople).isEqualTo(2);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract number of people mentioned in the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("integer")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addIntegerProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract number of people mentioned in the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("integer")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addIntegerProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1353,8 +1344,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         LongExtractor intExtractor = AiServices.create(LongExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         Long numberOfPeople = intExtractor.extractNumberOfPeople(text);
@@ -1362,19 +1353,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(numberOfPeople).isEqualTo(2);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract number of people mentioned in the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("integer")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addIntegerProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract number of people mentioned in the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("integer")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addIntegerProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1401,19 +1394,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(temperatureInMunich).isEqualTo(-0.5f);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("number")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addNumberProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract temperature in Munich from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("number")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addNumberProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1440,19 +1435,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(temperatureInMunich).isEqualTo(-0.5f);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("number")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addNumberProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract temperature in Munich from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("number")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addNumberProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1479,19 +1476,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(temperatureInMunich).isEqualTo(-0.5);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("number")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addNumberProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract temperature in Munich from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("number")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addNumberProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1518,19 +1517,21 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(temperatureInMunich).isEqualTo(-0.5);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("number")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addNumberProperty("value")
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(
+                                userMessage("Extract temperature in Munich from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("number")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addNumberProperty("value")
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1558,8 +1559,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PeopleExtractor peopleExtractor = AiServices.create(PeopleExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         List<PeopleExtractor.Person> people = peopleExtractor.extractPeopleFrom(text);
@@ -1575,26 +1576,29 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(people.get(1).height).isEqualTo(1.65);
         assertThat(people.get(1).married).isTrue();
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("List_of_Person")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonObjectSchema.builder()
-                                                        .addStringProperty("name")
-                                                        .addIntegerProperty("age")
-                                                        .addNumberProperty("height")
-                                                        .addBooleanProperty("married")
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("List_of_Person")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonObjectSchema.builder()
+                                                                        .addStringProperty("name")
+                                                                        .addIntegerProperty("age")
+                                                                        .addNumberProperty("height")
+                                                                        .addBooleanProperty("married")
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1628,23 +1632,26 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(people.get(0).name).isEqualTo("Klaus");
         assertThat(people.get(1).name).isEqualTo("Francine");
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(List.of(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("List_of_Person")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonObjectSchema.builder()
-                                                        .addStringProperty("name")
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(List.of(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("List_of_Person")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonObjectSchema.builder()
+                                                                        .addStringProperty("name")
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1663,36 +1670,39 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         ListOfStringsExtractor listOfStringsExtractor = AiServices.create(ListOfStringsExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         List<String> names = listOfStringsExtractor.extractPeopleNames(text);
 
         // then
-        assertThat(names.size()).isEqualTo(2);
+        assertThat(names).hasSize(2);
         assertThat(names.get(0)).contains("Klaus");
         assertThat(names.get(1)).contains("Franny");
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("List_of_String")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonStringSchema.builder()
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                singletonList(userMessage("Extract names of people from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("List_of_String")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonStringSchema.builder()
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
-
 
     // Sets
 
@@ -1711,33 +1721,35 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         SetOfStringsExtractor setOfStringsExtractor = AiServices.create(SetOfStringsExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         Set<String> names = setOfStringsExtractor.extractSetOfPeopleNames(text);
 
         // then
-        assertThat(names.size()).isEqualTo(2);
-        assertThat(names).contains("Klaus");
-        assertThat(names).contains("Franny");
+        assertThat(names).hasSize(2).contains("Klaus").contains("Franny");
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("Set_of_String")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonStringSchema.builder()
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                singletonList(userMessage("Extract names of people from the following text: " + text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Set_of_String")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonStringSchema.builder()
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1763,52 +1775,49 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PojoSetExtractor pojoSetExtractor = AiServices.create(PojoSetExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married.";
+        String text = "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married.";
 
         // when
         Set<PojoSetExtractor.Person> people = pojoSetExtractor.extractSetOfPojoFrom(text);
 
         // then
-        assertThat(people).hasSize(2);
+        assertThat(people)
+                .hasSize(2)
+                .anyMatch(person -> person.name.equals("Klaus")
+                        && person.age == 37
+                        && person.height.equals(1.78)
+                        && !person.married)
+                .anyMatch(person -> person.name.equals("Franny")
+                        && person.age == 35
+                        && person.height.equals(1.65)
+                        && person.married);
 
-        assertThat(people).anyMatch(person ->
-                person.name.equals("Klaus") &&
-                        person.age == 37 &&
-                        person.height.equals(1.78) &&
-                        !person.married
-        );
-
-        assertThat(people).anyMatch(person ->
-                person.name.equals("Franny") &&
-                        person.age == 35 &&
-                        person.height.equals(1.65) &&
-                        person.married
-        );
-
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("Set_of_Person")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonObjectSchema.builder()
-                                                        .addStringProperty("name")
-                                                        .addIntegerProperty("age")
-                                                        .addNumberProperty("height")
-                                                        .addBooleanProperty("married")
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Set_of_Person")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonObjectSchema.builder()
+                                                                        .addStringProperty("name")
+                                                                        .addIntegerProperty("age")
+                                                                        .addNumberProperty("height")
+                                                                        .addBooleanProperty("married")
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
-
 
     // Enums
 
@@ -1818,7 +1827,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         // given
         enum MaritalStatus {
-            SINGLE, MARRIED
+            SINGLE,
+            MARRIED
         }
 
         interface EnumExtractor {
@@ -1838,19 +1848,20 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // then
         assertThat(maritalStatus).isEqualTo(MaritalStatus.SINGLE);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("MaritalStatus")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
-                                        .required("value")
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("MaritalStatus")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
+                                                .required("value")
+                                                .build())
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1860,7 +1871,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         // given
         enum MaritalStatus {
-            SINGLE, MARRIED
+            SINGLE,
+            MARRIED
         }
 
         interface EnumListExtractor {
@@ -1872,34 +1884,36 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         EnumListExtractor enumListExtractor = AiServices.create(EnumListExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married." +
-                "Staniel is 33 years old, 1.70m height and married.";
+        String text =
+                "Klaus is 37 years old, 1.78m height and single. " + "Franny is 35 years old, 1.65m height and married."
+                        + "Staniel is 33 years old, 1.70m height and married.";
 
         // when
         List<MaritalStatus> maritalStatuses = enumListExtractor.extractListOfEnumsFrom(text);
 
         // then
-        assertThat(maritalStatuses)
-                .containsExactly(MaritalStatus.SINGLE, MaritalStatus.MARRIED, MaritalStatus.MARRIED);
+        assertThat(maritalStatuses).containsExactly(MaritalStatus.SINGLE, MaritalStatus.MARRIED, MaritalStatus.MARRIED);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("List_of_MaritalStatus")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonEnumSchema.builder()
-                                                        .enumValues("SINGLE", "MARRIED")
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("List_of_MaritalStatus")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonEnumSchema.builder()
+                                                                        .enumValues("SINGLE", "MARRIED")
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1909,7 +1923,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         // given
         enum Weather {
-            SUNNY, RAINY, CLOUDY, WINDY
+            SUNNY,
+            RAINY,
+            CLOUDY,
+            WINDY
         }
 
         interface EnumSetExtractor {
@@ -1921,9 +1938,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         EnumSetExtractor enumSetExtractor = AiServices.create(EnumSetExtractor.class, model);
 
-        String text = "The weather in Berlin was sunny and windy." +
-                " Paris experienced rainy and cloudy weather." +
-                " New York had cloudy and windy weather.";
+        String text = "The weather in Berlin was sunny and windy." + " Paris experienced rainy and cloudy weather."
+                + " New York had cloudy and windy weather.";
 
         // when
         Set<Weather> weatherCharacteristics = enumSetExtractor.extractSetOfEnumsFrom(text);
@@ -1932,23 +1948,26 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(weatherCharacteristics)
                 .containsExactlyInAnyOrder(Weather.SUNNY, Weather.WINDY, Weather.RAINY, Weather.CLOUDY);
 
-        verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("Set_of_Weather")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonEnumSchema.builder()
-                                                        .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
-                                                        .build())
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Set_of_Weather")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonEnumSchema.builder()
+                                                                        .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
                                                 .build())
-                                        .required("values")
                                         .build())
                                 .build())
-                        .build())
-                .build());
+                        .build());
         verify(model).supportedCapabilities();
     }
 
