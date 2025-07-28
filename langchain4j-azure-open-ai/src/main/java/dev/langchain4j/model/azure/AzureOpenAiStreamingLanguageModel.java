@@ -19,16 +19,13 @@ import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -60,7 +57,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
     private final OpenAIClient client;
     private final String deploymentName;
-    private final TokenCountEstimator tokenCountEstimator;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -116,7 +112,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         this.deploymentName = ensureNotBlank(builder.deploymentName, "deploymentName");
-        this.tokenCountEstimator = builder.tokenCountEstimator;
         this.maxTokens = builder.maxTokens;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -143,28 +138,18 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setStop(stop)
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
-        //if no token estimator provided, then request token usage
-        if (tokenCountEstimator == null) {
-            CompletionsOptionsAccessHelper.setStream(options, true);
-            CompletionsOptionsAccessHelper.setStreamOptions(options,
-                    new ChatCompletionStreamOptions().setIncludeUsage(true));
-        }
 
-        Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, null);
-        AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
+        ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
+        CompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
+
+        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder();
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
                 responseBuilder.append(completions);
                 handle(completions, handler);
-                if (completions.getUsage() != null) {
-                    tokenUsage.set(new TokenUsage(
-                            completions.getUsage().getCompletionTokens(),
-                            completions.getUsage().getPromptTokens()));
-                }
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator, tokenUsage.get());
+            Response<AiMessage> response = responseBuilder.build();
 
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
@@ -202,7 +187,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private TokenCredential tokenCredential;
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
-        private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -297,11 +281,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
-            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 
