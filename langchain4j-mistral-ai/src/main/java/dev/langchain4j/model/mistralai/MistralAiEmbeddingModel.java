@@ -45,46 +45,6 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * @deprecated please use {@link #MistralAiEmbeddingModel(MistralAiEmbeddingModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiEmbeddingModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
-        this.client = MistralAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 2);
-    }
-
-    /**
-     * @deprecated Please use {@link #MistralAiEmbeddingModel(MistralAiEmbeddingModelBuilder)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiEmbeddingModel(
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
-        this(null, baseUrl, apiKey, modelName, timeout, logRequests, logResponses, maxRetries);
-    }
-
-    /**
      * Embeds a list of text segments using the Mistral AI embedding model.
      *
      * @param textSegments the list of text segments to embed
