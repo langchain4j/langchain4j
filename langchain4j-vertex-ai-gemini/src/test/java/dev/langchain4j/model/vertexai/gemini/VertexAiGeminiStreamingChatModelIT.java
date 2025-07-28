@@ -14,6 +14,7 @@ import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.BLOCK_NONE;
 import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.BLOCK_ONLY_HIGH;
 import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
+import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.GSON;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,7 +62,7 @@ import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
 
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -476,16 +477,17 @@ class VertexAiGeminiStreamingChatModelIT {
 
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-        StringBuilder accumulatedResponse = new StringBuilder();
-        model.chat(userMessage, onPartialResponse(accumulatedResponse::append));
-        assertThat(accumulatedResponse.toString()).isNotEqualToIgnoringWhitespace(expectedJson);
+        TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler1);
+        assertThat(handler1.get().aiMessage().text()).isNotEqualToIgnoringWhitespace(expectedJson);
 
         // when
-        accumulatedResponse = new StringBuilder();
-        modelWithResponseMimeType.chat(userMessage, onPartialResponse(accumulatedResponse::append));
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        modelWithResponseMimeType.chat(userMessage, handler2);
 
         // then
-        assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
+        ChatResponse chatResponse = handler2.get();
+        assertThat(chatResponse.aiMessage().text()).isEqualToIgnoringWhitespace("[" + expectedJson + "]");
     }
 
     @Disabled("TODO fix")
@@ -548,12 +550,12 @@ class VertexAiGeminiStreamingChatModelIT {
         messages.add(SystemMessage.from("Return a JSON object, as defined in the JSON schema."));
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
-        StringBuilder accumulatedResponse = new StringBuilder();
-        model.chat(messages, onPartialResponse(accumulatedResponse::append));
-        String response = accumulatedResponse.toString();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(messages, handler);
 
         // then
-        Artist artist = new Gson().fromJson(response, Artist.class);
+        ChatResponse chatResponse = handler.get();
+        Artist artist = GSON.fromJson(chatResponse.aiMessage().text(), Artist.class);
         assertThat(artist.artistName).contains("Anna");
         assertThat(artist.artistAge).isEqualTo(23);
         assertThat(artist.artistAdult).isTrue();

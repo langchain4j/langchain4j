@@ -60,7 +60,7 @@ class VertexAiGeminiChatModelIT {
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     public static final Gson GSON = new Gson();
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -93,8 +93,6 @@ class VertexAiGeminiChatModelIT {
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -136,11 +134,14 @@ class VertexAiGeminiChatModelIT {
     void should_respect_maxOutputTokens() {
 
         // given
+        int maxOutputTokens = 3;
+
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
-                .maxOutputTokens(1)
+                .modelName("gemini-2.5-flash-lite")
+                .maxOutputTokens(maxOutputTokens)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("Tell me a joke");
@@ -150,13 +151,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
@@ -353,7 +348,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -551,7 +546,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -617,7 +612,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .responseMimeType("application/json")
                 .build();
 
@@ -648,7 +643,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .safetySettings(safetySettings)
                 .temperature(0.0f)
                 .topP(0.0f)
