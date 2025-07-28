@@ -41,34 +41,6 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.outputDimensionality = builder.outputDimensionality;
     }
 
-    /**
-     * @deprecated please use {@link #GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiEmbeddingModel(
-            String modelName,
-            String apiKey,
-            String baseUrl,
-            Integer maxRetries,
-            TaskType taskType,
-            String titleMetadataKey,
-            Integer outputDimensionality,
-            Duration timeout,
-            Boolean logRequestsAndResponses) {
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        ensureNotBlank(apiKey, "apiKey");
-
-        this.maxRetries = getOrDefault(maxRetries, 2);
-
-        this.taskType = taskType;
-        this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
-
-        this.outputDimensionality = outputDimensionality;
-
-        this.geminiService =
-                new GeminiService(null, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
-    }
-
     public static GoogleAiEmbeddingModelBuilder builder() {
         return new GoogleAiEmbeddingModelBuilder();
     }
