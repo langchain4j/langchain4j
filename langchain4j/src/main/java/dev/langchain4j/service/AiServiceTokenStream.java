@@ -38,9 +38,9 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<String> partialResponseHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
     private Consumer<List<Content>> contentsHandler;
+    private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
-    private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
 
@@ -94,6 +94,13 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
+        this.intermediateResponseHandler = intermediateResponseHandler;
+        this.onIntermediateResponseInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
         this.beforeToolExecutionInvoked++;
@@ -104,13 +111,6 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
         this.toolExecutionHandler = toolExecutionHandler;
         this.onToolExecutedInvoked++;
-        return this;
-    }
-
-    @Override
-    public TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
-        this.intermediateResponseHandler = intermediateResponseHandler;
-        this.onIntermediateResponseInvoked++;
         return this;
     }
 

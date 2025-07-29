@@ -52,17 +52,6 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
-     * The provided consumer will be invoked right before executing a tool.
-     *
-     * @param beforeToolExecutionHandler lambda that consumes {@link BeforeToolExecution}
-     * @return token stream instance used to configure or start stream processing
-     * @since 1.2.0
-     */
-    default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    /**
      * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,
      * as opposed to the final response (see {@link #onCompleteResponse(Consumer)}).
      * Intermediate chat responses contain {@link ToolExecutionRequest}s, AI service will execute them
@@ -79,7 +68,18 @@ public interface TokenStream {
     }
 
     /**
-     * The provided consumer will be invoked if any tool is executed.
+     * The provided consumer will be invoked right before a tool is executed.
+     *
+     * @param beforeToolExecutionHandler lambda that consumes {@link BeforeToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.2.0
+     */
+    default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked right after a tool is executed.
      * <p>
      * The invocation happens after the tool method has finished and before any other tool is executed.
      *
