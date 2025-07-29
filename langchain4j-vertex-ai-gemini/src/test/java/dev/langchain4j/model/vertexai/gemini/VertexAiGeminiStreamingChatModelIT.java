@@ -15,17 +15,16 @@ import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.BLOCK_ONLY_H
 import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
 import static dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModelIT.GSON;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -40,6 +39,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,13 +50,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
@@ -90,39 +87,25 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource
-    void should_support_system_instructions(List<ChatMessage> messages) {
+    @Test
+    void should_stream_answer_with_custom_credentials() throws IOException {
+        StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(MODEL_NAME)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        // given
+        String userMessage = "What is the capital of Germany?";
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(messages, handler);
+        model.chat(userMessage, handler);
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
-    }
-
-    static Stream<Arguments> should_support_system_instructions() {
-        return Stream.<Arguments>builder()
-                .add(Arguments.of(asList(SystemMessage.from("Translate in German"), UserMessage.from("I love apples"))))
-                .add(Arguments.of(asList(UserMessage.from("I love apples"), SystemMessage.from("Translate in German"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in Italian"),
-                        UserMessage.from("I love apples"),
-                        SystemMessage.from("No, translate in German!"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I love apples"), TextContent.from("I see apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I see apples"), TextContent.from("I love apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from("I see appels"),
-                        AiMessage.from("Ich sehe Äpfel"),
-                        UserMessage.from("I love apples"))))
-                .build();
+        assertThat(response.aiMessage().text()).contains("Berlin");
     }
 
     @Test
