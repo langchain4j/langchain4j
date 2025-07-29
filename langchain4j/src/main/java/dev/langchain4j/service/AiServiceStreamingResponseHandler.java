@@ -18,7 +18,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final Consumer<String> partialResponseHandler;
     private final Consumer<PartialThinking> partialThinkingHandler;
-    private final Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler;
+    private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> intermediateResponseHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
@@ -66,7 +66,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Object memoryId,
             Consumer<String> partialResponseHandler,
             Consumer<PartialThinking> partialThinkingHandler,
-            Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler,
+            Consumer<BeforeToolExecution> beforeToolExecutionHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
@@ -129,11 +129,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 if (beforeToolExecutionHandler != null) {
-                    BeforeToolExecutionContext beforeToolExecutionContext = BeforeToolExecutionContext.builder()
-                            .toolExecutionRequests(toolExecutionRequest)
+                    BeforeToolExecution beforeToolExecution = BeforeToolExecution.builder()
+                            .request(toolExecutionRequest)
                             .build();
-                    beforeToolExecutionHandler.accept(beforeToolExecutionContext);
+                    beforeToolExecutionHandler.accept(beforeToolExecution);
                 }
+
                 String toolName = toolExecutionRequest.name();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);

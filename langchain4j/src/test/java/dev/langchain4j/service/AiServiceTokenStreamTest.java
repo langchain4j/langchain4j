@@ -11,7 +11,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +29,7 @@ class AiServiceTokenStreamTest {
     static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
-    static Consumer<BeforeToolExecutionContext> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER =
-            (beforeToolExecutionContext) -> {};
+    static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 

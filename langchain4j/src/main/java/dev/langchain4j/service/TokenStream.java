@@ -6,7 +6,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 import java.util.function.Consumer;
@@ -52,14 +52,15 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
-     * The provided consumer will be invoked before executing a tool.
-     * <p>
-     * The invocation happens before the tool method is called.
+     * The provided consumer will be invoked right before executing a tool.
      *
-     * @param beforeToolExecutionHandler lambda that consumes {@link dev.langchain4j.service.tool.BeforeToolExecutionContext}
+     * @param beforeToolExecutionHandler lambda that consumes {@link BeforeToolExecution}
      * @return token stream instance used to configure or start stream processing
+     * @since 1.2.0
      */
-    default TokenStream beforeToolExecution(Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler); { return this; }
+    default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,

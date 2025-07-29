@@ -16,7 +16,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
@@ -38,7 +38,7 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<String> partialResponseHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
     private Consumer<List<Content>> contentsHandler;
-    private Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler;
+    private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<ChatResponse> completeResponseHandler;
@@ -94,7 +94,7 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream beforeToolExecution(Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler) {
+    public TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
         this.beforeToolExecutionInvoked++;
         return this;
