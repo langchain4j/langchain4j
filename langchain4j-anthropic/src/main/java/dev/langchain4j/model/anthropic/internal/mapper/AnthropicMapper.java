@@ -45,13 +45,10 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicRedactedThinkingCon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -63,8 +60,10 @@ import java.util.Map;
 @Internal
 public class AnthropicMapper {
 
-    public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
-    public static final String REDACTED_THINKING_KEY = "redacted_thinking"; // do not change, will break backward compatibility!
+    public static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
+    public static final String REDACTED_THINKING_KEY =
+            "redacted_thinking"; // do not change, will break backward compatibility!
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -207,7 +206,7 @@ public class AnthropicMapper {
                 .collect(joining("\n"));
 
         String thinking = null;
-        Map<String, Object> attributes = new HashMap<>();;
+        Map<String, Object> attributes = new HashMap<>();
         if (returnThinking) {
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
@@ -304,19 +303,5 @@ public class AnthropicMapper {
         }
 
         return toolBuilder.build();
-    }
-
-    public static AnthropicToolChoice toAnthropicToolChoice(ToolChoice toolChoice) {
-        if (toolChoice == null) {
-            return null;
-        }
-
-        AnthropicToolChoiceType toolChoiceType =
-                switch (toolChoice) {
-                    case AUTO -> AnthropicToolChoiceType.AUTO;
-                    case REQUIRED -> AnthropicToolChoiceType.ANY;
-                };
-
-        return AnthropicToolChoice.from(toolChoiceType);
     }
 }

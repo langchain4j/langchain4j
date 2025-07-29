@@ -15,5 +15,5 @@ public enum ToolChoice {
     /**
      * The chat model is required to use one or more tools.
      */
-    REQUIRED
+    REQUIRED,
 }
