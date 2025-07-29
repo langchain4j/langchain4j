@@ -45,7 +45,9 @@ import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
@@ -88,7 +90,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String idFieldName,
             String textFieldName,
             String metadataFieldName,
-            String vectorFieldName) {
+            String vectorFieldName,
+            Map<String,Object> extraParams) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
                 collectionName,
@@ -101,22 +104,26 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 idFieldName,
                 textFieldName,
                 metadataFieldName,
-                vectorFieldName);
+                vectorFieldName,
+                extraParams);
     }
 
+
     public MilvusEmbeddingStore(
-            MilvusServiceClient milvusClient,
-            String collectionName,
-            Integer dimension,
-            IndexType indexType,
-            MetricType metricType,
-            ConsistencyLevelEnum consistencyLevel,
-            Boolean retrieveEmbeddingsOnSearch,
-            Boolean autoFlushOnInsert,
-            String idFieldName,
-            String textFieldName,
-            String metadataFieldName,
-            String vectorFieldName) {
+        MilvusServiceClient milvusClient,
+        String collectionName,
+        Integer dimension,
+        IndexType indexType,
+        MetricType metricType,
+        ConsistencyLevelEnum consistencyLevel,
+        Boolean retrieveEmbeddingsOnSearch,
+        Boolean autoFlushOnInsert,
+        String idFieldName,
+        String textFieldName,
+        String metadataFieldName,
+        String vectorFieldName,
+        Map<String,Object> extraParams
+    ) {
         this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
         this.collectionName = getOrDefault(collectionName, "default");
         this.metricType = getOrDefault(metricType, COSINE);
@@ -130,17 +137,12 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 getOrDefault(vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
-            createCollection(
-                    this.milvusClient,
-                    this.collectionName,
-                    this.fieldDefinition,
-                    ensureNotNull(dimension, "dimension"));
-            createIndex(
-                    this.milvusClient,
-                    this.collectionName,
-                    this.fieldDefinition.getVectorFieldName(),
-                    getOrDefault(indexType, FLAT),
-                    this.metricType);
+            createCollection(this.milvusClient, this.collectionName, this.fieldDefinition, ensureNotNull(dimension, "dimension"));
+            if (extraParams.isEmpty()) {
+                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType);
+            } else {
+                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType, extraParams.toString());
+            }
         }
 
         loadCollectionInMemory(this.milvusClient, collectionName);
@@ -338,6 +340,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
+        private Map<String,Object> extraParams;
 
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
@@ -528,41 +531,53 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder extraParam(String key, Object value) {
+            if (this.extraParams == null) {
+                this.extraParams = new HashMap<>();
+            }
+            this.extraParams.put(key, value);
+            return this;
+        };
+
         public MilvusEmbeddingStore build() {
             if (milvusClient == null) {
                 return new MilvusEmbeddingStore(
-                        host,
-                        port,
-                        collectionName,
-                        dimension,
-                        indexType,
-                        metricType,
-                        uri,
-                        token,
-                        username,
-                        password,
-                        consistencyLevel,
-                        retrieveEmbeddingsOnSearch,
-                        autoFlushOnInsert,
-                        databaseName,
-                        idFieldName,
-                        textFieldName,
-                        metadataFieldName,
-                        vectorFieldName);
-            }
-            return new MilvusEmbeddingStore(
-                    milvusClient,
+                    host,
+                    port,
                     collectionName,
                     dimension,
                     indexType,
                     metricType,
+                    uri,
+                    token,
+                    username,
+                    password,
                     consistencyLevel,
                     retrieveEmbeddingsOnSearch,
                     autoFlushOnInsert,
+                    databaseName,
                     idFieldName,
                     textFieldName,
                     metadataFieldName,
-                    vectorFieldName);
+                    vectorFieldName,
+                    extraParams
+                );
+            }
+            return new MilvusEmbeddingStore(
+                milvusClient,
+                collectionName,
+                dimension,
+                indexType,
+                metricType,
+                consistencyLevel,
+                retrieveEmbeddingsOnSearch,
+                autoFlushOnInsert,
+                idFieldName,
+                textFieldName,
+                metadataFieldName,
+                vectorFieldName,
+                extraParams
+            );
         }
     }
 }
