@@ -59,7 +59,7 @@ public interface TokenStream {
      * @param beforeToolExecutionHandler lambda that consumes {@link dev.langchain4j.service.tool.BeforeToolExecutionContext}
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream beforeToolExecution(Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler);
+    default TokenStream beforeToolExecution(Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler); { return this; }
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,
