@@ -1,26 +1,25 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
-
-
-public class McpAutoHealthCheckIT {
+class McpAutoHealthCheckIT {
 
     private static Process process;
     private static DefaultMcpClient mcpClient;
@@ -43,7 +42,6 @@ public class McpAutoHealthCheckIT {
                 .build();
     }
 
-
     @AfterAll
     static void tearDown() {
         if (mcpClient != null) {
@@ -54,15 +52,13 @@ public class McpAutoHealthCheckIT {
         }
     }
 
-
     @Test
     void shouldStartHealthCheckSchedulerByDefault() throws Exception {
         Field schedulerField = DefaultMcpClient.class.getDeclaredField("healthCheckScheduler");
         schedulerField.setAccessible(true);
         ScheduledExecutorService scheduler = (ScheduledExecutorService) schedulerField.get(mcpClient);
         assertThat(scheduler).isNotNull();
-        assertThatCode(() -> TimeUnit.MILLISECONDS.sleep(500))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> TimeUnit.MILLISECONDS.sleep(500)).doesNotThrowAnyException();
     }
 
     @Test
@@ -71,12 +67,11 @@ public class McpAutoHealthCheckIT {
         process.destroy();
         process.onExit().get();
         TimeUnit.MILLISECONDS.sleep(500);
-        //Reconnect heartbeat detection
+        // Reconnect heartbeat detection
         process = startServerHttp("tools_mcp_server.java");
         TimeUnit.MILLISECONDS.sleep(5_000);
         executeAToolAndAssertSuccess();
     }
-
 
     private void executeAToolAndAssertSuccess() {
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -86,8 +81,4 @@ public class McpAutoHealthCheckIT {
         String result = mcpClient.executeTool(toolExecutionRequest);
         assertThat(result).isEqualTo("abc");
     }
-
-
 }
-
-

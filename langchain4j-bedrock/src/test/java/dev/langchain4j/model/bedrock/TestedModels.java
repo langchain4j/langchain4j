@@ -25,6 +25,7 @@ public final class TestedModels {
 
     public static final ChatModel CLAUDE_3_HAIKU = BedrockChatModel.builder()
             .modelId("anthropic.claude-3-haiku-20240307-v1:0")
+            .logResponses(true)
             .build();
     public static final StreamingChatModel STREAMING_CLAUDE_3_HAIKU = BedrockStreamingChatModel.builder()
             .modelId("anthropic.claude-3-haiku-20240307-v1:0")

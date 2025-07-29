@@ -12,6 +12,7 @@ import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
 import static dev.langchain4j.model.vertexai.gemini.FunctionCallHelper.fromFunctionCall;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.FunctionCall;
@@ -47,8 +48,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +64,7 @@ import org.slf4j.LoggerFactory;
  */
 public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
-    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiStreamingChatModel.class);
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
@@ -76,6 +82,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final Boolean logResponses;
 
     private final List<ChatModelListener> listeners;
+
+    private final Executor executor;
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -126,9 +134,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         }
         if (builder.toolCallingMode != null) {
             // only a subset of functions allowed to be used by the model
-            if (builder.toolCallingMode == ToolCallingMode.ANY
-                    && allowedFunctionNames != null
-                    && !allowedFunctionNames.isEmpty()) {
+            if (builder.toolCallingMode == ToolCallingMode.ANY && !allowedFunctionNames.isEmpty()) {
                 this.toolConfig = ToolConfig.newBuilder()
                         .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
                                 .setMode(FunctionCallingConfig.Mode.ANY)
@@ -174,6 +180,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
+        this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
     }
 
     /**
@@ -198,7 +205,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             Boolean logRequests,
             Boolean logResponses,
             List<ChatModelListener> listeners,
-            final Map<String, String> customHeaders) {
+            final Map<String, String> customHeaders,
+            Executor executor) {
         ensureNotBlank(modelName, "modelName");
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
@@ -297,21 +305,15 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.generativeModel = new GenerativeModel(modelName, vertexAI)
                 .withGenerationConfig(generationConfig);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = Objects.requireNonNullElse(logRequests, false);
+        this.logResponses = Objects.requireNonNullElse(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
     }
 
-    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
@@ -327,6 +329,36 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = false;
         this.logResponses = false;
         this.listeners = Collections.emptyList();
+        this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
+    }
+
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig,
+                                            Executor executor) {
+        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
+        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.vertexAI = null;
+        this.safetySettings = Collections.emptyMap();
+        this.googleSearch = null;
+        this.vertexSearch = null;
+        this.toolConfig = ToolConfig.newBuilder()
+                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.AUTO)
+                        .build())
+                .build();
+        this.allowedFunctionNames = Collections.emptyList();
+        this.logRequests = false;
+        this.logResponses = false;
+        this.listeners = Collections.emptyList();
+        this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+    }
+
+    private static ExecutorService createDefaultExecutor() {
+        return new ThreadPoolExecutor(
+            0, Integer.MAX_VALUE,
+            1, SECONDS,
+            new SynchronousQueue<>()
+        );
     }
 
     @Override
@@ -406,73 +438,76 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         });
 
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+        final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
 
-        try {
-            model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
-                if (partialResponse.getCandidatesCount() > 0) {
-                    StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
+        executor.execute(() -> {
+            try {
+                finalModel.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
+                    if (partialResponse.getCandidatesCount() > 0) {
+                        StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
 
-                    String text = textAndFunctions.text();
-                    if (isNotNullOrEmpty(text)) {
-                        onPartialResponse(handler, text);
+                        String text = textAndFunctions.text();
+                        if (isNotNullOrEmpty(text)) {
+                            onPartialResponse(handler, text);
+                        }
+
+                        for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
+                            ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
+                            CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), toolExecutionRequest);
+                            onCompleteToolCall(handler, completeToolCall);
+                            toolIndex.incrementAndGet();
+                        }
                     }
+                });
 
-                    for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
-                        ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
-                        CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), toolExecutionRequest);
-                        onCompleteToolCall(handler, completeToolCall);
-                        toolIndex.incrementAndGet();
+                Response<AiMessage> fullResponse = responseBuilder.build();
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(fullResponse.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(fullResponse.tokenUsage())
+                                .finishReason(fullResponse.finishReason())
+                                .build())
+                        .build();
+
+                handler.onCompleteResponse(chatResponse);
+
+                ChatResponse listenerResponse = ChatResponse.builder()
+                        .aiMessage(fullResponse.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .modelName(modelName)
+                                .tokenUsage(fullResponse.tokenUsage())
+                                .finishReason(fullResponse.finishReason())
+                                .build())
+                        .build();
+                ChatModelResponseContext chatModelResponseContext =
+                        new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
+                listeners.forEach((listener) -> {
+                    try {
+                        listener.onResponse(chatModelResponseContext);
+                    } catch (Exception e) {
+                        logger.warn("Exception while calling model listener (onResponse)", e);
                     }
+                });
+
+                if (this.logResponses && logger.isDebugEnabled()) {
+                    logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
                 }
-            });
+            } catch (Exception exception) {
+                listeners.forEach((listener) -> {
+                    try {
+                        ChatModelErrorContext chatModelErrorContext =
+                                new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
+                        listener.onError(chatModelErrorContext);
+                    } catch (Exception t) {
+                        logger.warn("Exception while calling model listener (onError)", t);
+                    }
+                });
 
-            Response<AiMessage> fullResponse = responseBuilder.build();
-
-            ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(fullResponse.content())
-                    .metadata(ChatResponseMetadata.builder()
-                            .tokenUsage(fullResponse.tokenUsage())
-                            .finishReason(fullResponse.finishReason())
-                            .build())
-                    .build();
-
-            handler.onCompleteResponse(chatResponse);
-
-            ChatResponse listenerResponse = ChatResponse.builder()
-                    .aiMessage(fullResponse.content())
-                    .metadata(ChatResponseMetadata.builder()
-                            .modelName(modelName)
-                            .tokenUsage(fullResponse.tokenUsage())
-                            .finishReason(fullResponse.finishReason())
-                            .build())
-                    .build();
-            ChatModelResponseContext chatModelResponseContext =
-                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
-            listeners.forEach((listener) -> {
-                try {
-                    listener.onResponse(chatModelResponseContext);
-                } catch (Exception e) {
-                    logger.warn("Exception while calling model listener (onResponse)", e);
-                }
-            });
-
-            if (this.logResponses && logger.isDebugEnabled()) {
-                logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+                handler.onError(exception);
             }
-        } catch (Exception exception) {
-            listeners.forEach((listener) -> {
-                try {
-                    ChatModelErrorContext chatModelErrorContext =
-                            new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
-                    listener.onError(chatModelErrorContext);
-                } catch (Exception t) {
-                    logger.warn("Exception while calling model listener (onError)", t);
-                }
-            });
-
-            handler.onError(exception);
-        }
+        });
     }
 
     @VisibleForTesting
@@ -484,6 +519,10 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     public void close() {
         if (this.vertexAI != null) {
             this.vertexAI.close();
+        }
+
+        if (executor instanceof ExecutorService) {
+            ((ExecutorService) executor).shutdown();
         }
     }
 
@@ -506,6 +545,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     }
 
     public static class VertexAiGeminiStreamingChatModelBuilder {
+        private Executor executor;
         private String project;
         private String location;
         private String modelName;
@@ -528,6 +568,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public VertexAiGeminiStreamingChatModelBuilder executor(Executor executor) {
+            this.executor = executor;
+            return this;
         }
 
         public VertexAiGeminiStreamingChatModelBuilder project(String project) {

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -24,19 +23,23 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static java.util.Collections.singletonList;
+import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionRequests;
+import static dev.langchain4j.model.googleai.Json.fromJson;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 class PartsAndContentsMapper {
 
+    static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiPart fromContentToGPart(Content content) {
         if (content instanceof TextContent textContent) {
@@ -133,8 +136,12 @@ class PartsAndContentsMapper {
         }
     }
 
-    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts, boolean includeCodeExecutionOutput) {
+    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts,
+                                           boolean includeCodeExecutionOutput,
+                                           Boolean returnThinking) {
         StringBuilder fullText = new StringBuilder();
+        List<String> thoughts = new ArrayList<>();
+        List<String> thoughtSignatures = new ArrayList<>();
         List<GeminiFunctionCall> functionCalls = new ArrayList<>();
 
         for (GeminiPart part : parts) {
@@ -170,11 +177,27 @@ class PartsAndContentsMapper {
             }
 
             String text = part.getText();
-            if (text != null && !text.isEmpty()) {
-                if (!fullText.isEmpty()) {
-                    fullText.append("\n\n");
+            if (isNotNullOrEmpty(text)) {
+                if (Boolean.TRUE.equals(part.isThought())) {
+                    if (Boolean.TRUE.equals(returnThinking)) {
+                        thoughts.add(text);
+                    } else if (returnThinking == null) { // for backward compatibility
+                        if (!fullText.isEmpty()) {
+                            fullText.append("\n\n");
+                        }
+                        fullText.append(text);
+                    }
+                } else {
+                    if (!fullText.isEmpty()) {
+                        fullText.append("\n\n");
+                    }
+                    fullText.append(text);
                 }
-                fullText.append(text);
+            }
+
+            String thoughtSignature = part.getThoughtSignature();
+            if (Boolean.TRUE.equals(returnThinking) && isNotNullOrEmpty(thoughtSignature)) {
+                thoughtSignatures.add(thoughtSignature);
             }
 
             if (part.getFunctionCall() != null) {
@@ -182,14 +205,21 @@ class PartsAndContentsMapper {
             }
         }
 
-        if (functionCalls.isEmpty()) {
-            return AiMessage.from(fullText.toString());
-        } else {
-            return AiMessage.from(FunctionMapper.fromToolExecReqToGFunCall(functionCalls));
-        }
+        String text = fullText.toString();
+        String thinking = thoughts.stream().collect(joining("\n\n"));
+        String thinkingSignature = thoughtSignatures.stream().collect(joining("\n\n"));
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(text) ? null : text)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(toToolExecutionRequests(functionCalls))
+                .attributes(isNullOrEmpty(thinkingSignature) ? null : Map.of(THINKING_SIGNATURE_KEY, thinkingSignature))
+                .build();
     }
 
-    static List<GeminiContent> fromMessageToGContent(List<ChatMessage> messages, GeminiContent systemInstruction) {
+    static List<GeminiContent> fromMessageToGContent(List<ChatMessage> messages,
+                                                     GeminiContent systemInstruction,
+                                                     boolean sendThinking) {
         return messages.stream()
             .map(msg -> {
                 switch (msg.type()) {
@@ -206,30 +236,33 @@ class PartsAndContentsMapper {
                     case AI:
                         AiMessage aiMessage = (AiMessage) msg;
 
-                        if (aiMessage.hasToolExecutionRequests()) {
-                            return GeminiContent.builder()
-                                .role(GeminiRole.MODEL.toString())
-                                .parts(((AiMessage) msg).toolExecutionRequests().stream()
-                                    .map(toolExecutionRequest -> {
-                                        try {
-                                            return GeminiPart.builder()
-                                                .functionCall(GeminiFunctionCall.builder()
-                                                    .name(toolExecutionRequest.name())
-                                                    .args(MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
-                                                    .build())
-                                                .build();
-                                        } catch (JsonProcessingException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    })
-                                    .collect(Collectors.toList()))
-                                .build();
-                        } else {
-                            return GeminiContent.builder()
-                                .role(GeminiRole.MODEL.toString())
-                                .parts(singletonList(fromContentToGPart(TextContent.from(aiMessage.text()))))
-                                .build();
+                        List<GeminiPart> parts = new ArrayList<>();
+
+                        if (sendThinking && isNotNullOrEmpty(aiMessage.thinking())) {
+                            parts.add(GeminiPart.builder()
+                                    .text(aiMessage.thinking())
+                                    .thought(true)
+                                    .build());
                         }
+
+                        if (isNotNullOrEmpty(aiMessage.text())) {
+                            parts.add(GeminiPart.builder()
+                                    .text(aiMessage.text())
+                                    .build());
+                        }
+
+                        if (aiMessage.hasToolExecutionRequests()) {
+                            String thoughtSignature = null;
+                            if (sendThinking) {
+                                thoughtSignature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
+                            }
+                            parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));
+                        }
+
+                        return GeminiContent.builder()
+                                .role(GeminiRole.MODEL.toString())
+                                .parts(parts)
+                                .build();
 
                     case USER:
                         UserMessage userMessage = (UserMessage) msg;
@@ -238,7 +271,7 @@ class PartsAndContentsMapper {
                             .role(GeminiRole.USER.toString())
                             .parts(userMessage.contents().stream()
                                 .map(PartsAndContentsMapper::fromContentToGPart)
-                                .collect(Collectors.toList())
+                                .collect(toList())
                             )
                             .build();
                     case TOOL_EXECUTION_RESULT:
@@ -258,6 +291,24 @@ class PartsAndContentsMapper {
                 }
             })
             .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+            .collect(toList());
+    }
+
+    private static List<GeminiPart> toGeminiParts(List<ToolExecutionRequest> toolExecutionRequests,
+                                                  String thoughtSignature) {
+        List<GeminiPart> geminiParts = new ArrayList<>();
+        for (int i = 0; i < toolExecutionRequests.size(); i++) {
+            ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);
+            boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
+            GeminiPart geminiPart = GeminiPart.builder()
+                    .functionCall(GeminiFunctionCall.builder()
+                            .name(toolExecutionRequest.name())
+                            .args(fromJson(toolExecutionRequest.arguments(), Map.class))
+                            .build())
+                    .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
+                    .build();
+            geminiParts.add(geminiPart);
+        }
+        return geminiParts;
     }
 }

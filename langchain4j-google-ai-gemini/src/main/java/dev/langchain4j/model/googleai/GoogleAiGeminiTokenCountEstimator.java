@@ -60,7 +60,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         List<ChatMessage> allMessages = new LinkedList<>();
         messages.forEach(allMessages::add);
 
-        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null, false);
 
         GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest();
         countTokensRequest.setContents(geminiContentList);

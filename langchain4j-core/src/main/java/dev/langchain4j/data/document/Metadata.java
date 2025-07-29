@@ -66,7 +66,7 @@ public class Metadata {
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs; must not be {@code null}. {@code null} values are not permitted.
-     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}
+     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link UUID}
      */
     public Metadata(Map<String, ?> metadata) {
         validate(metadata);

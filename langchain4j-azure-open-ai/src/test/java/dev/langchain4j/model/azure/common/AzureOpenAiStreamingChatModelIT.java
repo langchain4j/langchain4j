@@ -82,11 +82,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertTokenUsage() {
-        return false; // testing AzureOpenAiStreamingChatModel without TokenCountEstimator
-    }
-
-    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
