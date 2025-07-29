@@ -6,6 +6,7 @@ import java.util.Objects;
 /**
  * Context for the BeforeToolExecutionHandler that is passed to the handler before executing one tool.
  * It contains a tool execution request that is about to be executed.
+ * @since 1.2.0 
  */
 public class BeforeToolExecutionContext {
     private final ToolExecutionRequest toolExecutionRequest;
