@@ -52,7 +52,7 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
-     * The provided consumer will be invoked once streaming is complete and the response contains one tool to be executed.
+     * The provided consumer will be invoked before executing a tool.
      * <p>
      * The invocation happens before the tool method is called.
      *
