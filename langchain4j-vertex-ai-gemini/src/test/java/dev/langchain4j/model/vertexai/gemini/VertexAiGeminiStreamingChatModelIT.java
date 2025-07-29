@@ -20,6 +20,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
@@ -40,6 +41,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,6 +90,27 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_stream_answer_with_custom_credentials() throws IOException {
+        StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(MODEL_NAME)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        // given
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).contains("Berlin");
     }
 
     @ParameterizedTest
