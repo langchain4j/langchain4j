@@ -13,7 +13,7 @@
     <artifactId>langchain4j-code-execution-engine-azure-acads</artifactId>
     <version>1.3.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Azure ACADS</name>
-    <description>Implementation of a code execution engine and tool using Azure ACA Dynamic Sessions</description>
+    <description>Implementation of a code execution engine using Azure ACA Dynamic Sessions</description>
 
     <dependencies>
         <!-- Core dependencies required by SessionsREPLTool -->
