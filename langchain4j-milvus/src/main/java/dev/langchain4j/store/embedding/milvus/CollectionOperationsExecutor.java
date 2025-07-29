@@ -21,7 +21,6 @@ import io.milvus.response.SearchResultsWrapper;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
-import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
 import static io.milvus.grpc.DataType.*;
 import static java.lang.String.format;
 
@@ -77,6 +76,25 @@ class CollectionOperationsExecutor {
     static void dropCollection(MilvusServiceClient milvusClient, String collectionName) {
         DropCollectionParam request = buildDropCollectionRequest(collectionName);
         R<RpcStatus> response = milvusClient.dropCollection(request);
+        checkResponseNotFailed(response);
+    }
+
+    static void createIndex(MilvusServiceClient milvusClient,
+                            String collectionName,
+                            String vectorFieldName,
+                            IndexType indexType,
+                            MetricType metricType,
+                            String extraParam) {
+
+        CreateIndexParam request = CreateIndexParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withFieldName(vectorFieldName)
+                .withIndexType(indexType)
+                .withMetricType(metricType)
+                .withExtraParam(extraParam)
+                .build();
+
+        R<RpcStatus> response = milvusClient.createIndex(request);
         checkResponseNotFailed(response);
     }
 
