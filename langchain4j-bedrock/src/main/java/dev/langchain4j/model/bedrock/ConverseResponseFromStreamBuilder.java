@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static java.util.Objects.nonNull;
 
@@ -55,19 +56,19 @@ class ConverseResponseFromStreamBuilder {
 
     public ConverseResponseFromStreamBuilder append(ContentBlockDelta delta) {
         if (delta.type().equals(ContentBlockDelta.Type.TEXT)) {
-            if (delta.text() != null) {
+            if (isNotNullOrEmpty(delta.text())) {
                 stringBuilder.append(delta.text());
             }
         } else if (delta.type().equals(ContentBlockDelta.Type.REASONING_CONTENT)) {
             ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
-            if (reasoningContent.text() != null) {
+            if (isNotNullOrEmpty(reasoningContent.text())) {
                 thinkingBuilder.append(reasoningContent.text());
             }
-            if (reasoningContent.signature() != null) {
+            if (isNotNullOrEmpty(reasoningContent.signature())) {
                 thinkingSignatureBuilder.append(reasoningContent.signature());
             }
         } else if (delta.type().equals(ContentBlockDelta.Type.TOOL_USE)) {
-            if (delta.toolUse().input() != null) {
+            if (isNotNullOrEmpty(delta.toolUse().input())) {
                 toolUseInputBuilder.append(delta.toolUse().input());
             }
         }

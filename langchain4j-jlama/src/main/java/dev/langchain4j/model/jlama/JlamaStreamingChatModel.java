@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.model.jlama.Json.fromJson;
@@ -152,7 +153,7 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
                 }
                 case AI -> {
                     AiMessage aiMessage = (AiMessage) message;
-                    if (aiMessage.text() != null)
+                    if (isNotNullOrEmpty(aiMessage.text()))
                         promptBuilder.addAssistantMessage(aiMessage.text());
 
                     if (aiMessage.hasToolExecutionRequests())

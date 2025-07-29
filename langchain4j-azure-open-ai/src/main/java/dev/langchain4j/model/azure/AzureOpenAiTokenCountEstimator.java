@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 
 import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -123,7 +124,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
     private int estimateTokenCountIn(AiMessage aiMessage) {
         int tokenCount = 0;
 
-        if (aiMessage.text() != null) {
+        if (isNotNullOrEmpty(aiMessage.text())) {
             tokenCount += estimateTokenCountInText(aiMessage.text());
         }
 

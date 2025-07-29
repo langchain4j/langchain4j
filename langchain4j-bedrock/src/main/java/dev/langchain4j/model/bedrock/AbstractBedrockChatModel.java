@@ -193,7 +193,7 @@ abstract class AbstractBedrockChatModel {
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
 
-        if (sendThinking && message.thinking() != null) {
+        if (sendThinking && isNotNullOrEmpty(message.thinking())) {
             ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
                     .reasoningText(ReasoningTextBlock.builder()
                             .text(message.thinking())
@@ -203,7 +203,7 @@ abstract class AbstractBedrockChatModel {
             blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
         }
 
-        if (message.text() != null) {
+        if (isNotNullOrEmpty(message.text())) {
             blocks.add(ContentBlock.builder().text(message.text()).build());
         }
 

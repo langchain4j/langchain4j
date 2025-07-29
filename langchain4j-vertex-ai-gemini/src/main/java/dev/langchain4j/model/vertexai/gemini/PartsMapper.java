@@ -32,6 +32,7 @@ import java.util.Map;
 import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
@@ -91,7 +92,7 @@ class PartsMapper {
 
             List<Part> parts = new ArrayList<>();
 
-            if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
+            if (isNotNullOrEmpty(aiMessage.text())) {
                 parts.add(Part.newBuilder()
                     .setText(aiMessage.text())
                     .build());
