@@ -22,7 +22,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class BedrockChatModelThinkingIT {
 
     static final int THINKING_BUDGET_TOKENS = 1024;
-    static final int SLEEPING_TIME_MULTIPLIER = 5;
+    static final int SLEEPING_TIME_MULTIPLIER = 10;
 
     @ParameterizedTest
     @ValueSource(strings = {

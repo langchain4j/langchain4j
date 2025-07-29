@@ -1,10 +1,9 @@
 package dev.langchain4j.store.embedding.infinispan;
 
-import org.infinispan.protostream.MessageMarshaller;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.infinispan.protostream.MessageMarshaller;
 
 /**
  * Marshaller to read and write embeddings to Infinispan
@@ -15,7 +14,8 @@ public class LangChainItemMarshaller implements MessageMarshaller<LangChainInfin
 
     /**
      * Constructor for the LangChainItemMarshaller Marshaller
-     * @param typeName, the full type of the protobuf entity
+     *
+     * @param typeName,      the full type of the protobuf entity
      */
     public LangChainItemMarshaller(String typeName) {
         this.typeName = typeName;
@@ -27,12 +27,11 @@ public class LangChainItemMarshaller implements MessageMarshaller<LangChainInfin
         float[] embedding = reader.readFloats("embedding");
         String text = reader.readString("text");
         Set<LangChainMetadata> metadata = reader.readCollection("metadata", new HashSet<>(), LangChainMetadata.class);
-        return new LangChainInfinispanItem(id, embedding, text, metadata);
+        return new LangChainInfinispanItem(id, embedding, text, metadata, null);
     }
 
     @Override
-    public void writeTo(ProtoStreamWriter writer, LangChainInfinispanItem item)
-            throws IOException {
+    public void writeTo(ProtoStreamWriter writer, LangChainInfinispanItem item) throws IOException {
         writer.writeString("id", item.id());
         writer.writeFloats("embedding", item.embedding());
         writer.writeString("text", item.text());
