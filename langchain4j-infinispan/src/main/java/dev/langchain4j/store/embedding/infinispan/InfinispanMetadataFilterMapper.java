@@ -17,16 +17,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 class InfinispanMetadataFilterMapper {
-    private int i = -1;
 
-    class FilterResult {
+    static class FilterResult {
         String join;
         String query;
 
-        public FilterResult(String query) {
+        public FilterResult(String query, int metadataIndex) {
             this.query = query;
             StringBuilder sb = new StringBuilder();
-            for (int j = 0; j <= i; j++) {
+            for (int j = 0; j <= metadataIndex; j++) {
                 sb.append(" join i.metadata m").append(j);
             }
             this.join = sb.toString();
@@ -34,73 +33,81 @@ class InfinispanMetadataFilterMapper {
     }
 
     FilterResult map(Filter filter) {
-        i++;
-        String filterQuery = "";
+        return mapWithIndex(filter, -1);
+    }
+
+    private FilterResult mapWithIndex(Filter filter, int metadataIndex) {
         if (filter == null) {
             return null;
         }
+
+        int currentIndex = metadataIndex + 1;
+        String filterQuery = "";
+
         if (filter instanceof IsEqualTo) {
-            filterQuery = mapEqual((IsEqualTo) filter);
+            filterQuery = mapEqual((IsEqualTo) filter, currentIndex);
         } else if (filter instanceof IsNotEqualTo) {
-            filterQuery = mapNotEqual((IsNotEqualTo) filter);
+            filterQuery = mapNotEqual((IsNotEqualTo) filter, currentIndex);
         } else if (filter instanceof IsGreaterThan) {
-            filterQuery = mapGreaterThan((IsGreaterThan) filter);
+            filterQuery = mapGreaterThan((IsGreaterThan) filter, currentIndex);
         } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            filterQuery = mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+            filterQuery = mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter, currentIndex);
         } else if (filter instanceof IsLessThan) {
-            filterQuery = mapLessThan((IsLessThan) filter);
+            filterQuery = mapLessThan((IsLessThan) filter, currentIndex);
         } else if (filter instanceof IsLessThanOrEqualTo) {
-            filterQuery = mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
+            filterQuery = mapLessThanOrEqual((IsLessThanOrEqualTo) filter, currentIndex);
         } else if (filter instanceof IsIn) {
-            filterQuery = mapIn((IsIn) filter);
+            filterQuery = mapIn((IsIn) filter, currentIndex);
         } else if (filter instanceof IsNotIn) {
-            filterQuery = mapNotIn((IsNotIn) filter);
+            filterQuery = mapNotIn((IsNotIn) filter, currentIndex);
         } else if (filter instanceof And) {
-            filterQuery = mapAnd((And) filter);
+            filterQuery = mapAnd((And) filter, currentIndex);
         } else if (filter instanceof Not) {
-            filterQuery = mapNot((Not) filter);
+            filterQuery = mapNot((Not) filter, currentIndex);
         } else if (filter instanceof Or) {
-            filterQuery = mapOr((Or) filter);
+            filterQuery = mapOr((Or) filter, currentIndex);
         } else {
             throw new UnsupportedOperationException(
                     "Unsupported filter type: " + filter.getClass().getName());
         }
 
-        return new FilterResult(filterQuery);
+        return new FilterResult(filterQuery, currentIndex);
     }
 
-    private String mapEqual(IsEqualTo filter) {
-        return metadataKey(filter.key()) + computeFilter("=", filter.comparisonValue());
+    private String mapEqual(IsEqualTo filter, int index) {
+        return metadataKey(filter.key(), index) + computeFilter("=", filter.comparisonValue(), index);
     }
 
-    private String mapNotEqual(IsNotEqualTo filter) {
-        return computeFilter("!=", filter.comparisonValue()) + metadataKeyLast(filter.key()) + addMetadataNullCheck();
+    private String mapNotEqual(IsNotEqualTo filter, int index) {
+        return computeFilter("!=", filter.comparisonValue(), index)
+                + metadataKeyLast(filter.key(), index)
+                + addMetadataNullCheck();
     }
 
-    private String mapGreaterThan(IsGreaterThan filter) {
-        return metadataKey(filter.key()) + computeFilter(">", filter.comparisonValue());
+    private String mapGreaterThan(IsGreaterThan filter, int index) {
+        return metadataKey(filter.key(), index) + computeFilter(">", filter.comparisonValue(), index);
     }
 
-    private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo filter) {
-        return metadataKey(filter.key()) + computeFilter(">=", filter.comparisonValue());
+    private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo filter, int index) {
+        return metadataKey(filter.key(), index) + computeFilter(">=", filter.comparisonValue(), index);
     }
 
-    private String mapLessThan(IsLessThan filter) {
-        return metadataKey(filter.key()) + computeFilter("<", filter.comparisonValue());
+    private String mapLessThan(IsLessThan filter, int index) {
+        return metadataKey(filter.key(), index) + computeFilter("<", filter.comparisonValue(), index);
     }
 
-    private String mapLessThanOrEqual(IsLessThanOrEqualTo filter) {
-        return metadataKey(filter.key()) + computeFilter("<=", filter.comparisonValue());
+    private String mapLessThanOrEqual(IsLessThanOrEqualTo filter, int index) {
+        return metadataKey(filter.key(), index) + computeFilter("<=", filter.comparisonValue(), index);
     }
 
-    private String mapIn(IsIn filter) {
+    private String mapIn(IsIn filter, int index) {
         Optional<?> first = filter.comparisonValues().stream().findFirst();
         if (first.isEmpty()) {
             throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
         }
         Object o = first.get();
         String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
-        String m = "m" + i + ".";
+        String m = "m" + index + ".";
         String filterQuery = m + "value IN (" + inStatement + ")";
         if (o instanceof Integer || o instanceof Long) {
             filterQuery = m + "value_int IN (" + inStatement + ")";
@@ -108,17 +115,17 @@ class InfinispanMetadataFilterMapper {
             filterQuery = m + "value_float IN (" + inStatement + ")";
         }
 
-        return metadataKey(filter.key()) + filterQuery;
+        return metadataKey(filter.key(), index) + filterQuery;
     }
 
-    private String mapNotIn(IsNotIn filter) {
+    private String mapNotIn(IsNotIn filter, int index) {
         Optional<?> first = filter.comparisonValues().stream().findFirst();
         if (first.isEmpty()) {
             throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
         }
         Object o = first.get();
         String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
-        String m = "m" + i + ".";
+        String m = "m" + index + ".";
         String filterQuery = m + "value NOT IN (" + inStatement + ")";
         if (o instanceof Integer || o instanceof Long) {
             filterQuery = m + "value_int NOT IN (" + inStatement + ")";
@@ -133,13 +140,13 @@ class InfinispanMetadataFilterMapper {
             inFilterQuery = m + "value_float IN (" + inStatement + ")";
         }
 
-        return "(" + filterQuery + metadataKeyLast(filter.key()) + ") " + "OR ("
+        return "(" + filterQuery + metadataKeyLast(filter.key(), index) + ") " + "OR ("
                 + inFilterQuery + " and " + m + "name!='" + filter.key() + "')"
                 + addMetadataNullCheck();
     }
 
-    private String computeFilter(String operator, Object value) {
-        String m = "m" + i + ".";
+    private String computeFilter(String operator, Object value, int index) {
+        String m = "m" + index + ".";
         String filterQuery = m + "value " + operator + " '" + value + "'";
         if (value instanceof Integer || value instanceof Long) {
             Long longValue = getLongValue(value);
@@ -165,24 +172,29 @@ class InfinispanMetadataFilterMapper {
         return longValue;
     }
 
-    private String mapAnd(And filter) {
-        return "((" + map(filter.left()).query + ") AND (" + map(filter.right()).query + "))";
+    private String mapAnd(And filter, int index) {
+        FilterResult leftResult = mapWithIndex(filter.left(), index);
+        FilterResult rightResult = mapWithIndex(filter.right(), index);
+        return "((" + leftResult.query + ") AND (" + rightResult.query + "))";
     }
 
-    private String mapNot(Not filter) {
-        return "(NOT (" + map(filter.expression()).query + "))";
+    private String mapNot(Not filter, int index) {
+        FilterResult expressionResult = mapWithIndex(filter.expression(), index);
+        return "(NOT (" + expressionResult.query + "))";
     }
 
-    private String mapOr(Or filter) {
-        return "((" + map(filter.left()).query + ") OR (" + map(filter.right()).query + "))";
+    private String mapOr(Or filter, int index) {
+        FilterResult leftResult = mapWithIndex(filter.left(), index);
+        FilterResult rightResult = mapWithIndex(filter.right(), index);
+        return "((" + leftResult.query + ") OR (" + rightResult.query + "))";
     }
 
-    private String metadataKeyLast(String key) {
-        return " and m" + i + ".name='" + key + "'";
+    private String metadataKeyLast(String key, int index) {
+        return " and m" + index + ".name='" + key + "'";
     }
 
-    private String metadataKey(String key) {
-        return "m" + i + ".name='" + key + "' and ";
+    private String metadataKey(String key, int index) {
+        return "m" + index + ".name='" + key + "' and ";
     }
 
     private String formattedComparisonValues(Collection<?> comparisonValues, boolean isNumeric) {
