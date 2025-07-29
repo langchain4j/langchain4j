@@ -6,9 +6,12 @@ import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.Transaction
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -27,7 +30,9 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -41,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
@@ -314,19 +320,34 @@ class StreamingAiServicesWithToolsIT {
 
         String userMessage = "What is the temperature in Munich and London, in Celsius?";
 
-        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        interface TokenStreamHandler {
+            void onPartialResponse(String partialResponse);
+            void beforeToolExecution(BeforeToolExecution beforeToolExecution);
+            void onToolExecuted(ToolExecution toolExecution);
+            void onError(Throwable error);
+            void onCompleteResponse(ChatResponse completeResponse);
+        }
+
+        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant
-                .chat(userMessage)
-                .onPartialResponse(ignored -> {})
-                .beforeToolExecution(beforeToolsExecutionContext ->
-                        toolExecutionRequests.add(beforeToolsExecutionContext.request()))
-                .onCompleteResponse(future::complete)
-                .onError(future::completeExceptionally)
+        assistant.chat(userMessage)
+                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
+                .beforeToolExecution(beforeToolExecution -> tokenStreamHandler.beforeToolExecution(beforeToolExecution))
+                .onToolExecuted(toolExecution -> tokenStreamHandler.onToolExecuted(toolExecution))
+                .onError(error -> {
+                    tokenStreamHandler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
                 .start();
-        ChatResponse response = future.get(60, SECONDS);
+
+        // then
+        ChatResponse response = futureResponse.get(60, SECONDS);
 
         // then
         assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
@@ -337,15 +358,18 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(weatherService);
 
         // then
-        assertThat(toolExecutionRequests).hasSize(2);
+        InOrder inOrder = inOrder(tokenStreamHandler);
 
-        assertThat(toolExecutionRequests.get(0).name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutionRequests.get(0).arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
+        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("Munich")));
+        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("Munich")));
+        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("London")));
+        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("London")));
 
-        assertThat(toolExecutionRequests.get(1).name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutionRequests.get(1).arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
+        inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(tokenStreamHandler).onCompleteResponse(any());
+
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(tokenStreamHandler);
     }
 
     @Test
