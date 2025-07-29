@@ -17,15 +17,23 @@ public class InternalStreamingChatResponseHandlerUtils {
     private static final Logger log = LoggerFactory.getLogger(InternalStreamingChatResponseHandlerUtils.class);
 
     public static void withLoggingExceptions(Runnable runnable) {
+        if (runnable == null) {
+            return;
+        }
         try {
             runnable.run();
         } catch (Exception e) {
-            log.warn("An exception occurred during the invocation of StreamingChatResponseHandler.onError(). "
-                    + "This exception has been ignored.", e);
+            log.warn(
+                    "An exception occurred during the invocation of StreamingChatResponseHandler.onError(). "
+                            + "This exception has been ignored.",
+                    e);
         }
     }
 
     public static void onPartialResponse(StreamingChatResponseHandler handler, String partialResponse) {
+        if (handler == null) {
+            return;
+        }
         if (isNullOrEmpty(partialResponse)) {
             return;
         }
@@ -38,6 +46,9 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     public static void onPartialThinking(StreamingChatResponseHandler handler, String partialThinking) {
+        if (handler == null) {
+            return;
+        }
         if (isNullOrEmpty(partialThinking)) {
             return;
         }
@@ -50,6 +61,13 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     public static void onPartialToolCall(StreamingChatResponseHandler handler, PartialToolCall partialToolCall) {
+        if (handler == null) {
+            return;
+        }
+        if (partialToolCall == null) {
+            return;
+        }
+
         try {
             handler.onPartialToolCall(partialToolCall);
         } catch (Exception e) {
@@ -58,6 +76,13 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     public static void onCompleteToolCall(StreamingChatResponseHandler handler, CompleteToolCall completeToolCall) {
+        if (handler == null) {
+            return;
+        }
+        if (completeToolCall == null) {
+            return;
+        }
+
         try {
             handler.onCompleteToolCall(completeToolCall);
         } catch (Exception e) {
@@ -66,6 +91,13 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     public static void onCompleteResponse(StreamingChatResponseHandler handler, ChatResponse completeResponse) {
+        if (handler == null) {
+            return;
+        }
+        if (completeResponse == null) {
+            return;
+        }
+
         try {
             handler.onCompleteResponse(completeResponse);
         } catch (Exception e) {

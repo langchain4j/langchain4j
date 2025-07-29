@@ -76,7 +76,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Internal
 abstract class AbstractBedrockChatModel {
 
-    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+    private static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
 
     protected final Region region;
     protected final Duration timeout;
@@ -100,9 +101,10 @@ abstract class AbstractBedrockChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        BedrockChatRequestParameters bedrockParameters = builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters ?
-                bedrockChatRequestParameters :
-                BedrockChatRequestParameters.EMPTY;
+        BedrockChatRequestParameters bedrockParameters =
+                builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters
+                        ? bedrockChatRequestParameters
+                        : BedrockChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = BedrockChatRequestParameters.builder()
                 // common parameters
@@ -200,7 +202,9 @@ abstract class AbstractBedrockChatModel {
                             .signature(message.attribute(THINKING_SIGNATURE_KEY, String.class))
                             .build())
                     .build();
-            blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
+            blocks.add(ContentBlock.builder()
+                    .reasoningContent(reasoningContentBlock)
+                    .build());
         }
 
         if (isNotNullOrEmpty(message.text())) {
@@ -327,9 +331,9 @@ abstract class AbstractBedrockChatModel {
                         .arguments(documentToJson(cBlock.toolUse().input()))
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
-                 if (isNotNullOrEmpty(cBlock.text())) {
-                     texts.add(cBlock.text());
-                 }
+                if (isNotNullOrEmpty(cBlock.text())) {
+                    texts.add(cBlock.text());
+                }
             } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
                 if (returnThinking) {
                     ReasoningContentBlock reasoningContentBlock = cBlock.reasoningContent();

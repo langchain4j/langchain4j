@@ -1,5 +1,14 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.Part;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -20,23 +29,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
-import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
-
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 class PartsMapper {
 
@@ -93,31 +91,25 @@ class PartsMapper {
             List<Part> parts = new ArrayList<>();
 
             if (isNotNullOrEmpty(aiMessage.text())) {
-                parts.add(Part.newBuilder()
-                    .setText(aiMessage.text())
-                    .build());
+                parts.add(Part.newBuilder().setText(aiMessage.text()).build());
             }
 
             if (aiMessage.hasToolExecutionRequests()) {
                 List<Part> fnCallReqParts = aiMessage.toolExecutionRequests().stream()
-                    .map(FunctionCallHelper::fromToolExecutionRequest)
-                    .map(fnCall -> Part.newBuilder()
-                        .setFunctionCall(fnCall)
-                        .build())
-                    .collect(toList());
+                        .map(FunctionCallHelper::fromToolExecutionRequest)
+                        .map(fnCall -> Part.newBuilder().setFunctionCall(fnCall).build())
+                        .collect(toList());
 
                 parts.addAll(fnCallReqParts);
             }
 
             return parts;
         } else if (message instanceof UserMessage) {
-            return ((UserMessage) message).contents().stream()
-                .map(PartsMapper::map)
-                .collect(toList());
+            return ((UserMessage) message)
+                    .contents().stream().map(PartsMapper::map).collect(toList());
         } else if (message instanceof SystemMessage) {
-            return singletonList(Part.newBuilder()
-                .setText(((SystemMessage) message).text())
-                .build());
+            return singletonList(
+                    Part.newBuilder().setText(((SystemMessage) message).text()).build());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             String functionResponseText = toolExecutionResultMessage.text();
@@ -142,11 +134,11 @@ class PartsMapper {
             Struct responseStruct = structBuilder.build();
 
             return singletonList(Part.newBuilder()
-                .setFunctionResponse(FunctionResponse.newBuilder()
-                    .setName(toolExecutionResultMessage.toolName())
-                    .setResponse(responseStruct)
-                    .build())
-                .build());
+                    .setFunctionResponse(FunctionResponse.newBuilder()
+                            .setName(toolExecutionResultMessage.toolName())
+                            .setResponse(responseStruct)
+                            .build())
+                    .build());
         } else {
             throw illegalArgument(message.type() + " message is not supported by Gemini");
         }
@@ -169,9 +161,7 @@ class PartsMapper {
     }
 
     private static Part map(TextContent content) {
-        return Part.newBuilder()
-                .setText(content.text())
-                .build();
+        return Part.newBuilder().setText(content.text()).build();
     }
 
     static Part map(ImageContent content) {

@@ -1,5 +1,11 @@
 package dev.langchain4j.model.azure;
 
+import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
@@ -15,15 +21,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.TokenCountEstimator;
-
 import java.util.Map;
 import java.util.function.Supplier;
-
-import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
@@ -132,7 +131,8 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
             tokenCount += 6;
             if (aiMessage.toolExecutionRequests().size() == 1) {
                 tokenCount -= 1;
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+                ToolExecutionRequest toolExecutionRequest =
+                        aiMessage.toolExecutionRequests().get(0);
                 tokenCount += estimateTokenCountInText(toolExecutionRequest.name()) * 2;
                 tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
             } else {
@@ -178,7 +178,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         for (ChatMessage message : messages) {
             tokenCount += estimateTokenCountInMessage(message);
         }
-        if (modelName.startsWith("o") ) {
+        if (modelName.startsWith("o")) {
             tokenCount -= 1;
         }
         return tokenCount;
