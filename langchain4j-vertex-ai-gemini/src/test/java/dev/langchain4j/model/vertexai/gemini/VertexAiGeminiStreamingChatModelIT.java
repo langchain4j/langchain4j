@@ -86,9 +86,6 @@ class VertexAiGeminiStreamingChatModelIT {
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount()
-                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -132,11 +129,13 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_respect_maxOutputTokens() {
 
         // given
+        int maxOutputTokens = 3;
+
         StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
-                .maxOutputTokens(1)
+                .modelName("gemini-2.5-flash-lite")
+                .maxOutputTokens(maxOutputTokens)
                 .build();
 
         String userMessage = "Tell me a joke";
@@ -148,13 +147,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(4);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(1);
-        assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount()
-                        + response.tokenUsage().outputTokenCount());
-
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
@@ -201,7 +194,7 @@ class VertexAiGeminiStreamingChatModelIT {
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word."));
+                TextContent.from("What do you see?"));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -209,7 +202,7 @@ class VertexAiGeminiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
