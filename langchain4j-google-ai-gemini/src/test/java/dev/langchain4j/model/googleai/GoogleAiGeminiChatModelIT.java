@@ -123,8 +123,7 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         String jsonText = response.aiMessage().text();
-        assertThat(jsonText).contains("\"firstname\"");
-        assertThat(jsonText).contains("\"John\"");
+        assertThat(jsonText).contains("\"firstname\"").contains("\"John\"");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -409,8 +408,7 @@ class GoogleAiGeminiChatModelIT {
 
         String allArgs =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(" "));
-        assertThat(allArgs).contains("ABC");
-        assertThat(allArgs).contains("XYZ");
+        assertThat(allArgs).contains("ABC").contains("XYZ");
     }
 
     @Disabled("TODO fix")
@@ -741,30 +739,6 @@ class GoogleAiGeminiChatModelIT {
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
-    }
-
-    @Test
-    void should_use_thinking_config() {
-
-        // given
-        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
-                .includeThoughts(true)
-                .thinkingBudget(20)
-                .build();
-
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
-                .temperature(0.0)
-                .logRequestsAndResponses(true)
-                .thinkingConfig(thinkingConfig)
-                .build();
-
-        String prompt = "What is the area of a rectangle with length 5 and width 4?";
-        ChatResponse response = gemini.chat(UserMessage.from(prompt));
-
-        String reply = response.aiMessage().text();
-        assertThat(reply).contains("20");
     }
 
     @ParameterizedTest

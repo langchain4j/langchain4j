@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -72,7 +73,6 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.String.format;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 @Internal
@@ -289,37 +289,45 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
+        return aiMessageFrom(response, false);
+    }
+
+    public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
-        String text = assistantMessage.content();
-
-        List<ToolCall> toolCalls = assistantMessage.toolCalls();
-        if (!isNullOrEmpty(toolCalls)) {
-            List<ToolExecutionRequest> toolExecutionRequests = toolCalls.stream()
-                    .filter(toolCall -> toolCall.type() == FUNCTION)
-                    .map(OpenAiUtils::toToolExecutionRequest)
-                    .collect(toList());
-            return isNullOrBlank(text)
-                    ? AiMessage.from(toolExecutionRequests)
-                    : AiMessage.from(text, toolExecutionRequests);
-        }
-
-        FunctionCall functionCall = assistantMessage.functionCall();
-        if (functionCall != null) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.name())
-                    .arguments(functionCall.arguments())
-                    .build();
-            return isNullOrBlank(text)
-                    ? AiMessage.from(toolExecutionRequest)
-                    : AiMessage.from(text, singletonList(toolExecutionRequest));
-        }
 
         String refusal = assistantMessage.refusal();
         if (isNotNullOrBlank(refusal)) {
             throw new ContentFilteredException(refusal);
         }
 
-        return AiMessage.from(text);
+        String content = assistantMessage.content();
+
+        String reasoningContent = null;
+        if (returnThinking) {
+            reasoningContent = assistantMessage.reasoningContent();
+        }
+
+        List<ToolExecutionRequest> toolExecutionRequests = getOrDefault(assistantMessage.toolCalls(), List.of())
+                .stream()
+                .filter(toolCall -> toolCall.type() == FUNCTION)
+                .map(OpenAiUtils::toToolExecutionRequest)
+                .collect(toList());
+
+        // legacy
+        FunctionCall functionCall = assistantMessage.functionCall();
+        if (functionCall != null) {
+            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                    .name(functionCall.name())
+                    .arguments(functionCall.arguments())
+                    .build();
+            toolExecutionRequests.add(toolExecutionRequest);
+        }
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(content) ? null : content)
+                .thinking(isNullOrEmpty(reasoningContent) ? null : reasoningContent)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {

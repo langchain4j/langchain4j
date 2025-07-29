@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -50,8 +51,9 @@ public class OpenAiChatModel implements ChatModel {
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
 
     private final List<ChatModelListener> listeners;
 
@@ -113,6 +115,7 @@ public class OpenAiChatModel implements ChatModel {
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -156,7 +159,7 @@ public class OpenAiChatModel implements ChatModel {
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(openAiResponse))
+                .aiMessage(aiMessageFrom(openAiResponse, returnThinking))
                 .metadata(responseMetadata)
                 .build();
     }
@@ -206,6 +209,7 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -354,6 +358,22 @@ public class OpenAiChatModel implements ChatModel {
 
         public OpenAiChatModelBuilder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 

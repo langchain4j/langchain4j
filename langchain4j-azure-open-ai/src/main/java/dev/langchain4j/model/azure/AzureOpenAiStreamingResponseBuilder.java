@@ -5,7 +5,6 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -20,21 +19,29 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReason
  * in fact it almost certainly won't be.
  */
 @Internal
-class InternalAzureOpenAiStreamingResponseBuilder {
+class AzureOpenAiStreamingResponseBuilder {
 
-    private final Integer inputTokenCount;
     private final StringBuffer contentBuilder = new StringBuffer();
     private final ToolCallBuilder toolCallBuilder;
+    private volatile TokenUsage tokenUsage;
     private volatile CompletionsFinishReason finishReason;
 
-    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount, ToolCallBuilder toolCallBuilder) {
-        this.inputTokenCount = inputTokenCount;
+    AzureOpenAiStreamingResponseBuilder() {
+        this(null);
+    }
+
+    AzureOpenAiStreamingResponseBuilder(ToolCallBuilder toolCallBuilder) {
         this.toolCallBuilder = toolCallBuilder;
     }
 
     void append(ChatCompletions completions) {
         if (completions == null) {
             return;
+        }
+
+        CompletionsUsage usage = completions.getUsage();
+        if (usage != null) {
+            tokenUsage = new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens());
         }
 
         List<ChatChoice> choices = completions.getChoices();
@@ -68,6 +75,11 @@ class InternalAzureOpenAiStreamingResponseBuilder {
             return;
         }
 
+        CompletionsUsage usage = completions.getUsage();
+        if (usage != null) {
+            tokenUsage = new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens());
+        }
+
         List<Choice> choices = completions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -89,7 +101,7 @@ class InternalAzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
+    Response<AiMessage> build() {
 
         String content = contentBuilder.toString();
 
@@ -102,12 +114,6 @@ class InternalAzureOpenAiStreamingResponseBuilder {
                 .text(content.isEmpty() ? null : content)
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
-
-        TokenUsage tokenUsage = null;
-        if (tokenCountEstimator != null) {
-            int outputTokenCount = tokenCountEstimator.estimateTokenCountInMessage(aiMessage);
-            tokenUsage = new TokenUsage(inputTokenCount, outputTokenCount);
-        }
 
         return Response.from(aiMessage, tokenUsage, finishReasonFrom(finishReason));
     }

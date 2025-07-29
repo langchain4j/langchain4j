@@ -2,7 +2,7 @@ package dev.langchain4j.web.search;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.data.document.Metadata;
 import java.net.URI;
@@ -177,9 +177,10 @@ class WebSearchOrganicResultTest {
 
     @Test
     void should_throw_illegalArgumentException_without_title() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content"));
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(
+                        () -> WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content"))
+                .actual();
         assertThat(exception).hasMessage("title cannot be null or blank");
     }
 }
