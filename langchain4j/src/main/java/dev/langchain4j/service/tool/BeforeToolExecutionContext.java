@@ -11,7 +11,7 @@ public class BeforeToolExecutionContext {
     private final ToolExecutionRequest toolExecutionRequest;
 
     private BeforeToolExecutionContext(Builder builder) {
-        this.toolExecutionRequest = builder.toolExecutionRequest;
+        this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
     }
 
     /**
