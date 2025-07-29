@@ -80,6 +80,53 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         CODE_RETRIEVAL_QUERY
     }
 
+    public VertexAiEmbeddingModel(Builder builder) {
+
+        String regionWithBaseAPI = builder.endpoint != null
+                ? builder.endpoint
+                : ensureNotBlank(builder.location, "location") + DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX;
+
+        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+                ensureNotBlank(builder.project, "project"),
+                builder.location,
+                ensureNotBlank(builder.publisher, "publisher"),
+                ensureNotBlank(builder.modelName, "modelName"));
+
+        try {
+            PredictionServiceSettings.Builder settingsBuilder =
+                    PredictionServiceSettings.newBuilder().setEndpoint(regionWithBaseAPI);
+            if (builder.credentials != null) {
+                GoogleCredentials scopedCredentials =
+                        builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
+            }
+            this.settings = settingsBuilder.build();
+
+            this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()
+                    .setEndpoint(settings.getEndpoint())
+                    .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+
+        this.maxSegmentsPerBatch = ensureGreaterThanZero(
+                getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
+        this.maxTokensPerBatch = ensureGreaterThanZero(
+                getOrDefault(builder.maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH), "maxTokensPerBatch");
+
+        this.taskType = builder.taskType;
+        this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
+
+        this.outputDimensionality = builder.outputDimensionality;
+        this.autoTruncate = getOrDefault(builder.autoTruncate, false);
+    }
+
+    /**
+     * @deprecated Please use {@link #VertexAiEmbeddingModel(Builder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.2.0")
     public VertexAiEmbeddingModel(
             String endpoint,
             String project,
@@ -92,47 +139,21 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             TaskType taskType,
             String titleMetadataKey,
             Integer outputDimensionality,
-            Boolean autoTruncate,
-            GoogleCredentials credentials) {
-
-        String regionWithBaseAPI =
-                endpoint != null ? endpoint : ensureNotBlank(location, "location") + DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX;
-
-        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
-                ensureNotBlank(project, "project"),
-                location,
-                ensureNotBlank(publisher, "publisher"),
-                ensureNotBlank(modelName, "modelName"));
-
-        try {
-            PredictionServiceSettings.Builder settingsBuilder =
-                    PredictionServiceSettings.newBuilder().setEndpoint(regionWithBaseAPI);
-            if (credentials != null) {
-                GoogleCredentials scopedCredentials =
-                        credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
-            }
-            this.settings = settingsBuilder.build();
-
-            this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()
-                    .setEndpoint(settings.getEndpoint())
-                    .build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        this.maxRetries = getOrDefault(maxRetries, 2);
-
-        this.maxSegmentsPerBatch = ensureGreaterThanZero(
-                getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
-        this.maxTokensPerBatch = ensureGreaterThanZero(
-                getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH), "maxTokensPerBatch");
-
-        this.taskType = taskType;
-        this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
-
-        this.outputDimensionality = outputDimensionality;
-        this.autoTruncate = getOrDefault(autoTruncate, false);
+            Boolean autoTruncate) {
+        this(builder()
+                .endpoint(endpoint)
+                .project(project)
+                .location(location)
+                .publisher(publisher)
+                .modelName(modelName)
+                .maxRetries(maxRetries)
+                .maxSegmentsPerBatch(maxSegmentsPerBatch)
+                .maxTokensPerBatch(maxTokensPerBatch)
+                .taskType(taskType)
+                .titleMetadataKey(titleMetadataKey)
+                .outputDimensionality(outputDimensionality)
+                .autoTruncate(autoTruncate)
+        );
     }
 
     @Override
@@ -384,20 +405,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public VertexAiEmbeddingModel build() {
-            return new VertexAiEmbeddingModel(
-                    endpoint,
-                    project,
-                    location,
-                    publisher,
-                    modelName,
-                    maxRetries,
-                    maxSegmentsPerBatch,
-                    maxTokensPerBatch,
-                    taskType,
-                    titleMetadataKey,
-                    outputDimensionality,
-                    autoTruncate,
-                    credentials);
+            return new VertexAiEmbeddingModel(this);
         }
     }
 }

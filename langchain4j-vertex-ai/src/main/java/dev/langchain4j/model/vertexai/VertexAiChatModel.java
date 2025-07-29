@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -60,6 +61,33 @@ public class VertexAiChatModel implements ChatModel {
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
+    public VertexAiChatModel(Builder builder) {
+        try {
+            PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder()
+                    .setEndpoint(ensureNotBlank(builder.endpoint, "endpoint"));
+            if (builder.credentials != null) {
+                GoogleCredentials scopedCredentials =
+                        builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
+            }
+            this.settings = settingsBuilder.build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+                ensureNotBlank(builder.project, "project"),
+                ensureNotBlank(builder.location, "location"),
+                ensureNotBlank(builder.publisher, "publisher"),
+                ensureNotBlank(builder.modelName, "modelName"));
+        this.vertexAiParameters = new VertexAiParameters(
+                builder.temperature, builder.maxOutputTokens, builder.topK, builder.topP);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+    }
+
+    /**
+     * @deprecated Please use {@link #VertexAiChatModel(Builder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.2.0")
     public VertexAiChatModel(
             String endpoint,
             String project,
@@ -70,27 +98,19 @@ public class VertexAiChatModel implements ChatModel {
             Integer maxOutputTokens,
             Integer topK,
             Double topP,
-            Integer maxRetries,
-            GoogleCredentials credentials) {
-        try {
-            PredictionServiceSettings.Builder settingsBuilder =
-                    PredictionServiceSettings.newBuilder().setEndpoint(ensureNotBlank(endpoint, "endpoint"));
-            if (credentials != null) {
-                GoogleCredentials scopedCredentials =
-                        credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
-            }
-            this.settings = settingsBuilder.build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"),
-                ensureNotBlank(publisher, "publisher"),
-                ensureNotBlank(modelName, "modelName"));
-        this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
+            Integer maxRetries) {
+        this(builder()
+                .endpoint(endpoint)
+                .project(project)
+                .location(location)
+                .publisher(publisher)
+                .modelName(modelName)
+                .temperature(temperature)
+                .maxOutputTokens(maxOutputTokens)
+                .topK(topK)
+                .topP(topP)
+                .maxRetries(maxRetries)
+        );
     }
 
     @Override
@@ -276,18 +296,7 @@ public class VertexAiChatModel implements ChatModel {
         }
 
         public VertexAiChatModel build() {
-            return new VertexAiChatModel(
-                    endpoint,
-                    project,
-                    location,
-                    publisher,
-                    modelName,
-                    temperature,
-                    maxOutputTokens,
-                    topK,
-                    topP,
-                    maxRetries,
-                    credentials);
+            return new VertexAiChatModel(this);
         }
     }
 }
