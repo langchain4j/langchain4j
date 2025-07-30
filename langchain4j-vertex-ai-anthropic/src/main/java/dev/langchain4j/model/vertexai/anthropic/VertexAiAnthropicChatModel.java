@@ -26,6 +26,7 @@ import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRespons
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,8 +96,6 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         List<ChatMessage> messages = chatRequest.messages();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
@@ -114,12 +113,14 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                     modelName,
                     messages,
                     toolSpecifications,
-                    maxTokens,
+                    parameters.toolChoice(),
+                    parameters.maxOutputTokens() != null ? parameters.maxOutputTokens() : maxTokens,
                     temperature,
                     topP,
                     topK,
-                    stopSequences,
-                    enablePromptCaching);
+                    parameters.stopSequences() != null && !parameters.stopSequences().isEmpty() ? parameters.stopSequences() : stopSequences,
+                    enablePromptCaching
+            );
 
             if (logRequests) {
                 logger.debug("Anthropic request: {}", anthropicRequest);

@@ -26,8 +26,8 @@ public final class ValidationUtils {
         if (maxTokens == null) {
             return Constants.DEFAULT_MAX_TOKENS;
         }
-        if (maxTokens < 1 || maxTokens > 8192) {
-            throw new IllegalArgumentException("maxTokens must be between 1 and 8192");
+        if (maxTokens < 1 || maxTokens > 200000) {
+            throw new IllegalArgumentException("maxTokens must be between 1 and 200000");
         }
         return maxTokens;
     }

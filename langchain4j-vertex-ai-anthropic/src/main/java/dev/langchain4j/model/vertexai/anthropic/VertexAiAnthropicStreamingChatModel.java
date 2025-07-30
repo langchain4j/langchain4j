@@ -76,8 +76,6 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         List<ChatMessage> messages = chatRequest.messages();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
@@ -95,11 +93,12 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                     modelName,
                     messages,
                     toolSpecifications,
-                    maxTokens,
+                    parameters.toolChoice(),
+                    parameters.maxOutputTokens() != null ? parameters.maxOutputTokens() : maxTokens,
                     temperature,
                     topP,
                     topK,
-                    stopSequences,
+                    parameters.stopSequences() != null && !parameters.stopSequences().isEmpty() ? parameters.stopSequences() : stopSequences,
                     enablePromptCaching);
 
             if (logRequests) {
@@ -115,11 +114,25 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             // Convert to streaming format - send as one chunk for now
             if (anthropicResponse.content != null && !anthropicResponse.content.isEmpty()) {
                 StringBuilder fullResponse = new StringBuilder();
-                anthropicResponse.content.forEach(content -> {
+                int toolCallIndex = 0;
+                
+                for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content : anthropicResponse.content) {
                     if (Constants.TEXT_CONTENT_TYPE.equals(content.type) && content.text != null) {
                         fullResponse.append(content.text);
+                    } else if (Constants.TOOL_USE_CONTENT_TYPE.equals(content.type) && content.name != null) {
+                        // Handle tool calls - since this is not real streaming, send complete tool call directly
+                        dev.langchain4j.agent.tool.ToolExecutionRequest toolExecutionRequest = 
+                            dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                                .id(content.id)
+                                .name(content.name)
+                                .arguments(content.input != null ? dev.langchain4j.internal.Json.toJson(content.input) : "{}")
+                                .build();
+                        handler.onCompleteToolCall(new dev.langchain4j.model.chat.response.CompleteToolCall(
+                            toolCallIndex++,
+                            toolExecutionRequest
+                        ));
                     }
-                });
+                }
 
                 String responseText = fullResponse.toString();
                 if (!responseText.isEmpty()) {

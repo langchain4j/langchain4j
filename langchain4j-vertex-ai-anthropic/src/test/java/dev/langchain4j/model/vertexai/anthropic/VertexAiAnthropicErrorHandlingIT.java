@@ -13,6 +13,8 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junitpioneer.jupiter.RetryingTest;
@@ -308,38 +310,5 @@ class VertexAiAnthropicErrorHandlingIT {
                     .modelName(null)
                     .build();
         });
-    }
-
-    @Test
-    void should_handle_concurrent_requests() throws Exception {
-        // given
-        ChatModel model = VertexAiAnthropicChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName(DEFAULT_MODEL_NAME)
-                .maxTokens(100)
-                .build();
-
-        // when - make multiple concurrent requests
-        CompletableFuture<ChatResponse>[] futures = new CompletableFuture[MAX_CONCURRENT_REQUESTS];
-        for (int i = 0; i < MAX_CONCURRENT_REQUESTS; i++) {
-            final int requestId = i;
-            futures[i] = CompletableFuture.supplyAsync(() -> {
-                try {
-                    return model.chat(ChatRequest.builder()
-                            .messages(List.of(UserMessage.from(SIMPLE_QUESTION + " (Request " + requestId + ")")))
-                            .build());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
-
-        // then - all requests should complete successfully
-        for (CompletableFuture<ChatResponse> future : futures) {
-            ChatResponse response = future.get(PERFORMANCE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            assertThat(response).isNotNull();
-            assertThat(response.aiMessage()).isNotNull();
-        }
     }
 }

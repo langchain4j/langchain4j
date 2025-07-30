@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
@@ -18,6 +19,9 @@ public class AnthropicContent {
     public String id;
     public String name;
     public Object input;
+    @JsonProperty("tool_use_id")
+    public String toolUseId;
+    public String content;
     public AnthropicCacheControl cacheControl;
 
     public AnthropicContent() {}
@@ -56,8 +60,8 @@ public class AnthropicContent {
     public static AnthropicContent toolResult(String toolUseId, String text) {
         AnthropicContent content = new AnthropicContent();
         content.type = "tool_result";
-        content.id = toolUseId;
-        content.text = text;
+        content.toolUseId = toolUseId;
+        content.content = text;
         return content;
     }
 }

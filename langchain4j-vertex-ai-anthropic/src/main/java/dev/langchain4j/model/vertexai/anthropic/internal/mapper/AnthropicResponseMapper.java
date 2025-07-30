@@ -1,14 +1,19 @@
 package dev.langchain4j.model.vertexai.anthropic.internal.mapper;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
-import java.util.ArrayList;
+import dev.langchain4j.internal.Json;
 import java.util.List;
 
 public class AnthropicResponseMapper {
@@ -22,6 +27,8 @@ public class AnthropicResponseMapper {
         FinishReason finishReason = toFinishReason(anthropicResponse.stopReason);
 
         ChatResponseMetadata metadata = ChatResponseMetadata.builder()
+                .id(anthropicResponse.id)
+                .modelName(anthropicResponse.model)
                 .tokenUsage(tokenUsage)
                 .finishReason(finishReason)
                 .build();
@@ -29,30 +36,33 @@ public class AnthropicResponseMapper {
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
     }
 
-    private static AiMessage toAiMessage(AnthropicResponse anthropicResponse) {
+    public static AiMessage toAiMessage(AnthropicResponse anthropicResponse) {
         if (anthropicResponse.content == null || anthropicResponse.content.isEmpty()) {
             return AiMessage.from("");
         }
 
-        StringBuilder textBuilder = new StringBuilder();
-        List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+        String text = anthropicResponse.content.stream()
+                .filter(content -> content != null && Constants.TEXT_CONTENT_TYPE.equals(content.type))
+                .map(content -> content.text)
+                .filter(t -> t != null)
+                .collect(joining("\n"));
 
-        for (AnthropicContent content : anthropicResponse.content) {
-            if ("text".equals(content.type)) {
-                textBuilder.append(content.text);
-            } else if ("tool_use".equals(content.type)) {
-                toolRequests.add(ToolExecutionRequest.builder()
+        List<ToolExecutionRequest> toolExecutionRequests = anthropicResponse.content.stream()
+                .filter(content -> content != null && Constants.TOOL_USE_CONTENT_TYPE.equals(content.type))
+                .filter(content -> isNotNullOrBlank(content.name)) // Ensure tool name is not blank
+                .map(content -> ToolExecutionRequest.builder()
                         .id(content.id)
                         .name(content.name)
-                        .arguments(content.input.toString())
-                        .build());
-            }
-        }
+                        .arguments(content.input != null ? Json.toJson(content.input) : "{}")
+                        .build())
+                .collect(toList());
 
-        if (!toolRequests.isEmpty()) {
-            return AiMessage.from(toolRequests);
+        if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
+            return AiMessage.from(text, toolExecutionRequests);
+        } else if (!isNullOrEmpty(toolExecutionRequests)) {
+            return AiMessage.from(toolExecutionRequests);
         } else {
-            return AiMessage.from(textBuilder.toString());
+            return AiMessage.from(text);
         }
     }
 
@@ -62,14 +72,12 @@ public class AnthropicResponseMapper {
         }
 
         // Calculate total input tokens including cache-related tokens
-        Integer totalInputTokens = anthropicResponse.usage.inputTokens;
+        int totalInputTokens = anthropicResponse.usage.inputTokens != null ? anthropicResponse.usage.inputTokens : 0;
         if (anthropicResponse.usage.cacheCreationInputTokens != null) {
-            totalInputTokens = (totalInputTokens != null ? totalInputTokens : 0)
-                    + anthropicResponse.usage.cacheCreationInputTokens;
+            totalInputTokens += anthropicResponse.usage.cacheCreationInputTokens;
         }
         if (anthropicResponse.usage.cacheReadInputTokens != null) {
-            totalInputTokens =
-                    (totalInputTokens != null ? totalInputTokens : 0) + anthropicResponse.usage.cacheReadInputTokens;
+            totalInputTokens += anthropicResponse.usage.cacheReadInputTokens;
         }
 
         return new TokenUsage(totalInputTokens, anthropicResponse.usage.outputTokens);
