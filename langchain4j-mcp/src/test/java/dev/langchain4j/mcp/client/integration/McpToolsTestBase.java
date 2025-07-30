@@ -1,19 +1,24 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +33,7 @@ public abstract class McpToolsTestBase {
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(6);
+        assertThat(tools).hasSize(7);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -136,10 +141,37 @@ public abstract class McpToolsTestBase {
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
     }
 
+    // this is specifically for 'executeToolWithUntypedArrayParameter'
+    OpenAiChatModel chatModel = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    public void executeToolWithUntypedArrayParameter() {
+        ToolProvider toolProvider =
+                McpToolProvider.builder().mcpClients(mcpClient).build();
+        ChatService service = AiServices.builder(ChatService.class)
+                .toolProvider(toolProvider)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .chatModel(chatModel)
+                .build();
+        String response = service.chat(
+                "Call the tool named 'untypedArray' with this array as the 'arr' parameter: [0, \"abs\", null], and pass me the result.");
+        assertThat(response).contains("6789");
+    }
+
+    interface ChatService {
+        String chat(String prompt);
+    }
+
     ToolProviderResult obtainTools() {
-        return McpToolProvider.builder()
-                .mcpClients(mcpClient)
-                .build()
-                .provideTools(null);
+        return McpToolProvider.builder().mcpClients(mcpClient).build().provideTools(null);
     }
 }

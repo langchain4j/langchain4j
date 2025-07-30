@@ -93,10 +93,10 @@ class MultipleMcpToolsIT {
                 .provideTools(null);
 
         Set<ToolSpecification> tools = toolProviderResult.tools().keySet();
-        assertThat(tools).hasSize(3);
+        assertThat(tools).hasSize(4);
         assertThat(tools)
                 .extracting(ToolSpecification::name)
-                .containsExactlyInAnyOrder("longOperation", "error", "errorResponse");
+                .containsExactlyInAnyOrder("longOperation", "error", "errorResponse", "untypedArray");
     }
 
     @Test
@@ -143,7 +143,7 @@ class MultipleMcpToolsIT {
                         || mcpClient.key().equals("numeric-mcp"))
                 .build()
                 .provideTools(null);
-        assertThat(toolProviderResult.tools()).hasSize(9);
+        assertThat(toolProviderResult.tools()).hasSize(10);
 
         // Execute the numeric-mcp version of echoInteger which adds 1 to the input
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoInteger");
