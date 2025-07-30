@@ -4,6 +4,7 @@ import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
@@ -17,6 +18,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -59,9 +61,12 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the capital of {{arg0}}?")
         String chat8(String country);
 
-        String chat9(@UserMessage String userMessage, @UserMessage ImageContent images);
+        String chat9(@UserMessage String userMessage, @ContentMessage ImageContent images);
 
-        String chat10(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+        @UserMessage("How many lamas are there in this image?")
+        String chat10(@ContentMessage List<ImageContent> images);
+
+        String chat11(@ContentMessage ImageContent image1, @UserMessage String text, @ContentMessage ImageContent image2);
 
         // illegal configuration
 
@@ -206,9 +211,11 @@ class AiServicesUserMessageConfigTest {
                 .chatModel(chatModel)
                 .build();
 
-        // when-then
-        assertThat(aiService.chat9("Count the number of cars in this image", imageContent))
+        assertThat(aiService.chat9("Count the number of lamas in this image", imageContent))
                 .isNotBlank();
+
+        verify(chatModel).chat(any(ChatRequest.class));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -218,9 +225,24 @@ class AiServicesUserMessageConfigTest {
                 .chatModel(chatModel)
                 .build();
 
-        // when-then
-        assertThat(aiService.chat10("Count the number of cars in this image", List.of(imageContent)))
+        assertThat(aiService.chat10(List.of(imageContent))).isNotBlank();
+
+        verify(chatModel).chat(any(ChatRequest.class));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_11() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat11(imageContent, "Count the number of lamas in this image", imageContent))
                 .isNotBlank();
+
+        verify(chatModel).chat(any(ChatRequest.class));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test

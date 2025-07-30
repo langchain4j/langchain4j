@@ -12,6 +12,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -26,7 +27,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -47,12 +47,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -76,10 +78,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
+            ContentMessage contentMessage = parameter.getAnnotation(ContentMessage.class);
+            if (v == null && userMessage == null && memoryId == null && userName == null && contentMessage == null) {
                 throw illegalConfiguration(
                         "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId",
+                                + "or @UserName or @MemoryId or @ContentMessage",
                         parameter.getName(), method.getName());
             }
         }
@@ -169,7 +172,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        Optional<List<Content>> userContentMessageOptional = findUserContentMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
+                        // collect user content message and add reserve empty item for userMessage
+                        Optional<List<Content>> userContentMessageOptional = findContentMessageTemplateFromAnnotatedParameter(method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
@@ -213,10 +217,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if (userContentMessageOptional.isPresent()) {
                             final String name = userMessage.name();
-                            final List<Content> contents = userMessage.contents();
                             List<Content> allContents = new ArrayList<>();
-                            allContents.addAll(userContentMessageOptional.get());
-                            allContents.addAll(contents);
+                            List<Content> contents = userContentMessageOptional.get();
+                            for (final Content content : contents) {
+                                if (content  == null) {
+                                    // if content is null, then add single text
+                                    allContents.add(TextContent.from(userMessage.singleText()));
+                                } else {
+                                    allContents.add(content);
+                                }
+                            }
                             userMessage = UserMessage.from(name, allContents);
                         }
                         if (context.hasChatMemory()) {
@@ -492,21 +502,47 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     /**
-     * find user content message template from annotated parameter
+     * find all content message from annotated parameter
+     * <br>
+     * - annotated with {@link dev.langchain4j.service.ContentMessage}
+     * <br>
+     * - annotated with {@link dev.langchain4j.service.UserMessage}
+     *
+     * if there have UserMessage, result will add null for UserMessage, but only one UserMessage
      */
-    private static Optional<List<Content>> findUserContentMessageTemplateFromAnnotatedParameter(
-            Parameter[] parameters, Object[] args) {
+    private static Optional<List<Content>> findContentMessageTemplateFromAnnotatedParameter(
+            Method method, Object[] args) {
+        final Parameter[] parameters = method.getParameters();
+
+        List<Content> result = new ArrayList<>();
+        Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
+        if (templateFromMethodAnnotation.isPresent()) {
+            // add for userMessage
+            result.add(null);
+        }
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                if (args[i] instanceof Content) {
-                    return Optional.of(List.of((Content) args[i]));
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.ContentMessage.class)) {
+                if (args[i] != null && args[i] instanceof Content content) {
+                    result.add(content);
                 }
-                if (args[i] instanceof List && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
-                    return Optional.of((List<Content>) args[i]);
+                if (args[i] != null && args[i] instanceof List<?> list && Stream.of(args[i]).allMatch(Content.class::isInstance)) {
+                    result.addAll((List<Content>) list);
                 }
             }
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                // add for userMessage
+                result.add(null);
+            }
         }
-        return Optional.empty();
+        long countForUserMessage = result.stream()
+                .filter(Objects::isNull)
+                .count();
+        if (countForUserMessage > 1) {
+            throw illegalConfiguration(
+                    "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                    method.getName());
+        }
+        return Optional.of(result);
     }
 
     private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
