@@ -9,15 +9,16 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final Consumer<String> partialResponseHandler;
     private final Consumer<PartialThinking> partialThinkingHandler;
+    private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> intermediateResponseHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
@@ -64,6 +66,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Object memoryId,
             Consumer<String> partialResponseHandler,
             Consumer<PartialThinking> partialThinkingHandler,
+            Consumer<BeforeToolExecution> beforeToolExecutionHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
@@ -83,6 +86,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.partialThinkingHandler = partialThinkingHandler;
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
+        this.beforeToolExecutionHandler = beforeToolExecutionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -124,6 +128,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                if (beforeToolExecutionHandler != null) {
+                    BeforeToolExecution beforeToolExecution = BeforeToolExecution.builder()
+                            .request(toolExecutionRequest)
+                            .build();
+                    beforeToolExecutionHandler.accept(beforeToolExecution);
+                }
+
                 String toolName = toolExecutionRequest.name();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
@@ -151,6 +162,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     memoryId,
                     partialResponseHandler,
                     partialThinkingHandler,
+                    beforeToolExecutionHandler,
                     toolExecutionHandler,
                     intermediateResponseHandler,
                     completeResponseHandler,
@@ -168,8 +180,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
                         .metadata(chatResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        chatResponse.metadata().tokenUsage()))
+                                .tokenUsage(
+                                        tokenUsage.add(chatResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
 
