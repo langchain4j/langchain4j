@@ -115,7 +115,17 @@ class ToolSpecificationHelper {
                 if (node.has("description")) {
                     builder.description(node.get("description").asText());
                 }
-                builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
+                if (node.has("items")) {
+                    // if 'items' is an empty array, or missing altogether,
+                    // we leave the "items" field unset,
+                    // which means it will be serialized as "items": {},
+                    // which means "any value"
+                    if (!node.get("items").isArray()
+                            || (node.get("items").isArray()
+                                    && !node.get("items").isEmpty())) {
+                        builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
+                    }
+                }
                 return builder.build();
             } else if (nodeType.equals("null")) {
                 return new JsonNullSchema();
