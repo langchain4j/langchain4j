@@ -4,9 +4,11 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 /**
@@ -132,7 +134,10 @@ public non-sealed class OutputGuardrailExecutor
      * @return A new {@link OutputGuardrailExecutorBuilder} instance.
      */
     public static OutputGuardrailExecutorBuilder builder() {
-        return new OutputGuardrailExecutorBuilder();
+        return ServiceLoader.load(OutputGuardrailExecutorBuilderFactory.class)
+                .findFirst()
+                .map(OutputGuardrailExecutorBuilderFactory::getBuilder)
+                .orElseGet(OutputGuardrailExecutorBuilder::new);
     }
 
     /**

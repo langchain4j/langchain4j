@@ -20,7 +20,7 @@ It looks beyond the surface-level matching of terms to consider the deeper inter
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jina</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.2.0-beta8</version>
 </dependency>
 ```
 
