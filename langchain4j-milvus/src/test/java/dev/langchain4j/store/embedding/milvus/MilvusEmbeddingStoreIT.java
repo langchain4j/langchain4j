@@ -16,9 +16,20 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.client.MilvusServiceClient;
+import io.milvus.grpc.DescribeIndexResponse;
+import io.milvus.grpc.IndexDescription;
+import io.milvus.grpc.KeyValuePair;
 import io.milvus.param.ConnectParam;
+import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import io.milvus.param.IndexType;
+import io.milvus.param.MetricType;
+import io.milvus.param.R;
+import io.milvus.param.index.DescribeIndexParam;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,6 +41,11 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     static final String MILVUS_DOCKER_IMAGE = "milvusdb/milvus:v2.5.10";
 
     private static final String COLLECTION_NAME = "test_collection";
+
+    private static final AbstractMap.SimpleEntry<String, Integer> EF_CONSTRUCTION_PARAM =
+            new AbstractMap.SimpleEntry<>("efConstruction", 200);
+    private static final AbstractMap.SimpleEntry<String, Integer> M_PARAM =
+            new AbstractMap.SimpleEntry<>("M", 16);
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
@@ -121,6 +137,69 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();
         Embedding secondEmbedding = embeddingModel.embed("hi").content();
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(firstEmbedding)
+                        .maxResults(10)
+                        .build())
+                .matches();
+        assertThat(matches).hasSize(2);
+        assertThat(matches.get(0).embedding()).isNull();
+        assertThat(matches.get(1).embedding()).isNull();
+    }
+
+    @Test
+    void milvus_index_with_custom_params() {
+        ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
+                .withHost(milvus.getHost())
+                .withUri(milvus.getEndpoint())
+                .withPort(milvus.getMappedPort(19530))
+                .withAuthorization("", "");
+
+        MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
+
+        embeddingStore.dropCollection(COLLECTION_NAME);
+
+        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+                .milvusClient(milvusServiceClient)
+                .collectionName(COLLECTION_NAME)
+                .consistencyLevel(STRONG)
+                .dimension(384)
+                .retrieveEmbeddingsOnSearch(false)
+                .idFieldName("id_field")
+                .textFieldName("text_field_hnsw")
+                .metadataFieldName("metadata_field")
+                .vectorFieldName("vector_field_hnsw")
+                .indexType(IndexType.HNSW)
+                .extraParam(M_PARAM.getKey(), M_PARAM.getValue())
+                .extraParam(EF_CONSTRUCTION_PARAM.getKey(), EF_CONSTRUCTION_PARAM.getValue())
+                .metricType(MetricType.COSINE)
+                .build();
+
+        final R<DescribeIndexResponse> indexDescribeResponse = milvusServiceClient
+                .describeIndex(DescribeIndexParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .build());
+
+        assertThat(indexDescribeResponse.getData().getIndexDescriptionsList()).hasSize(1);
+        final IndexDescription indexDescription = indexDescribeResponse.getData().getIndexDescriptions(0);
+        assertThat(indexDescription.getIndexName()).isEqualTo("vector_field_hnsw");
+
+        // Verify that the extra parameters were set correctly
+        final List<KeyValuePair> params = indexDescription.getParamsList();
+        assertThat(params).isNotEmpty();
+        // Check that the M and efConstruction parameters are present
+        Map<String, String> paramMap = new HashMap<>();
+        for (KeyValuePair param : params) {
+            paramMap.put(param.getKey(), param.getValue());
+        }
+        assertThat(paramMap).containsEntry(M_PARAM.getKey(), M_PARAM.getValue().toString());
+        assertThat(paramMap).containsEntry(EF_CONSTRUCTION_PARAM.getKey(), EF_CONSTRUCTION_PARAM.getValue().toString());
+
+        Embedding firstEmbedding = embeddingModel().embed("hello").content();
+        Embedding secondEmbedding = embeddingModel().embed("hi").content();
         embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
 
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore
