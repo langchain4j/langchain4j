@@ -1,5 +1,18 @@
 package dev.langchain4j.model.vertexai;
 
+import static com.google.protobuf.Value.newBuilder;
+import static dev.langchain4j.data.message.ChatMessageType.*;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.Json.toJson;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
@@ -10,28 +23,17 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiChatModelBuilderFactory;
-
 import java.io.IOException;
 import java.util.List;
-
-import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.data.message.ChatMessageType.*;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.vertexai.Json.toJson;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a Google Vertex AI language model with a chat completion interface, such as chat-bison.
@@ -59,31 +61,56 @@ public class VertexAiChatModel implements ChatModel {
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
-    public VertexAiChatModel(String endpoint,
-                             String project,
-                             String location,
-                             String publisher,
-                             String modelName,
-                             Double temperature,
-                             Integer maxOutputTokens,
-                             Integer topK,
-                             Double topP,
-                             Integer maxRetries) {
+    public VertexAiChatModel(Builder builder) {
         try {
-            this.settings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
-                    .build();
+            PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder()
+                    .setEndpoint(ensureNotBlank(builder.endpoint, "endpoint"));
+            if (builder.credentials != null) {
+                GoogleCredentials scopedCredentials =
+                        builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
+            }
+            this.settings = settingsBuilder.build();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"),
-                ensureNotBlank(publisher, "publisher"),
-                ensureNotBlank(modelName, "modelName")
+                ensureNotBlank(builder.project, "project"),
+                ensureNotBlank(builder.location, "location"),
+                ensureNotBlank(builder.publisher, "publisher"),
+                ensureNotBlank(builder.modelName, "modelName"));
+        this.vertexAiParameters = new VertexAiParameters(
+                builder.temperature, builder.maxOutputTokens, builder.topK, builder.topP);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+    }
+
+    /**
+     * @deprecated Please use {@link #VertexAiChatModel(Builder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.2.0")
+    public VertexAiChatModel(
+            String endpoint,
+            String project,
+            String location,
+            String publisher,
+            String modelName,
+            Double temperature,
+            Integer maxOutputTokens,
+            Integer topK,
+            Double topP,
+            Integer maxRetries) {
+        this(builder()
+                .endpoint(endpoint)
+                .project(project)
+                .location(location)
+                .publisher(publisher)
+                .modelName(modelName)
+                .temperature(temperature)
+                .maxOutputTokens(maxOutputTokens)
+                .topK(topK)
+                .topP(topP)
+                .maxRetries(maxRetries)
         );
-        this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
 
     @Override
@@ -109,10 +136,8 @@ public class VertexAiChatModel implements ChatModel {
     private Response<AiMessage> generate(List<ChatMessage> messages) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
-            VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
-                    toContext(messages),
-                    toVertexMessages(messages)
-            );
+            VertexAiChatInstance vertexAiChatInstance =
+                    new VertexAiChatInstance(toContext(messages), toVertexMessages(messages));
 
             Value.Builder instanceBuilder = newBuilder();
             JsonFormat.parser().merge(toJson(vertexAiChatInstance), instanceBuilder);
@@ -122,22 +147,22 @@ public class VertexAiChatModel implements ChatModel {
             JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
             Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameters), maxRetries);
+            PredictResponse response =
+                    withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return Response.from(
                     AiMessage.from(extractContent(response)),
                     new TokenUsage(
                             extractTokenCount(response, "inputTokenCount"),
-                            extractTokenCount(response, "outputTokenCount")
-                    )
-            );
+                            extractTokenCount(response, "outputTokenCount")));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     private static String extractContent(PredictResponse predictResponse) {
-        return predictResponse.getPredictions(0)
+        return predictResponse
+                .getPredictions(0)
                 .getStructValue()
                 .getFieldsMap()
                 .get("candidates")
@@ -150,7 +175,8 @@ public class VertexAiChatModel implements ChatModel {
     }
 
     static int extractTokenCount(PredictResponse predictResponse, String fieldName) {
-        return (int) predictResponse.getMetadata()
+        return (int) predictResponse
+                .getMetadata()
                 .getStructValue()
                 .getFieldsMap()
                 .get("tokenMetadata")
@@ -166,7 +192,8 @@ public class VertexAiChatModel implements ChatModel {
     private static List<VertexAiChatInstance.Message> toVertexMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(chatMessage -> chatMessage.type() == USER || chatMessage.type() == AI)
-                .map(chatMessage -> new VertexAiChatInstance.Message(chatMessage.type().name(), toText(chatMessage)))
+                .map(chatMessage ->
+                        new VertexAiChatInstance.Message(chatMessage.type().name(), toText(chatMessage)))
                 .collect(toList());
     }
 
@@ -210,6 +237,8 @@ public class VertexAiChatModel implements ChatModel {
         private Double topP;
 
         private Integer maxRetries;
+
+        private GoogleCredentials credentials;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -261,18 +290,13 @@ public class VertexAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder credentials(GoogleCredentials credentials) {
+            this.credentials = credentials;
+            return this;
+        }
+
         public VertexAiChatModel build() {
-            return new VertexAiChatModel(
-                    endpoint,
-                    project,
-                    location,
-                    publisher,
-                    modelName,
-                    temperature,
-                    maxOutputTokens,
-                    topK,
-                    topP,
-                    maxRetries);
+            return new VertexAiChatModel(this);
         }
     }
 }

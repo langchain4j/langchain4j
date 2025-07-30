@@ -9,15 +9,16 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 @Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
+
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final ChatExecutor chatExecutor;
@@ -43,7 +45,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final Consumer<String> partialResponseHandler;
     private final Consumer<PartialThinking> partialThinkingHandler;
+    private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
+    private final Consumer<ChatResponse> intermediateResponseHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
 
     private final Consumer<Throwable> errorHandler;
@@ -62,7 +66,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Object memoryId,
             Consumer<String> partialResponseHandler,
             Consumer<PartialThinking> partialThinkingHandler,
+            Consumer<BeforeToolExecution> beforeToolExecutionHandler,
             Consumer<ToolExecution> toolExecutionHandler,
+            Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
             Consumer<Throwable> errorHandler,
             ChatMemory temporaryMemory,
@@ -78,7 +84,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
         this.partialThinkingHandler = partialThinkingHandler;
+        this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
+        this.beforeToolExecutionHandler = beforeToolExecutionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -109,12 +117,24 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onCompleteResponse(ChatResponse completeResponse) {
-        AiMessage aiMessage = completeResponse.aiMessage();
+    public void onCompleteResponse(ChatResponse chatResponse) {
+        AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
+
+            if (intermediateResponseHandler != null) {
+                intermediateResponseHandler.accept(chatResponse);
+            }
+
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                if (beforeToolExecutionHandler != null) {
+                    BeforeToolExecution beforeToolExecution = BeforeToolExecution.builder()
+                            .request(toolExecutionRequest)
+                            .build();
+                    beforeToolExecutionHandler.accept(beforeToolExecution);
+                }
+
                 String toolName = toolExecutionRequest.name();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
@@ -142,11 +162,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     memoryId,
                     partialResponseHandler,
                     partialThinkingHandler,
+                    beforeToolExecutionHandler,
                     toolExecutionHandler,
+                    intermediateResponseHandler,
                     completeResponseHandler,
                     errorHandler,
                     temporaryMemory,
-                    TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()),
+                    TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors,
                     commonGuardrailParams,
@@ -157,9 +179,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .metadata(completeResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        completeResponse.metadata().tokenUsage()))
+                        .metadata(chatResponse.metadata().toBuilder()
+                                .tokenUsage(
+                                        tokenUsage.add(chatResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
 
@@ -189,7 +211,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     responseBuffer.clear();
                 }
 
-                // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
             }
         }

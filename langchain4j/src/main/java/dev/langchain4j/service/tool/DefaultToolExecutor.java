@@ -111,8 +111,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
 
             String parameterName = parameter.getName();
-            if (argumentsMap.containsKey(parameterName)) {
-                Object argument = argumentsMap.get(parameterName);
+            Object argument = argumentsMap.get(parameterName);
+            if (argument != null) {
                 Class<?> parameterClass = parameter.getType();
                 Type parameterType = parameter.getParameterizedType();
 

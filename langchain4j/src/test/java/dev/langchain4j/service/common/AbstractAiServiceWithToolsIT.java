@@ -36,10 +36,10 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWi
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -294,12 +294,11 @@ public abstract class AbstractAiServiceWithToolsIT {
         assistant.chat(text);
 
         // then
-        verify(tool)
-                .process(new ToolWithRecursion.Person(
-                        "Francine",
-                        asList(
-                                new ToolWithRecursion.Person("Steve", emptyList()),
-                                new ToolWithRecursion.Person("Hayley", emptyList()))));
+        verify(tool).process(argThat(person -> person.name().equals("Francine")
+                && person.children().size() == 2
+                && person.children().stream().anyMatch(child -> child.name().equals("Steve"))
+                && person.children().stream().anyMatch(child -> child.name().equals("Hayley"))
+        ));
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {

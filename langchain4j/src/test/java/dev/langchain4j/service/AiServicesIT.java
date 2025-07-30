@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
@@ -881,13 +882,22 @@ public class AiServicesIT {
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
         TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage).isNotNull();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(result.sources()).isEmpty();
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        assertThat(result.toolExecutions()).isEmpty();
+
+        assertThat(result.intermediateResponses()).isEmpty();
+
+        assertThat(result.finalResponse().aiMessage().text()).isEqualTo(result.content());
+        assertThat(result.finalResponse().tokenUsage()).isEqualTo(result.tokenUsage());
+        assertThat(result.finalResponse().finishReason()).isEqualTo(result.finishReason());
 
         verify(chatModel).chat(chatRequest(userMessage));
     }

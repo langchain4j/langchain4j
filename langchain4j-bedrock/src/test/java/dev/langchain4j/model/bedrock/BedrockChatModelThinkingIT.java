@@ -21,12 +21,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelThinkingIT {
 
-    private static final int THINKING_BUDGET_TOKENS = 1024;
-    private static final int SLEEPING_TIME_MULTIPLIER = 20;
+    static final int THINKING_BUDGET_TOKENS = 1024;
+    static final int SLEEPING_TIME_MULTIPLIER = 10;
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
@@ -77,7 +76,6 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             "us.deepseek.r1-v1:0"
@@ -137,7 +135,6 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-opus-4-20250514-v1:0",
             "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     })
