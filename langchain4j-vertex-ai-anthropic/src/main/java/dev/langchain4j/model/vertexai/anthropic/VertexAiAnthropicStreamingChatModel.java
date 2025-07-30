@@ -7,7 +7,6 @@ import static dev.langchain4j.model.ModelProvider.*;
 import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -98,7 +97,10 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                     temperature,
                     topP,
                     topK,
-                    parameters.stopSequences() != null && !parameters.stopSequences().isEmpty() ? parameters.stopSequences() : stopSequences,
+                    parameters.stopSequences() != null
+                                    && !parameters.stopSequences().isEmpty()
+                            ? parameters.stopSequences()
+                            : stopSequences,
                     enablePromptCaching);
 
             if (logRequests) {
@@ -115,22 +117,24 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             if (anthropicResponse.content != null && !anthropicResponse.content.isEmpty()) {
                 StringBuilder fullResponse = new StringBuilder();
                 int toolCallIndex = 0;
-                
-                for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content : anthropicResponse.content) {
+
+                for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content :
+                        anthropicResponse.content) {
                     if (Constants.TEXT_CONTENT_TYPE.equals(content.type) && content.text != null) {
                         fullResponse.append(content.text);
                     } else if (Constants.TOOL_USE_CONTENT_TYPE.equals(content.type) && content.name != null) {
                         // Handle tool calls - since this is not real streaming, send complete tool call directly
-                        dev.langchain4j.agent.tool.ToolExecutionRequest toolExecutionRequest = 
-                            dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
-                                .id(content.id)
-                                .name(content.name)
-                                .arguments(content.input != null ? dev.langchain4j.internal.Json.toJson(content.input) : "{}")
-                                .build();
+                        dev.langchain4j.agent.tool.ToolExecutionRequest toolExecutionRequest =
+                                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                                        .id(content.id)
+                                        .name(content.name)
+                                        .arguments(
+                                                content.input != null
+                                                        ? dev.langchain4j.internal.Json.toJson(content.input)
+                                                        : "{}")
+                                        .build();
                         handler.onCompleteToolCall(new dev.langchain4j.model.chat.response.CompleteToolCall(
-                            toolCallIndex++,
-                            toolExecutionRequest
-                        ));
+                                toolCallIndex++, toolExecutionRequest));
                     }
                 }
 

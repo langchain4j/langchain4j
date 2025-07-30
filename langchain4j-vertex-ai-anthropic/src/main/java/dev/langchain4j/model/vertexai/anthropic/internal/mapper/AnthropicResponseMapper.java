@@ -7,19 +7,18 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
-import dev.langchain4j.internal.Json;
 import java.util.List;
 
 public class AnthropicResponseMapper {
 
-    private AnthropicResponseMapper() {
-    }
+    private AnthropicResponseMapper() {}
 
     public static ChatResponse toChatResponse(AnthropicResponse anthropicResponse) {
         AiMessage aiMessage = toAiMessage(anthropicResponse);

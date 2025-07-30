@@ -7,7 +7,6 @@ import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_ANTHROPIC;
 import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -26,7 +25,6 @@ import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRespons
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,9 +116,11 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                     temperature,
                     topP,
                     topK,
-                    parameters.stopSequences() != null && !parameters.stopSequences().isEmpty() ? parameters.stopSequences() : stopSequences,
-                    enablePromptCaching
-            );
+                    parameters.stopSequences() != null
+                                    && !parameters.stopSequences().isEmpty()
+                            ? parameters.stopSequences()
+                            : stopSequences,
+                    enablePromptCaching);
 
             if (logRequests) {
                 logger.debug("Anthropic request: {}", anthropicRequest);

@@ -9,11 +9,11 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
 import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
 import com.google.cloud.aiplatform.v1.RawPredictRequest;
-import io.grpc.StatusRuntimeException;
 import com.google.protobuf.ByteString;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
+import io.grpc.StatusRuntimeException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +42,7 @@ public class VertexAiAnthropicClient {
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("model cannot be null or empty");
         }
-        
+
         this.project = project;
         this.location = location;
         this.model = model;
@@ -52,7 +52,7 @@ public class VertexAiAnthropicClient {
                 String.format("projects/%s/locations/%s/publishers/anthropic/models/%s", project, location, model);
         this.predictionServiceClient = createClient();
     }
-    
+
     private PredictionServiceClient createClient() {
         try {
             PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder();
@@ -70,12 +70,12 @@ public class VertexAiAnthropicClient {
     public AnthropicResponse generateContent(AnthropicRequest request) throws IOException {
         return generateContentWithRetry(request, 1);
     }
-    
+
     private AnthropicResponse generateContentWithRetry(AnthropicRequest request, int attempt) throws IOException {
         if (request == null) {
             throw new IllegalArgumentException("request cannot be null");
         }
-        
+
         try {
             Map<String, Object> requestMap = new HashMap<>();
             requestMap.put("anthropic_version", Constants.ANTHROPIC_VERSION);
@@ -126,8 +126,8 @@ public class VertexAiAnthropicClient {
             if (e.getCause() instanceof StatusRuntimeException) {
                 StatusRuntimeException statusException = (StatusRuntimeException) e.getCause();
                 if (statusException.getStatus().getCode() == io.grpc.Status.Code.UNAVAILABLE
-                    && statusException.getMessage().contains("Channel shutdown invoked")) {
-                    
+                        && statusException.getMessage().contains("Channel shutdown invoked")) {
+
                     if (attempt < 3) { // Retry up to 3 times
                         try {
                             Thread.sleep(100 * attempt); // Exponential backoff: 100ms, 200ms, 300ms
@@ -135,7 +135,7 @@ public class VertexAiAnthropicClient {
                             Thread.currentThread().interrupt();
                             throw new IOException("Request interrupted", ie);
                         }
-                        
+
                         // Recreate the client and retry
                         try {
                             if (predictionServiceClient != null) {

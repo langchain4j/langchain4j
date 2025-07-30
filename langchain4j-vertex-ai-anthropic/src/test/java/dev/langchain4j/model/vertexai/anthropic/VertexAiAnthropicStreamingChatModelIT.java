@@ -1,27 +1,27 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
+import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
-
-import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL = VertexAiAnthropicStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(DEFAULT_MODEL_NAME)
-            .temperature(0.0)
-            .logRequests(false)
-            .logResponses(true)
-            .build();
+    static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL =
+            VertexAiAnthropicStreamingChatModel.builder()
+                    .project(System.getenv("GCP_PROJECT_ID"))
+                    .location(System.getenv("GCP_LOCATION"))
+                    .modelName(DEFAULT_MODEL_NAME)
+                    .temperature(0.0)
+                    .logRequests(false)
+                    .logResponses(true)
+                    .build();
 
     @Override
     protected List<StreamingChatModel> models() {
@@ -62,9 +62,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override

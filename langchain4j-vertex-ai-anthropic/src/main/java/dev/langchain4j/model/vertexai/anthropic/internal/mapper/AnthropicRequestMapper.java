@@ -15,13 +15,11 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.*;
-import dev.langchain4j.internal.Json;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +38,7 @@ public class AnthropicRequestMapper {
             Double topP,
             Integer topK,
             List<String> stopSequences,
-            Boolean enablePromptCaching
-    ) {
+            Boolean enablePromptCaching) {
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("model cannot be null or empty");
         }
@@ -71,7 +68,8 @@ public class AnthropicRequestMapper {
 
         // Process tools
         if (toolSpecs != null && !toolSpecs.isEmpty()) {
-            request.tools = toolSpecs.stream().map(AnthropicRequestMapper::toTool).toList();
+            request.tools =
+                    toolSpecs.stream().map(AnthropicRequestMapper::toTool).toList();
             request.toolChoice = toAnthropicToolChoice(toolChoice);
         }
         request.anthropicVersion = Constants.ANTHROPIC_VERSION;
@@ -193,14 +191,13 @@ public class AnthropicRequestMapper {
         } else {
             properties = emptyMap();
         }
-        
+
         List<String> required = parameters != null ? parameters.required() : emptyList();
 
         Map<String, Object> inputSchema = Map.of(
-            "type", "object",
-            "properties", properties,
-            "required", required
-        );
+                "type", "object",
+                "properties", properties,
+                "required", required);
 
         String description;
         if (isNotNullOrBlank(toolSpecification.description())) {
@@ -214,11 +211,8 @@ public class AnthropicRequestMapper {
                 default -> "Tool: " + toolSpecification.name();
             };
         }
-        
-        return new AnthropicTool(
-                toolSpecification.name(), 
-                description, 
-                inputSchema);
+
+        return new AnthropicTool(toolSpecification.name(), description, inputSchema);
     }
 
     private static AnthropicTool toTool(ToolSpecification toolSpec) {

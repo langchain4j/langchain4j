@@ -19,8 +19,10 @@ public class AnthropicContent {
     public String id;
     public String name;
     public Object input;
+
     @JsonProperty("tool_use_id")
     public String toolUseId;
+
     public String content;
     public AnthropicCacheControl cacheControl;
 
