@@ -73,7 +73,7 @@ class OpenAiChatModelIT {
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_O_MINI)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .build();
 
@@ -109,8 +109,6 @@ class OpenAiChatModelIT {
                     "O3_2025_04_16", // don't have access
                     "O1_MINI", // does not support 'system' role with this model
                     "O1_MINI_2024_09_12", // does not support 'system' role with this model
-                    "O1_PREVIEW", // does not support 'system' role with this model
-                    "O1_PREVIEW_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 

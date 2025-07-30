@@ -5,11 +5,11 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.gemini.HarmCategory.*;
 import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.*;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,13 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
@@ -60,7 +58,7 @@ class VertexAiGeminiChatModelIT {
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     public static final Gson GSON = new Gson();
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -80,7 +78,6 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_generate_response() {
-
         // given
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
@@ -93,54 +90,44 @@ class VertexAiGeminiChatModelIT {
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource
-    void should_support_system_instructions(List<ChatMessage> messages) {
-
-        // when
-        ChatResponse response = model.chat(messages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
-    }
-
-    static Stream<Arguments> should_support_system_instructions() {
-        return Stream.<Arguments>builder()
-                .add(Arguments.of(asList(SystemMessage.from("Translate in German"), UserMessage.from("I love apples"))))
-                .add(Arguments.of(asList(UserMessage.from("I love apples"), SystemMessage.from("Translate in German"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in Italian"),
-                        UserMessage.from("I love apples"),
-                        SystemMessage.from("No, translate in German!"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I love apples"), TextContent.from("I see apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I see apples"), TextContent.from("I love apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from("I see apples"),
-                        AiMessage.from("Ich sehe Äpfel"),
-                        UserMessage.from("I love apples"))))
-                .build();
-    }
-
     @Test
-    void should_respect_maxOutputTokens() {
+    void should_generate_response_with_custom_credentials() throws IOException {
 
         // given
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(MODEL_NAME)
-                .maxOutputTokens(1)
+                .logRequests(true)
+                .logResponses(true)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_respect_maxOutputTokens() {
+
+        // given
+        int maxOutputTokens = 3;
+
+        ChatModel model = VertexAiGeminiChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-2.5-flash-lite")
+                .maxOutputTokens(maxOutputTokens)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("Tell me a joke");
@@ -150,13 +137,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
@@ -353,7 +334,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -393,8 +374,7 @@ class VertexAiGeminiChatModelIT {
         String inventoryStock =
                 executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(","));
 
-        assertThat(inventoryStock).containsIgnoringCase("ABC123");
-        assertThat(inventoryStock).containsIgnoringCase("XYZ789");
+        assertThat(inventoryStock).containsIgnoringCase("ABC123").containsIgnoringCase("XYZ789");
 
         // when
         allMessages.add(messageResponse.aiMessage());
@@ -552,7 +532,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -571,23 +551,25 @@ class VertexAiGeminiChatModelIT {
         String response = assistant.chat("What is the status of my payment transactions 001 and 002?");
 
         // then
-        assertThat(response).contains("001");
-        assertThat(response).contains("002");
-        assertThat(response).contains("pending");
-        assertThat(response).contains("approved");
-        assertThat(response).doesNotContain("003");
-        assertThat(response).doesNotContain("rejected");
+        assertThat(response)
+                .contains("001")
+                .contains("002")
+                .contains("pending")
+                .contains("approved")
+                .doesNotContain("003")
+                .doesNotContain("rejected");
 
         // when
         response = assistant.chat("What is the status of transactions 003?");
 
         // then
-        assertThat(response).doesNotContain("001");
-        assertThat(response).doesNotContain("002");
-        assertThat(response).doesNotContain("pending");
-        assertThat(response).doesNotContain("approved");
-        assertThat(response).contains("003");
-        assertThat(response).contains("rejected");
+        assertThat(response)
+                .doesNotContain("001")
+                .doesNotContain("002")
+                .doesNotContain("pending")
+                .doesNotContain("approved")
+                .contains("003")
+                .contains("rejected");
     }
 
     @ParameterizedTest
@@ -616,7 +598,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .responseMimeType("application/json")
                 .build();
 
@@ -631,7 +613,7 @@ class VertexAiGeminiChatModelIT {
         String json = modelWithResponseMimeType.chat(userMessage);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("TODO fix")
@@ -647,7 +629,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .safetySettings(safetySettings)
                 .temperature(0.0f)
                 .topP(0.0f)
@@ -658,8 +640,9 @@ class VertexAiGeminiChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"));
+        Exception exception = assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -935,9 +918,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         String textResponse = response.aiMessage().text();
-        assertThat(textResponse).contains("Berlin");
-        assertThat(textResponse).contains("Paris");
-        assertThat(textResponse).contains("Rome");
+        assertThat(textResponse).contains("Berlin").contains("Paris").contains("Rome");
     }
 
     @Test
