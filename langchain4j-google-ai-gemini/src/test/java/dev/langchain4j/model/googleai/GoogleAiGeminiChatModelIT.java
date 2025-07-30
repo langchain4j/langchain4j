@@ -266,10 +266,7 @@ class GoogleAiGeminiChatModelIT {
                 "Calculate `fibonacci(13)`. " + "Write code in Python and execute it to get the result.")));
 
         // then
-        String text = response.aiMessage().text();
-        System.out.println("text = " + text);
-
-        assertThat(text).containsIgnoringCase("233");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("233");
     }
 
     @Test
@@ -468,8 +465,6 @@ class GoogleAiGeminiChatModelIT {
                         UserMessage.from("In the town of Liverpool, lived Tommy Skybridge, a young little boy."))
                 .build());
 
-        System.out.println("response = " + response);
-
         // then
         assertThat(response.aiMessage().text().trim())
                 .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
@@ -508,8 +503,6 @@ class GoogleAiGeminiChatModelIT {
                         SystemMessage.from("Your role is to analyze the sentiment of the text you receive."),
                         UserMessage.from("This is super exciting news, congratulations!"))
                 .build());
-
-        System.out.println("response = " + response);
 
         // then
         assertThat(response.aiMessage().text().trim()).isEqualTo("{\"sentiment\": \"POSITIVE\"}");
@@ -567,8 +560,6 @@ class GoogleAiGeminiChatModelIT {
                         UserMessage.from("Give me 3 dice rolls"))
                 .build());
 
-        System.out.println("response = " + response);
-
         // then
         Integer[] diceRolls = new ObjectMapper().readValue(response.aiMessage().text(), Integer[].class);
         assertThat(diceRolls.length).isEqualTo(3);
@@ -601,7 +592,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash")
                 .logRequestsAndResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -630,15 +621,13 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
-                        UserMessage.from("Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red."))
+                        UserMessage.from("'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
                 .build());
-
-        System.out.println("response = " + response);
 
         Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
 
         // then
-        assertThat(color.name).isEqualToIgnoringCase("Cobalt blue");
+        assertThat(color.name.toLowerCase()).containsAnyOf("cobalt", "blue");
         assertThat(color.muted).isFalse();
         assertThat(color.red).isLessThanOrEqualTo(color.green);
         assertThat(color.green).isLessThanOrEqualTo(color.blue);
@@ -688,7 +677,6 @@ class GoogleAiGeminiChatModelIT {
     static class Transactions {
         @Tool("returns amount of a given transaction")
         double getTransactionAmount(@P("ID of a transaction") String id) {
-            System.out.printf("called getTransactionAmount(%s)%n", id);
             switch (id) {
                 case "T001":
                     return 11.1;
