@@ -235,15 +235,15 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                futureChatResponse.complete(completeResponse);
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
+                futureChatResponse.complete(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                futureChatResponse.completeExceptionally(error);
                 threads.add(Thread.currentThread());
+                futureChatResponse.completeExceptionally(error);
             }
         };
 
