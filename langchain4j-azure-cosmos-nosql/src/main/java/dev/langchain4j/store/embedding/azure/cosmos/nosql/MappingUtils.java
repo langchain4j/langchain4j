@@ -17,6 +17,9 @@ class MappingUtils {
         if (textSegment == null) {
             return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), null, null);
         }
+        if (embedding == null) {
+            return new AzureCosmosDbNoSqlDocument(id, null, textSegment.text(), toStringValueMap(textSegment.metadata().toMap()));
+        }
         return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), textSegment.text(), toStringValueMap(textSegment.metadata().toMap()));
     }
 
@@ -24,6 +27,9 @@ class MappingUtils {
         TextSegment textSegment = null;
         if (matchedDocument.getText() != null) {
             textSegment = TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
+        }
+        if (matchedDocument.getScore() == null) {
+            return new EmbeddingMatch<>(0.0, matchedDocument.getId(), null, textSegment);
         }
         return new EmbeddingMatch<>(matchedDocument.getScore(), matchedDocument.getId(), Embedding.from(matchedDocument.getEmbedding()), textSegment);
     }
