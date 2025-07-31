@@ -525,7 +525,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 if (args[i] != null && args[i] instanceof Content content) {
                     result.add(content);
                 }
-                if (args[i] != null && args[i] instanceof List<?> list && Stream.of(args[i]).allMatch(Content.class::isInstance)) {
+                if (args[i] != null && args[i] instanceof List<?> list && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
                     result.addAll((List<Content>) list);
                 }
             }
