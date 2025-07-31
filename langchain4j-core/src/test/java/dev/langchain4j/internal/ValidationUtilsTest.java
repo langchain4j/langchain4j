@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureEq;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -177,6 +178,21 @@ class ValidationUtilsTest implements WithAssertions {
                     .isThrownBy(() -> ValidationUtils.ensureTrue(false, "test"))
                     .withMessageContaining("test");
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, Integer.MAX_VALUE})
+    void should_not_throw_when_positive(Integer i) {
+        ensureNotNegative(i, "integer");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {Integer.MIN_VALUE, -1})
+    void should_throw_when_negative(Integer i) {
+        assertThatThrownBy(() -> ensureNotNegative(i, "integer"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("integer must not be negative, but is: " + i);
     }
 
     @ParameterizedTest

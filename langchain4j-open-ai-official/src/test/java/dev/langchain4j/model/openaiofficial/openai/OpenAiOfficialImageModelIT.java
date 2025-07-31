@@ -8,9 +8,7 @@ import dev.langchain4j.model.output.Response;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @Disabled("Run manually before release. Expensive to run very often.")
 class OpenAiOfficialImageModelIT {
 

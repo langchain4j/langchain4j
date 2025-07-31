@@ -28,10 +28,11 @@ class AwsDocumentConverterTest {
         String json = AwsDocumentConverter.documentToJson(document);
 
         // Then
-        assertThat(json).containsIgnoringWhitespaces("\"string\": \"test\"");
-        assertThat(json).containsIgnoringWhitespaces("\"integer\": 42");
-        assertThat(json).containsIgnoringWhitespaces("\"double\": 42.5");
-        assertThat(json).containsIgnoringWhitespaces("\"boolean\": true");
+        assertThat(json)
+                .containsIgnoringWhitespaces("\"string\": \"test\"")
+                .containsIgnoringWhitespaces("\"integer\": 42")
+                .containsIgnoringWhitespaces("\"double\": 42.5")
+                .containsIgnoringWhitespaces("\"boolean\": true");
     }
 
     @Test
@@ -47,10 +48,11 @@ class AwsDocumentConverterTest {
         String json = AwsDocumentConverter.documentToJson(document);
 
         // Then
-        assertThat(json).containsIgnoringWhitespaces("\"list\": [");
-        assertThat(json).containsIgnoringWhitespaces("\"item1\"");
-        assertThat(json).contains("2");
-        assertThat(json).contains("true");
+        assertThat(json)
+                .containsIgnoringWhitespaces("\"list\": [")
+                .containsIgnoringWhitespaces("\"item1\"")
+                .contains("2")
+                .contains("true");
     }
 
     @Test
@@ -67,8 +69,9 @@ class AwsDocumentConverterTest {
         String json = AwsDocumentConverter.documentToJson(document);
 
         // Then
-        assertThat(json).containsIgnoringWhitespaces("\"nested\": {");
-        assertThat(json).containsIgnoringWhitespaces("\"inner_key\": \"inner_value\"");
+        assertThat(json)
+                .containsIgnoringWhitespaces("\"nested\": {")
+                .containsIgnoringWhitespaces("\"inner_key\": \"inner_value\"");
     }
 
     @Test

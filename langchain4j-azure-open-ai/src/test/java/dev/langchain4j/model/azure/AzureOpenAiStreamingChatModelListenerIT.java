@@ -18,7 +18,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
                 .temperature(temperature())
                 .topP(topP())
                 .maxTokens(maxTokens())
-                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(modelName()))
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();

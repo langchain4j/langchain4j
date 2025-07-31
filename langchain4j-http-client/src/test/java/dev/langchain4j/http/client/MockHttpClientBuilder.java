@@ -1,11 +1,11 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.http.client;
 
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.Internal;
 
 import java.time.Duration;
 
-class MockHttpClientBuilder implements HttpClientBuilder {
+@Internal
+public class MockHttpClientBuilder implements HttpClientBuilder {
 
     private final HttpClient httpClient;
 

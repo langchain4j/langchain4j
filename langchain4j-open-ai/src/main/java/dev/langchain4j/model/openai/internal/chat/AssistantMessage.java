@@ -27,6 +27,8 @@ public final class AssistantMessage implements Message {
     @JsonProperty
     private final String content;
     @JsonProperty
+    private final String reasoningContent;
+    @JsonProperty
     private final String name;
     @JsonProperty
     private final List<ToolCall> toolCalls;
@@ -38,6 +40,7 @@ public final class AssistantMessage implements Message {
 
     public AssistantMessage(Builder builder) {
         this.content = builder.content;
+        this.reasoningContent = builder.reasoningContent;
         this.name = builder.name;
         this.toolCalls = builder.toolCalls;
         this.refusal = builder.refusal;
@@ -50,6 +53,10 @@ public final class AssistantMessage implements Message {
 
     public String content() {
         return content;
+    }
+
+    public String reasoningContent() {
+        return reasoningContent;
     }
 
     public String name() {
@@ -79,6 +86,7 @@ public final class AssistantMessage implements Message {
     private boolean equalTo(AssistantMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
+                && Objects.equals(reasoningContent, another.reasoningContent)
                 && Objects.equals(name, another.name)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(refusal, another.refusal)
@@ -90,6 +98,7 @@ public final class AssistantMessage implements Message {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(reasoningContent);
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(refusal);
@@ -102,6 +111,7 @@ public final class AssistantMessage implements Message {
         return "AssistantMessage{"
                 + "role=" + role
                 + ", content=" + content
+                + ", reasoningContent=" + reasoningContent
                 + ", name=" + name
                 + ", toolCalls=" + toolCalls
                 + ", refusal=" + refusal
@@ -125,6 +135,7 @@ public final class AssistantMessage implements Message {
     public static final class Builder {
 
         private String content;
+        private String reasoningContent;
         private String name;
         private List<ToolCall> toolCalls;
         private String refusal;
@@ -133,6 +144,11 @@ public final class AssistantMessage implements Message {
 
         public Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        public Builder reasoningContent(String reasoningContent) {
+            this.reasoningContent = reasoningContent;
             return this;
         }
 

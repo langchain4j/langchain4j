@@ -14,19 +14,29 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 class FunctionCall {
 
+    private Integer index;
     private String name;
     private Map<String, Object> arguments;
 
     FunctionCall() {
     }
 
-    FunctionCall(String name, Map<String, Object> arguments) {
+    FunctionCall(Integer index, String name, Map<String, Object> arguments) {
+        this.index = index;
         this.name = name;
         this.arguments = arguments;
     }
 
     static Builder builder() {
         return new Builder();
+    }
+
+    public Integer getIndex() {
+        return index;
+    }
+
+    public void setIndex(Integer index) {
+        this.index = index;
     }
 
     public String getName() {
@@ -47,8 +57,14 @@ class FunctionCall {
 
     static class Builder {
 
+        private Integer index;
         private String name;
         private Map<String, Object> arguments;
+
+        Builder index(Integer index) {
+            this.index = index;
+            return this;
+        }
 
         Builder name(String name) {
             this.name = name;
@@ -61,7 +77,7 @@ class FunctionCall {
         }
 
         FunctionCall build() {
-            return new FunctionCall(name, arguments);
+            return new FunctionCall(index, name, arguments);
         }
     }
 }
