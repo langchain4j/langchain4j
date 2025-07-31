@@ -11,6 +11,12 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.Subagent;
+import dev.langchain4j.agentic.declarative.SupervisorAgent;
+import dev.langchain4j.agentic.declarative.SupervisorChatModel;
+import dev.langchain4j.agentic.declarative.SupervisorRequest;
+import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.V;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -34,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static dev.langchain4j.agentic.Models.BASE_MODEL;
+import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeclarativeAgentIT {
@@ -58,10 +65,14 @@ public class DeclarativeAgentIT {
 
     public interface StyleReviewLoopAgent {
 
-        @LoopAgent(outputName = "story", maxIterations = 5, subagents = {
-                @Subagent(agentClass = StyleScorer.class, outputName = "score"),
-                @Subagent(agentClass = StyleEditor.class, outputName = "story")
-        })
+        @LoopAgent(
+                description = "Review the given story to ensure it aligns with the specified style",
+                outputName = "story", maxIterations = 5,
+                subagents = {
+                    @Subagent(agentClass = StyleScorer.class, outputName = "score"),
+                    @Subagent(agentClass = StyleEditor.class, outputName = "story")
+            }
+        )
         String write(@V("story") String story);
 
         @ExitCondition
@@ -172,5 +183,46 @@ public class DeclarativeAgentIT {
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);
         assertThat(plans).hasSize(3);
+    }
+
+    public interface SupervisorStoryCreator {
+
+        @SupervisorAgent(outputName = "story", responseStrategy = SupervisorResponseStrategy.LAST, subagents = {
+                @Subagent(agentClass = CreativeWriter.class, outputName = "story"),
+                @Subagent(agentClass = StyleReviewLoopAgent.class, outputName = "story")
+        })
+        ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
+
+        @SupervisorRequest
+        static String request(@V("topic") String topic, @V("style") String style) {
+            return "Write a story about " + topic + " in " + style + " style";
+        }
+
+        @SupervisorChatModel
+        static ChatModel chatModel() {
+            return PLANNER_MODEL;
+        }
+    }
+
+    @Test
+    void declarative_supervisor_tests() {
+        SupervisorStoryCreator styledWriter = AgentServices.createAgenticSystem(SupervisorStoryCreator.class, BASE_MODEL);
+        ResultWithCognisphere<String> result = styledWriter.write("dragons and wizards", "comedy");
+
+        String story = result.result();
+        System.out.println(story);
+
+        Cognisphere cognisphere = result.cognisphere();
+        assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(cognisphere.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(cognisphere.readState("story"));
+        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(cognisphere.getAgentInvocations("generateStory")).hasSize(1);
+
+        List<AgentCall> scoreAgentCalls = cognisphere.getAgentInvocations("scoreStyle");
+        assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
+        System.out.println("Score agent invocations: " + scoreAgentCalls);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).response()).isGreaterThanOrEqualTo(0.8);
     }
 }

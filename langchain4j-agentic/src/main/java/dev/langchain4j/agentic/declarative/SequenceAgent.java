@@ -23,7 +23,7 @@ public @interface SequenceAgent {
      *
      * @return description of the agent.
      */
-    String value() default "";
+    String description() default "";
 
     String outputName() default "";
 

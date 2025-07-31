@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.CognispherePersistenceProvider;
 import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.internal.AgentCall;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -197,7 +195,7 @@ public class WorkflowAgentsIT {
 
         Cognisphere cognisphere = result.cognisphere();
         // Verify that an ephemeral cognisphere is correctly evicted from the registry after the call
-        assertThat(Cognisphere.registry().get(cognisphere.id())).isNull();
+        assertThat(CognisphereRegistry.get(cognisphere.id())).isNull();
 
         assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
         assertThat(cognisphere.readState("style")).isEqualTo("comedy");
@@ -284,7 +282,7 @@ public class WorkflowAgentsIT {
                 .build();
 
         JsonInMemoryCognispherePersistenceProvider provider = new JsonInMemoryCognispherePersistenceProvider();
-        CognisphereRegistry.getInstance().setPersistenceProvider(provider);
+        CognisphereRegistry.setPersistenceProvider(provider);
 
         String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
         System.out.println(response1);
@@ -292,7 +290,7 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere1 = expertRouterAgent.getCognisphere("1");
         assertThat(cognisphere1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
 
-        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getInstance().getAllIdsInMemory());
+        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getAllIdsInMemory());
         assertThat(provider.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
@@ -301,11 +299,11 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere2 = expertRouterAgent.getCognisphere("2");
         assertThat(cognisphere2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getInstance().getAllIdsInMemory());
+        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getAllIdsInMemory());
 
         // Clear the in-memory registry to simulate a restart
-        CognisphereRegistry.getInstance().clearInMemory();
-        assertThat(CognisphereRegistry.getInstance().getAllIdsInMemory()).isEmpty();
+        CognisphereRegistry.clearInMemory();
+        assertThat(CognisphereRegistry.getAllIdsInMemory()).isEmpty();
 
         String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse1);

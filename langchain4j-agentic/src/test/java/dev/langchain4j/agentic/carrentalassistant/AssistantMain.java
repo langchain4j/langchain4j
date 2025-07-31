@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.carrentalassistant;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgentServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.carrentalassistant.domain.CustomerInfo;
@@ -17,9 +16,6 @@ import dev.langchain4j.agentic.carrentalassistant.services.TowingAgentService;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.service.V;
-
-import java.util.function.Function;
 
 import static dev.langchain4j.agentic.Models.BASE_MODEL;
 
@@ -63,7 +59,12 @@ public class AssistantMain {
                 .build();
 
         return AgentServices.sequenceBuilder(CarRentalAssistant.class)
-                .subAgents(new InitCognisphere(), customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
+                .beforeCall(cognisphere -> {
+                    if (cognisphere.readState("customerInfo") == null) {
+                        cognisphere.writeState("customerInfo", new CustomerInfo());
+                    }
+                })
+                .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
                 .outputName("response")
                 .build();
     }
@@ -96,9 +97,15 @@ public class AssistantMain {
                 .build();
 
         UntypedAgent emergencyExperts = AgentServices.conditionalBuilder()
-                .subAgents( cognisphere -> hasEmergency(cognisphere, "fire", Emergencies::getFire), fireAgent)
-                .subAgents( cognisphere -> hasEmergency(cognisphere, "medical", Emergencies::getMedical), medicalAgent)
-                .subAgents( cognisphere -> hasEmergency(cognisphere, "police", Emergencies::getPolice), policeAgent)
+                .beforeCall(cognisphere -> {
+                    Emergencies emergencies = (Emergencies) cognisphere.readState("emergencies");
+                    writeEmergency(cognisphere, emergencies.getFire(), "fire");
+                    writeEmergency(cognisphere, emergencies.getMedical(), "medical");
+                    writeEmergency(cognisphere, emergencies.getPolice(), "police");
+                })
+                .subAgents( cognisphere -> cognisphere.hasState("fireEmergency"), fireAgent)
+                .subAgents( cognisphere -> cognisphere.hasState("medicalEmergency"), medicalAgent)
+                .subAgents( cognisphere -> cognisphere.hasState("policeEmergency"), policeAgent)
                 .build();
 
         return AgentServices.sequenceBuilder()
@@ -107,23 +114,12 @@ public class AssistantMain {
                 .build();
     }
 
-    private static boolean hasEmergency(Cognisphere cognisphere, String emergencyName, Function<Emergencies, String> extractor) {
-        String emergency = extractor.apply((Emergencies) cognisphere.readState("emergencies"));
-        cognisphere.writeState(emergencyName + "Emergency", emergency);
-        boolean hasEmergency = emergency != null && !emergency.isBlank();
-        if (!hasEmergency) {
-            cognisphere.writeState(emergencyName + "Response", "");
-        }
-        return hasEmergency;
-    }
-
-    public static class InitCognisphere {
-        @Agent
-        public static Cognisphere initCognisphere(Cognisphere cognisphere) {
-            if (cognisphere.readState("customerInfo") == null) {
-                cognisphere.writeState("customerInfo", new CustomerInfo());
-            }
-            return cognisphere;
+    private static void writeEmergency(Cognisphere cognisphere, String emergency, String type) {
+        if (emergency == null || emergency.isBlank()) {
+            cognisphere.writeState(type + "Emergency", null);
+            cognisphere.writeState(type + "Response", "");
+        } else {
+            cognisphere.writeState(type + "Emergency", emergency);
         }
     }
 }

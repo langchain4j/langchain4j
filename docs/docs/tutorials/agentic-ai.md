@@ -576,13 +576,13 @@ The `Cognisphere` is a transient data structure that is created and used during 
 Conversely, when the agentic system uses a memory, the `Cognisphere` is saved in a `CognisphereRegistry` which is a singleton in memory store. In this case the `Cognisphere` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `Cognisphere` with a specific ID is no longer needed, it has to be explicitly evicted from the registry doing:
 
 ```java
-CognisphereRegistry.getInstance().evict(cognisphereId);
+CognisphereRegistry.evict(cognisphereId);
 ```
 
 Both the `Cognisphere` and the `CognisphereRegistry` are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `Cognisphere` state to a more durable storage, like a database or a file system. To achieve this the `CognisphereRegistry` provides an SPI to plug in a custom persistence layer that is an implementation of the `CognispherePersistenceProvider` interface. It is possible to set this persistence layer either programmatically
 
 ```java
-CognisphereRegistry.getInstance().setPersistenceProvider(new MyCognispherePersistenceProvider());
+CognisphereRegistry.setPersistenceProvider(new MyCognispherePersistenceProvider());
 ```
 
 or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.cognisphere.CognispherePersistenceProvider` containing the fully qualified name of the class implementing the `CognispherePersistenceProvider` interface.

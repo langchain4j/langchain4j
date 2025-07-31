@@ -280,7 +280,16 @@ public class SupervisorAgentIT {
         agentic_banker_with_exchange_test(false);
     }
 
+    @Test
+    void agentic_banker_with_italian_request_test() {
+        agentic_banker_with_exchange_test(false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
+    }
+
     void agentic_banker_with_exchange_test(boolean fullyAI) {
+        agentic_banker_with_exchange_test(fullyAI, "Transfer 100 EUR from Mario's account to Georgios' one");
+    }
+
+    void agentic_banker_with_exchange_test(boolean fullyAI, String userRequest) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -313,7 +322,7 @@ public class SupervisorAgentIT {
                 .subAgents(withdrawAgent, creditAgent, exchange)
                 .build();
 
-        ResultWithCognisphere<String> result = bankSupervisor.invokeWithCognisphere("Transfer 100 EUR from Mario's account to Georgios' one");
+        ResultWithCognisphere<String> result = bankSupervisor.invokeWithCognisphere(userRequest);
         System.out.println(result.result());
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);

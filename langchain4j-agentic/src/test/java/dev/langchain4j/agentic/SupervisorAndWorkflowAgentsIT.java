@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.internal.AgentCall;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 
@@ -19,8 +20,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class SupervisorAndWorkflowAgentsIT {
 
+    public interface SupervisorStyledWriter {
+
+        @Agent
+        ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
     @Test
     void supervisor_with_composite_agents_test() {
+        supervisor_with_composite_agents(false);
+    }
+
+    @Test
+    void typed_supervisor_with_composite_agents_test() {
+        supervisor_with_composite_agents(true);
+    }
+
+    void supervisor_with_composite_agents(boolean typedSupervisor) {
         CreativeWriter creativeWriter = AgentServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
@@ -43,21 +59,38 @@ public class SupervisorAndWorkflowAgentsIT {
                 .exitCondition(cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
                 .build();
 
-        SupervisorAgent styledWriter = AgentServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
-                .responseStrategy(SupervisorResponseStrategy.LAST)
-                .subAgents(creativeWriter, styleReviewLoop)
-                .maxAgentsInvocations(5)
-                .outputName("story")
-                .build();
+        ResultWithCognisphere<String> result;
 
-        ResultWithCognisphere<String> result = styledWriter.invokeWithCognisphere("Write a story about dragons and wizards in the style of a comedy");
+        if (typedSupervisor) {
+            SupervisorStyledWriter styledWriter = AgentServices.supervisorBuilder(SupervisorStyledWriter.class)
+                    .chatModel(PLANNER_MODEL)
+                    .requestGenerator(cognisphere -> "Write a story about " + cognisphere.readState("topic") + " in the style of a " + cognisphere.readState("style"))
+                    .responseStrategy(SupervisorResponseStrategy.LAST)
+                    .subAgents(creativeWriter, styleReviewLoop)
+                    .maxAgentsInvocations(5)
+                    .outputName("story")
+                    .build();
+
+            result = styledWriter.write("dragons and wizards", "comedy");
+
+        } else {
+            SupervisorAgent styledWriter = AgentServices.supervisorBuilder()
+                    .chatModel(PLANNER_MODEL)
+                    .responseStrategy(SupervisorResponseStrategy.LAST)
+                    .subAgents(creativeWriter, styleReviewLoop)
+                    .maxAgentsInvocations(5)
+                    .outputName("story")
+                    .build();
+
+            result = styledWriter.invokeWithCognisphere("Write a story about dragons and wizards in the style of a comedy");
+        }
+
         String story = result.result();
         System.out.println(story);
 
         Cognisphere cognisphere = result.cognisphere();
-        assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
-        assertThat(cognisphere.readState("style")).isEqualTo("comedy");
+        assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
+        assertThat(cognisphere.readState("style", "")).contains("comedy");
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 

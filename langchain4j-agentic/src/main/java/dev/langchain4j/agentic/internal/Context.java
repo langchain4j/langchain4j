@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
@@ -51,7 +52,7 @@ public class Context {
 
         @Override
         public String transformUserMessage(String userMessage, Object memoryId) {
-            Cognisphere cognisphere = Cognisphere.registry().get(memoryId);
+            Cognisphere cognisphere = CognisphereRegistry.get(memoryId);
             if (cognisphere == null) {
                 return userMessage;
             }

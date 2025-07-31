@@ -11,19 +11,15 @@ import java.util.Set;
  * Provides methods to register, retrieve, and manage Cognisphere objects.
  * Supports persistence through a pluggable persistence provider.
  */
-public class CognisphereRegistry {
+public enum CognisphereRegistry {
 
-    private static final CognisphereRegistry INSTANCE = new CognisphereRegistry();
+    INSTANCE;
 
     private final Map<Object, Cognisphere> inMemoryCognispheres = new ConcurrentHashMap<>();
     private CognispherePersistenceProvider persistenceProvider;
 
-    public static CognisphereRegistry getInstance() {
-        return INSTANCE;
-    }
-
-    private CognisphereRegistry() {
-        setPersistenceProvider(loadPersistenceProvider());
+    CognisphereRegistry() {
+        internalSetPersistenceProvider(loadPersistenceProvider());
     }
 
     private static CognispherePersistenceProvider loadPersistenceProvider() {
@@ -39,24 +35,40 @@ public class CognisphereRegistry {
     /**
      * Explicitly set a persistence provider.
      */
-    public void setPersistenceProvider(CognispherePersistenceProvider provider) {
+    public static void setPersistenceProvider(CognispherePersistenceProvider provider) {
+        INSTANCE.internalSetPersistenceProvider(provider);
+    }
+
+    private void internalSetPersistenceProvider(CognispherePersistenceProvider provider) {
         if (!inMemoryCognispheres.isEmpty()) {
             throw new IllegalStateException("Cannot set a persistence provider on an already populated CognisphereRegistry.");
         }
         this.persistenceProvider = provider;
     }
 
-    public boolean hasPersistenceProvider() {
+    public static boolean hasPersistenceProvider() {
+        return INSTANCE.internalHasPersistenceProvider();
+    }
+
+    private boolean internalHasPersistenceProvider() {
         return persistenceProvider != null;
     }
 
-    public void update(Cognisphere cognisphere) {
+    static void update(Cognisphere cognisphere) {
+        INSTANCE.internalUpdate(cognisphere);
+    }
+
+    private void internalUpdate(Cognisphere cognisphere) {
         if (hasPersistenceProvider()) {
             persistenceProvider.save(cognisphere);
         }
     }
 
-    public Cognisphere get(Object id) {
+    public static Cognisphere get(Object id) {
+        return INSTANCE.internalGet(id);
+    }
+
+    private Cognisphere internalGet(Object id) {
         Cognisphere cognisphere = inMemoryCognispheres.get(id);
         if (cognisphere == null && hasPersistenceProvider()) {
             cognisphere = persistenceProvider.load(id).map(loaded -> {
@@ -67,7 +79,11 @@ public class CognisphereRegistry {
         return cognisphere;
     }
 
-    public Cognisphere getOrCreate(Object id) {
+    public static Cognisphere getOrCreate(Object id) {
+        return INSTANCE.internalGetOrCreate(id);
+    }
+
+    public Cognisphere internalGetOrCreate(Object id) {
         Cognisphere cognisphere = get(id);
         if (cognisphere == null) {
             cognisphere = new Cognisphere(id, hasPersistenceProvider() ? Cognisphere.Kind.PERSISTENT : Cognisphere.Kind.REGISTERED);
@@ -76,7 +92,11 @@ public class CognisphereRegistry {
         return cognisphere;
     }
 
-    public Cognisphere createEphemeralCognisphere() {
+    public static Cognisphere createEphemeralCognisphere() {
+        return INSTANCE.internalCreateEphemeralCognisphere();
+    }
+
+    private Cognisphere internalCreateEphemeralCognisphere() {
         Cognisphere cognisphere = new Cognisphere(Cognisphere.Kind.EPHEMERAL);
         register(cognisphere);
         return cognisphere;
@@ -87,7 +107,11 @@ public class CognisphereRegistry {
         update(cognisphere);
     }
 
-    public boolean evict(Object id) {
+    public static boolean evict(Object id) {
+        return INSTANCE.internalEvict(id);
+    }
+
+    public boolean internalEvict(Object id) {
         boolean removed = inMemoryCognispheres.remove(id) != null;
         if (hasPersistenceProvider()) {
             return persistenceProvider.delete(id) || removed;
@@ -95,18 +119,30 @@ public class CognisphereRegistry {
         return removed;
     }
 
-    public Set<Object> getAllIds() {
+    public static Set<Object> getAllIds() {
+        return INSTANCE.internalGetAllIds();
+    }
+
+    private Set<Object> internalGetAllIds() {
         if (hasPersistenceProvider()) {
             return persistenceProvider.getAllIds();
         }
         return getAllIdsInMemory();
     }
 
-    public Set<Object> getAllIdsInMemory() {
+    public static Set<Object> getAllIdsInMemory() {
+        return INSTANCE.internalGetAllIdsInMemory();
+    }
+
+    private Set<Object> internalGetAllIdsInMemory() {
         return inMemoryCognispheres.keySet();
     }
 
-    public void clearInMemory() {
+    public static void clearInMemory() {
+        INSTANCE.internalClearInMemory();
+    }
+
+    private void internalClearInMemory() {
         inMemoryCognispheres.clear();
     }
 }

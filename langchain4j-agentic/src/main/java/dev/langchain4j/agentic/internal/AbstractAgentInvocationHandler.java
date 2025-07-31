@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
+import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.MemoryId;
@@ -10,20 +11,25 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public abstract class AbstractAgentInvocationHandler implements CognisphereOwner {
     protected final String outputName;
 
     private final Class<?> agentServiceClass;
+
+    private final Consumer<Cognisphere> beforeCall;
+
     private final Cognisphere cognisphere;
 
-    protected AbstractAgentInvocationHandler(Class<?> agentServiceClass, String outputName) {
-        this(agentServiceClass, outputName, null);
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService) {
+        this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(Class<?> agentServiceClass, String outputName, Cognisphere cognisphere) {
-        this.agentServiceClass = agentServiceClass;
-        this.outputName = outputName;
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, Cognisphere cognisphere) {
+        this.agentServiceClass = workflowService.agentServiceClass;
+        this.outputName = workflowService.outputName;
+        this.beforeCall = workflowService.beforeCall;
         this.cognisphere = cognisphere;
     }
 
@@ -48,8 +54,8 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
 
         if (method.getDeclaringClass() == CognisphereAccess.class) {
             return switch (method.getName()) {
-                case "getCognisphere" -> Cognisphere.registry().get(args[0]);
-                case "evictCognisphere" -> Cognisphere.registry().evict(args[0]);
+                case "getCognisphere" -> CognisphereRegistry.get(args[0]);
+                case "evictCognisphere" -> CognisphereRegistry.evict(args[0]);
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on CognisphereAccess class : " + method.getName());
@@ -70,6 +76,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
 
     private Object executeAgentMethod(Cognisphere cognisphere, Method method, Object[] args) {
         writeCognisphereState(cognisphere, method, args);
+        beforeCall.accept(cognisphere);
 
         Object result = doAgentAction(cognisphere);
         Object output = outputName != null ? cognisphere.readState(outputName) : result;
@@ -105,8 +112,8 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
 
         Object memoryId = memoryId(method, args);
         return memoryId != null ?
-                Cognisphere.registry().getOrCreate(memoryId) :
-                Cognisphere.registry().createEphemeralCognisphere();
+                CognisphereRegistry.getOrCreate(memoryId) :
+                CognisphereRegistry.createEphemeralCognisphere();
     }
 
     private Object memoryId(Method method, Object[] args) {

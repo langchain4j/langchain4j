@@ -65,11 +65,25 @@ public class Cognisphere {
     }
 
     public void writeState(String key, Object value) {
-        withReadLock(() -> state.put(key, value));
+        withReadLock(() -> {
+            if (value == null) {
+                state.remove(key);
+            } else {
+                state.put(key, value);
+            }
+        });
     }
 
     public void writeStates(Map<String, Object> newState) {
         withReadLock(() -> state.putAll(newState));
+    }
+
+    public boolean hasState(String key) {
+        Object value = state.get(key);
+        if (value == null) {
+            return false;
+        }
+        return value instanceof String s ? !s.isBlank() : true;
     }
 
     public Object readState(String key) {
@@ -95,7 +109,7 @@ public class Cognisphere {
     public void onCallEnded() {
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral cognispheres are for single-use and can be evicted immediately
-            registry().evict(id);
+            CognisphereRegistry.evict(id);
         } else if (kind == Kind.PERSISTENT) {
             flush();
         }
@@ -104,7 +118,7 @@ public class Cognisphere {
     private void flush() {
         lock.writeLock().lock();
         try {
-            registry().update(this);
+            CognisphereRegistry.update(this);
         } finally {
             lock.writeLock().unlock();
         }
@@ -169,10 +183,6 @@ public class Cognisphere {
                 "id='" + id + '\'' +
                 ", state=" + state +
                 '}';
-    }
-
-    public static CognisphereRegistry registry() {
-        return CognisphereRegistry.getInstance();
     }
 
     private void withReadLock(Runnable action) {

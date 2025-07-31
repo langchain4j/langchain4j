@@ -23,13 +23,11 @@ public @interface LoopAgent {
      *
      * @return description of the agent.
      */
-    String value() default "";
+    String description() default "";
 
     String outputName() default "";
 
     Subagent[] subagents();
 
     int maxIterations() default 10;
-
-    String condition() default "";
 }
