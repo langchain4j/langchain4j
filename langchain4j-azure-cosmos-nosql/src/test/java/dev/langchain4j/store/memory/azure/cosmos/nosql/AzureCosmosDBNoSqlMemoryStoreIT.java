@@ -1,10 +1,8 @@
 package dev.langchain4j.store.memory.azure.cosmos.nosql;
 
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Slf4j
 @Testcontainers
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
