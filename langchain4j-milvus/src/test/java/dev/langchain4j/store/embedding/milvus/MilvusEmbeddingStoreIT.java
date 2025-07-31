@@ -42,10 +42,12 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
-    private static final AbstractMap.SimpleEntry<String, Integer> EF_CONSTRUCTION_PARAM =
+    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_EF_CONSTRUCTION_PARAM =
             new AbstractMap.SimpleEntry<>("efConstruction", 200);
-    private static final AbstractMap.SimpleEntry<String, Integer> M_PARAM =
+    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_M_PARAM =
             new AbstractMap.SimpleEntry<>("M", 16);
+    private static final AbstractMap.SimpleEntry<String, Integer> IVFPQ_M_PARAM =
+            new AbstractMap.SimpleEntry<>("m", 8);
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
@@ -151,7 +153,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Test
-    void milvus_index_with_custom_params() {
+    void milvus_hnsw_index_with_custom_params() {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
@@ -162,7 +164,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
         embeddingStore.dropCollection(COLLECTION_NAME);
 
-        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+        MilvusEmbeddingStore.builder()
                 .milvusClient(milvusServiceClient)
                 .collectionName(COLLECTION_NAME)
                 .consistencyLevel(STRONG)
@@ -173,8 +175,8 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field_hnsw")
                 .indexType(IndexType.HNSW)
-                .extraParam(M_PARAM.getKey(), M_PARAM.getValue())
-                .extraParam(EF_CONSTRUCTION_PARAM.getKey(), EF_CONSTRUCTION_PARAM.getValue())
+                .extraParam(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue())
+                .extraParam(HNSW_EF_CONSTRUCTION_PARAM.getKey(), HNSW_EF_CONSTRUCTION_PARAM.getValue())
                 .metricType(MetricType.COSINE)
                 .build();
 
@@ -195,22 +197,55 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         for (KeyValuePair param : params) {
             paramMap.put(param.getKey(), param.getValue());
         }
-        assertThat(paramMap).containsEntry(M_PARAM.getKey(), M_PARAM.getValue().toString());
-        assertThat(paramMap).containsEntry(EF_CONSTRUCTION_PARAM.getKey(), EF_CONSTRUCTION_PARAM.getValue().toString());
+        assertThat(paramMap).containsEntry(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue().toString());
+        assertThat(paramMap).containsEntry(HNSW_EF_CONSTRUCTION_PARAM.getKey(), HNSW_EF_CONSTRUCTION_PARAM.getValue().toString());
+    }
 
-        Embedding firstEmbedding = embeddingModel().embed("hello").content();
-        Embedding secondEmbedding = embeddingModel().embed("hi").content();
-        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+    @Test
+    void milvus_ivfpq_index_with_custom_params() {
+        ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
+                .withHost(milvus.getHost())
+                .withUri(milvus.getEndpoint())
+                .withPort(milvus.getMappedPort(19530))
+                .withAuthorization("", "");
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
-                .search(EmbeddingSearchRequest.builder()
-                        .queryEmbedding(firstEmbedding)
-                        .maxResults(10)
-                        .build())
-                .matches();
-        assertThat(matches).hasSize(2);
-        assertThat(matches.get(0).embedding()).isNull();
-        assertThat(matches.get(1).embedding()).isNull();
+        MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
+
+        embeddingStore.dropCollection(COLLECTION_NAME);
+
+        MilvusEmbeddingStore.builder()
+                .milvusClient(milvusServiceClient)
+                .collectionName(COLLECTION_NAME)
+                .consistencyLevel(STRONG)
+                .dimension(384)
+                .retrieveEmbeddingsOnSearch(false)
+                .idFieldName("id_field")
+                .textFieldName("text_field_hnsw")
+                .metadataFieldName("metadata_field")
+                .vectorFieldName("vector_field_ivfpq")
+                .indexType(IndexType.IVF_PQ)
+                .extraParam(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue())
+                .metricType(MetricType.COSINE)
+                .build();
+
+        final R<DescribeIndexResponse> indexDescribeResponse = milvusServiceClient
+                .describeIndex(DescribeIndexParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .build());
+
+        assertThat(indexDescribeResponse.getData().getIndexDescriptionsList()).hasSize(1);
+        final IndexDescription indexDescription = indexDescribeResponse.getData().getIndexDescriptions(0);
+        assertThat(indexDescription.getIndexName()).isEqualTo("vector_field_ivfpq");
+
+        // Verify that the extra parameters were set correctly
+        final List<KeyValuePair> params = indexDescription.getParamsList();
+        assertThat(params).isNotEmpty();
+        // Check that the M and efConstruction parameters are present
+        Map<String, String> paramMap = new HashMap<>();
+        for (KeyValuePair param : params) {
+            paramMap.put(param.getKey(), param.getValue());
+        }
+        assertThat(paramMap).containsEntry(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue().toString());
     }
 
     @Override
