@@ -3,9 +3,9 @@ package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Objects;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 public class FullTextContains implements Filter {
     private final String key;
@@ -46,10 +46,8 @@ public class FullTextContains implements Filter {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         FullTextContains that = (FullTextContains) o;
         return Objects.equals(key, that.key) && Objects.equals(searchTerm, that.searchTerm);
     }
@@ -61,9 +59,6 @@ public class FullTextContains implements Filter {
 
     @Override
     public String toString() {
-        return "FullTextContains{" +
-                "key='" + key + '\'' +
-                ", searchTerm='" + searchTerm + '\'' +
-                '}';
+        return "FullTextContains{" + "key='" + key + '\'' + ", searchTerm='" + searchTerm + '\'' + '}';
     }
 }

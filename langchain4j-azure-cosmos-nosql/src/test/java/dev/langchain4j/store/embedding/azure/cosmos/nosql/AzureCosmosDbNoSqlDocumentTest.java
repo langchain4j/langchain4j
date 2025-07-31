@@ -1,13 +1,12 @@
 package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
-import dev.langchain4j.data.embedding.Embedding;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.embedding.Embedding;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public class AzureCosmosDbNoSqlDocumentTest {
 
@@ -19,7 +18,8 @@ public class AzureCosmosDbNoSqlDocumentTest {
         Map<String, String> metadata = new HashMap<>();
         metadata.put("category", "test");
 
-        AzureCosmosDbNoSqlDocument document = new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
+        AzureCosmosDbNoSqlDocument document =
+                new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
 
         assertThat(document.getId()).isEqualTo(id);
         assertThat(document.getText()).isEqualTo(text);
@@ -37,7 +37,7 @@ public class AzureCosmosDbNoSqlDocumentTest {
         double score = 0.95;
 
         AzureCosmosDbNoSqlMatchedDocument matchedDocument =
-                new AzureCosmosDbNoSqlMatchedDocument(id, embedding.vectorAsList(), text,  metadata, score);
+                new AzureCosmosDbNoSqlMatchedDocument(id, embedding.vectorAsList(), text, metadata, score);
 
         assertThat(matchedDocument.getId()).isEqualTo(id);
         assertThat(matchedDocument.getText()).isEqualTo(text);
@@ -68,8 +68,10 @@ public class AzureCosmosDbNoSqlDocumentTest {
         Map<String, String> metadata = new HashMap<>();
         metadata.put("test", "equality");
 
-        AzureCosmosDbNoSqlDocument document1 = new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
-        AzureCosmosDbNoSqlDocument document2 = new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
+        AzureCosmosDbNoSqlDocument document1 =
+                new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
+        AzureCosmosDbNoSqlDocument document2 =
+                new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), text, metadata);
 
         assertThat(document1).isEqualTo(document2);
         assertThat(document1.hashCode()).isEqualTo(document2.hashCode());

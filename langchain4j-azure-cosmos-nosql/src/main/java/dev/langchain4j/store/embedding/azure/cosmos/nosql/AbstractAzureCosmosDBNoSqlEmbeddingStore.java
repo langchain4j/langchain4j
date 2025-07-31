@@ -10,13 +10,6 @@ import static dev.langchain4j.store.embedding.azure.cosmos.nosql.MappingUtils.to
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.cosmos.CosmosAsyncClient;
@@ -60,6 +53,13 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -216,8 +216,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             this.vectorIndexShardKeys = vectorIndexShardKeys;
         }
 
-        CosmosContainerProperties collectionDefinition = new CosmosContainerProperties(this.containerName,
-                subPartitionKeyDefinition);
+        CosmosContainerProperties collectionDefinition =
+                new CosmosContainerProperties(this.containerName, subPartitionKeyDefinition);
         if (searchQueryType.equals(AzureCosmosDBSearchQueryType.VECTOR)
                 || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
             if (this.vectorDimensions == null) {
@@ -245,10 +245,12 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         IndexingPolicy indexingPolicy = getIndexingPolicy(this.searchQueryType);
         collectionDefinition.setIndexingPolicy(indexingPolicy);
 
-        ThroughputProperties throughputProperties = ThroughputProperties
-                .createManualThroughput(this.vectorStoreThroughput);
+        ThroughputProperties throughputProperties =
+                ThroughputProperties.createManualThroughput(this.vectorStoreThroughput);
         CosmosAsyncDatabase cosmosAsyncDatabase = this.cosmosClient.getDatabase(this.databaseName);
-        cosmosAsyncDatabase.createContainerIfNotExists(collectionDefinition, throughputProperties).block();
+        cosmosAsyncDatabase
+                .createContainerIfNotExists(collectionDefinition, throughputProperties)
+                .block();
         this.container = cosmosAsyncDatabase.getContainer(this.containerName);
     }
 
@@ -352,47 +354,55 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
         }
 
-        List<ImmutablePair<String, CosmosItemOperation>> itemOperationsWithIds = ids.stream().map(id -> {
-            String partitionKeyValue;
+        List<ImmutablePair<String, CosmosItemOperation>> itemOperationsWithIds = ids.stream()
+                .map(id -> {
+                    String partitionKeyValue;
 
-            if ("/id".equals(this.partitionKeyPath)) {
-                partitionKeyValue = id;
-            } else if (this.partitionKeyPath.startsWith("/metadata/") && isNullOrEmpty(embedded)) {
-                String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
-                Object value = embedded.get(ids.indexOf(id)).metadata() != null ? embedded.get(ids.indexOf(id)).metadata().toMap().get(metadataKey) : null;
-                if (value == null) {
-                    throw new IllegalArgumentException(
-                            "Partition key '" + metadataKey + "' not found in document metadata.");
-                }
-                partitionKeyValue = value.toString();
-            } else {
-                throw new IllegalArgumentException("Unsupported partition key path: " + this.partitionKeyPath);
-            }
+                    if ("/id".equals(this.partitionKeyPath)) {
+                        partitionKeyValue = id;
+                    } else if (this.partitionKeyPath.startsWith("/metadata/") && isNullOrEmpty(embedded)) {
+                        String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
+                        Object value = embedded.get(ids.indexOf(id)).metadata() != null
+                                ? embedded.get(ids.indexOf(id))
+                                        .metadata()
+                                        .toMap()
+                                        .get(metadataKey)
+                                : null;
+                        if (value == null) {
+                            throw new IllegalArgumentException(
+                                    "Partition key '" + metadataKey + "' not found in document metadata.");
+                        }
+                        partitionKeyValue = value.toString();
+                    } else {
+                        throw new IllegalArgumentException("Unsupported partition key path: " + this.partitionKeyPath);
+                    }
 
-            CosmosItemOperation operation;
-            if (isNullOrEmpty(embeddings)) {
-                operation = CosmosBulkOperations.getCreateItemOperation(
-                        toNoSqlDbDocument(id, null, embedded.get(ids.indexOf(id))),
-                        new PartitionKey(partitionKeyValue));
-            } else if (isNullOrEmpty(embedded)) {
-                operation = CosmosBulkOperations.getCreateItemOperation(
-                        toNoSqlDbDocument(id, embeddings.get(ids.indexOf(id)), null),
-                        new PartitionKey(partitionKeyValue));
-            } else {
-                operation = CosmosBulkOperations.getCreateItemOperation(
-                        toNoSqlDbDocument(id, embeddings.get(ids.indexOf(id)), embedded.get(ids.indexOf(id))),
-                        new PartitionKey(partitionKeyValue));
-            }
+                    CosmosItemOperation operation;
+                    if (isNullOrEmpty(embeddings)) {
+                        operation = CosmosBulkOperations.getCreateItemOperation(
+                                toNoSqlDbDocument(id, null, embedded.get(ids.indexOf(id))),
+                                new PartitionKey(partitionKeyValue));
+                    } else if (isNullOrEmpty(embedded)) {
+                        operation = CosmosBulkOperations.getCreateItemOperation(
+                                toNoSqlDbDocument(id, embeddings.get(ids.indexOf(id)), null),
+                                new PartitionKey(partitionKeyValue));
+                    } else {
+                        operation = CosmosBulkOperations.getCreateItemOperation(
+                                toNoSqlDbDocument(id, embeddings.get(ids.indexOf(id)), embedded.get(ids.indexOf(id))),
+                                new PartitionKey(partitionKeyValue));
+                    }
 
-            return new ImmutablePair<>(id, operation);
-        }).toList();
+                    return new ImmutablePair<>(id, operation);
+                })
+                .toList();
 
         try {
-            List<CosmosItemOperation> itemOperations = itemOperationsWithIds.stream()
-                    .map(ImmutablePair::getValue)
-                    .collect(toList());
+            List<CosmosItemOperation> itemOperations =
+                    itemOperationsWithIds.stream().map(ImmutablePair::getValue).collect(toList());
 
-            this.container.executeBulkOperations(Flux.fromIterable(itemOperations)).doOnNext(response -> {
+            this.container
+                    .executeBulkOperations(Flux.fromIterable(itemOperations))
+                    .doOnNext(response -> {
                         if (response != null && response.getResponse() != null) {
                             int statusCode = response.getResponse().getStatusCode();
                             if (statusCode == 409) {
@@ -423,7 +433,6 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         }
     }
 
-
     @Override
     public void remove(final String id) {
         ensureNotBlank(id, "id");
@@ -434,49 +443,56 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
     public void removeAll(final Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         try {
-            List<CosmosItemOperation> itemOperations = ids.stream().map(id -> {
-                String partitionKeyValue;
+            List<CosmosItemOperation> itemOperations = ids.stream()
+                    .map(id -> {
+                        String partitionKeyValue;
 
-                if ("/id".equals(this.partitionKeyPath)) {
-                    partitionKeyValue = id;
-                } else if (this.partitionKeyPath.startsWith("/metadata/")) {
-                    // Will be inefficient for large numbers of documents but there is no
-                    // other way to get the partition key value
-                    // with current method signature. Ideally, we should be able to pass
-                    // the partition key value directly.
-                    String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
+                        if ("/id".equals(this.partitionKeyPath)) {
+                            partitionKeyValue = id;
+                        } else if (this.partitionKeyPath.startsWith("/metadata/")) {
+                            // Will be inefficient for large numbers of documents but there is no
+                            // other way to get the partition key value
+                            // with current method signature. Ideally, we should be able to pass
+                            // the partition key value directly.
+                            String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
 
-                    // Run a reactive query to fetch the document by ID
-                    String query = String.format("SELECT * FROM c WHERE c.id = '%s'", id);
-                    CosmosPagedFlux<JsonNode> queryFlux = this.container.queryItems(query,
-                            new CosmosQueryRequestOptions(), JsonNode.class);
+                            // Run a reactive query to fetch the document by ID
+                            String query = String.format("SELECT * FROM c WHERE c.id = '%s'", id);
+                            CosmosPagedFlux<JsonNode> queryFlux =
+                                    this.container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
 
-                    // Block to retrieve the first page synchronously
-                    List<JsonNode> documents = Objects.requireNonNull(queryFlux.byPage(1).blockFirst()).getResults();
+                            // Block to retrieve the first page synchronously
+                            List<JsonNode> documents = Objects.requireNonNull(
+                                            queryFlux.byPage(1).blockFirst())
+                                    .getResults();
 
-                    if (documents == null || documents.isEmpty()) {
-                        throw new IllegalArgumentException("No document found for id: " + id);
-                    }
+                            if (documents == null || documents.isEmpty()) {
+                                throw new IllegalArgumentException("No document found for id: " + id);
+                            }
 
-                    JsonNode document = documents.get(0);
-                    JsonNode metadataNode = document.get("metadata");
+                            JsonNode document = documents.get(0);
+                            JsonNode metadataNode = document.get("metadata");
 
-                    if (metadataNode == null || metadataNode.get(metadataKey) == null) {
-                        throw new IllegalArgumentException("Partition key '" + metadataKey
-                                + "' not found in metadata for document with id: " + id);
-                    }
+                            if (metadataNode == null || metadataNode.get(metadataKey) == null) {
+                                throw new IllegalArgumentException("Partition key '" + metadataKey
+                                        + "' not found in metadata for document with id: " + id);
+                            }
 
-                    partitionKeyValue = metadataNode.get(metadataKey).asText();
-                } else {
-                    throw new IllegalArgumentException("Unsupported partition key path: " + this.partitionKeyPath);
-                }
+                            partitionKeyValue = metadataNode.get(metadataKey).asText();
+                        } else {
+                            throw new IllegalArgumentException(
+                                    "Unsupported partition key path: " + this.partitionKeyPath);
+                        }
 
-                return CosmosBulkOperations.getDeleteItemOperation(id, new PartitionKey(partitionKeyValue));
-            }).collect(toList());
+                        return CosmosBulkOperations.getDeleteItemOperation(id, new PartitionKey(partitionKeyValue));
+                    })
+                    .collect(toList());
             // Execute bulk delete operations synchronously by using blockLast() on the
             // Flux
-            this.container.executeBulkOperations(Flux.fromIterable(itemOperations))
-                    .doOnNext(response -> logger.info("Document deleted with status: {}",
+            this.container
+                    .executeBulkOperations(Flux.fromIterable(itemOperations))
+                    .doOnNext(response -> logger.info(
+                            "Document deleted with status: {}",
                             response.getResponse().getStatusCode()))
                     .doOnError(error -> logger.error("Error deleting document: {}", error.getMessage()))
                     .blockLast();
@@ -508,12 +524,13 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         }
         String embeddingField = this.vectorIndexPath.substring(this.vectorIndexPath.lastIndexOf("/") + 1);
 
-        List<Float> referenceEmbeddingString =
-                request.queryEmbedding().vectorAsList();
+        List<Float> referenceEmbeddingString = request.queryEmbedding().vectorAsList();
 
         // Start building query for similarity search
-        StringBuilder queryBuilder = new StringBuilder(String.format("SELECT TOP @topK c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, " +
-                "VectorDistance(c.%s, @embedding) as score FROM c", embeddingField));
+        StringBuilder queryBuilder = new StringBuilder(String.format(
+                "SELECT TOP @topK c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, "
+                        + "VectorDistance(c.%s, @embedding) as score FROM c",
+                embeddingField));
         if (request.filter() != null) {
             queryBuilder.append(" AND").append(filterMapper.map(request.filter()));
         }
@@ -531,7 +548,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         return runQuery(sqlQuerySpec, options, request.minScore(), this.searchQueryType);
     }
 
-    public EmbeddingSearchResult<TextSegment> findRelevantWithFullTextSearch(String content, Integer maxResults, double minScore, Filter filter) {
+    public EmbeddingSearchResult<TextSegment> findRelevantWithFullTextSearch(
+            String content, Integer maxResults, double minScore, Filter filter) {
         // Ensure topK is within acceptable limits
         if (maxResults > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
@@ -551,15 +569,15 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
     }
 
-    public EmbeddingSearchResult<TextSegment> findRelevantWithFullTextRanking(String content, Integer maxResults, double minScore, Filter filter) {
+    public EmbeddingSearchResult<TextSegment> findRelevantWithFullTextRanking(
+            String content, Integer maxResults, double minScore, Filter filter) {
         // Ensure topK is within acceptable limits
         if (maxResults > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
         }
 
-        String searchWords = Arrays.stream(content.split("\\s+"))
-                .map(k -> "\"" + k + "\"")
-                .collect(Collectors.joining(", "));
+        String searchWords =
+                Arrays.stream(content.split("\\s+")).map(k -> "\"" + k + "\"").collect(Collectors.joining(", "));
 
         StringBuilder queryBuilder = new StringBuilder("SELECT TOP @topK * FROM c");
         if (filter != null) {
@@ -578,7 +596,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
     }
 
-    public EmbeddingSearchResult<TextSegment> findRelevantWithHybridSearch(Embedding referenceEmbedding, String content, Integer maxResults, double minScore, Filter filter) {
+    public EmbeddingSearchResult<TextSegment> findRelevantWithHybridSearch(
+            Embedding referenceEmbedding, String content, Integer maxResults, double minScore, Filter filter) {
         // Ensure topK is within acceptable limits
         if (maxResults > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
@@ -586,17 +605,19 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         String embeddingField = this.vectorIndexPath.substring(this.vectorIndexPath.lastIndexOf("/") + 1);
         String textField = this.fullTextIndexPath.substring(this.fullTextIndexPath.lastIndexOf("/") + 1);
 
-        String searchWords = Arrays.stream(content.split("\\s+"))
-                .map(k -> "'" + k + "'")
-                .collect(Collectors.joining(", "));
+        String searchWords =
+                Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'").collect(Collectors.joining(", "));
 
-        StringBuilder queryBuilder = new StringBuilder(String.format("SELECT TOP %d c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, " +
-                "VectorDistance(c.%s, %s) as score FROM c", maxResults, embeddingField, referenceEmbedding.vectorAsList()));
+        StringBuilder queryBuilder = new StringBuilder(String.format(
+                "SELECT TOP %d c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, "
+                        + "VectorDistance(c.%s, %s) as score FROM c",
+                maxResults, embeddingField, referenceEmbedding.vectorAsList()));
 
         if (filter != null) {
             queryBuilder.append(" AND").append(filterMapper.map(filter));
         }
-        queryBuilder.append(String.format(" ORDER BY RANK RRF(FullTextScore(c.%s, %s), VectorDistance(c.%s, %s))",
+        queryBuilder.append(String.format(
+                " ORDER BY RANK RRF(FullTextScore(c.%s, %s), VectorDistance(c.%s, %s))",
                 textField, searchWords, embeddingField, referenceEmbedding.vectorAsList()));
 
         String query = queryBuilder.toString();
@@ -608,8 +629,13 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
     }
 
-    private EmbeddingSearchResult<TextSegment> runQuery(SqlQuerySpec sqlQuerySpec, CosmosQueryRequestOptions options, Double minScore, AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType) {
-        List<AzureCosmosDbNoSqlMatchedDocument> results = this.container.queryItems(sqlQuerySpec, options, AzureCosmosDbNoSqlMatchedDocument.class)
+    private EmbeddingSearchResult<TextSegment> runQuery(
+            SqlQuerySpec sqlQuerySpec,
+            CosmosQueryRequestOptions options,
+            Double minScore,
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType) {
+        List<AzureCosmosDbNoSqlMatchedDocument> results = this.container
+                .queryItems(sqlQuerySpec, options, AzureCosmosDbNoSqlMatchedDocument.class)
                 .byPage()
                 .flatMap(page -> Flux.fromIterable(page.getResults()))
                 .collectList()
@@ -617,13 +643,17 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
         assert results != null;
 
-//        matches = results.stream().map(MappingUtils::toEmbeddingMatch).collect(toList());
-        List<EmbeddingMatch<TextSegment>> matches = getEmbeddingMatches(results, minScore, azureCosmosDBSearchQueryType);
+        //        matches = results.stream().map(MappingUtils::toEmbeddingMatch).collect(toList());
+        List<EmbeddingMatch<TextSegment>> matches =
+                getEmbeddingMatches(results, minScore, azureCosmosDBSearchQueryType);
 
         return new EmbeddingSearchResult<>(matches);
     }
 
-    private List<EmbeddingMatch<TextSegment>> getEmbeddingMatches(List<AzureCosmosDbNoSqlMatchedDocument> results, Double minScore, AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType) {
+    private List<EmbeddingMatch<TextSegment>> getEmbeddingMatches(
+            List<AzureCosmosDbNoSqlMatchedDocument> results,
+            Double minScore,
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType) {
 
         if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
                 || azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
@@ -640,6 +670,5 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
             return matches;
         }
-
     }
 }

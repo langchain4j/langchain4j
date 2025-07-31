@@ -1,16 +1,15 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import org.junit.jupiter.api.Test;
 
 class DefaultAzureCosmosDBNoSqlFilterMapperTest {
 
@@ -108,20 +107,14 @@ class DefaultAzureCosmosDBNoSqlFilterMapperTest {
 
     @Test
     void map_handlesAndOperator() {
-        And filter = new And(
-                new IsEqualTo("category", "sports"),
-                new IsGreaterThan("price", 50)
-        );
+        And filter = new And(new IsEqualTo("category", "sports"), new IsGreaterThan("price", 50));
         String result = mapper.map(filter);
         assertThat(result).isEqualTo("(c.category = \"sports\" AND c.price > 50)");
     }
 
     @Test
     void map_handlesOrOperator() {
-        Or filter = new Or(
-                new IsEqualTo("brand", "Nike"),
-                new IsEqualTo("brand", "Adidas")
-        );
+        Or filter = new Or(new IsEqualTo("brand", "Nike"), new IsEqualTo("brand", "Adidas"));
         String result = mapper.map(filter);
         assertThat(result).isEqualTo("(c.brand = \"Nike\" OR c.brand = \"Adidas\")");
     }
@@ -139,14 +132,11 @@ class DefaultAzureCosmosDBNoSqlFilterMapperTest {
                 new FullTextContains("description", "premium quality"),
                 new Or(
                         new IsEqualTo("category", "electronics"),
-                        new And(
-                                new IsEqualTo("category", "clothing"),
-                                new IsGreaterThan("rating", 4.0)
-                        )
-                )
-        );
+                        new And(new IsEqualTo("category", "clothing"), new IsGreaterThan("rating", 4.0))));
         String result = mapper.map(complexFilter);
-        assertThat(result).isEqualTo("(FullTextContains(c.description, \"premium quality\") AND (c.category = \"electronics\" OR (c.category = \"clothing\" AND c.rating > 4.0)))");
+        assertThat(result)
+                .isEqualTo(
+                        "(FullTextContains(c.description, \"premium quality\") AND (c.category = \"electronics\" OR (c.category = \"clothing\" AND c.rating > 4.0)))");
     }
 
     @Test

@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
-import java.util.List;
-import java.util.Objects;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.cosmos.CosmosAsyncClient;
@@ -23,8 +21,9 @@ import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.PartitionKey;
 import com.azure.cosmos.models.ThroughputProperties;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDbNoSqlEmbeddingStore;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.List;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,15 +102,17 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
         this.partitionKeyPath = DEFAULT_PARTITION_KEY_PATH;
         this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
 
-        CosmosContainerProperties collectionDefinition = new CosmosContainerProperties(this.containerName,
-                this.partitionKeyPath);
+        CosmosContainerProperties collectionDefinition =
+                new CosmosContainerProperties(this.containerName, this.partitionKeyPath);
         IndexingPolicy indexingPolicy = getIndexingPolicy();
         collectionDefinition.setIndexingPolicy(indexingPolicy);
 
-        ThroughputProperties throughputProperties = ThroughputProperties
-                .createManualThroughput(this.vectorStoreThroughput);
+        ThroughputProperties throughputProperties =
+                ThroughputProperties.createManualThroughput(this.vectorStoreThroughput);
         CosmosAsyncDatabase cosmosAsyncDatabase = this.cosmosClient.getDatabase(this.databaseName);
-        cosmosAsyncDatabase.createContainerIfNotExists(collectionDefinition, throughputProperties).block();
+        cosmosAsyncDatabase
+                .createContainerIfNotExists(collectionDefinition, throughputProperties)
+                .block();
         this.container = cosmosAsyncDatabase.getContainer(this.containerName);
     }
 
@@ -130,8 +131,11 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
     public List<ChatMessage> getMessages(final Object memoryId) {
         try {
             String query = String.format("SELECT * FROM c WHERE c.id = '%s'", memoryId);
-            return Objects.requireNonNull(this.container.queryItems(query, ChatMessage.class)
-                    .byPage(1).blockFirst()).getResults();
+            return Objects.requireNonNull(this.container
+                            .queryItems(query, ChatMessage.class)
+                            .byPage(1)
+                            .blockFirst())
+                    .getResults();
         } catch (Exception e) {
             logger.error("Exception while deleting documents: {}", e.getMessage(), e);
             throw e;
@@ -142,7 +146,9 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
     public void updateMessages(final Object memoryId, final List<ChatMessage> messages) {
         try {
             deleteMessages(memoryId);
-            this.container.upsertItem(messages.get(0), new PartitionKey(memoryId), new CosmosItemRequestOptions()).block();
+            this.container
+                    .upsertItem(messages.get(0), new PartitionKey(memoryId), new CosmosItemRequestOptions())
+                    .block();
         } catch (Exception e) {
             logger.error("Exception while updating documents: {}", e.getMessage(), e);
             throw e;
@@ -152,14 +158,18 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
     @Override
     public void deleteMessages(final Object memoryId) {
         try {
-            this.container.deleteItem(memoryId.toString(), new PartitionKey(memoryId)).block();
+            this.container
+                    .deleteItem(memoryId.toString(), new PartitionKey(memoryId))
+                    .block();
         } catch (Exception e) {
             logger.error("Exception while deleting documents: {}", e.getMessage(), e);
             throw e;
         }
     }
 
-    public static Builder builder() { return new Builder();}
+    public static Builder builder() {
+        return new Builder();
+    }
 
     public static class Builder {
         private String endpoint;
@@ -230,7 +240,8 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
 
         public AzureCosmosDBNoSqlMemoryStore build() {
             ensureNotNull(endpoint, "endpoint");
-            ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+            ensureTrue(
+                    keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
 
             if (keyCredential != null) {
                 return new AzureCosmosDBNoSqlMemoryStore(

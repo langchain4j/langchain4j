@@ -1,5 +1,8 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
@@ -8,9 +11,6 @@ import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQue
 import dev.langchain4j.store.embedding.azure.cosmos.nosql.TestEmbeddingModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
@@ -50,8 +50,8 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null, // vectorIndexShardKeys
                     null, // fullTextIndexPath
                     null, // fullTextIndexLanguage
-                    null  // filter
-            );
+                    null // filter
+                    );
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("endpoint cannot be null");
@@ -81,8 +81,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null,
                     null,
                     null,
-                    null
-            );
+                    null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("either keyCredential or tokenCredential must be set");
@@ -112,8 +111,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null,
                     null,
                     null,
-                    null
-            );
+                    null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("either keyCredential or tokenCredential must be set");
@@ -143,8 +141,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null,
                     "/text",
                     "en-US",
-                    null
-            );
+                    null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("for full-text search, dimensions must be 0");
@@ -174,8 +171,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null,
                     null,
                     null,
-                    null
-            );
+                    null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("embeddingModel cannot be null");
@@ -205,8 +201,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                     null,
                     null, // missing fullTextIndexPath
                     "en-US",
-                    null
-            );
+                    null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage()).isEqualTo("fullTextIndexPath cannot be null");
@@ -235,8 +230,7 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
                 null,
                 null,
                 null,
-                null
-        );
+                null);
         assertThat(retriever).isNotNull();
     }
 }

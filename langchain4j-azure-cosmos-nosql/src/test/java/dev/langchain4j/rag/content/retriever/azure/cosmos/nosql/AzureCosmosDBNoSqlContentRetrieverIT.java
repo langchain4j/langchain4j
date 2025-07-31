@@ -2,7 +2,6 @@ package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import com.azure.core.credential.AzureKeyCredential;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -12,6 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQueryType;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -44,14 +44,17 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
                 .logRequestsAndResponses(false)
                 .build();
 
-        contentRetrieverWithVector = createContentRetriever(AzureCosmosDBSearchQueryType.VECTOR, VECTOR_CONTAINER, embeddingModel.dimension());
+        contentRetrieverWithVector = createContentRetriever(
+                AzureCosmosDBSearchQueryType.VECTOR, VECTOR_CONTAINER, embeddingModel.dimension());
         contentRetrieverWithFullTextSearch = createFullTextSearchContentRetriever();
-        contentRetrieverWithFullTextRank = createContentRetriever(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING, TEXT_RANK_CONTAINER, 0);
-        contentRetrieverWithHybrid = createContentRetriever(AzureCosmosDBSearchQueryType.HYBRID, HYBRID_CONTAINER, embeddingModel.dimension());
+        contentRetrieverWithFullTextRank =
+                createContentRetriever(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING, TEXT_RANK_CONTAINER, 0);
+        contentRetrieverWithHybrid = createContentRetriever(
+                AzureCosmosDBSearchQueryType.HYBRID, HYBRID_CONTAINER, embeddingModel.dimension());
     }
 
-    private AzureCosmosDBNoSqlContentRetriever createContentRetriever(AzureCosmosDBSearchQueryType queryType,
-                                                                      String containerName, Integer dimensions) {
+    private AzureCosmosDBNoSqlContentRetriever createContentRetriever(
+            AzureCosmosDBSearchQueryType queryType, String containerName, Integer dimensions) {
         return new AzureCosmosDBNoSqlContentRetriever(
                 System.getenv("AZURE_COSMOS_HOST"),
                 new AzureKeyCredential(System.getenv("AZURE_COSMOS_MASTER_KEY")),
@@ -129,11 +132,16 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         TextSegment segment4 = TextSegment.from(content4, Metadata.from("category", "food"));
         TextSegment segment5 = TextSegment.from(content5, Metadata.from("category", "fruit"));
 
-        Embedding embedding1 = new Embedding(embeddingModel.embed(content1).content().vector());
-        Embedding embedding2 = new Embedding(embeddingModel.embed(content2).content().vector());
-        Embedding embedding3 = new Embedding(embeddingModel.embed(content3).content().vector());
-        Embedding embedding4 = new Embedding(embeddingModel.embed(content4).content().vector());
-        Embedding embedding5 = new Embedding(embeddingModel.embed(content5).content().vector());
+        Embedding embedding1 =
+                new Embedding(embeddingModel.embed(content1).content().vector());
+        Embedding embedding2 =
+                new Embedding(embeddingModel.embed(content2).content().vector());
+        Embedding embedding3 =
+                new Embedding(embeddingModel.embed(content3).content().vector());
+        Embedding embedding4 =
+                new Embedding(embeddingModel.embed(content4).content().vector());
+        Embedding embedding5 =
+                new Embedding(embeddingModel.embed(content5).content().vector());
 
         contentRetrieverWithVector.add(embedding1, segment1);
         contentRetrieverWithVector.add(embedding2, segment2);
@@ -146,7 +154,6 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
         assertThat(relevant.get(1).textSegment().text()).isIn(content1, content3, content5);
         assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3, content5);
-
     }
 
     @Test
@@ -206,9 +213,12 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         TextSegment segment2 = TextSegment.from(content2, Metadata.from("category", "basic"));
         TextSegment segment3 = TextSegment.from(content3, Metadata.from("category", "professional"));
 
-        Embedding embedding1 = new Embedding(embeddingModel.embed(content1).content().vector());
-        Embedding embedding2 = new Embedding(embeddingModel.embed(content2).content().vector());
-        Embedding embedding3 = new Embedding(embeddingModel.embed(content3).content().vector());
+        Embedding embedding1 =
+                new Embedding(embeddingModel.embed(content1).content().vector());
+        Embedding embedding2 =
+                new Embedding(embeddingModel.embed(content2).content().vector());
+        Embedding embedding3 =
+                new Embedding(embeddingModel.embed(content3).content().vector());
 
         contentRetrieverWithHybrid.add(embedding1, segment1);
         contentRetrieverWithHybrid.add(embedding2, segment2);

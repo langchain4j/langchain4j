@@ -3,8 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
-import java.util.List;
-import java.util.Map;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import dev.langchain4j.data.embedding.Embedding;
@@ -20,10 +18,13 @@ import dev.langchain4j.store.embedding.azure.cosmos.nosql.AbstractAzureCosmosDBN
 import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBNoSqlRuntimeException;
 import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQueryType;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoSqlEmbeddingStore implements ContentRetriever {
+public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoSqlEmbeddingStore
+        implements ContentRetriever {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureCosmosDBNoSqlContentRetriever.class);
 
@@ -62,7 +63,8 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                         || (keyCredential == null && tokenCredential != null),
                 "either keyCredential or tokenCredential must be set");
 
-        if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH) || azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
+        if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
+                || azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
             // Full-text search doesn't use embeddings, so dimensions must be 0
             ensureTrue(vectorDimensions == 0, "for full-text search, dimensions must be 0");
             ensureNotNull(fullTextIndexPath, "fullTextIndexPath");
@@ -75,9 +77,47 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
         }
 
         if (keyCredential != null) {
-            this.initialize(endpoint, keyCredential, null, databaseName, containerName, partitionKeyPath, vectorStoreThroughput, azureCosmosDBSearchQueryType, vectorIndexType, vectorIndexPath, vectorDataType, vectorDimensions, vectorDistanceFunction, vectorQuantizationSizeInBytes, vectorIndexingSearchListSize, vectorIndexShardKeys, fullTextIndexPath, fullTextIndexLanguage, null);
+            this.initialize(
+                    endpoint,
+                    keyCredential,
+                    null,
+                    databaseName,
+                    containerName,
+                    partitionKeyPath,
+                    vectorStoreThroughput,
+                    azureCosmosDBSearchQueryType,
+                    vectorIndexType,
+                    vectorIndexPath,
+                    vectorDataType,
+                    vectorDimensions,
+                    vectorDistanceFunction,
+                    vectorQuantizationSizeInBytes,
+                    vectorIndexingSearchListSize,
+                    vectorIndexShardKeys,
+                    fullTextIndexPath,
+                    fullTextIndexLanguage,
+                    null);
         } else {
-            this.initialize(endpoint, null, tokenCredential, databaseName, containerName, partitionKeyPath, vectorStoreThroughput, azureCosmosDBSearchQueryType, vectorIndexType, vectorIndexPath, vectorDataType, vectorDimensions, vectorDistanceFunction, vectorQuantizationSizeInBytes, vectorIndexingSearchListSize, vectorIndexShardKeys, fullTextIndexPath, fullTextIndexLanguage, null);
+            this.initialize(
+                    endpoint,
+                    null,
+                    tokenCredential,
+                    databaseName,
+                    containerName,
+                    partitionKeyPath,
+                    vectorStoreThroughput,
+                    azureCosmosDBSearchQueryType,
+                    vectorIndexType,
+                    vectorIndexPath,
+                    vectorDataType,
+                    vectorDimensions,
+                    vectorDistanceFunction,
+                    vectorQuantizationSizeInBytes,
+                    vectorIndexingSearchListSize,
+                    vectorIndexShardKeys,
+                    fullTextIndexPath,
+                    fullTextIndexLanguage,
+                    null);
         }
 
         this.embeddingModel = embeddingModel;
@@ -100,7 +140,8 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
 
             List<EmbeddingMatch<TextSegment>> searchResult =
                     super.search(request).matches();
-            return searchResult.stream().map(embeddingMatch -> Content.from(
+            return searchResult.stream()
+                    .map(embeddingMatch -> Content.from(
                             embeddingMatch.embedded(),
                             Map.of(
                                     ContentMetadata.SCORE, embeddingMatch.score(),
@@ -108,28 +149,36 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     .toList();
         } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)) {
             String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextSearch(content, this.maxResults, this.minScore, this.filter).matches();
-            return searchResult.stream().map(embeddingMatch -> Content.from(
-                            embeddingMatch.embedded()))
+            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextSearch(
+                            content, this.maxResults, this.minScore, this.filter)
+                    .matches();
+            return searchResult.stream()
+                    .map(embeddingMatch -> Content.from(embeddingMatch.embedded()))
                     .toList();
         } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
             String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextRanking(content, this.maxResults, this.minScore, this.filter).matches();
-            return searchResult.stream().map(embeddingMatch -> Content.from(
-                            embeddingMatch.embedded()))
+            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextRanking(
+                            content, this.maxResults, this.minScore, this.filter)
+                    .matches();
+            return searchResult.stream()
+                    .map(embeddingMatch -> Content.from(embeddingMatch.embedded()))
                     .toList();
         } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
             Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
             String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithHybridSearch(referenceEmbedding, content, this.maxResults, this.minScore, this.filter).matches();
-            return searchResult.stream().map(embeddingMatch -> Content.from(
+            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithHybridSearch(
+                            referenceEmbedding, content, this.maxResults, this.minScore, this.filter)
+                    .matches();
+            return searchResult.stream()
+                    .map(embeddingMatch -> Content.from(
                             embeddingMatch.embedded(),
                             Map.of(
                                     ContentMetadata.SCORE, embeddingMatch.score(),
                                     ContentMetadata.EMBEDDING_ID, embeddingMatch.embedding())))
                     .toList();
         } else {
-            throw new AzureCosmosDBNoSqlRuntimeException("Unknown Azure AI Search Query Type: " + azureCosmosDBSearchQueryType);
+            throw new AzureCosmosDBNoSqlRuntimeException(
+                    "Unknown Azure AI Search Query Type: " + azureCosmosDBSearchQueryType);
         }
     }
 }

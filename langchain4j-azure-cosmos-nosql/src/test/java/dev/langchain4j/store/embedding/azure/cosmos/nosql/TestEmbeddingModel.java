@@ -4,7 +4,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -64,9 +63,8 @@ public class TestEmbeddingModel implements EmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<Embedding> embeddings = textSegments.stream()
-                .map(segment -> embed(segment).content())
-                .toList();
+        List<Embedding> embeddings =
+                textSegments.stream().map(segment -> embed(segment).content()).toList();
         return Response.from(embeddings);
     }
 

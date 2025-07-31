@@ -1,18 +1,17 @@
 package dev.langchain4j.store.memory.azure.cosmos.nosql;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import java.util.UUID;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-
-import java.util.UUID;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class AzureCosmosDBNoSqlMemoryStoreTest {
@@ -62,13 +61,15 @@ abstract class AzureCosmosDBNoSqlMemoryStoreTest {
         UserMessage userMessage1 = userMessage("What are the main features of Azure Cosmos DB?");
         chatMemory.add(userMessage1);
 
-        AiMessage aiMessage1 = aiMessage("Azure Cosmos DB is a fully managed NoSQL database service with multiple API compatibility, global distribution, automatic scaling, and comprehensive SLAs.");
+        AiMessage aiMessage1 = aiMessage(
+                "Azure Cosmos DB is a fully managed NoSQL database service with multiple API compatibility, global distribution, automatic scaling, and comprehensive SLAs.");
         chatMemory.add(aiMessage1);
 
         UserMessage userMessage2 = userMessage("How does it handle partitioning?");
         chatMemory.add(userMessage2);
 
-        AiMessage aiMessage2 = aiMessage("Azure Cosmos DB uses logical partitions with partition keys to distribute data across physical partitions, enabling horizontal scaling and high throughput.");
+        AiMessage aiMessage2 = aiMessage(
+                "Azure Cosmos DB uses logical partitions with partition keys to distribute data across physical partitions, enabling horizontal scaling and high throughput.");
         chatMemory.add(aiMessage2);
 
         // Then
@@ -90,7 +91,8 @@ abstract class AzureCosmosDBNoSqlMemoryStoreTest {
         UserMessage userMessage1 = userMessage("What consistency levels does Azure Cosmos DB offer?");
         chatMemory.add(userMessage1);
 
-        AiMessage aiMessage1 = aiMessage("Azure Cosmos DB offers five consistency levels: strong, bounded staleness, session, consistent prefix, and eventual.");
+        AiMessage aiMessage1 = aiMessage(
+                "Azure Cosmos DB offers five consistency levels: strong, bounded staleness, session, consistent prefix, and eventual.");
         chatMemory.add(aiMessage1);
 
         // Then - verify initial messages
@@ -119,7 +121,8 @@ abstract class AzureCosmosDBNoSqlMemoryStoreTest {
         UserMessage userMessage = userMessage("How much does Azure Cosmos DB cost?");
         chatMemory.add(userMessage);
 
-        AiMessage aiMessage = aiMessage("Azure Cosmos DB pricing is based on provisioned throughput (RU/s) and storage used. It offers serverless and provisioned capacity modes.");
+        AiMessage aiMessage = aiMessage(
+                "Azure Cosmos DB pricing is based on provisioned throughput (RU/s) and storage used. It offers serverless and provisioned capacity modes.");
         chatMemory.add(aiMessage);
 
         // Then - verify messages exist

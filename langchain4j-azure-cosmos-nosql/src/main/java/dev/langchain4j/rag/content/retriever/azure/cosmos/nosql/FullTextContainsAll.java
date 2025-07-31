@@ -1,15 +1,14 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A filter that performs full-text search using FullTextContainsAll function.
@@ -26,8 +25,8 @@ public class FullTextContainsAll implements Filter {
 
     public FullTextContainsAll(String key, Collection<String> searchTerms) {
         this.key = ensureNotBlank(key, "key");
-        this.searchTerms = ensureNotNull(searchTerms, "searchTerms with key '" + key + "'")
-                .stream().toList();
+        this.searchTerms = ensureNotNull(searchTerms, "searchTerms with key '" + key + "'").stream()
+                .toList();
         if (this.searchTerms.isEmpty()) {
             throw new IllegalArgumentException("searchTerms cannot be empty");
         }
@@ -55,8 +54,7 @@ public class FullTextContainsAll implements Filter {
         if (actualValue instanceof String str) {
             String lowerStr = str.toLowerCase();
             // Check if all search terms are contained in the string
-            return searchTerms.stream()
-                    .allMatch(term -> lowerStr.contains(term.toLowerCase()));
+            return searchTerms.stream().allMatch(term -> lowerStr.contains(term.toLowerCase()));
         }
 
         return false;
@@ -77,9 +75,6 @@ public class FullTextContainsAll implements Filter {
 
     @Override
     public String toString() {
-        return "FullTextContainsAll{" +
-                "key='" + key + '\'' +
-                ", searchTerms=" + searchTerms +
-                '}';
+        return "FullTextContainsAll{" + "key='" + key + '\'' + ", searchTerms=" + searchTerms + '}';
     }
 }

@@ -3,12 +3,12 @@ package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
-import java.util.List;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.cosmos.nosql.AzureCosmosDBNoSqlFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.List;
 
 /**
  * Implementation of {@link EmbeddingStore} that uses Azure Cosmos DB NoSQL API for storing and retrieving embeddings.
@@ -17,7 +17,8 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
  * You can read more about vector search using Azure Cosmos DB NoSQL
  * <a href="https://aka.ms/CosmosVectorSearch">here</a>.
  */
-public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSqlEmbeddingStore
+        implements EmbeddingStore<TextSegment> {
 
     public AzureCosmosDbNoSqlEmbeddingStore(
             String endpoint,
@@ -36,7 +37,26 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             Integer vectorIndexingSearchListSize,
             List<String> vectorIndexShardKeys,
             AzureCosmosDBNoSqlFilterMapper filterMapper) {
-        this.initialize(endpoint, keyCredential, null, databaseName, containerName, partitionKeyPath, vectorStoreThroughput, searchQueryType, vectorIndexType, vectorIndexPath, vectorDataType, vectorDimensions, vectorDistanceFunction, vectorQuantizationSizeInBytes, vectorIndexingSearchListSize, vectorIndexShardKeys, null, null, filterMapper);
+        this.initialize(
+                endpoint,
+                keyCredential,
+                null,
+                databaseName,
+                containerName,
+                partitionKeyPath,
+                vectorStoreThroughput,
+                searchQueryType,
+                vectorIndexType,
+                vectorIndexPath,
+                vectorDataType,
+                vectorDimensions,
+                vectorDistanceFunction,
+                vectorQuantizationSizeInBytes,
+                vectorIndexingSearchListSize,
+                vectorIndexShardKeys,
+                null,
+                null,
+                filterMapper);
     }
 
     public AzureCosmosDbNoSqlEmbeddingStore(
@@ -56,9 +76,27 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             Integer vectorIndexingSearchListSize,
             List<String> vectorIndexShardKeys,
             AzureCosmosDBNoSqlFilterMapper filterMapper) {
-        this.initialize(endpoint, null, tokenCredential, databaseName, containerName, partitionKeyPath, vectorStoreThroughput, searchQueryType, vectorIndexType, vectorIndexPath, vectorDataType, vectorDimensions, vectorDistanceFunction, vectorQuantizationSizeInBytes, vectorIndexingSearchListSize, vectorIndexShardKeys, null, null, filterMapper);
+        this.initialize(
+                endpoint,
+                null,
+                tokenCredential,
+                databaseName,
+                containerName,
+                partitionKeyPath,
+                vectorStoreThroughput,
+                searchQueryType,
+                vectorIndexType,
+                vectorIndexPath,
+                vectorDataType,
+                vectorDimensions,
+                vectorDistanceFunction,
+                vectorQuantizationSizeInBytes,
+                vectorIndexingSearchListSize,
+                vectorIndexShardKeys,
+                null,
+                null,
+                filterMapper);
     }
-
 
     public static Builder builder() {
         return new Builder();
@@ -205,7 +243,8 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
          */
         public AzureCosmosDbNoSqlEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
-            ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+            ensureTrue(
+                    keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
 
             if (keyCredential != null) {
                 return new AzureCosmosDbNoSqlEmbeddingStore(
