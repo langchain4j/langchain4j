@@ -15,7 +15,7 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 
 class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -24,7 +24,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
+                .modelName(GPT_4_1_NANO)
                 .logRequests(false) // base64-encoded images are huge in logs
                 .logResponses(true);
     }
@@ -55,7 +55,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
-            openAiStreamingChatModelBuilder.modelName(GPT_4_O_MINI);
+            openAiStreamingChatModelBuilder.modelName(GPT_4_1_NANO);
         }
         return openAiStreamingChatModelBuilder
                 .build();
