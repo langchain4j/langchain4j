@@ -27,5 +27,5 @@ public @interface ConditionalAgent {
 
     String outputName() default "";
 
-    Subagent[] subagents();
+    SubAgent[] subAgents();
 }

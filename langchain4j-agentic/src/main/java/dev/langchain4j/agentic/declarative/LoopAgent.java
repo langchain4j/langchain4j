@@ -27,7 +27,7 @@ public @interface LoopAgent {
 
     String outputName() default "";
 
-    Subagent[] subagents();
+    SubAgent[] subAgents();
 
     int maxIterations() default 10;
 }

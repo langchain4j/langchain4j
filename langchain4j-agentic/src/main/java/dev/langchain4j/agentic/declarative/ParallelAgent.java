@@ -27,5 +27,5 @@ public @interface ParallelAgent {
 
     String outputName() default "";
 
-    Subagent[] subagents();
+    SubAgent[] subAgents();
 }

@@ -23,12 +23,12 @@ public interface CreativeWriter {
 
     @UserMessage("""
             You are a creative writer.
-            Generate a draft of a story long no more than
-            3 sentences around the given topic.
+            Generate a draft of a story no more than
+            3 sentences long around the given topic.
             Return only the story and nothing else.
             The topic is {{topic}}.
             """)
-    @Agent("Generate a story based on the given topic")
+    @Agent("Generates a story based on the given topic")
     String generateStory(@V("topic") String topic);
 }
 ```
@@ -75,7 +75,7 @@ public interface AudienceEditor {
         Return only the story and nothing else.
         The story is "{{story}}".
         """)
-    @Agent("Edit a story to better fit a given audience")
+    @Agent("Edits a story to better fit a given audience")
     String editStory(@V("story") String story, @V("audience") String audience);
 }
 ```
@@ -170,7 +170,7 @@ public interface StyleScorer {
             
             The story is: "{{story}}"
             """)
-    @Agent("Score a story based on how well it aligns with a given style")
+    @Agent("Scores a story based on how well it aligns with a given style")
     double scoreStyle(@V("story") String story, @V("style") String style);
 }
 ```
@@ -198,7 +198,7 @@ UntypedAgent styleReviewLoop = AgentServices
         .build();
 ```
 
-Here the `styleEditor` agent writes its output to the `Cognisphere` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
+Here the `styleScorer` agent writes its output to the `Cognisphere` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
 
 At this point the `styleReviewLoop` agent can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
 
@@ -314,7 +314,7 @@ public interface CategoryRouter {
         Reply with only one of those words and nothing else.
         The user request is: '{{request}}'.
         """)
-    @Agent("Categorize a user request")
+    @Agent("Categorizes a user request")
     RequestCategory classify(@V("request") String request);
 }
 ```
@@ -400,9 +400,9 @@ For instance the `EveningPlannerAgent` implementing the parallel workflow progra
 ```java
 public interface EveningPlannerAgent {
 
-    @ParallelAgent(outputName = "plans", subagents = {
-            @Subagent(agentClass = FoodExpert.class, outputName = "meals"),
-            @Subagent(agentClass = MovieExpert.class, outputName = "movies")
+    @ParallelAgent(outputName = "plans", subAgents = {
+            @SubAgent(type = FoodExpert.class, outputName = "meals"),
+            @SubAgent(type = MovieExpert.class, outputName = "movies")
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
@@ -442,10 +442,10 @@ To give another example of this declarative API, let's redefine through it the `
 ```java
 public interface ExpertsAgent {
 
-    @ConditionalAgent(outputName = "response", subagents = {
-            @Subagent(agentName = "medical", agentClass = MedicalExpert.class, outputName = "response"),
-            @Subagent(agentName = "technical", agentClass = TechnicalExpert.class, outputName = "response"),
-            @Subagent(agentName = "legal", agentClass = LegalExpert.class, outputName = "response")
+    @ConditionalAgent(outputName = "response", subAgents = {
+            @SubAgent(name = "medical", type = MedicalExpert.class, outputName = "response"),
+            @SubAgent(mame = "technical", type = TechnicalExpert.class, outputName = "response"),
+            @SubAgent(name = "legal", type = LegalExpert.class, outputName = "response")
     })
     String askExpert(@V("request") String request);
 

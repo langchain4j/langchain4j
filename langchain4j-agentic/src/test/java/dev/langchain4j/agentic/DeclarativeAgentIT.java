@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.Subagent;
+import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorChatModel;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
@@ -47,10 +47,10 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreator {
 
-        @SequenceAgent(outputName = "story", subagents = {
-                @Subagent(agentClass = CreativeWriter.class, outputName = "story"),
-                @Subagent(agentClass = AudienceEditor.class, outputName = "story"),
-                @Subagent(agentClass = StyleEditor.class, outputName = "story")
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = StyleEditor.class, outputName = "story")
         })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
@@ -68,9 +68,9 @@ public class DeclarativeAgentIT {
         @LoopAgent(
                 description = "Review the given story to ensure it aligns with the specified style",
                 outputName = "story", maxIterations = 5,
-                subagents = {
-                    @Subagent(agentClass = StyleScorer.class, outputName = "score"),
-                    @Subagent(agentClass = StyleEditor.class, outputName = "story")
+                subAgents = {
+                    @SubAgent(type = StyleScorer.class, outputName = "score"),
+                    @SubAgent(type = StyleEditor.class, outputName = "story")
             }
         )
         String write(@V("story") String story);
@@ -83,9 +83,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent(outputName = "story", subagents = {
-                @Subagent(agentClass = CreativeWriter.class, outputName = "story"),
-                @Subagent(agentClass = StyleReviewLoopAgent.class, outputName = "story")
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
         })
         ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
     }
@@ -107,10 +107,10 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent(outputName = "response", subagents = {
-                @Subagent(agentName = "medical", agentClass = MedicalExpert.class, outputName = "response"),
-                @Subagent(agentName = "technical", agentClass = TechnicalExpert.class, outputName = "response"),
-                @Subagent(agentName = "legal", agentClass = LegalExpert.class, outputName = "response")
+        @ConditionalAgent(outputName = "response", subAgents = {
+                @SubAgent(name = "medical", type = MedicalExpert.class, outputName = "response"),
+                @SubAgent(name = "technical", type = TechnicalExpert.class, outputName = "response"),
+                @SubAgent(name = "legal", type = LegalExpert.class, outputName = "response")
         })
         String askExpert(@V("request") String request);
 
@@ -132,9 +132,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent {
 
-        @SequenceAgent(outputName = "response", subagents = {
-                @Subagent(agentClass = CategoryRouter.class, outputName = "category"),
-                @Subagent(agentClass = ExpertsAgent.class, outputName = "response")
+        @SequenceAgent(outputName = "response", subAgents = {
+                @SubAgent(type = CategoryRouter.class, outputName = "category"),
+                @SubAgent(type = ExpertsAgent.class, outputName = "response")
         })
         ResultWithCognisphere<String> ask(@V("request") String request);
     }
@@ -153,9 +153,9 @@ public class DeclarativeAgentIT {
 
     public interface EveningPlannerAgent {
 
-        @ParallelAgent(outputName = "plans", subagents = {
-                @Subagent(agentClass = FoodExpert.class, outputName = "meals"),
-                @Subagent(agentClass = MovieExpert.class, outputName = "movies")
+        @ParallelAgent(outputName = "plans", subAgents = {
+                @SubAgent(type = FoodExpert.class, outputName = "meals"),
+                @SubAgent(type = MovieExpert.class, outputName = "movies")
         })
         List<EveningPlan> plan(@V("mood") String mood);
 
@@ -187,9 +187,9 @@ public class DeclarativeAgentIT {
 
     public interface SupervisorStoryCreator {
 
-        @SupervisorAgent(outputName = "story", responseStrategy = SupervisorResponseStrategy.LAST, subagents = {
-                @Subagent(agentClass = CreativeWriter.class, outputName = "story"),
-                @Subagent(agentClass = StyleReviewLoopAgent.class, outputName = "story")
+        @SupervisorAgent(outputName = "story", responseStrategy = SupervisorResponseStrategy.LAST, subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
         })
         ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
 

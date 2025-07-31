@@ -27,5 +27,5 @@ public @interface SequenceAgent {
 
     String outputName() default "";
 
-    Subagent[] subagents();
+    SubAgent[] subAgents();
 }

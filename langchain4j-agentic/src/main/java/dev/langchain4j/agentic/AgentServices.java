@@ -9,7 +9,7 @@ import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.Subagent;
+import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorChatModel;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AgentExecutor;
@@ -264,7 +264,7 @@ public class AgentServices {
     private static <T> T buildSequentialAgent(Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel) {
         SequenceAgent sequenceAgent = agentMethod.getAnnotation(SequenceAgent.class);
         var builder = sequenceBuilder(agentServiceClass)
-                .subAgents(createSubagents(sequenceAgent.subagents(), chatModel));
+                .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel));
 
         buildOutput(agentServiceClass, sequenceAgent.outputName(), builder);
 
@@ -274,7 +274,7 @@ public class AgentServices {
     private static <T> T buildLoopAgent(Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel) {
         LoopAgent loopAgent = agentMethod.getAnnotation(LoopAgent.class);
         var builder = loopBuilder(agentServiceClass)
-                .subAgents(createSubagents(loopAgent.subagents(), chatModel))
+                .subAgents(createSubagents(loopAgent.subAgents(), chatModel))
                 .maxIterations(loopAgent.maxIterations());
 
         buildOutput(agentServiceClass, loopAgent.outputName(), builder);
@@ -292,10 +292,10 @@ public class AgentServices {
 
         buildOutput(agentServiceClass, conditionalAgent.outputName(), builder);
 
-        for (Subagent subagent : conditionalAgent.subagents()) {
+        for (SubAgent subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
                 ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
-                return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.agentName());
+                return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.name());
             })
                     .map(AgentServices::cognispherePredicate)
                     .ifPresent(condition -> builder.subAgent(condition, createSubagent(subagent, chatModel)));
@@ -307,7 +307,7 @@ public class AgentServices {
     private static <T> T buildParallelAgent(Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel) {
         ParallelAgent parallelAgent = agentMethod.getAnnotation(ParallelAgent.class);
         var builder = parallelBuilder(agentServiceClass)
-                .subAgents(createSubagents(parallelAgent.subagents(), chatModel));
+                .subAgents(createSubagents(parallelAgent.subAgents(), chatModel));
 
         buildOutput(agentServiceClass, parallelAgent.outputName(), builder);
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Executor.class) &&
@@ -331,7 +331,7 @@ public class AgentServices {
                 .maxAgentsInvocations(supervisorAgent.maxAgentsInvocations())
                 .contextGenerationStrategy(supervisorAgent.contextStrategy())
                 .responseStrategy(supervisorAgent.responseStrategy())
-                .subAgents(createSubagents(supervisorAgent.subagents(), chatModel));
+                .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel));
 
         if (!supervisorAgent.outputName().isBlank()) {
             builder.outputName(supervisorAgent.outputName());
@@ -396,19 +396,19 @@ public class AgentServices {
         };
     }
 
-    private static List<AgentExecutor> createSubagents(Subagent[] subagents, ChatModel chatModel) {
-        return Stream.of(subagents)
+    private static List<AgentExecutor> createSubagents(SubAgent[] subAgents, ChatModel chatModel) {
+        return Stream.of(subAgents)
                 .map(subagent -> createSubagent(subagent, chatModel))
                 .toList();
     }
 
-    private static AgentExecutor createSubagent(Subagent subagent, ChatModel chatModel) {
-        AgentExecutor agentExecutor = createComposedAgentExecutor(subagent.agentClass(), chatModel);
+    private static AgentExecutor createSubagent(SubAgent subagent, ChatModel chatModel) {
+        AgentExecutor agentExecutor = createComposedAgentExecutor(subagent.type(), chatModel);
         if (agentExecutor != null) {
             return agentExecutor;
         }
 
-        return agentToExecutor((AgentInstance) AgentServices.agentBuilder(subagent.agentClass())
+        return agentToExecutor((AgentInstance) AgentServices.agentBuilder(subagent.type())
                 .chatModel(chatModel)
                 .outputName(subagent.outputName())
                 .build());

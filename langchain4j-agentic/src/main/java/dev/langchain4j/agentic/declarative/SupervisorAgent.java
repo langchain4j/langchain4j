@@ -29,7 +29,7 @@ public @interface SupervisorAgent {
 
     String outputName() default "";
 
-    Subagent[] subagents();
+    SubAgent[] subAgents();
 
     int maxAgentsInvocations() default 10;
 
