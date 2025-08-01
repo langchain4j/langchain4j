@@ -36,7 +36,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     private String agentsList;
 
     private SupervisorContextStrategy contextStrategy = SupervisorContextStrategy.CHAT_MEMORY;
-    private SupervisorResponseStrategy responseStrategy = SupervisorResponseStrategy.SCORED;
+    private SupervisorResponseStrategy responseStrategy = SupervisorResponseStrategy.LAST;
 
     private Function<Cognisphere, String> requestGenerator;
 
@@ -68,7 +68,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
                         .chatRequestTransformer(new Context.Summarizer(chatModel));
                 break;
-            case BOTH:
+            case CHAT_MEMORY_AND_SUMMARIZATION:
                 builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
                         .chatRequestTransformer(new Context.Summarizer(chatModel));
                 break;

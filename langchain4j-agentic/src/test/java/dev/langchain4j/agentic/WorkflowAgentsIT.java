@@ -343,6 +343,15 @@ public class WorkflowAgentsIT {
 
     @Test
     void parallel_agents_tests() {
+        test_parallel_agents(false);
+    }
+
+    @Test
+    void parallel_agents_with_default_executor_tests() {
+        test_parallel_agents(true);
+    }
+
+    private void test_parallel_agents(boolean useDefaultExecutor) {
         FoodExpert foodExpert = AgentServices.agentBuilder(FoodExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("meals")
@@ -353,10 +362,10 @@ public class WorkflowAgentsIT {
                 .outputName("movies")
                 .build();
 
-        EveningPlannerAgent eveningPlannerAgent = AgentServices.parallelBuilder(EveningPlannerAgent.class)
+        var builder = AgentServices.parallelBuilder(EveningPlannerAgent.class)
                 .subAgents(foodExpert, movieExpert)
                 .outputName("plans")
-                .executorService(Executors.newFixedThreadPool(2))
+
                 .output(cognisphere -> {
                     List<String> movies = cognisphere.readState("movies", List.of());
                     List<String> meals = cognisphere.readState("meals", List.of());
@@ -369,8 +378,13 @@ public class WorkflowAgentsIT {
                         moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
                     }
                     return moviesAndMeals;
-                })
-                .build();
+                });
+
+        if (!useDefaultExecutor) {
+            builder.executorService(Executors.newFixedThreadPool(2));
+        }
+
+        EveningPlannerAgent eveningPlannerAgent = builder.build();
 
         List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);

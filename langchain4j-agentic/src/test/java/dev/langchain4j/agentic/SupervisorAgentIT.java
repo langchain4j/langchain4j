@@ -84,6 +84,7 @@ public class SupervisorAgentIT {
 
         SupervisorAgent askToExpert = AgentServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
+                .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .subAgents(requestClassifierAgent, medicalExpert, legalExpert, technicalExpert)
                 .build();
 
@@ -215,7 +216,7 @@ public class SupervisorAgentIT {
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(value = "A money exchanger that converts a given amount of money from the original to the target currency",
+        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputName = "exchange")
         Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency);
     }
@@ -255,7 +256,7 @@ public class SupervisorAgentIT {
             exchangeRatesToUSD.put("CAN", 0.8);
         }
 
-        @Agent(value = "A money exchanger that converts a given amount of money from the original to the target currency",
+        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputName = "exchange")
         public Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency) {
             Double exchangeRate1 = exchangeRatesToUSD.get(originalCurrency);
@@ -318,6 +319,7 @@ public class SupervisorAgentIT {
 
         SupervisorAgent bankSupervisor = AgentServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
+                .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .subAgents(withdrawAgent, creditAgent, exchange)
                 .build();

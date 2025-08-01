@@ -32,10 +32,11 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
+        String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentSpecification agentSpecification = agent instanceof AgentSpecsProvider spec ?
                 new MethodAgentSpecification(agenticMethod, name, spec.description(), spec.outputName(),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentSpecification.fromMethodAndSpec(agenticMethod, name, annotation.value(), annotation.outputName());
+                AgentSpecification.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName());
         return new AgentExecutor(agentSpecification, agent);
     }
 

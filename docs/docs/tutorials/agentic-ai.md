@@ -45,7 +45,11 @@ CreativeWriter creativeWriter = AgentServices
         .build();
 ```
 
-The other main difference with a plain AI service is the presence of the `outputName` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system.
+The other main difference with a plain AI service is the presence of the `outputName` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system. Alternatively, the output name can be also declared directly in the `@Agent` annotation instead of programmatically like in this example, so that it could be omitted in the code and added here.
+
+```java
+@Agent(outputName = "story", description = "Generates a story based on the given topic")
+```
 
 The `AgentServices` class provides a set of static factory methods to create and define all kind of agents made available by the `langchain4j-agentic` framework.
 
@@ -82,7 +86,7 @@ public interface AudienceEditor {
 
 and with a very similar `StyleEditor` doing the same job but for a specific style.
 
-Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `Cognisphere` shared variables having those names. This allows the agent to access the output of previous agents in the workflow.
+Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `Cognisphere` shared variables having those names. This allows the agent to access the output of previous agents in the workflow. If the agent class is compiled with the `-parameters` option enabled, thus retaining at runtime the names of the method parameters, the `@V` annotation can be omitted, and the variable names will be automatically inferred from the parameter names.
 
 At this point it is possible to create a sequential workflow that combines these three agents, where the output of the `CreativeWriter` is passed as input to both the `AudienceEditor` and `StyleEditor`, and the final output is the edited story.
 
@@ -299,7 +303,7 @@ EveningPlannerAgent eveningPlannerAgent = AgentServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `Cognisphere` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `Cognisphere`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise the Stream's Fork/Join Pool will be used by default.
+Here the `output` function of the `Cognisphere` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `Cognisphere`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Conditional workflow
 
@@ -444,7 +448,7 @@ public interface ExpertsAgent {
 
     @ConditionalAgent(outputName = "response", subAgents = {
             @SubAgent(name = "medical", type = MedicalExpert.class, outputName = "response"),
-            @SubAgent(mame = "technical", type = TechnicalExpert.class, outputName = "response"),
+            @SubAgent(name = "technical", type = TechnicalExpert.class, outputName = "response"),
             @SubAgent(name = "legal", type = LegalExpert.class, outputName = "response")
     })
     String askExpert(@V("request") String request);
@@ -472,7 +476,7 @@ In this case every subagent is also provided with an explicit name, so that it c
 
 All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
 
-To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryID` to its signature.
+To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
 
 ```java
 public interface MedicalExpertWithMemory {
@@ -552,10 +556,13 @@ More in general the context provided to an agent can be any function of the `Cog
 Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
 
 ```
-"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"\nYou are a legal expert.\nAnalyze the following user request under a legal point of view and provide the best possible answer.\nThe user request is Should I sue my neighbor who caused this damage?.\n"
+"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
+You are a legal expert.
+Analyze the following user request under a legal point of view and provide the best possible answer.
+The user request is Should I sue my neighbor who caused this damage?."
 ```
 
-The summerized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
+The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
 
 ```java
 LegalExpertWithMemory legalExpert = AgentServices
@@ -571,7 +578,7 @@ By doing so it internally uses the `ContextSummarizer` agent discussed before, e
 
 ### Cognisphere registry and persistence
 
-The `Cognisphere` is a transient data structure that is created and used during the execution of an agentic system. For stateless executions, when no memory is used, the `Cognisphere` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
+The `Cognisphere` is a transient data structure that is created and used during the execution of an agentic system. There is a single `Cognisphere` per user per agentic system. For stateless executions, when no memory is used, the `Cognisphere` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
 
 Conversely, when the agentic system uses a memory, the `Cognisphere` is saved in an internal registry. In this case the `Cognisphere` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `Cognisphere` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `CognisphereAccess` so it is possible to call the `evict` method on it, passing the ID of the `Cognisphere` that has to be removed from the registry.:
 
@@ -630,13 +637,93 @@ public interface ExchangeAgent {
 }
 ```
 
-It is now possible to create instances of these agents as usual using the `AgentServices.agentBuilder()` method, and then use them as subagents of the supervisor agent.
+All these agents use external tools to perform their tasks, specifically a `BankTool` that can be used to withdraw or credit money from users' accounts
 
 ```java
+public class BankTool {
+
+    private final Map<String, Double> accounts = new HashMap<>();
+
+    void createAccount(String user, Double initialBalance) {
+        if (accounts.containsKey(user)) {
+            throw new RuntimeException("Account for user " + user + " already exists");
+        }
+        accounts.put(user, initialBalance);
+    }
+
+    double getBalance(String user) {
+        Double balance = accounts.get(user);
+        if (balance == null) {
+            throw new RuntimeException("No balance found for user " + user);
+        }
+        return balance;
+    }
+
+    @Tool("Credit the given user with the given amount and return the new balance")
+    Double credit(@P("user name") String user, @P("amount") Double amount) {
+        Double balance = accounts.get(user);
+        if (balance == null) {
+            throw new RuntimeException("No balance found for user " + user);
+        }
+        Double newBalance = balance + amount;
+        accounts.put(user, newBalance);
+        return newBalance;
+    }
+
+    @Tool("Withdraw the given amount with the given user and return the new balance")
+    Double withdraw(@P("user name") String user, @P("amount") Double amount) {
+        Double balance = accounts.get(user);
+        if (balance == null) {
+            throw new RuntimeException("No balance found for user " + user);
+        }
+        Double newBalance = balance - amount;
+        accounts.put(user, newBalance);
+        return newBalance;
+    }
+}
+```
+
+and an `ExchangeTool` that can be used to exchange money from one currency to another, perhaps using a REST service providing the most updated exchange rate.
+
+```java
+public class ExchangeTool {
+
+    @Tool("Exchange the given amount of money from the original to the target currency")
+    Double exchange(@P("originalCurrency") String originalCurrency, @P("amount") Double amount, @P("targetCurrency") String targetCurrency) {
+        // Invoke a REST service to get the exchange rate
+    }
+}
+```
+
+It is now possible to create instances of these agents as usual using the `AgentServices.agentBuilder()` method, configure them to use these tools, and then use them as subagents of the supervisor agent.
+
+```java
+BankTool bankTool = new BankTool();
+bankTool.createAccount("Mario", 1000.0);
+bankTool.createAccount("Georgios", 1000.0);
+
+WithdrawAgent withdrawAgent = AgentServices
+        .agentBuilder(WithdrawAgent.class)
+        .chatModel(BASE_MODEL)
+        .tools(bankTool)
+        .build();
+CreditAgent creditAgent = AgentServices
+        .agentBuilder(CreditAgent.class)
+        .chatModel(BASE_MODEL)
+        .tools(bankTool)
+        .build();
+
+ExchangeAgent exchange = AgentServices
+        .agentBuilder(ExchangeAgent.class)
+        .chatModel(BASE_MODEL)
+        .tools(new ExchangeTool())
+        .build();
+
 SupervisorAgent bankSupervisor = AgentServices
         .supervisorBuilder()
         .chatModel(PLANNER_MODEL)
         .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+        .responseStrategy(SupervisorResponseStrategy.SUMMARY)
         .build();
 ```
 
@@ -679,27 +766,47 @@ The last invocation is a special one that signals the supervisor believes the ta
 
 In many cases, like this one, this summary is the final response that should be returned to the user, but not always. Suppose that you use the `SupervisorAgent` instead of a plain sequence workflow to create a story and edit it according to a given style and audience as in the very first example. In this case the user will be interested only in the final story, and not in a resume of the intermediate steps taken to create it.
 
-For this reason both the summary generated by the supervisor and the last response of the last invoked agent are passed, together with the original user request, to another agent that gives a score to the relevance of the 2 possible responses for the given request, and returns the one with the highest score. For instance, for the banking example, it could produce the following response scores:
+Returning the response generated by the last invoked agent, instead of the summary, is actually the most common scenario so this is also the default behavior of the supervisor agent. For this situation however returning the summary of all the performed transactions is more appropriate, so that the `SupervisorAgent` has been configured accordingly through that `responseStrategy` method.
+
+The next section discusses this and other possible customizations of the supervisor agent.
+
+### Supervisor design and customization
+
+More in general there could be cases where it is not possible to know in advance which of the two responses, the summary generated by the supervisor and the last response of the last invoked agent, is the most appropriate one to be returned. For these situation it has been made available a second agent that is passed with those two possible responses together with the original user request, and that scores them to decide which one fits better the request and then which one to return. 
+
+The `SupervisorResponseStrategy` enum make it possible to enable this scorer agent or to always return one of the two responses skipping the scoring process.
+
+```java
+public enum SupervisorResponseStrategy {
+    SCORED, SUMMARY, LAST
+}
+```
+
+As anticipated, the default behavior is `LAST` and the other strategy implementations can be configured on the supervisor agent using the `responseStrategy` method.
+
+```java
+AgentServices.supervisorBuilder()
+        .responseStrategy(SupervisorResponseStrategy.SCORED)
+        .build();
+```
+
+For instance using the `SCORED` strategy in the banking example, it could produce the following response scores:
 
 ```
 ResponseScore{finalResponse=0.3, summary=1.0}
 ```
 
-thus making the supervisor agent to return the summary as the final response to the user request. 
-
-### Supervisor design and customization
+thus making the supervisor agent to return the summary as the final response to the user request.
 
 The architecture of the supervisor agent as it has been described so far is shown in the following diagram:
 
 [![](/docs/static/img/supervisor.png)](/tutorials/agentic-ai)
 
-Given its generality and complexity, the supervisor agent offers a few customization points to make it a better fit for specific use cases.
-
-One of the key aspect is the information used by the supervisor to decide the next action to take. By default, the supervisor simply uses the local chat memory, but in some cases it can be useful to provide it with a more comprehensive context, generated by summarizing the conversations of its subagents, in a very similar way to what has been discussed in the section on context engineering, or even to combine both approaches at the same time. The 3 possibilities are represented by the following enum:
+The information used by the supervisor to decide the next action to take are another of its key aspect. By default, the supervisor simply uses the local chat memory, but in some cases it can be useful to provide it with a more comprehensive context, generated by summarizing the conversations of its subagents, in a very similar way to what has been discussed in the section on context engineering, or even to combine both approaches at the same time. The 3 possibilities are represented by the following enum:
 
 ```java
 public enum SupervisorContextStrategy {
-    CHAT_MEMORY, SUMMARIZATION, BOTH
+    CHAT_MEMORY, SUMMARIZATION, CHAT_MEMORY_AND_SUMMARIZATION
 }
 ```
 
@@ -708,22 +815,6 @@ that can be set when building the supervisor agent using the `contextGenerationS
 ```java
 AgentServices.supervisorBuilder()
         .contextGenerationStrategy(SupervisorContextStrategy.SUMMARIZATION)
-        .build();
-```
-
-Similarly, the approach used to decide which response to return to the user is by default to score the relevance of both the final response and the summary generated by the supervisor in relation to the original user request, and return the one with the highest score. However, in many cases it is possible to know in advance which of the two possible responses will be the most appropriate one, so the `SupervisorResponseStrategy` enum make it possible to skip this scoring phase and return directly that response.
-
-```java
-public enum SupervisorResponseStrategy {
-    SCORED, SUMMARY, LAST
-}
-```
-
-Even this strategy can be set when building the supervisor agent using the `responseStrategy` method:
-
-```java
-AgentServices.supervisorBuilder()
-        .responseStrategy(SupervisorResponseStrategy.SUMMARY)
         .build();
 ```
 

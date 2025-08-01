@@ -4,25 +4,26 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
-import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import java.lang.reflect.Proxy;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
 
 public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgentService<T>> implements ParallelAgentService<T> {
 
-    private BiConsumer<List<AgentExecutor>, Cognisphere> executor =
-            (agentExecutors, cognisphere) -> agentExecutors.stream().parallel().forEach(agentExecutor -> agentExecutor.invoke(cognisphere));;
+    private ExecutorService executorService;
 
     private ParallelAgentServiceImpl(Class<T> agentServiceClass) {
         super(agentServiceClass);
+    }
+
+    private static class DefaultExecutorHolder {
+        private static final ExecutorService DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
     }
 
     @Override
@@ -45,13 +46,27 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
 
         @Override
         protected Object doAgentAction(Cognisphere cognisphere) {
-            executor.accept(agentExecutors(), cognisphere);
+            parallelExecution(cognisphere);
             return result(cognisphere, output.apply(cognisphere));
         }
 
         @Override
         protected CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere) {
             return new ParallelInvocationHandler(cognisphere);
+        }
+
+        private void parallelExecution(Cognisphere cognisphere) {
+            ExecutorService executors = executorService != null ? executorService : DefaultExecutorHolder.DEFAULT_EXECUTOR;
+            var tasks = agentExecutors().stream()
+                    .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.invoke(cognisphere))
+                    .toList();
+            try {
+                for (Future<?> future : executors.invokeAll(tasks)) {
+                    future.get();
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -65,18 +80,7 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
 
     @Override
     public ParallelAgentServiceImpl<T> executorService(ExecutorService executorService) {
-        this.executor = (agentExecutors, cognisphere) -> {
-            var tasks = agentExecutors.stream()
-                    .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.invoke(cognisphere))
-                    .toList();
-            try {
-                for (Future<?> future : executorService.invokeAll(tasks)) {
-                    future.get();
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        };
+        this.executorService = executorService;
         return this;
     }
 }

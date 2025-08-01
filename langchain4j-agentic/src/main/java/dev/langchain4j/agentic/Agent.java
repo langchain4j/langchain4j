@@ -29,6 +29,14 @@ public @interface Agent {
     String value() default "";
 
     /**
+     * Description of the agent.
+     * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     *
+     * @return description of the agent.
+     */
+    String description() default "";
+
+    /**
      * Name of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.

@@ -39,6 +39,7 @@ import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 
 @Internal
+// TODO: Remove this class and reuse the one in langchain4j-core when it will be released with public modifier
 class JacksonChatMessageJsonCodec {
 
     static JsonMapper.Builder chatMessageJsonMapperBuilder() {
@@ -61,7 +62,6 @@ class JacksonChatMessageJsonCodec {
                 .addMixIn(Video.class, VideoMixin.class)
                 .addMixIn(PdfFileContent.class, PdfFileContentMixin.class)
                 .addMixIn(PdfFile.class, PdfFileMixin.class);
-
     }
 
     private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {

@@ -35,5 +35,5 @@ public @interface SupervisorAgent {
 
     SupervisorContextStrategy contextStrategy() default SupervisorContextStrategy.CHAT_MEMORY;
 
-    SupervisorResponseStrategy responseStrategy() default SupervisorResponseStrategy.SCORED;
+    SupervisorResponseStrategy responseStrategy() default SupervisorResponseStrategy.LAST;
 }

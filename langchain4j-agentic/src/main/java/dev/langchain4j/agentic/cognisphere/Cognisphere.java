@@ -46,6 +46,14 @@ public class Cognisphere {
         EPHEMERAL, REGISTERED, PERSISTENT
     }
     private final Kind kind;
+
+    /**
+     * This lock is used to ensure that the Cognisphere doesn't get concurrently modified when it is going to be persisted.
+     * The internal data structures of the Cognisphere are all thread-safe, so they don't need to be guarded by a read lock
+     * when accessed. In essence multiple changes are allowed at the same time, but it is not allowed to persist a
+     * Cognisphere that is not in a frozen state. That's why the read lock is acquired for the firsts and a write lock
+     * when the second happens.
+     */
     private transient ReadWriteLock lock = null;
 
     Cognisphere(Kind kind) {

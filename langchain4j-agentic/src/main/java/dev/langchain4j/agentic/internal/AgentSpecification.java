@@ -34,7 +34,8 @@ public interface AgentSpecification {
     static AgentSpecification fromMethod(AgentInstance agent, Method method) {
         Agent annotation = method.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        return fromMethodAndSpec(method, name, annotation.value(), agent.outputName());
+        String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
+        return fromMethodAndSpec(method, name, description, agent.outputName());
     }
 
     static AgentSpecification fromMethodAndSpec(Method method, String name, String description, String outputName) {
