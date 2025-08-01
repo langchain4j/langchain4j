@@ -2,7 +2,11 @@ package dev.langchain4j.model.watsonx;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
-
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankInputResult;
@@ -10,11 +14,6 @@ import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
 import com.ibm.watsonx.ai.rerank.RerankService;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
-import java.util.List;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class WatsonxScoringModelTest {
