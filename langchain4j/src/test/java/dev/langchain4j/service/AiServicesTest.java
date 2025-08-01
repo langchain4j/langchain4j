@@ -67,10 +67,11 @@ class AiServicesTest {
     }
 
     @Test
-    void test_hashCode() throws Exception {
+    void test_hashCode() {
         assertThat(assistant.hashCode())
                 .isNotZero()
                 .isEqualTo(assistant.hashCode())
+                .isEqualTo(System.identityHashCode(assistant))
                 .isNotEqualTo(AiServices.create(Assistant.class, chatModel).hashCode());
     }
 
