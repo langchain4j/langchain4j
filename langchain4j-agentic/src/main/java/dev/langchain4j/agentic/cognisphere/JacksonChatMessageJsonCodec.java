@@ -1,37 +1,48 @@
-package dev.langchain4j.data.message;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.data.video.Video;
-
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
+package dev.langchain4j.agentic.cognisphere;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-import static java.util.Collections.emptyList;
+
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.CustomMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.data.video.Video;
 
 @Internal
-public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
+// TODO: Remove this class and reuse the one in langchain4j-core when it will be released with public modifier
+class JacksonChatMessageJsonCodec {
 
-    public static JsonMapper.Builder chatMessageJsonMapperBuilder() {
+    static JsonMapper.Builder chatMessageJsonMapperBuilder() {
         return JsonMapper.builder()
                 .visibility(FIELD, ANY)
                 .addMixIn(ChatMessage.class, ChatMessageMixin.class)
@@ -53,50 +64,8 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
                 .addMixIn(PdfFile.class, PdfFileMixin.class);
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = chatMessageJsonMapperBuilder().build();
-
     private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {
     }.getType();
-
-    @Override
-    public ChatMessage messageFromJson(String json) {
-        try {
-            return OBJECT_MAPPER.readValue(json, ChatMessage.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public List<ChatMessage> messagesFromJson(String json) {
-        if (json == null) {
-            return List.of();
-        }
-        try {
-            List<ChatMessage> messages = OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.constructType(MESSAGE_LIST_TYPE));
-            return messages == null ? emptyList() : messages;
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public String messageToJson(ChatMessage message) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(message);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public String messagesToJson(List<ChatMessage> messages) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(messages);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @JsonInclude(NON_NULL)
     @JsonTypeInfo(use = NAME, include = EXISTING_PROPERTY, property = "type")
