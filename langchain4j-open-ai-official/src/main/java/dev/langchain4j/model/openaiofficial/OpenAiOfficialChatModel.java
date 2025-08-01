@@ -28,7 +28,6 @@ import java.util.Set;
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatModel {
 
     public OpenAiOfficialChatModel(Builder builder) {
-
         init(
                 builder.baseUrl,
                 builder.apiKey,
@@ -88,7 +87,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         // Unlike other LangChain4j modules, this doesn't use the `withRetry` method because the OpenAI SDK already has
         // retry logic included
-        ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
+        final var chatCompletion = OpenAiOfficialExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.chat().completions().create(chatCompletionCreateParams));
 
         OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                 OpenAiOfficialChatResponseMetadata.builder()
