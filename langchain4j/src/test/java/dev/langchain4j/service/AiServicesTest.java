@@ -72,6 +72,7 @@ class AiServicesTest {
                 .isNotZero()
                 .isEqualTo(assistant.hashCode())
                 .isEqualTo(System.identityHashCode(assistant))
+                .isEqualTo(System.identityHashCode(assistant))
                 .isNotEqualTo(AiServices.create(Assistant.class, chatModel).hashCode());
     }
 
