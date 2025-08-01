@@ -1,7 +1,6 @@
 package dev.langchain4j.model;
 
 public enum ModelProvider {
-
     ANTHROPIC,
     AMAZON_BEDROCK,
     GITHUB_MODELS,
@@ -11,5 +10,6 @@ public enum ModelProvider {
     MISTRAL_AI,
     OLLAMA,
     OPEN_AI,
+    WATSONX,
     OTHER
 }
