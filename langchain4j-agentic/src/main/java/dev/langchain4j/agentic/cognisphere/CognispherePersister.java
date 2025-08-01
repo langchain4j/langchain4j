@@ -7,14 +7,14 @@ public enum CognispherePersister {
     INSTANCE;
 
     CognispherePersister() {
-        setPersistenceProvider(loadPersistenceProvider());
+        setStore(loadStore());
     }
 
-    private static CognispherePersistenceProvider loadPersistenceProvider() {
-        ServiceLoader<CognispherePersistenceProvider> loader =
-                ServiceLoader.load(CognispherePersistenceProvider.class);
+    private static CognisphereStore loadStore() {
+        ServiceLoader<CognisphereStore> loader =
+                ServiceLoader.load(CognisphereStore.class);
 
-        for (CognispherePersistenceProvider provider : loader) {
+        for (CognisphereStore provider : loader) {
             return provider; // Return the first provider found
         }
         return null; // No provider found
@@ -23,7 +23,7 @@ public enum CognispherePersister {
     /**
      * Explicitly set a persistence provider.
      */
-    public static void setPersistenceProvider(CognispherePersistenceProvider provider) {
-        CognisphereRegistry.setPersistenceProvider(provider);
+    public static void setStore(CognisphereStore provider) {
+        CognisphereRegistry.setStore(provider);
     }
 }

@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentInstance;
@@ -29,18 +30,18 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
             super(SequentialAgentServiceImpl.this);
         }
 
-        private SequentialInvocationHandler(Cognisphere cognisphere) {
+        private SequentialInvocationHandler(DefaultCognisphere cognisphere) {
             super(SequentialAgentServiceImpl.this, cognisphere);
         }
 
         @Override
-        protected Object doAgentAction(Cognisphere cognisphere) {
+        protected Object doAgentAction(DefaultCognisphere cognisphere) {
             agentExecutors().forEach(agentExecutor -> agentExecutor.invoke(cognisphere));
             return result(cognisphere, output.apply(cognisphere));
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere) {
+        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new SequentialInvocationHandler(cognisphere);
         }
     }

@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentInstance;
@@ -40,22 +40,22 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
             super(ParallelAgentServiceImpl.this);
         }
 
-        private ParallelInvocationHandler(Cognisphere cognisphere) {
+        private ParallelInvocationHandler(DefaultCognisphere cognisphere) {
             super(ParallelAgentServiceImpl.this, cognisphere);
         }
 
         @Override
-        protected Object doAgentAction(Cognisphere cognisphere) {
+        protected Object doAgentAction(DefaultCognisphere cognisphere) {
             parallelExecution(cognisphere);
             return result(cognisphere, output.apply(cognisphere));
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere) {
+        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new ParallelInvocationHandler(cognisphere);
         }
 
-        private void parallelExecution(Cognisphere cognisphere) {
+        private void parallelExecution(DefaultCognisphere cognisphere) {
             ExecutorService executors = executorService != null ? executorService : DefaultExecutorHolder.DEFAULT_EXECUTOR;
             var tasks = agentExecutors().stream()
                     .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.invoke(cognisphere))

@@ -35,10 +35,10 @@ public interface CreativeWriter {
 
 It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when using it.
 
-It is now possible to build an instance of this agent using the `AgentServices.agentBuilder()` method, specifying the interface and the chat model to use. 
+It is now possible to build an instance of this agent using the `AgenticServices.agentBuilder()` method, specifying the interface and the chat model to use. 
 
 ```java
-CreativeWriter creativeWriter = AgentServices
+CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(myChatModel)
         .outputName("story")
@@ -51,7 +51,7 @@ The other main difference with a plain AI service is the presence of the `output
 @Agent(outputName = "story", description = "Generates a story based on the given topic")
 ```
 
-The `AgentServices` class provides a set of static factory methods to create and define all kind of agents made available by the `langchain4j-agentic` framework.
+The `AgenticServices` class provides a set of static factory methods to create and define all kind of agents made available by the `langchain4j-agentic` framework.
 
 ## Enter the Cognisphere
 
@@ -91,25 +91,25 @@ Note that the input arguments of this agent are annotated with a variable name. 
 At this point it is possible to create a sequential workflow that combines these three agents, where the output of the `CreativeWriter` is passed as input to both the `AudienceEditor` and `StyleEditor`, and the final output is the edited story.
 
 ```java
-CreativeWriter creativeWriter = AgentServices
+CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
         .outputName("story")
         .build();
 
-AudienceEditor audienceEditor = AgentServices
+AudienceEditor audienceEditor = AgenticServices
         .agentBuilder(AudienceEditor.class)
         .chatModel(BASE_MODEL)
         .outputName("story")
         .build();
 
-StyleEditor styleEditor = AgentServices
+StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
         .outputName("story")
         .build();
 
-UntypedAgent novelCreator = AgentServices
+UntypedAgent novelCreator = AgenticServices
         .sequenceBuilder()
         .subAgents(creativeWriter, audienceEditor, styleEditor)
         .outputName("story")
@@ -148,7 +148,7 @@ public interface NovelCreator {
 so that the `novelCreator` agent can be created and used as follows:
 
 ```java
-NovelCreator novelCreator = AgentServices
+NovelCreator novelCreator = AgenticServices
         .sequenceBuilder(NovelCreator.class)
         .subAgents(creativeWriter, audienceEditor, styleEditor)
         .outputName("story")
@@ -182,19 +182,19 @@ public interface StyleScorer {
 Then it is possible to use this agent in a loop with the `StyleEditor` one to iteratively improve the story until the score reaches a certain threshold, like 0.8, or until a maximum number of iterations is reached.
 
 ```java
-StyleEditor styleEditor = AgentServices
+StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
         .outputName("story")
         .build();
 
-StyleScorer styleScorer = AgentServices
+StyleScorer styleScorer = AgenticServices
         .agentBuilder(StyleScorer.class)
         .chatModel(BASE_MODEL)
         .outputName("score")
         .build();
 
-UntypedAgent styleReviewLoop = AgentServices
+UntypedAgent styleReviewLoop = AgenticServices
         .loopBuilder()
         .subAgents(styleScorer, styleEditor)
         .maxIterations(5)
@@ -217,13 +217,13 @@ public interface StyledWriter {
 implementing a more complex workflow that combines the story generation and style review process.
 
 ```java
-CreativeWriter creativeWriter = AgentServices
+CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
         .outputName("story")
         .build();
 
-StyledWriter styledWriter = AgentServices
+StyledWriter styledWriter = AgenticServices
         .sequenceBuilder(StyledWriter.class)
         .subAgents(creativeWriter, styleReviewLoop)
         .outputName("story")
@@ -265,22 +265,22 @@ public interface MovieExpert {
 }
 ```
 
-Since the work of the two experts is independent, it is possible to invoke them in parallel using the `AgentServices.parallelBuilder()` method, as it follows:
+Since the work of the two experts is independent, it is possible to invoke them in parallel using the `AgenticServices.parallelBuilder()` method, as it follows:
 
 ```java
-FoodExpert foodExpert = AgentServices
+FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
         .outputName("meals")
         .build();
 
-MovieExpert movieExpert = AgentServices
+MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
         .outputName("movies")
         .build();
 
-EveningPlannerAgent eveningPlannerAgent = AgentServices
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
         .executorService(Executors.newFixedThreadPool(2))
@@ -358,35 +358,35 @@ public interface ExpertRouterAgent {
 implementing a conditional workflow that invokes the appropriate agent based on the category of the user request.
 
 ```java
-CategoryRouter routerAgent = AgentServices
+CategoryRouter routerAgent = AgenticServices
         .agentBuilder(CategoryRouter.class)
         .chatModel(BASE_MODEL)
         .outputName("category")
         .build();
 
-MedicalExpert medicalExpert = AgentServices
+MedicalExpert medicalExpert = AgenticServices
         .agentBuilder(MedicalExpert.class)
         .chatModel(BASE_MODEL)
         .outputName("response")
         .build();
-LegalExpert legalExpert = AgentServices
+LegalExpert legalExpert = AgenticServices
         .agentBuilder(LegalExpert.class)
         .chatModel(BASE_MODEL)
         .outputName("response")
         .build();
-TechnicalExpert technicalExpert = AgentServices
+TechnicalExpert technicalExpert = AgenticServices
         .agentBuilder(TechnicalExpert.class)
         .chatModel(BASE_MODEL)
         .outputName("response")
         .build();
 
-UntypedAgent expertsAgent = AgentServices.conditionalBuilder()
+UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
         .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
         .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
         .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
         .build();
 
-ExpertRouterAgent expertRouterAgent = AgentServices
+ExpertRouterAgent expertRouterAgent = AgenticServices
         .sequenceBuilder(ExpertRouterAgent.class)
         .subAgents(routerAgent, expertsAgent)
         .outputName("response")
@@ -410,7 +410,7 @@ public interface EveningPlannerAgent {
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
-    @Executor
+    @ExecutorService
     static ExecutorService executor() {
         return Executors.newFixedThreadPool(2);
     }
@@ -431,10 +431,10 @@ public interface EveningPlannerAgent {
 
 In this case the static method annotated with `@Output` is used to define how to combine the outputs of the subagents into a single result, exactly in the same way how this has been done passing a function of the `Cognisphere` to the `output` method.
 
-Once this interface is defined, it is possible to create an instance of the `EveningPlannerAgent` using the `AgentServices.createAgenticSystem()` method, and then use it exactly as before.
+Once this interface is defined, it is possible to create an instance of the `EveningPlannerAgent` using the `AgenticServices.createAgenticSystem()` method, and then use it exactly as before.
 
 ```java
-EveningPlannerAgent eveningPlannerAgent = AgentServices
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL);
 List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
@@ -494,7 +494,7 @@ public interface MedicalExpertWithMemory {
 and set a memory provider when building the agent:
 
 ```java
-MedicalExpertWithMemory medicalExpert = AgentServices
+MedicalExpertWithMemory medicalExpert = AgenticServices
         .agentBuilder(MedicalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -542,7 +542,7 @@ public interface ContextSummarizer {
 Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
 
 ```java
-LegalExpertWithMemory legalExpert = AgentServices
+LegalExpertWithMemory legalExpert = AgenticServices
         .agentBuilder(LegalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -565,7 +565,7 @@ The user request is Should I sue my neighbor who caused this damage?."
 The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
 
 ```java
-LegalExpertWithMemory legalExpert = AgentServices
+LegalExpertWithMemory legalExpert = AgenticServices
         .agentBuilder(LegalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -586,13 +586,13 @@ Conversely, when the agentic system uses a memory, the `Cognisphere` is saved in
 agent.evict(cognisphereId);
 ```
 
-Both the `Cognisphere`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `Cognisphere` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `CognispherePersistenceProvider` interface. It is possible to set this persistence layer either programmatically:
+Both the `Cognisphere`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `Cognisphere` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `CognisphereStore` interface. It is possible to set this persistence layer either programmatically:
 
 ```java
-CognispherePersister.setPersistenceProvider(new MyCognispherePersistenceProvider());
+CognispherePersister.setStore(new MyCognisphereStore());
 ```
 
-or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.cognisphere.CognispherePersistenceProvider` containing the fully qualified name of the class implementing the `CognispherePersistenceProvider` interface.
+or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.cognisphere.CognisphereStore` containing the fully qualified name of the class implementing the `CognisphereStore` interface.
 
 ## Pure agentic AI
 
@@ -695,31 +695,31 @@ public class ExchangeTool {
 }
 ```
 
-It is now possible to create instances of these agents as usual using the `AgentServices.agentBuilder()` method, configure them to use these tools, and then use them as subagents of the supervisor agent.
+It is now possible to create instances of these agents as usual using the `AgenticServices.agentBuilder()` method, configure them to use these tools, and then use them as subagents of the supervisor agent.
 
 ```java
 BankTool bankTool = new BankTool();
 bankTool.createAccount("Mario", 1000.0);
 bankTool.createAccount("Georgios", 1000.0);
 
-WithdrawAgent withdrawAgent = AgentServices
+WithdrawAgent withdrawAgent = AgenticServices
         .agentBuilder(WithdrawAgent.class)
         .chatModel(BASE_MODEL)
         .tools(bankTool)
         .build();
-CreditAgent creditAgent = AgentServices
+CreditAgent creditAgent = AgenticServices
         .agentBuilder(CreditAgent.class)
         .chatModel(BASE_MODEL)
         .tools(bankTool)
         .build();
 
-ExchangeAgent exchange = AgentServices
+ExchangeAgent exchange = AgenticServices
         .agentBuilder(ExchangeAgent.class)
         .chatModel(BASE_MODEL)
         .tools(new ExchangeTool())
         .build();
 
-SupervisorAgent bankSupervisor = AgentServices
+SupervisorAgent bankSupervisor = AgenticServices
         .supervisorBuilder()
         .chatModel(PLANNER_MODEL)
         .subAgents(withdrawAgent, creditAgent, exchangeAgent)
@@ -785,7 +785,7 @@ public enum SupervisorResponseStrategy {
 As anticipated, the default behavior is `LAST` and the other strategy implementations can be configured on the supervisor agent using the `responseStrategy` method.
 
 ```java
-AgentServices.supervisorBuilder()
+AgenticServices.supervisorBuilder()
         .responseStrategy(SupervisorResponseStrategy.SCORED)
         .build();
 ```
@@ -813,7 +813,7 @@ public enum SupervisorContextStrategy {
 that can be set when building the supervisor agent using the `contextGenerationStrategy` method:
 
 ```java
-AgentServices.supervisorBuilder()
+AgenticServices.supervisorBuilder()
         .contextGenerationStrategy(SupervisorContextStrategy.SUMMARIZATION)
         .build();
 ```
@@ -840,18 +840,18 @@ public class ExchangeOperator {
 so that it can be used in the same way as the other subagents made available to the supervisor. 
 
 ```java
-WithdrawAgent withdrawAgent = AgentServices
+WithdrawAgent withdrawAgent = AgenticServices
         .agentBuilder(WithdrawAgent.class)
         .chatModel(BASE_MODEL)
         .tools(bankTool)
         .build();
-CreditAgent creditAgent = AgentServices
+CreditAgent creditAgent = AgenticServices
         .agentBuilder(CreditAgent.class)
         .chatModel(BASE_MODEL)
         .tools(bankTool)
         .build();
 
-SupervisorAgent bankSupervisor = AgentServices
+SupervisorAgent bankSupervisor = AgenticServices
         .supervisorBuilder()
         .chatModel(PLANNER_MODEL)
         .subAgents(withdrawAgent, creditAgent, new ExchangeOperator())
@@ -897,12 +897,12 @@ public interface AstrologyAgent {
 it is possible to create a `SupervisorAgent` that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as it follows:
 
 ```java
-AstrologyAgent astrologyAgent = AgentServices
+AstrologyAgent astrologyAgent = AgenticServices
         .agentBuilder(AstrologyAgent.class)
         .chatModel(BASE_MODEL)
         .build();
 
-HumanInTheLoop humanInTheLoop = AgentServices
+HumanInTheLoop humanInTheLoop = AgenticServices
         .humanInTheLoopBuilder()
         .description("An agent that asks the zodiac sign of the user")
         .outputName("sign")
@@ -913,7 +913,7 @@ HumanInTheLoop humanInTheLoop = AgentServices
         .responseReader(() -> System.console().readLine())
         .build();
 
-SupervisorAgent horoscopeAgent = AgentServices
+SupervisorAgent horoscopeAgent = AgenticServices
         .supervisorBuilder()
         .chatModel(PLANNER_MODEL)
         .subAgents(astrologyAgent, humanInTheLoop)
@@ -942,7 +942,7 @@ The `langchain4j-agentic` module provides a seamless integration with the [A2A](
 For instance if the `CreativeWriter` agent used in the first example was defined on a remote A2A server, it is possible to create an `A2ACreativeWriter` agent that can be used in the same way as a local agent, but invoking the remote one.
 
 ```java
-UntypedAgent creativeWriter = AgentServices
+UntypedAgent creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL)
         .inputNames("topic")
         .outputName("story")
@@ -964,7 +964,7 @@ public interface A2ACreativeWriter {
 so that it can be used in a more type-safe way, and the input names are automatically derived from method arguments.
 
 ```java
-A2ACreativeWriter creativeWriter = AgentServices
+A2ACreativeWriter creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
         .outputName("story")
         .build();

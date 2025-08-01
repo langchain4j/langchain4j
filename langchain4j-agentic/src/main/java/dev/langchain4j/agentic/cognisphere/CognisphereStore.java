@@ -7,7 +7,7 @@ import java.util.Set;
  * Service Provider Interface for Cognisphere persistence.
  * Implementations must provide ways to store and retrieve Cognisphere instances.
  */
-public interface CognispherePersistenceProvider {
+public interface CognisphereStore {
 
     /**
      * Saves or updates a Cognisphere instance.
@@ -15,7 +15,7 @@ public interface CognispherePersistenceProvider {
      * @param cognisphere the Cognisphere to persist
      * @return true if the operation was successful
      */
-    boolean save(Cognisphere cognisphere);
+    boolean save(DefaultCognisphere cognisphere);
 
     /**
      * Loads a Cognisphere by its ID.
@@ -23,7 +23,7 @@ public interface CognispherePersistenceProvider {
      * @param key the ID of the Cognisphere to load
      * @return an Optional containing the Cognisphere if found, empty otherwise
      */
-    Optional<Cognisphere> load(CognisphereKey key);
+    Optional<DefaultCognisphere> load(CognisphereKey key);
 
     /**
      * Deletes a Cognisphere by its ID.
@@ -34,9 +34,9 @@ public interface CognispherePersistenceProvider {
     boolean delete(CognisphereKey key);
 
     /**
-     * Gets all available Cognisphere IDs.
+     * Gets all available Cognisphere .
      *
-     * @return a Set of all Cognisphere IDs in the persistence store
+     * @return a Set of all Cognisphere keys in the persistence store
      */
-    Set<CognisphereKey> getAllIds();
+    Set<CognisphereKey> getAllKeys();
 }

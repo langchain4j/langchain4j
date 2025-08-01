@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.service.MemoryId;
@@ -82,7 +81,7 @@ public class AgentUtil {
         if (p.getAnnotation(MemoryId.class) != null) {
             return "@MemoryId";
         }
-        if (p.getType() == Cognisphere.class) {
+        if (Cognisphere.class.isAssignableFrom(p.getType())) {
             return "@Cognisphere";
         }
         return AgentSpecification.parameterName(p);
@@ -94,10 +93,10 @@ public class AgentUtil {
         for (AgentArgument arg : agentArguments) {
             String argName = arg.name();
             if (argName.equals("@MemoryId")) {
-                invocationArgs[i++] = cognisphere.id();
+                invocationArgs[i++] = cognisphere.memoryId();
                 continue;
             }
-            if (arg.type() == Cognisphere.class) {
+            if (arg.type().equals("@Cognisphere")) {
                 invocationArgs[i++] = cognisphere;
                 continue;
             }

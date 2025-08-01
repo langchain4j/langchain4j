@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereSerializer;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +10,10 @@ public class CognisphereJsonSerializationIT {
 
     private static final String COGNISPHERE_JSON = """
             {
-               "id":"1",
+               "key":{
+                  "agentId":"ExpertRouterAgentWithMemory@1",
+                  "memoryId":"1"
+               },
                "kind":"PERSISTENT",
                "state":{
                   "request":"I broke my leg, what should I do?",
@@ -19,14 +22,14 @@ public class CognisphereJsonSerializationIT {
                      "dev.langchain4j.agentic.Agents$RequestCategory":"MEDICAL"
                   }
                },
-               "agentsInvocations":{
+               "agentsCalls":{
                   "classify":[
                      {
                         "agentName":"classify",
                         "input":[
                            "I broke my leg, what should I do?"
                         ],
-                        "response":{
+                        "output":{
                            "dev.langchain4j.agentic.Agents$RequestCategory":"MEDICAL"
                         }
                      }
@@ -38,7 +41,7 @@ public class CognisphereJsonSerializationIT {
                            "1",
                            "I broke my leg, what should I do?"
                         ],
-                        "response":"BROKEN_LEG_RESPONSE"
+                        "output":"BROKEN_LEG_RESPONSE"
                      }
                   ],
                   "invoke":[
@@ -76,6 +79,9 @@ public class CognisphereJsonSerializationIT {
                         "toolExecutionRequests":[
             
                         ],
+                        "attributes":{
+            
+                        },
                         "type":"AI"
                      }
                   },
@@ -98,6 +104,9 @@ public class CognisphereJsonSerializationIT {
                         "toolExecutionRequests":[
             
                         ],
+                        "attributes":{
+            
+                        },
                         "type":"AI"
                      }
                   }
@@ -107,8 +116,8 @@ public class CognisphereJsonSerializationIT {
 
     @Test
     void cognisphere_serialization_test() {
-        Cognisphere cognisphere = CognisphereSerializer.fromJson(COGNISPHERE_JSON);
-        assertThat(cognisphere.id()).isEqualTo("1");
+        DefaultCognisphere cognisphere = CognisphereSerializer.fromJson(COGNISPHERE_JSON);
+        assertThat(cognisphere.memoryId()).isEqualTo("1");
 
         assertThat(cognisphere.readState("request")).isEqualTo("I broke my leg, what should I do?");
         assertThat(cognisphere.readState("response")).isEqualTo("BROKEN_LEG_RESPONSE");

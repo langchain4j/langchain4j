@@ -46,22 +46,22 @@ public class WorkflowAgentsIT {
 
     @Test
     void sequential_agents_tests() {
-        CreativeWriter creativeWriter = spy(AgentServices.agentBuilder(CreativeWriter.class)
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build());
 
-        AudienceEditor audienceEditor = spy(AgentServices.agentBuilder(AudienceEditor.class)
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build());
 
-        StyleEditor styleEditor = spy(AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build());
 
-        UntypedAgent novelCreator = AgentServices.sequenceBuilder()
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
                 .outputName("story")
                 .build();
@@ -82,14 +82,14 @@ public class WorkflowAgentsIT {
 
     @Test
     void sequential_agents_with_human_in_the_loop_tests() {
-        CreativeWriter creativeWriter = spy(AgentServices.agentBuilder(CreativeWriter.class)
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build());
 
         AtomicReference<String> request = new AtomicReference<>();
 
-        HumanInTheLoop humanInTheLoop = AgentServices.humanInTheLoopBuilder()
+        HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the audience for the story")
                 .inputName("topic")
                 .outputName("audience")
@@ -97,12 +97,12 @@ public class WorkflowAgentsIT {
                 .responseReader(() -> "young adults")
                 .build();
 
-        AudienceEditor audienceEditor = spy(AgentServices.agentBuilder(AudienceEditor.class)
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build());
 
-        UntypedAgent novelCreator = AgentServices.sequenceBuilder()
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, humanInTheLoop, audienceEditor)
                 .outputName("story")
                 .build();
@@ -122,28 +122,28 @@ public class WorkflowAgentsIT {
 
     @Test
     void loop_agents_tests() {
-        CreativeWriter creativeWriter = AgentServices.agentBuilder(CreativeWriter.class)
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleEditor styleEditor = AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleScorer styleScorer = AgentServices.agentBuilder(StyleScorer.class)
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(BASE_MODEL)
                 .outputName("score")
                 .build();
 
-        UntypedAgent styleReviewLoop = AgentServices.loopBuilder()
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
                 .build();
 
-        UntypedAgent styledWriter = AgentServices.sequenceBuilder()
+        UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, styleReviewLoop)
                 .outputName("story")
                 .build();
@@ -164,28 +164,28 @@ public class WorkflowAgentsIT {
 
     @Test
     void typed_loop_agents_tests() {
-        CreativeWriter creativeWriter = AgentServices.agentBuilder(CreativeWriter.class)
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleEditor styleEditor = AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleScorer styleScorer = AgentServices.agentBuilder(StyleScorer.class)
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(BASE_MODEL)
                 .outputName("score")
                 .build();
 
-        UntypedAgent styleReviewLoop = AgentServices.loopBuilder()
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
                 .build();
 
-        StyledWriter styledWriter = AgentServices.sequenceBuilder(StyledWriter.class)
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .outputName("story")
                 .build();
@@ -196,48 +196,48 @@ public class WorkflowAgentsIT {
 
         Cognisphere cognisphere = result.cognisphere();
         // Verify that an ephemeral cognisphere is correctly evicted from the registry after the call
-        assertThat(styledWriter.getCognisphere(cognisphere.id())).isNull();
+        assertThat(styledWriter.getCognisphere(cognisphere.memoryId())).isNull();
 
         assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
         assertThat(cognisphere.readState("style")).isEqualTo("comedy");
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.getAgentInvocations("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.getAgentInvocations("scoreStyle");
+        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).response()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 
     @Test
     void conditional_agents_tests() {
-        CategoryRouter routerAgent = AgentServices.agentBuilder(CategoryRouter.class)
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("category")
                 .build();
 
-        MedicalExpert medicalExpert = spy(AgentServices.agentBuilder(MedicalExpert.class)
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("response")
                 .build());
-        LegalExpert legalExpert = spy(AgentServices.agentBuilder(LegalExpert.class)
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("response")
                 .build());
-        TechnicalExpert technicalExpert = spy(AgentServices.agentBuilder(TechnicalExpert.class)
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("response")
                 .build());
 
-        UntypedAgent expertsAgent = AgentServices.conditionalBuilder()
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
                 .build();
 
-        ExpertRouterAgent expertRouterAgent = AgentServices.sequenceBuilder(ExpertRouterAgent.class)
+        ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputName("response")
                 .build();
@@ -249,41 +249,41 @@ public class WorkflowAgentsIT {
 
     @Test
     void memory_agents_tests() {
-        CategoryRouter routerAgent = spy(AgentServices.agentBuilder(CategoryRouter.class)
+        CategoryRouter routerAgent = spy(AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("category")
                 .build());
 
-        MedicalExpertWithMemory medicalExpert = spy(AgentServices.agentBuilder(MedicalExpertWithMemory.class)
+        MedicalExpertWithMemory medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
                 .build());
-        TechnicalExpertWithMemory technicalExpert = spy(AgentServices.agentBuilder(TechnicalExpertWithMemory.class)
+        TechnicalExpertWithMemory technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
                 .build());
-        LegalExpertWithMemory legalExpert = spy(AgentServices.agentBuilder(LegalExpertWithMemory.class)
+        LegalExpertWithMemory legalExpert = spy(AgenticServices.agentBuilder(LegalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .summarizedContext("medical", "technical")
                 .outputName("response")
                 .build());
 
-        UntypedAgent expertsAgent = AgentServices.conditionalBuilder()
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
-        ExpertRouterAgentWithMemory expertRouterAgent = AgentServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
+        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputName("response")
                 .build();
 
-        JsonInMemoryCognispherePersistenceProvider provider = new JsonInMemoryCognispherePersistenceProvider();
-        CognispherePersister.setPersistenceProvider(provider);
+        JsonInMemoryCognisphereStore store = new JsonInMemoryCognisphereStore();
+        CognispherePersister.setStore(store);
 
         String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
         System.out.println(response1);
@@ -291,8 +291,8 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere1 = expertRouterAgent.getCognisphere("1");
         assertThat(cognisphere1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
 
-        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
-        assertThat(provider.getLoadedIds()).isEmpty();
+        assertThat(store.getAllKeys()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
+        assertThat(store.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
         System.out.println(response2);
@@ -300,7 +300,7 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere2 = expertRouterAgent.getCognisphere("2");
         assertThat(cognisphere2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        assertThat(provider.getAllIds()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
+        assertThat(store.getAllKeys()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
 
         // Clear the in-memory registry to simulate a restart
         CognisphereRegistry.clearInMemory();
@@ -312,7 +312,7 @@ public class WorkflowAgentsIT {
         String legalResponse2 = expertRouterAgent.ask("2", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse2);
 
-        assertThat(provider.getLoadedIds()).isEqualTo(List.of("1", "2"));
+        assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
 
         assertThat(legalResponse1).contains("medical").doesNotContain("computer");
         assertThat(legalResponse2).contains("computer").doesNotContain("medical");
@@ -352,17 +352,17 @@ public class WorkflowAgentsIT {
     }
 
     private void test_parallel_agents(boolean useDefaultExecutor) {
-        FoodExpert foodExpert = AgentServices.agentBuilder(FoodExpert.class)
+        FoodExpert foodExpert = AgenticServices.agentBuilder(FoodExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("meals")
                 .build();
 
-        MovieExpert movieExpert = AgentServices.agentBuilder(MovieExpert.class)
+        MovieExpert movieExpert = AgenticServices.agentBuilder(MovieExpert.class)
                 .chatModel(BASE_MODEL)
                 .outputName("movies")
                 .build();
 
-        var builder = AgentServices.parallelBuilder(EveningPlannerAgent.class)
+        var builder = AgenticServices.parallelBuilder(EveningPlannerAgent.class)
                 .subAgents(foodExpert, movieExpert)
                 .outputName("plans")
 

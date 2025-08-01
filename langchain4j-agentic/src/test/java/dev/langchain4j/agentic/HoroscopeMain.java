@@ -24,11 +24,11 @@ public class HoroscopeMain {
     }
 
     public static void main(String[] args) {
-        AstrologyAgent astrologyAgent = AgentServices.agentBuilder(AstrologyAgent.class)
+        AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
                 .chatModel(BASE_MODEL)
                 .build();
 
-        HumanInTheLoop humanInTheLoop = AgentServices.humanInTheLoopBuilder()
+        HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the zodiac sign of the user")
                 .outputName("sign")
                 .requestWriter(request -> {
@@ -38,7 +38,7 @@ public class HoroscopeMain {
                 .responseReader(() -> System.console().readLine())
                 .build();
 
-        SupervisorAgent horoscopeAgent = AgentServices.supervisorBuilder()
+        SupervisorAgent horoscopeAgent = AgenticServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
                 .subAgents(astrologyAgent, humanInTheLoop)
                 .build();

@@ -4,21 +4,20 @@ import dev.langchain4j.Internal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
  * Singleton registry for managing Cognisphere instances.
  * Provides methods to register, retrieve, and manage Cognisphere objects.
- * Supports persistence through a pluggable persistence provider.
+ * Supports persistence through a pluggable store.
  */
 @Internal
 public enum CognisphereRegistry {
 
     INSTANCE;
 
-    private final Map<CognisphereKey, Cognisphere> inMemoryCognispheres = new ConcurrentHashMap<>();
-    private CognispherePersistenceProvider persistenceProvider;
+    private final Map<CognisphereKey, DefaultCognisphere> inMemoryCognispheres = new ConcurrentHashMap<>();
+    private CognisphereStore store;
 
     private final ThreadLocal<String> currentAgentId = new ThreadLocal<>();
 
@@ -39,80 +38,81 @@ public enum CognisphereRegistry {
     }
 
     /**
-     * Explicitly set a persistence provider.
+     * Explicitly set a store.
      */
-    static void setPersistenceProvider(CognispherePersistenceProvider provider) {
-        INSTANCE.internalSetPersistenceProvider(provider);
+    static void setStore(CognisphereStore store) {
+        INSTANCE.internalSetStore(store);
     }
 
-    private void internalSetPersistenceProvider(CognispherePersistenceProvider provider) {
+    private void internalSetStore(CognisphereStore store) {
         if (!inMemoryCognispheres.isEmpty()) {
-            throw new IllegalStateException("Cannot set a persistence provider on an already populated CognisphereRegistry.");
+            throw new IllegalStateException("Cannot set a store on an already populated CognisphereRegistry.");
         }
-        this.persistenceProvider = provider;
+        this.store = store;
     }
 
-    public static boolean hasPersistenceProvider() {
-        return INSTANCE.internalHasPersistenceProvider();
+    public static boolean hasStore() {
+        return INSTANCE.internalHasStore();
     }
 
-    private boolean internalHasPersistenceProvider() {
-        return persistenceProvider != null;
+    private boolean internalHasStore() {
+        return store != null;
     }
 
-    static void update(Cognisphere cognisphere) {
+    static void update(DefaultCognisphere cognisphere) {
         INSTANCE.internalUpdate(cognisphere);
     }
 
-    private void internalUpdate(Cognisphere cognisphere) {
-        if (hasPersistenceProvider()) {
-            persistenceProvider.save(cognisphere);
+    private void internalUpdate(DefaultCognisphere cognisphere) {
+        if (hasStore()) {
+            store.save(cognisphere);
         }
     }
 
-    public static Cognisphere get(Object id) {
+    public static DefaultCognisphere get(Object id) {
         return get(new CognisphereKey(INSTANCE.currentAgentId.get(), id));
     }
 
-    public static Cognisphere get(CognisphereKey key) {
+    public static DefaultCognisphere get(CognisphereKey key) {
         return INSTANCE.internalGet(key);
     }
 
-    private Cognisphere internalGet(CognisphereKey key) {
-        Cognisphere cognisphere = inMemoryCognispheres.get(key);
-        if (cognisphere == null && hasPersistenceProvider()) {
-            cognisphere = persistenceProvider.load(key).map(loaded -> {
-                inMemoryCognispheres.put(key, loaded);
-                return loaded;
-            }).orElse(null);
+    private DefaultCognisphere internalGet(CognisphereKey key) {
+        DefaultCognisphere cognisphere = inMemoryCognispheres.get(key);
+        if (cognisphere == null && hasStore()) {
+            cognisphere = store.load(key)
+                    .map(loaded -> {
+                        inMemoryCognispheres.put(key, loaded);
+                        return loaded;
+                    }).orElse(null);
         }
         return cognisphere;
     }
 
-    public static Cognisphere getOrCreate(CognisphereKey key) {
+    public static DefaultCognisphere getOrCreate(CognisphereKey key) {
         return INSTANCE.internalGetOrCreate(key);
     }
 
-    public Cognisphere internalGetOrCreate(CognisphereKey key) {
-        Cognisphere cognisphere = get(key);
+    public DefaultCognisphere internalGetOrCreate(CognisphereKey key) {
+        DefaultCognisphere cognisphere = get(key);
         if (cognisphere == null) {
-            cognisphere = new Cognisphere(key, hasPersistenceProvider() ? Cognisphere.Kind.PERSISTENT : Cognisphere.Kind.REGISTERED);
+            cognisphere = new DefaultCognisphere(key, hasStore() ? DefaultCognisphere.Kind.PERSISTENT : DefaultCognisphere.Kind.REGISTERED);
             register(cognisphere);
         }
         return cognisphere;
     }
 
-    public static Cognisphere createEphemeralCognisphere() {
+    public static DefaultCognisphere createEphemeralCognisphere() {
         return INSTANCE.internalCreateEphemeralCognisphere();
     }
 
-    private Cognisphere internalCreateEphemeralCognisphere() {
-        Cognisphere cognisphere = new Cognisphere(Cognisphere.Kind.EPHEMERAL);
+    private DefaultCognisphere internalCreateEphemeralCognisphere() {
+        DefaultCognisphere cognisphere = new DefaultCognisphere(DefaultCognisphere.Kind.EPHEMERAL);
         register(cognisphere);
         return cognisphere;
     }
 
-    private void register(Cognisphere cognisphere) {
+    private void register(DefaultCognisphere cognisphere) {
         inMemoryCognispheres.put(cognisphere.key(), cognisphere);
         update(cognisphere);
     }
@@ -123,8 +123,8 @@ public enum CognisphereRegistry {
 
     public boolean internalEvict(CognisphereKey key) {
         boolean removed = inMemoryCognispheres.remove(key) != null;
-        if (hasPersistenceProvider()) {
-            return persistenceProvider.delete(key) || removed;
+        if (hasStore()) {
+            return store.delete(key) || removed;
         }
         return removed;
     }
@@ -134,8 +134,8 @@ public enum CognisphereRegistry {
     }
 
     private Set<CognisphereKey> internalGetAllCognisphereKeys() {
-        if (hasPersistenceProvider()) {
-            return persistenceProvider.getAllIds();
+        if (hasStore()) {
+            return store.getAllKeys();
         }
         return getAllCognisphereKeysInMemory();
     }

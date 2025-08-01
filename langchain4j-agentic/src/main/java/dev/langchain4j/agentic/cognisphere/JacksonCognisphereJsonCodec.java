@@ -17,8 +17,8 @@ import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.cognisphere.Cognisphere.AgentMessage;
-import dev.langchain4j.agentic.cognisphere.Cognisphere.Kind;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.AgentMessage;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.Kind;
 import dev.langchain4j.agentic.internal.AgentCall;
 import dev.langchain4j.data.message.ChatMessage;
 
@@ -32,7 +32,7 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
     static JsonMapper.Builder cognisphereJsonMapperBuilder() {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
                 .addMixIn(CognisphereKey.class, CognisphereKeyMixin.class)
-                .addMixIn(Cognisphere.class, CognisphereMixin.class)
+                .addMixIn(DefaultCognisphere.class, CognisphereMixin.class)
                 .addMixIn(AgentMessage.class, AgentMessageMixin.class)
                 .addMixIn(AgentCall.class, AgentCallMixin.class);
     }
@@ -60,16 +60,16 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
     private static final ObjectMapper DESERIALIZER_MAPPER = cognisphereJsonMapperBuilder().build();
 
     @Override
-    public Cognisphere fromJson(String json) {
+    public DefaultCognisphere fromJson(String json) {
         try {
-            return DESERIALIZER_MAPPER.readValue(json, Cognisphere.class);
+            return DESERIALIZER_MAPPER.readValue(json, DefaultCognisphere.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to deserialize Cognisphere from JSON", e);
         }
     }
 
     @Override
-    public String toJson(Cognisphere cognisphere) {
+    public String toJson(DefaultCognisphere cognisphere) {
         try {
             return SERIALIZER_MAPPER.writeValueAsString(cognisphere);
         } catch (JsonProcessingException e) {
@@ -82,7 +82,7 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
         @JsonCreator
         public CognisphereKeyMixin(
                 @JsonProperty("agentId") String agentId,
-                @JsonProperty("id") Object id) {
+                @JsonProperty("memoryId") Object memoryId) {
         }
     }
 
@@ -110,7 +110,7 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
         public AgentCallMixin(
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("input") Object[] input,
-                @JsonProperty("response") Object response) {
+                @JsonProperty("output") Object output) {
         }
     }
 

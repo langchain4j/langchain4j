@@ -2,8 +2,9 @@ package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereKey;
-import dev.langchain4j.agentic.cognisphere.CognispherePersistenceProvider;
+import dev.langchain4j.agentic.cognisphere.CognisphereStore;
 import dev.langchain4j.agentic.cognisphere.CognisphereSerializer;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,22 +12,22 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class JsonInMemoryCognispherePersistenceProvider implements CognispherePersistenceProvider {
+public class JsonInMemoryCognisphereStore implements CognisphereStore {
 
     private final Map<CognisphereKey, String> jsonCognispheres = new HashMap<>();
     private final List<Object> loadedIds = new ArrayList<>();
 
     @Override
-    public boolean save(Cognisphere cognisphere) {
-        jsonCognispheres.put(cognisphere.key(), CognisphereSerializer.toJson(cognisphere));
+    public boolean save(DefaultCognisphere cognisphere) {
+        jsonCognispheres.put(cognisphere.key(), CognisphereSerializer.toJson((DefaultCognisphere) cognisphere));
         return true;
     }
 
     @Override
-    public Optional<Cognisphere> load(CognisphereKey key) {
+    public Optional<DefaultCognisphere> load(CognisphereKey key) {
         return Optional.ofNullable(jsonCognispheres.get(key))
                 .map(s -> {
-                    loadedIds.add(key.id());
+                    loadedIds.add(key.memoryId());
                     return CognisphereSerializer.fromJson(s);
                 });
     }
@@ -37,7 +38,7 @@ public class JsonInMemoryCognispherePersistenceProvider implements CognispherePe
     }
 
     @Override
-    public Set<CognisphereKey> getAllIds() {
+    public Set<CognisphereKey> getAllKeys() {
         return jsonCognispheres.keySet();
     }
 

@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.carrentalassistant;
 
-import dev.langchain4j.agentic.AgentServices;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.carrentalassistant.domain.CustomerInfo;
 import dev.langchain4j.agentic.carrentalassistant.domain.Emergencies;
@@ -41,24 +41,24 @@ public class AssistantMain {
     }
 
     private static CarRentalAssistant createAssistant() {
-        CustomerInfoExtractionService customerInfoExtraction = AgentServices.agentBuilder(CustomerInfoExtractionService.class)
+        CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(CustomerInfoExtractionService.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("customerInfo")
                 .build();
 
-        TowingAgentService towingAgentService = AgentServices.agentBuilder(TowingAgentService.class)
+        TowingAgentService towingAgentService = AgenticServices.agentBuilder(TowingAgentService.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("towingResponse")
                 .build();
 
-        ResponseGeneratorService responseGeneratorService = AgentServices.agentBuilder(ResponseGeneratorService.class)
+        ResponseGeneratorService responseGeneratorService = AgenticServices.agentBuilder(ResponseGeneratorService.class)
                 .chatModel(BASE_MODEL)
                 .outputName("response")
                 .build();
 
-        return AgentServices.sequenceBuilder(CarRentalAssistant.class)
+        return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
                 .beforeCall(cognisphere -> {
                     if (cognisphere.readState("customerInfo") == null) {
                         cognisphere.writeState("customerInfo", new CustomerInfo());
@@ -70,33 +70,33 @@ public class AssistantMain {
     }
 
     private static UntypedAgent emergencyService() {
-        EmergencyExtractorService emergencyExtractor = AgentServices.agentBuilder(EmergencyExtractorService.class)
+        EmergencyExtractorService emergencyExtractor = AgenticServices.agentBuilder(EmergencyExtractorService.class)
                 .chatModel(BASE_MODEL)
                 .outputName("emergencies")
                 .build();
 
-        EmergencyResponseService emergencyResponseService = AgentServices.agentBuilder(EmergencyResponseService.class)
+        EmergencyResponseService emergencyResponseService = AgenticServices.agentBuilder(EmergencyResponseService.class)
                 .chatModel(BASE_MODEL)
                 .outputName("emergencyResponse")
                 .build();
 
-        FireAgentService fireAgent = AgentServices.agentBuilder(FireAgentService.class)
+        FireAgentService fireAgent = AgenticServices.agentBuilder(FireAgentService.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("fireResponse")
                 .build();
-        MedicalAgentService medicalAgent = AgentServices.agentBuilder(MedicalAgentService.class)
+        MedicalAgentService medicalAgent = AgenticServices.agentBuilder(MedicalAgentService.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("medicalResponse")
                 .build();
-        PoliceAgentService policeAgent = AgentServices.agentBuilder(PoliceAgentService.class)
+        PoliceAgentService policeAgent = AgenticServices.agentBuilder(PoliceAgentService.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("policeResponse")
                 .build();
 
-        UntypedAgent emergencyExperts = AgentServices.conditionalBuilder()
+        UntypedAgent emergencyExperts = AgenticServices.conditionalBuilder()
                 .beforeCall(cognisphere -> {
                     Emergencies emergencies = (Emergencies) cognisphere.readState("emergencies");
                     writeEmergency(cognisphere, emergencies.getFire(), "fire");
@@ -108,7 +108,7 @@ public class AssistantMain {
                 .subAgents( cognisphere -> cognisphere.hasState("policeEmergency"), policeAgent)
                 .build();
 
-        return AgentServices.sequenceBuilder()
+        return AgenticServices.sequenceBuilder()
                 .subAgents(emergencyExtractor, emergencyExperts, emergencyResponseService)
                 .outputName("emergencyResponse")
                 .build();

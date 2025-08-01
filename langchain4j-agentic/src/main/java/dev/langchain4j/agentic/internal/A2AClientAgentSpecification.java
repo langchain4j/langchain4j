@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.UntypedAgent;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
@@ -55,7 +56,7 @@ public class A2AClientAgentSpecification implements AgentSpecification {
     @Override
     public Object[] toInvocationArguments(Cognisphere cognisphere) {
         return isUntyped() ?
-                new Object[] { cognisphere.getState() } :
+                new Object[] { cognisphere.state() } :
                 Stream.of(inputNames).map(cognisphere::readState).toArray();
     }
 

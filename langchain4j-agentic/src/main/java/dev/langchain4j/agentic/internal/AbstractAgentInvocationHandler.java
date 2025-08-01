@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
 import dev.langchain4j.agentic.cognisphere.CognisphereKey;
 import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
@@ -24,14 +25,14 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
 
     private final Consumer<Cognisphere> beforeCall;
 
-    private final Cognisphere cognisphere;
+    private final DefaultCognisphere cognisphere;
     private final String agentId;
 
     protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService) {
         this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, Cognisphere cognisphere) {
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultCognisphere cognisphere) {
         this.agentServiceClass = workflowService.agentServiceClass;
         this.outputName = workflowService.outputName;
         this.beforeCall = workflowService.beforeCall;
@@ -40,7 +41,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
     }
 
     @Override
-    public CognisphereOwner withCognisphere(final Cognisphere cognisphere) {
+    public CognisphereOwner withCognisphere(DefaultCognisphere cognisphere) {
         return (CognisphereOwner) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentInstance.class, CognisphereOwner.class},
@@ -51,7 +52,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
     public Object invoke(Object proxy, Method method, Object[] args) {
         if (method.getDeclaringClass() == CognisphereOwner.class) {
             return switch (method.getName()) {
-                case "withCognisphere" -> withCognisphere((Cognisphere) args[0]);
+                case "withCognisphere" -> withCognisphere((DefaultCognisphere) args[0]);
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on CognisphereOwner class : " + method.getName());
@@ -83,7 +84,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
         return executeAgentMethod(currentCognisphere(method, args), method, args);
     }
 
-    private Object executeAgentMethod(Cognisphere cognisphere, Method method, Object[] args) {
+    private Object executeAgentMethod(DefaultCognisphere cognisphere, Method method, Object[] args) {
         writeCognisphereState(cognisphere, method, args);
         beforeCall.accept(cognisphere);
 
@@ -105,7 +106,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
         return this.cognisphere == null;
     }
 
-    private static void writeCognisphereState(Cognisphere cognisphere, Method method, Object[] args) {
+    private static void writeCognisphereState(DefaultCognisphere cognisphere, Method method, Object[] args) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             cognisphere.writeStates((Map<String, Object>) args[0]);
         } else {
@@ -118,7 +119,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
         }
     }
 
-    private Cognisphere currentCognisphere(Method method, Object[] args) {
+    private DefaultCognisphere currentCognisphere(Method method, Object[] args) {
         if (cognisphere != null) {
             return cognisphere;
         }
@@ -139,7 +140,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
         return null;
     }
 
-    protected Object result(Cognisphere cognisphere, Object result) {
+    protected Object result(DefaultCognisphere cognisphere, Object result) {
         if (outputName != null) {
             if (result != null) {
                 cognisphere.writeState(outputName, result);
@@ -151,7 +152,7 @@ public abstract class AbstractAgentInvocationHandler implements CognisphereOwner
         return result;
     }
 
-    protected abstract Object doAgentAction(Cognisphere cognisphere);
+    protected abstract Object doAgentAction(DefaultCognisphere cognisphere);
 
-    protected abstract CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere);
+    protected abstract CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere);
 }

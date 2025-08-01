@@ -69,20 +69,20 @@ public class SupervisorAgentIT {
     void agents_system_test() {
         // All agents are registered in the AgentsSystem, which internally uses a planner agent that can invoke other agents
 
-        RequestClassifierAgent requestClassifierAgent = AgentServices.agentBuilder(RequestClassifierAgent.class)
+        RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
                 .chatModel(BASE_MODEL)
                 .build();
-        MedicalExpert medicalExpert = AgentServices.agentBuilder(MedicalExpert.class)
+        MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(BASE_MODEL)
                 .build();
-        LegalExpert legalExpert = AgentServices.agentBuilder(LegalExpert.class)
+        LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(BASE_MODEL)
                 .build();
-        TechnicalExpert technicalExpert = AgentServices.agentBuilder(TechnicalExpert.class)
+        TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(BASE_MODEL)
                 .build();
 
-        SupervisorAgent askToExpert = AgentServices.supervisorBuilder()
+        SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .subAgents(requestClassifierAgent, medicalExpert, legalExpert, technicalExpert)
@@ -187,16 +187,16 @@ public class SupervisorAgentIT {
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        WithdrawAgent withdrawAgent = AgentServices.agentBuilder(WithdrawAgent.class)
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
                 .chatModel(BASE_MODEL)
                 .tools(bankTool)
                 .build();
-        CreditAgent creditAgent = AgentServices.agentBuilder(CreditAgent.class)
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
                 .chatModel(BASE_MODEL)
                 .tools(bankTool)
                 .build();
 
-        SupervisorAgent bankSupervisor = AgentServices.supervisorBuilder()
+        SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -295,11 +295,11 @@ public class SupervisorAgentIT {
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        WithdrawAgent withdrawAgent = AgentServices.agentBuilder(WithdrawAgent.class)
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
                 .chatModel(BASE_MODEL)
                 .tools(bankTool)
                 .build();
-        CreditAgent creditAgent = AgentServices.agentBuilder(CreditAgent.class)
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
                 .chatModel(BASE_MODEL)
                 .tools(bankTool)
                 .build();
@@ -308,7 +308,7 @@ public class SupervisorAgentIT {
 
         if (fullyAI) {
             // Using an AI agent
-            exchange = AgentServices.agentBuilder(ExchangeAgent.class)
+            exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
                     .chatModel(BASE_MODEL)
                     .tools(new ExchangeTool())
                     .build();
@@ -317,7 +317,7 @@ public class SupervisorAgentIT {
             exchange = new ExchangeOperator();
         }
 
-        SupervisorAgent bankSupervisor = AgentServices.supervisorBuilder()
+        SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)

@@ -1,4 +1,4 @@
 package dev.langchain4j.agentic.cognisphere;
 
-public record CognisphereKey(String agentId, Object id) {
+public record CognisphereKey(String agentId, Object memoryId) {
 }

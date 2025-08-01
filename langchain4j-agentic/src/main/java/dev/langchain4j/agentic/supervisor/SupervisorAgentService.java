@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import java.util.List;
 import java.util.function.Function;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.model.chat.ChatModel;
 

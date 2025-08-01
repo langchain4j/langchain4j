@@ -37,22 +37,22 @@ public class SupervisorAndWorkflowAgentsIT {
     }
 
     void supervisor_with_composite_agents(boolean typedSupervisor) {
-        CreativeWriter creativeWriter = AgentServices.agentBuilder(CreativeWriter.class)
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleEditor styleEditor = AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleScorer styleScorer = AgentServices.agentBuilder(StyleScorer.class)
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(BASE_MODEL)
                 .outputName("score")
                 .build();
 
-        StyleReviewLoop styleReviewLoop = AgentServices.loopBuilder(StyleReviewLoop.class)
+        StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
                 .outputName("story")
                 .maxIterations(5)
@@ -62,7 +62,7 @@ public class SupervisorAndWorkflowAgentsIT {
         ResultWithCognisphere<String> result;
 
         if (typedSupervisor) {
-            SupervisorStyledWriter styledWriter = AgentServices.supervisorBuilder(SupervisorStyledWriter.class)
+            SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriter.class)
                     .chatModel(PLANNER_MODEL)
                     .requestGenerator(cognisphere -> "Write a story about " + cognisphere.readState("topic") + " in the style of a " + cognisphere.readState("style"))
                     .responseStrategy(SupervisorResponseStrategy.LAST)
@@ -74,7 +74,7 @@ public class SupervisorAndWorkflowAgentsIT {
             result = styledWriter.write("dragons and wizards", "comedy");
 
         } else {
-            SupervisorAgent styledWriter = AgentServices.supervisorBuilder()
+            SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
                     .chatModel(PLANNER_MODEL)
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
@@ -94,11 +94,11 @@ public class SupervisorAndWorkflowAgentsIT {
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.getAgentInvocations("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.getAgentInvocations("scoreStyle");
+        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).response()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 }

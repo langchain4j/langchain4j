@@ -12,6 +12,6 @@ public record UntypedAgentSpecification(Method method, String name, String descr
 
     @Override
     public Object[] toInvocationArguments(Cognisphere cognisphere) {
-        return new Object[] { cognisphere.getState() };
+        return new Object[] { cognisphere.state() };
     }
 }

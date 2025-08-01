@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 
 public record AgentExecutor(AgentSpecification agentSpecification, Object agent) {
 
@@ -8,7 +8,7 @@ public record AgentExecutor(AgentSpecification agentSpecification, Object agent)
         return agentSpecification.name();
     }
 
-    public Object invoke(Cognisphere cognisphere) {
+    public Object invoke(DefaultCognisphere cognisphere) {
         Object invokedAgent = agent instanceof CognisphereOwner co ? co.withCognisphere(cognisphere) : agent;
         Object[] args = agentSpecification.toInvocationArguments(cognisphere);
 

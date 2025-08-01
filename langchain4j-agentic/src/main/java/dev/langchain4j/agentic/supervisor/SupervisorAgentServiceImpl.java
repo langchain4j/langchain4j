@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.supervisor;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
@@ -82,15 +83,15 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
             super(SupervisorAgentServiceImpl.this);
         }
 
-        public SupervisorInvocationHandler(Cognisphere cognisphere) {
+        public SupervisorInvocationHandler(DefaultCognisphere cognisphere) {
             super(SupervisorAgentServiceImpl.this, cognisphere);
         }
 
         @Override
-        protected Object doAgentAction(Cognisphere cognisphere) {
+        protected Object doAgentAction(DefaultCognisphere cognisphere) {
             String request = requestGenerator != null ? requestGenerator.apply(cognisphere) : cognisphere.readState("request", "");
             String lastResponse = "";
-            Object memoryId = cognisphere.id();
+            Object memoryId = cognisphere.memoryId();
 
             for (int loopCount = 0; loopCount < maxAgentsInvocations; loopCount++) {
 
@@ -140,7 +141,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere) {
+        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new SupervisorInvocationHandler(cognisphere);
         }
     }

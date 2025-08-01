@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
@@ -34,17 +35,17 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
             super(LoopAgentServiceImpl.this);
         }
 
-        private LoopInvocationHandler(Cognisphere cognisphere) {
+        private LoopInvocationHandler(DefaultCognisphere cognisphere) {
             super(LoopAgentServiceImpl.this, cognisphere);
         }
 
         @Override
-        protected Object doAgentAction(Cognisphere cognisphere) {
+        protected Object doAgentAction(DefaultCognisphere cognisphere) {
             for (int i = 0; i < maxIterations; i++) {
                 for (AgentExecutor agentExecutor : agentExecutors()) {
                     agentExecutor.invoke(cognisphere);
                     if (exitCondition.test(cognisphere)) {
-                        return cognisphere.getState();
+                        return cognisphere.state();
                     }
                 }
             }
@@ -52,7 +53,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(Cognisphere cognisphere) {
+        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new LoopInvocationHandler(cognisphere);
         }
     }

@@ -23,7 +23,7 @@ public class CognisphereSerializer {
      * @return A JSON string with the contents of the Cognisphere.
      * @see CognisphereSerializer For details on deserialization.
      */
-    public static String toJson(Cognisphere cognisphere) {
+    public static String toJson(DefaultCognisphere cognisphere) {
         return CODEC.toJson(cognisphere);
     }
 
@@ -34,7 +34,7 @@ public class CognisphereSerializer {
      * @return A Cognisphere object constructed from the JSON.
      * @see CognisphereSerializer For details on serialization.
      */
-    public static Cognisphere fromJson(String json) {
+    public static DefaultCognisphere fromJson(String json) {
         return CODEC.fromJson(json).normalizeAfterDeserialization();
     }
 }

@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
-import dev.langchain4j.agentic.declarative.Executor;
+import dev.langchain4j.agentic.declarative.ExecutorService;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
@@ -36,7 +36,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static dev.langchain4j.agentic.Models.BASE_MODEL;
@@ -57,7 +56,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_tests() {
-        StoryCreator storyCreator = AgentServices.createAgenticSystem(StoryCreator.class, BASE_MODEL);
+        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, BASE_MODEL);
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         System.out.println(story);
@@ -92,7 +91,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_and_loop_tests() {
-        StoryCreatorWithReview storyCreator = AgentServices.createAgenticSystem(StoryCreatorWithReview.class, BASE_MODEL);
+        StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, BASE_MODEL);
 
         ResultWithCognisphere<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -141,7 +140,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_conditional_tests() {
-        ExpertRouterAgent expertRouterAgent = AgentServices.createAgenticSystem(ExpertRouterAgent.class, BASE_MODEL);
+        ExpertRouterAgent expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgent.class, BASE_MODEL);
 
         ResultWithCognisphere<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
@@ -159,8 +158,8 @@ public class DeclarativeAgentIT {
         })
         List<EveningPlan> plan(@V("mood") String mood);
 
-        @Executor
-        static ExecutorService executor() {
+        @ExecutorService
+        static java.util.concurrent.ExecutorService executor() {
             return Executors.newFixedThreadPool(2);
         }
 
@@ -179,7 +178,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_parallel_tests() {
-        EveningPlannerAgent eveningPlannerAgent = AgentServices.createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL);
+        EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL);
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);
         assertThat(plans).hasSize(3);
@@ -206,7 +205,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_supervisor_tests() {
-        SupervisorStoryCreator styledWriter = AgentServices.createAgenticSystem(SupervisorStoryCreator.class, BASE_MODEL);
+        SupervisorStoryCreator styledWriter = AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, BASE_MODEL);
         ResultWithCognisphere<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
@@ -218,11 +217,11 @@ public class DeclarativeAgentIT {
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.getAgentInvocations("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.getAgentInvocations("scoreStyle");
+        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).response()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 }

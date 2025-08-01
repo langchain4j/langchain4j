@@ -3,7 +3,7 @@ package dev.langchain4j.agentic;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
-import dev.langchain4j.agentic.declarative.Executor;
+import dev.langchain4j.agentic.declarative.ExecutorService;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -49,9 +48,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 /**
  * Provides static factory methods to create and configure various types of agent services.
  */
-public class AgentServices {
+public class AgenticServices {
 
-    private AgentServices() { }
+    private AgenticServices() { }
 
     private enum WorkflowBuilderProvider {
 
@@ -280,7 +279,7 @@ public class AgentServices {
         buildOutput(agentServiceClass, loopAgent.outputName(), builder);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
-                .map(AgentServices::cognispherePredicate)
+                .map(AgenticServices::cognispherePredicate)
                 .ifPresent(builder::exitCondition);
 
         return builder.build();
@@ -297,7 +296,7 @@ public class AgentServices {
                 ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
                 return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.name());
             })
-                    .map(AgentServices::cognispherePredicate)
+                    .map(AgenticServices::cognispherePredicate)
                     .ifPresent(condition -> builder.subAgent(condition, createSubagent(subagent, chatModel)));
         }
 
@@ -310,12 +309,12 @@ public class AgentServices {
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel));
 
         buildOutput(agentServiceClass, parallelAgent.outputName(), builder);
-        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Executor.class) &&
-                method.getReturnType() == ExecutorService.class &&
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ExecutorService.class) &&
+                method.getReturnType() == java.util.concurrent.ExecutorService.class &&
                 method.getParameterCount() == 0)
                 .map(method -> {
                     try {
-                        return (ExecutorService) method.invoke(null);
+                        return (java.util.concurrent.ExecutorService) method.invoke(null);
                     } catch (Exception e) {
                         throw new RuntimeException("Error invoking executor method: " + method.getName(), e);
                     }
@@ -339,7 +338,7 @@ public class AgentServices {
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorRequest.class) &&
                 method.getReturnType() == String.class)
-                .map(m -> AgentServices.cognisphereFunction(m, String.class))
+                .map(m -> AgenticServices.cognisphereFunction(m, String.class))
                 .ifPresent(builder::requestGenerator);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorChatModel.class) &&
@@ -363,7 +362,7 @@ public class AgentServices {
         }
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
-                .map(m -> AgentServices.cognisphereFunction(m, Object.class))
+                .map(m -> AgenticServices.cognisphereFunction(m, Object.class))
                 .ifPresent(builder::output);
     }
 
@@ -408,7 +407,7 @@ public class AgentServices {
             return agentExecutor;
         }
 
-        return agentToExecutor((AgentInstance) AgentServices.agentBuilder(subagent.type())
+        return agentToExecutor((AgentInstance) AgenticServices.agentBuilder(subagent.type())
                 .chatModel(chatModel)
                 .outputName(subagent.outputName())
                 .build());

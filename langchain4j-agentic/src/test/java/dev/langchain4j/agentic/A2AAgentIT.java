@@ -25,28 +25,28 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
-        UntypedAgent creativeWriter = AgentServices.a2aBuilder(A2A_SERVER_URL)
+        UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
                 .inputNames("topic")
                 .outputName("story")
                 .build();
 
-        StyleEditor styleEditor = AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleScorer styleScorer = AgentServices.agentBuilder(StyleScorer.class)
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(BASE_MODEL)
                 .outputName("score")
                 .build();
 
-        UntypedAgent styleReviewLoop = AgentServices.loopBuilder()
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
                 .build();
 
-        StyledWriter styledWriter = AgentServices.sequenceBuilder(StyledWriter.class)
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .outputName("story")
                 .build();
@@ -69,28 +69,28 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_supervisor_tests() {
-        A2ACreativeWriter creativeWriter = AgentServices.a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
+        A2ACreativeWriter creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
                 .outputName("story")
                 .build();
 
-        StyleEditor styleEditor = AgentServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(BASE_MODEL)
                 .outputName("story")
                 .build();
 
-        StyleScorer styleScorer = AgentServices.agentBuilder(StyleScorer.class)
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(BASE_MODEL)
                 .outputName("score")
                 .build();
 
-        Agents.StyleReviewLoop styleReviewLoop = AgentServices.loopBuilder(StyleReviewLoop.class)
+        Agents.StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
                 .outputName("story")
                 .maxIterations(5)
                 .exitCondition(cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
                 .build();
 
-        SupervisorAgent styledWriter = AgentServices.supervisorBuilder()
+        SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
                 .chatModel(PLANNER_MODEL)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
@@ -107,11 +107,11 @@ public class A2AAgentIT {
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.getAgentInvocations("Creative Writer")).hasSize(1);
+        assertThat(cognisphere.agentCalls("Creative Writer")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.getAgentInvocations("scoreStyle");
+        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).response()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 }
