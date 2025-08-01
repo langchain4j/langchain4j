@@ -61,7 +61,7 @@ class AiServicesTest {
     }
 
     @Test
-    void test_getClass() throws Exception {
+    void test_getClass() {
         // dynamic proxies don't intercept final methods
         assertThat(assistant.getClass()).isNotEqualTo(Assistant.class);
     }
