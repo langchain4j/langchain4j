@@ -307,6 +307,25 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(loadDocumentsRecursively(path, pathMatcher)).isEqualTo(documents);
     }
 
+    @Test
+    void should_use_provided_class_loader() throws Exception {
+        String testResourceName = "test-custom-classloader.txt";
+        String testResourceContent = "This is test-custom-classloader.txt";
+
+        java.nio.file.Path tempDir = java.nio.file.Files.createTempDirectory("custom-classloader-test");
+        java.nio.file.Path testFile = tempDir.resolve(testResourceName);
+        java.nio.file.Files.writeString(testFile, testResourceContent);
+
+        java.net.URLClassLoader customClassLoader = new java.net.URLClassLoader(
+                new java.net.URL[] {tempDir.toUri().toURL()}, null // no parent loader — isolates from context classpath
+                );
+
+        Document document = loadDocument(testResourceName, customClassLoader);
+
+        assertThat(document.text()).isEqualTo(testResourceContent);
+        assertThat(document.metadata().getString(Document.FILE_NAME)).isEqualTo(testResourceName);
+    }
+
     private class FailOnFirstNonBlankDocumentParser implements DocumentParser {
         private boolean first = true;
         private final DocumentParser parser = new TextDocumentParser();
