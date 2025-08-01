@@ -414,4 +414,34 @@ class ToolSpecificationHelperTest {
         assertThat(jsAny.anyOf().get(0)).isInstanceOf(JsonObjectSchema.class);
         assertThat(jsAny.anyOf().get(1)).isInstanceOf(JsonNullSchema.class);
     }
+
+    @Test
+    void arrayWithoutSpecifiedType() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "something",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "arrayparam": {
+                          "type": "array",
+                          "description": "An array of whatever you like"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "$schema": "http://json-schema.org/draft-07/schema#"
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        JsonSchemaElement parameter =
+                toolSpecifications.get(0).parameters().properties().get("arrayparam");
+        assertThat(parameter).isInstanceOf(JsonArraySchema.class);
+        assertThat(((JsonArraySchema) parameter).items()).isNull();
+    }
 }
