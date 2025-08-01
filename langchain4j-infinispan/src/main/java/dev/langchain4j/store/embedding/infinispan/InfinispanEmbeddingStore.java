@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.infinispan;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -225,7 +226,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                     }
 
                     TextSegment embedded = null;
-                    if (item.text() != null) {
+                    if (isNotNullOrEmpty(item.text())) {
                         Map<String, Object> map = new HashMap<>();
                         for (LangChainMetadata metadata : item.metadata()) {
                             map.put(metadata.name(), metadata.value());
