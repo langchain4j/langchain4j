@@ -41,48 +41,6 @@ public class MistralAiModerationModel implements ModerationModel {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
-    /**
-     * @deprecated please use {@link #MistralAiModerationModel(Builder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiModerationModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Integer maxRetries,
-            String modelName,
-            Boolean logRequests,
-            Boolean logResponses) {
-
-        this.client = MistralAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 2);
-    }
-
-    /**
-     * @deprecated please use {@link #MistralAiModerationModel(Builder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiModerationModel(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Integer maxRetries,
-            String modelName,
-            Boolean logRequests,
-            Boolean logResponses) {
-        this(null, baseUrl, apiKey, timeout, maxRetries, modelName, logRequests, logResponses);
-    }
-
     @Override
     public Response<Moderation> moderate(String text) {
         return moderateInternal(singletonList(text));

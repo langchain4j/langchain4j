@@ -5,12 +5,14 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +51,27 @@ class VertexAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(6);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void embeddingModelWithCustomCredentials() throws IOException {
+        EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
+                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .publisher("google")
+                .modelName("text-embedding-005")
+                .maxRetries(2)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        List<TextSegment> segments =
+                asList(TextSegment.from("one"), TextSegment.from("two"), TextSegment.from("three"));
+
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(3);
     }
 
     @Test

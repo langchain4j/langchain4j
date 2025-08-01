@@ -1,16 +1,15 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class FloatOutputParserTest {
 
@@ -46,8 +45,7 @@ class FloatOutputParserTest {
                 Arguments.of("{\"value\": \"-4.56\"}", -4.56f),
                 Arguments.of("{\"value\": 0}", 0.0f),
                 Arguments.of("{\"value\": \"42\"}", 42.0f),
-                Arguments.of("  {\"value\": 77.99}  ", 77.99f)
-        );
+                Arguments.of("  {\"value\": 77.99}  ", 77.99f));
     }
 
     @ParameterizedTest
@@ -72,7 +70,7 @@ class FloatOutputParserTest {
     }
 
     @Test
-    void test_formatInstructions() {
+    void format_instructions() {
         // when
         String instructions = parser.formatInstructions();
 

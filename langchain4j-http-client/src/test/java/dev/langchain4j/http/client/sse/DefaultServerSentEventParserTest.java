@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.sse;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -13,7 +14,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -135,7 +135,7 @@ class DefaultServerSentEventParserTest {
         // given
         InputStream mockStream = mock(InputStream.class);
         IOException simulatedIoException = new IOException("Simulated IO exception");
-        Assertions.assertDoesNotThrow(
+        assertDoesNotThrow(
                 () -> {
                     when(mockStream.read(any(byte[].class), anyInt(), anyInt())).thenThrow(simulatedIoException);
                 },

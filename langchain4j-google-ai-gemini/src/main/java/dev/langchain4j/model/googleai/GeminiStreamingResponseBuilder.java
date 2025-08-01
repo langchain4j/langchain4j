@@ -9,7 +9,9 @@ import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -24,7 +26,11 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 class GeminiStreamingResponseBuilder {
 
     private final boolean includeCodeExecutionOutput;
+    private final Boolean returnThinking;
+
     private final StringBuilder contentBuilder;
+    private final StringBuilder thoughtBuilder;
+    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
     private final List<ToolExecutionRequest> functionCalls;
 
     private final AtomicReference<String> id = new AtomicReference<>();
@@ -32,16 +38,15 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
 
-    /**
-     * Constructs a new GeminiStreamingResponseBuilder.
-     *
-     * @param includeCodeExecutionOutput whether to include code execution output in the response
-     */
-    public GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput) {
+    GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
+        this.returnThinking = returnThinking;
         this.contentBuilder = new StringBuilder();
+        this.thoughtBuilder = new StringBuilder();
         this.functionCalls = new ArrayList<>();
     }
+
+    record TextAndTools(Optional<String> maybeText, Optional<String> maybeThought, List<ToolExecutionRequest> tools) {}
 
     /**
      * Appends a partial response to the builder.
@@ -49,9 +54,9 @@ class GeminiStreamingResponseBuilder {
      * @param partialResponse the partial response from Gemini AI
      * @return an Optional containing the text of the partial response, or empty if no valid text
      */
-    public Optional<String> append(GeminiGenerateContentResponse partialResponse) {
+    TextAndTools append(GeminiGenerateContentResponse partialResponse) {
         if (partialResponse == null) {
-            return Optional.empty();
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
         GeminiCandidate firstCandidate = partialResponse.getCandidates().get(0);
@@ -63,13 +68,17 @@ class GeminiStreamingResponseBuilder {
 
         GeminiContent content = firstCandidate.getContent();
         if (content == null || content.getParts() == null) {
-            return Optional.empty();
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        AiMessage message = fromGPartsToAiMessage(content.getParts(), this.includeCodeExecutionOutput);
+        AiMessage message = fromGPartsToAiMessage(content.getParts(), includeCodeExecutionOutput, returnThinking);
         updateContentAndFunctionCalls(message);
 
-        return Optional.ofNullable(message.text());
+        return new TextAndTools(
+                Optional.ofNullable(message.text()),
+                Optional.ofNullable(message.thinking()),
+                message.toolExecutionRequests()
+        );
     }
 
     /**
@@ -77,7 +86,7 @@ class GeminiStreamingResponseBuilder {
      *
      * @return a Response object containing the complete AiMessage, token usage, and finish reason
      */
-    public ChatResponse build() {
+    ChatResponse build() {
         AiMessage aiMessage = createAiMessage();
 
         FinishReason finishReason = this.finishReason.get();
@@ -127,6 +136,8 @@ class GeminiStreamingResponseBuilder {
 
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
+        Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
+        attributes.putAll(message.attributes());
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
@@ -134,9 +145,13 @@ class GeminiStreamingResponseBuilder {
 
     private AiMessage createAiMessage() {
         String text = contentBuilder.toString();
+        String thought = thoughtBuilder.toString();
+
         return AiMessage.builder()
                 .text(text.isEmpty() ? null : text)
+                .thinking(thought.isEmpty() ? null : thought)
                 .toolExecutionRequests(functionCalls)
+                .attributes(attributes)
                 .build();
     }
 }

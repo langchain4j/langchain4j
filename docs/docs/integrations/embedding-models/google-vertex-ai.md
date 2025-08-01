@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>1.1.0-beta7</version>
+  <version>1.2.0-beta8</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:1.1.0-beta7'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:1.2.0-beta8'
 ```
 
 ### Try out an example code:
@@ -102,6 +102,7 @@ EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
                                // for the text segment to identify its document origin
     .autoTruncate(false)       // false by default: truncates segments longer than 2,048 input tokens
     .outputDimensionality(512) // for models that support different output vector dimensions
+    .credentials(credentials)  // custom Google Cloud credentials    
     .build();
 ```
 

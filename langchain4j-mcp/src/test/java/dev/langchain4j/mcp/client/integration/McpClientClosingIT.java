@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for behavior related to closing of MCP clients.
  */
-public class McpClientClosingIT {
+class McpClientClosingIT {
 
     @BeforeAll
     static void setup() {
@@ -28,7 +28,7 @@ public class McpClientClosingIT {
      * Check that the subprocess is stopped after calling McpClient.close().
      */
     @Test
-    public void testStdioClosesProcess() throws InterruptedException {
+    void stdioClosesProcess() throws InterruptedException {
         StdioMcpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
@@ -46,7 +46,7 @@ public class McpClientClosingIT {
      * Check that a closed MCP client throws an IllegalStateException whenever an operation is attempted.
      */
     @Test
-    void testClosedClientThrowsIllegalStateException() {
+    void closedClientThrowsIllegalStateException() {
         StdioMcpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
