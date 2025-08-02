@@ -3,6 +3,8 @@ package dev.langchain4j.data.document.transformer.jsoup;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Utils;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -17,7 +19,6 @@ import static dev.langchain4j.data.document.Document.URL;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
-import static org.jsoup.internal.StringUtil.in;
 import static org.jsoup.select.NodeTraversor.traverse;
 
 /**
@@ -119,14 +120,14 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
                 textBuilder.append("\n * ");
             else if (name.equals("dt"))
                 textBuilder.append("  ");
-            else if (in(name, "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr"))
+            else if (Utils.contains(name, "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr"))
                 textBuilder.append("\n");
         }
 
         @Override
         public void tail(Node node, int depth) { // hit when all the node's children (if any) have been visited
             String name = node.nodeName();
-            if (in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6"))
+            if (Utils.contains(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6"))
                 textBuilder.append("\n");
             else if (includeLinks && name.equals("a")) {
                 String link = node.absUrl("href");
