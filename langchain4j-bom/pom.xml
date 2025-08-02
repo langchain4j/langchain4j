@@ -513,6 +513,11 @@
                 <artifactId>langchain4j-web-search-engine-searchapi</artifactId>
                 <version>1.3.0-beta9-SNAPSHOT</version>
             </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-web-search-engine-duckduckgo</artifactId>
+                <version>1.3.0-beta9-SNAPSHOT</version>
+            </dependency>
 
             <!-- experimental -->
             <dependency>

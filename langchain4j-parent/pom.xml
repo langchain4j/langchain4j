@@ -63,6 +63,7 @@
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <junit.version>5.11.3</junit.version>
+        <jsoup.version>1.18.1</jsoup.version>
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
@@ -292,6 +293,12 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
                 <version>3.18.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
             </dependency>
 
         </dependencies>
