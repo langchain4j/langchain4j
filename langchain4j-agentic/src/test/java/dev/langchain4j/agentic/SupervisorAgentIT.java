@@ -286,11 +286,11 @@ public class SupervisorAgentIT {
         agentic_banker_with_exchange_test(false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
     }
 
-    void agentic_banker_with_exchange_test(boolean fullyAI) {
+    private void agentic_banker_with_exchange_test(boolean fullyAI) {
         agentic_banker_with_exchange_test(fullyAI, "Transfer 100 EUR from Mario's account to Georgios' one");
     }
 
-    void agentic_banker_with_exchange_test(boolean fullyAI, String userRequest) {
+    private void agentic_banker_with_exchange_test(boolean fullyAI, String userRequest) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);

@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 
 public class SequentialAgentServiceImpl<T> extends AbstractService<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
@@ -41,7 +42,7 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
+        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new SequentialInvocationHandler(cognisphere);
         }
     }

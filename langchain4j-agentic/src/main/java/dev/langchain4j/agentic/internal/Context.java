@@ -1,11 +1,12 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import java.util.function.Function;
+
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class Context {
 
@@ -44,20 +45,21 @@ public class Context {
     }
 
     public static class CognisphereContextGenerator implements UserMessageTransformer {
+        private final Cognisphere cognisphere;
         private final Function<Cognisphere, String> contextProvider;
 
-        public CognisphereContextGenerator(Function<Cognisphere, String> contextProvider) {
+        public CognisphereContextGenerator(Cognisphere cognisphere, Function<Cognisphere, String> contextProvider) {
+            this.cognisphere = cognisphere;
             this.contextProvider = contextProvider;
         }
 
         @Override
         public String transformUserMessage(String userMessage, Object memoryId) {
-            Cognisphere cognisphere = CognisphereRegistry.get(memoryId);
             if (cognisphere == null) {
                 return userMessage;
             }
             String cognisphereContext = contextProvider.apply(cognisphere);
-            if (cognisphereContext == null || cognisphereContext.isBlank()) {
+            if (isNullOrBlank(cognisphereContext)) {
                 return userMessage;
             }
             return "Considering this context \"" + cognisphereContext + "\"\n" + userMessage;
@@ -65,9 +67,9 @@ public class Context {
     }
 
     public static class Summarizer extends CognisphereContextGenerator {
-        public Summarizer(ChatModel chatModel, String... agentNames) {
-            super(cognisphere -> {
-                String context = cognisphere.contextAsConversation(agentNames);
+        public Summarizer(Cognisphere cognisphere, ChatModel chatModel, String... agentNames) {
+            super(cognisphere, c -> {
+                String context = c.contextAsConversation(agentNames);
                 return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
             });
         }

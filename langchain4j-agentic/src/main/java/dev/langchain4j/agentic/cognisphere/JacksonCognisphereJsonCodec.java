@@ -31,7 +31,6 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
 
     static JsonMapper.Builder cognisphereJsonMapperBuilder() {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
-                .addMixIn(CognisphereKey.class, CognisphereKeyMixin.class)
                 .addMixIn(DefaultCognisphere.class, CognisphereMixin.class)
                 .addMixIn(AgentMessage.class, AgentMessageMixin.class)
                 .addMixIn(AgentCall.class, AgentCallMixin.class);
@@ -78,19 +77,10 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class CognisphereKeyMixin {
-        @JsonCreator
-        public CognisphereKeyMixin(
-                @JsonProperty("agentId") String agentId,
-                @JsonProperty("memoryId") Object memoryId) {
-        }
-    }
-
-    @JsonInclude(NON_NULL)
     private static abstract class CognisphereMixin {
         @JsonCreator
         public CognisphereMixin(
-                @JsonProperty("key") CognisphereKey key,
+                @JsonProperty("memoryId") Object memoryId,
                 @JsonProperty("kind") Kind kind) {
         }
     }

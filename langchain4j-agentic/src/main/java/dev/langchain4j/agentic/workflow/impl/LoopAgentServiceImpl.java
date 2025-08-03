@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.function.Predicate;
 
@@ -53,7 +54,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
+        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new LoopInvocationHandler(cognisphere);
         }
     }

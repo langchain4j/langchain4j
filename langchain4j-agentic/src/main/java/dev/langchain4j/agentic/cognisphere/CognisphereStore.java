@@ -15,7 +15,7 @@ public interface CognisphereStore {
      * @param cognisphere the Cognisphere to persist
      * @return true if the operation was successful
      */
-    boolean save(DefaultCognisphere cognisphere);
+    boolean save(CognisphereKey key, DefaultCognisphere cognisphere);
 
     /**
      * Loads a Cognisphere by its ID.

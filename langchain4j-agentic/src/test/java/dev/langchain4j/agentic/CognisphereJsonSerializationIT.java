@@ -10,10 +10,7 @@ public class CognisphereJsonSerializationIT {
 
     private static final String COGNISPHERE_JSON = """
             {
-               "key":{
-                  "agentId":"ExpertRouterAgentWithMemory@1",
-                  "memoryId":"1"
-               },
+               "memoryId":"1",
                "kind":"PERSISTENT",
                "state":{
                   "request":"I broke my leg, what should I do?",

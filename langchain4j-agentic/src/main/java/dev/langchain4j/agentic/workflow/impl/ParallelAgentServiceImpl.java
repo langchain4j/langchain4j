@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -51,7 +52,7 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
+        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new ParallelInvocationHandler(cognisphere);
         }
 

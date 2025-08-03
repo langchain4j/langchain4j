@@ -6,6 +6,8 @@ public enum CognispherePersister {
 
     INSTANCE;
 
+    static CognisphereStore store;
+
     CognispherePersister() {
         setStore(loadStore());
     }
@@ -23,7 +25,7 @@ public enum CognispherePersister {
     /**
      * Explicitly set a persistence provider.
      */
-    public static void setStore(CognisphereStore provider) {
-        CognisphereRegistry.setStore(provider);
+    public static void setStore(CognisphereStore store) {
+        CognispherePersister.store = store;
     }
 }

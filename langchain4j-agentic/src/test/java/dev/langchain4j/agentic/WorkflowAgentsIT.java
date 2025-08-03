@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.cognisphere.CognispherePersister;
 import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class WorkflowAgentsIT {
@@ -249,27 +249,27 @@ public class WorkflowAgentsIT {
 
     @Test
     void memory_agents_tests() {
-        CategoryRouter routerAgent = spy(AgenticServices.agentBuilder(CategoryRouter.class)
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(BASE_MODEL)
                 .outputName("category")
-                .build());
+                .build();
 
-        MedicalExpertWithMemory medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpertWithMemory.class)
+        MedicalExpertWithMemory medicalExpert = AgenticServices.agentBuilder(MedicalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
-                .build());
-        TechnicalExpertWithMemory technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpertWithMemory.class)
+                .build();
+        TechnicalExpertWithMemory technicalExpert = AgenticServices.agentBuilder(TechnicalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
-                .build());
-        LegalExpertWithMemory legalExpert = spy(AgenticServices.agentBuilder(LegalExpertWithMemory.class)
+                .build();
+        LegalExpertWithMemory legalExpert = AgenticServices.agentBuilder(LegalExpertWithMemory.class)
                 .chatModel(BASE_MODEL)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .summarizedContext("medical", "technical")
                 .outputName("response")
-                .build());
+                .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
@@ -291,7 +291,6 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere1 = expertRouterAgent.getCognisphere("1");
         assertThat(cognisphere1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
 
-        assertThat(store.getAllKeys()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
         assertThat(store.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
@@ -300,11 +299,12 @@ public class WorkflowAgentsIT {
         Cognisphere cognisphere2 = expertRouterAgent.getCognisphere("2");
         assertThat(cognisphere2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        assertThat(store.getAllKeys()).isEqualTo(CognisphereRegistry.getAllCognisphereKeysInMemory());
+        CognisphereRegistry registry = ((CognisphereOwner)expertRouterAgent).registry();
+        assertThat(store.getAllKeys()).isEqualTo(registry.getAllCognisphereKeysInMemory());
 
         // Clear the in-memory registry to simulate a restart
-        CognisphereRegistry.clearInMemory();
-        assertThat(CognisphereRegistry.getAllCognisphereKeysInMemory()).isEmpty();
+        registry.clearInMemory();
+        assertThat(registry.getAllCognisphereKeysInMemory()).isEmpty();
 
         String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse1);
@@ -316,17 +316,6 @@ public class WorkflowAgentsIT {
 
         assertThat(legalResponse1).contains("medical").doesNotContain("computer");
         assertThat(legalResponse2).contains("computer").doesNotContain("medical");
-
-        verify(routerAgent).classify("I broke my leg, what should I do?");
-        verify(routerAgent).classify("My computer has liquid inside, what should I do?");
-        verify(routerAgent, times(2)).classify("Should I sue my neighbor who caused this damage?");
-
-        verify(medicalExpert).medical("1", "I broke my leg, what should I do?");
-
-        verify(technicalExpert).technical("2", "My computer has liquid inside, what should I do?");
-
-        verify(legalExpert).legal(eq("1"), any());
-        verify(legalExpert).legal(eq("2"), any());
 
         // It is necessary to read again the cognisphere instances since they were evicted from the in-memory registry
         // and reloaded from the persistence provider

@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereKey;
 import dev.langchain4j.agentic.cognisphere.CognisphereStore;
 import dev.langchain4j.agentic.cognisphere.CognisphereSerializer;
@@ -18,8 +17,8 @@ public class JsonInMemoryCognisphereStore implements CognisphereStore {
     private final List<Object> loadedIds = new ArrayList<>();
 
     @Override
-    public boolean save(DefaultCognisphere cognisphere) {
-        jsonCognispheres.put(cognisphere.key(), CognisphereSerializer.toJson((DefaultCognisphere) cognisphere));
+    public boolean save(CognisphereKey key, DefaultCognisphere cognisphere) {
+        jsonCognispheres.put(key, CognisphereSerializer.toJson(cognisphere));
         return true;
     }
 

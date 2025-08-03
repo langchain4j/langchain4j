@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +58,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
         }
 
         @Override
-        protected CognisphereOwner createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
+        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
             return new ConditionialInvocationHandler(cognisphere);
         }
     }

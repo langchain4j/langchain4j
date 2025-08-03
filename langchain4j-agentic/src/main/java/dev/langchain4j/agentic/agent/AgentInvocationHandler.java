@@ -1,0 +1,57 @@
+package dev.langchain4j.agentic.agent;
+
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
+import dev.langchain4j.agentic.internal.AgentInstance;
+import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+
+public class AgentInvocationHandler implements InvocationHandler {
+
+    private final AiServiceContext context;
+    private final AgentBuilder<?> builder;
+    private final Object agent;
+    private final boolean cognisphereDependent;
+
+    AgentInvocationHandler(AiServiceContext context, Object agent, AgentBuilder<?> builder, boolean cognisphereDependent) {
+        this.context = context;
+        this.agent = agent;
+        this.builder = builder;
+        this.cognisphereDependent = cognisphereDependent;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+        if (method.getDeclaringClass() == CognisphereOwner.class) {
+            if (method.getName().equals("withCognisphere")) {
+                return cognisphereDependent ?
+                        ((DefaultCognisphere) args[0]).getOrCreateAgent(builder.agentId(), builder::build) :
+                        proxy;
+            }
+            throw new UnsupportedOperationException("Unknown method on CognisphereOwner class : " + method.getName());
+        }
+
+        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
+            return switch (method.getName()) {
+                case "getChatMemory" -> context.hasChatMemory() ? context.chatMemoryService.getChatMemory(args[0]) : null;
+                case "evictChatMemory" -> context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on ChatMemoryAccess class : " + method.getName());
+            };
+        }
+
+        if (method.getDeclaringClass() == AgentInstance.class) {
+            return switch (method.getName()) {
+                case "outputName" -> builder.outputName;
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on ChatMemoryAccess class : " + method.getName());
+            };
+        }
+
+        return method.invoke(agent, args);
+    }
+}

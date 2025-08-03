@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;

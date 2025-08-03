@@ -20,7 +20,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @Internal
 public class DefaultCognisphere implements Cognisphere {
@@ -29,10 +31,12 @@ public class DefaultCognisphere implements Cognisphere {
 
     public record AgentMessage(String agentName, ChatMessage message) {}
 
-    private final CognisphereKey key;
+    private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
     private final Map<String, List<AgentCall>> agentsCalls = new ConcurrentHashMap<>();
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
+
+    private transient Map<String, Object> agents = new ConcurrentHashMap<>();
 
     public enum Kind {
         EPHEMERAL, REGISTERED, PERSISTENT
@@ -49,24 +53,20 @@ public class DefaultCognisphere implements Cognisphere {
     private transient ReadWriteLock lock = null;
 
     DefaultCognisphere(Kind kind) {
-        this(new CognisphereKey("", UUID.randomUUID().toString()), kind);
+        this(UUID.randomUUID().toString(), kind);
     }
 
-    DefaultCognisphere(CognisphereKey key, Kind kind) {
-        this.key = key;
+    DefaultCognisphere(Object memoryId, Kind kind) {
+        this.memoryId = memoryId;
         this.kind = kind;
         if (kind == Kind.PERSISTENT) {
             lock = new ReentrantReadWriteLock();
         }
     }
 
-    public CognisphereKey key() {
-        return key;
-    }
-
     @Override
     public Object memoryId() {
-        return key.memoryId();
+        return memoryId;
     }
 
     @Override
@@ -109,6 +109,10 @@ public class DefaultCognisphere implements Cognisphere {
         return state;
     }
 
+    public <T> T getOrCreateAgent(String agentId, Function<DefaultCognisphere, T> agentFactory) {
+        return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
+    }
+
     public void registerAgentCall(AgentSpecification agentSpecification, Object agent, Object[] input, Object output) {
         withReadLock(() -> {
             agentsCalls.computeIfAbsent(agentSpecification.name(), name -> new ArrayList<>())
@@ -117,24 +121,22 @@ public class DefaultCognisphere implements Cognisphere {
         });
     }
 
-    public void rootCallStarted() {
-        CognisphereRegistry.setCurrentAgentId(key.agentId());
+    public void rootCallStarted(CognisphereRegistry registry) {
     }
 
-    public void rootCallEnded() {
+    public void rootCallEnded(CognisphereRegistry registry) {
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral cognispheres are for single-use and can be evicted immediately
-            CognisphereRegistry.evict(key);
+            registry.evict(memoryId);
         } else if (kind == Kind.PERSISTENT) {
-            flush();
+            flush(registry);
         }
-        CognisphereRegistry.resetCurrentAgentId();
     }
 
-    private void flush() {
+    private void flush(CognisphereRegistry registry) {
         lock.writeLock().lock();
         try {
-            CognisphereRegistry.update(this);
+            registry.update(this);
         } finally {
             lock.writeLock().unlock();
         }
@@ -142,16 +144,19 @@ public class DefaultCognisphere implements Cognisphere {
 
     private void registerContext(AgentSpecification agentSpecification, Object agent, Object[] input, Object response) {
         if (agent instanceof ChatMemoryAccess agentWithMemory) {
-            ChatMemory chatMemory = agentWithMemory.getChatMemory(key.memoryId());
+            ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
             if (chatMemory != null) {
                 List<ChatMessage> agentMessages = chatMemory.messages();
-                for (int i = agentMessages.size() - 1; i >= 0; i--) {
-                    if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                        // Only add to the cognisphere's context the last UserMessage ...
-                        context.add(new AgentMessage(agentSpecification.name(), userMessage));
-                        // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                        context.add(new AgentMessage(agentSpecification.name(), agentMessages.get(agentMessages.size() - 1)));
-                        return;
+                ChatMessage lastMessage = agentMessages.get(agentMessages.size() - 1);
+                if (lastMessage instanceof AiMessage aiMessage) {
+                    for (int i = agentMessages.size() - 1; i >= 0; i--) {
+                        if (agentMessages.get(i) instanceof UserMessage userMessage) {
+                            // Only add to the cognisphere's context the last UserMessage ...
+                            context.add(new AgentMessage(agentSpecification.name(), userMessage));
+                            // ... and last AiMessage response, all other messages are local to the invoked agent internals
+                            context.add(new AgentMessage(agentSpecification.name(), aiMessage));
+                            return;
+                        }
                     }
                 }
             }
@@ -198,7 +203,7 @@ public class DefaultCognisphere implements Cognisphere {
     @Override
     public String toString() {
         return "Cognisphere{" +
-                "memoryId='" + key.memoryId() + '\'' +
+                "memoryId='" + memoryId + '\'' +
                 ", state=" + state +
                 '}';
     }

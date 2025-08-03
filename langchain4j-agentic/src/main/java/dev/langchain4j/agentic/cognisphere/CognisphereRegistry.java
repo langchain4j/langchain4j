@@ -12,72 +12,30 @@ import java.util.Set;
  * Supports persistence through a pluggable store.
  */
 @Internal
-public enum CognisphereRegistry {
+public class CognisphereRegistry {
 
-    INSTANCE;
+    private final String agentId;
+    private final CognisphereStore store;
 
     private final Map<CognisphereKey, DefaultCognisphere> inMemoryCognispheres = new ConcurrentHashMap<>();
-    private CognisphereStore store;
 
-    private final ThreadLocal<String> currentAgentId = new ThreadLocal<>();
-
-    static void setCurrentAgentId(String agentId) {
-        INSTANCE.internalSetCurrentAgentId(agentId);
+    public CognisphereRegistry(String agentId) {
+        this.agentId = agentId;
+        this.store = CognispherePersister.store;
     }
 
-    private void internalSetCurrentAgentId(String agentId) {
-        currentAgentId.set(agentId);
-    }
-
-    static void resetCurrentAgentId() {
-        INSTANCE.internalResetCurrentAgentId();
-    }
-
-    private void internalResetCurrentAgentId() {
-        currentAgentId.remove();
-    }
-
-    /**
-     * Explicitly set a store.
-     */
-    static void setStore(CognisphereStore store) {
-        INSTANCE.internalSetStore(store);
-    }
-
-    private void internalSetStore(CognisphereStore store) {
-        if (!inMemoryCognispheres.isEmpty()) {
-            throw new IllegalStateException("Cannot set a store on an already populated CognisphereRegistry.");
-        }
-        this.store = store;
-    }
-
-    public static boolean hasStore() {
-        return INSTANCE.internalHasStore();
-    }
-
-    private boolean internalHasStore() {
+    private boolean hasStore() {
         return store != null;
     }
 
-    static void update(DefaultCognisphere cognisphere) {
-        INSTANCE.internalUpdate(cognisphere);
-    }
-
-    private void internalUpdate(DefaultCognisphere cognisphere) {
+    public void update(DefaultCognisphere cognisphere) {
         if (hasStore()) {
-            store.save(cognisphere);
+            store.save(new CognisphereKey(agentId, cognisphere.memoryId()), cognisphere);
         }
     }
 
-    public static DefaultCognisphere get(Object id) {
-        return get(new CognisphereKey(INSTANCE.currentAgentId.get(), id));
-    }
-
-    public static DefaultCognisphere get(CognisphereKey key) {
-        return INSTANCE.internalGet(key);
-    }
-
-    private DefaultCognisphere internalGet(CognisphereKey key) {
+    public DefaultCognisphere get(Object memoryId) {
+        CognisphereKey key = new CognisphereKey(agentId, memoryId);
         DefaultCognisphere cognisphere = inMemoryCognispheres.get(key);
         if (cognisphere == null && hasStore()) {
             cognisphere = store.load(key)
@@ -89,39 +47,28 @@ public enum CognisphereRegistry {
         return cognisphere;
     }
 
-    public static DefaultCognisphere getOrCreate(CognisphereKey key) {
-        return INSTANCE.internalGetOrCreate(key);
-    }
-
-    public DefaultCognisphere internalGetOrCreate(CognisphereKey key) {
-        DefaultCognisphere cognisphere = get(key);
+    public DefaultCognisphere getOrCreate(Object memoryId) {
+        DefaultCognisphere cognisphere = get(memoryId);
         if (cognisphere == null) {
-            cognisphere = new DefaultCognisphere(key, hasStore() ? DefaultCognisphere.Kind.PERSISTENT : DefaultCognisphere.Kind.REGISTERED);
+            cognisphere = new DefaultCognisphere(memoryId, hasStore() ? DefaultCognisphere.Kind.PERSISTENT : DefaultCognisphere.Kind.REGISTERED);
             register(cognisphere);
         }
         return cognisphere;
     }
 
-    public static DefaultCognisphere createEphemeralCognisphere() {
-        return INSTANCE.internalCreateEphemeralCognisphere();
-    }
-
-    private DefaultCognisphere internalCreateEphemeralCognisphere() {
+    public DefaultCognisphere createEphemeralCognisphere() {
         DefaultCognisphere cognisphere = new DefaultCognisphere(DefaultCognisphere.Kind.EPHEMERAL);
         register(cognisphere);
         return cognisphere;
     }
 
     private void register(DefaultCognisphere cognisphere) {
-        inMemoryCognispheres.put(cognisphere.key(), cognisphere);
+        inMemoryCognispheres.put(new CognisphereKey(agentId, cognisphere.memoryId()), cognisphere);
         update(cognisphere);
     }
 
-    public static boolean evict(CognisphereKey key) {
-        return INSTANCE.internalEvict(key);
-    }
-
-    public boolean internalEvict(CognisphereKey key) {
+    public boolean evict(Object memoryId) {
+        CognisphereKey key = new CognisphereKey(agentId, memoryId);
         boolean removed = inMemoryCognispheres.remove(key) != null;
         if (hasStore()) {
             return store.delete(key) || removed;
@@ -129,30 +76,18 @@ public enum CognisphereRegistry {
         return removed;
     }
 
-    public static Set<CognisphereKey> getAllCognisphereKeys() {
-        return INSTANCE.internalGetAllCognisphereKeys();
-    }
-
-    private Set<CognisphereKey> internalGetAllCognisphereKeys() {
+    public Set<CognisphereKey> getAllCognisphereKeys() {
         if (hasStore()) {
             return store.getAllKeys();
         }
         return getAllCognisphereKeysInMemory();
     }
 
-    public static Set<CognisphereKey> getAllCognisphereKeysInMemory() {
-        return INSTANCE.internalGetAllCognisphereKeysInMemory();
-    }
-
-    private Set<CognisphereKey> internalGetAllCognisphereKeysInMemory() {
+    public Set<CognisphereKey> getAllCognisphereKeysInMemory() {
         return inMemoryCognispheres.keySet();
     }
 
-    public static void clearInMemory() {
-        INSTANCE.internalClearInMemory();
-    }
-
-    private void internalClearInMemory() {
+    public void clearInMemory() {
         inMemoryCognispheres.clear();
     }
 }
