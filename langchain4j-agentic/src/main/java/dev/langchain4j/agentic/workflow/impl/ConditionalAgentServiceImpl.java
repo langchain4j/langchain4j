@@ -50,7 +50,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
             for (ConditionalAgent conditionalAgent : conditionalAgents) {
                 if (conditionalAgent.condition.test(cognisphere)) {
                     for (AgentExecutor agentExecutor : conditionalAgent.agentExecutors) {
-                        agentExecutor.invoke(cognisphere);
+                        agentExecutor.execute(cognisphere);
                     }
                 }
             }

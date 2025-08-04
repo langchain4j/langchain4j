@@ -8,7 +8,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
         return agentInvoker.name();
     }
 
-    public Object invoke(DefaultCognisphere cognisphere) {
+    public Object execute(DefaultCognisphere cognisphere) {
         Object invokedAgent = agent instanceof CognisphereOwner co ? co.withCognisphere(cognisphere) : agent;
         Object[] args = agentInvoker.toInvocationArguments(cognisphere);
 

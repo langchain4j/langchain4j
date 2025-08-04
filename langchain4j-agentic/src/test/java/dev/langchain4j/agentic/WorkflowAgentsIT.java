@@ -3,8 +3,9 @@ package dev.langchain4j.agentic;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.CognispherePersister;
 import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -194,7 +195,7 @@ public class WorkflowAgentsIT {
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
+        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
         // Verify that an ephemeral cognisphere is correctly evicted from the registry after the call
         assertThat(styledWriter.getCognisphere(cognisphere.memoryId())).isNull();
 
@@ -203,9 +204,9 @@ public class WorkflowAgentsIT {
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

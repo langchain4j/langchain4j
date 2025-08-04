@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.cognisphere;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -32,7 +32,7 @@ public class DefaultCognisphere implements Cognisphere {
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
-    private final Map<String, List<AgentCall>> agentsCalls = new ConcurrentHashMap<>();
+    private final Map<String, List<AgentInvocation>> agentInvocations = new ConcurrentHashMap<>();
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
 
     private transient Map<String, Object> agents = new ConcurrentHashMap<>();
@@ -114,8 +114,8 @@ public class DefaultCognisphere implements Cognisphere {
 
     public void registerAgentCall(AgentInvoker agentInvoker, Object agent, Object[] input, Object output) {
         withReadLock(() -> {
-            agentsCalls.computeIfAbsent(agentInvoker.name(), name -> new ArrayList<>())
-                            .add(new AgentCall(agentInvoker.name(), input, output));
+            agentInvocations.computeIfAbsent(agentInvoker.name(), name -> new ArrayList<>())
+                            .add(new AgentInvocation(agentInvoker.name(), input, output));
             registerContext(agentInvoker, agent);
         });
     }
@@ -190,9 +190,8 @@ public class DefaultCognisphere implements Cognisphere {
         return contextAsConversation;
     }
 
-    @Override
-    public List<AgentCall> agentCalls(String agentName) {
-        return agentsCalls.getOrDefault(agentName, List.of());
+    public List<AgentInvocation> agentInvocations(String agentName) {
+        return agentInvocations.getOrDefault(agentName, List.of());
     }
 
     @Override

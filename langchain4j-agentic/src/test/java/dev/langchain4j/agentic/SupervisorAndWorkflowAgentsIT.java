@@ -1,8 +1,9 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.service.V;
@@ -88,15 +89,15 @@ public class SupervisorAndWorkflowAgentsIT {
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
+        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
         assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
         assertThat(cognisphere.readState("style", "")).contains("comedy");
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

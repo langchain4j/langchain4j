@@ -12,7 +12,5 @@ public @interface SubAgent {
 
     Class<?> type() default Object.class;
 
-    String name() default "";
-
     String outputName() default "";
 }

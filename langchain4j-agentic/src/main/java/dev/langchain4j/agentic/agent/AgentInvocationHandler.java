@@ -25,12 +25,17 @@ public class AgentInvocationHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == CognisphereOwner.class) {
-            if (method.getName().equals("withCognisphere")) {
-                return cognisphereDependent ?
-                        ((DefaultCognisphere) args[0]).getOrCreateAgent(builder.agentId(), builder::build) :
-                        proxy;
+            if (method.getDeclaringClass() == CognisphereOwner.class) {
+                return switch (method.getName()) {
+                    case "withCognisphere" -> cognisphereDependent ?
+                            ((DefaultCognisphere) args[0]).getOrCreateAgent(builder.agentId(), builder::build) :
+                            proxy;
+                    case "registry" -> throw new UnsupportedOperationException(
+                            "CognisphereOwner's registry method can be used only on the root agent of an agentic system.");
+                    default -> throw new UnsupportedOperationException(
+                            "Unknown method on CognisphereOwner class : " + method.getName());
+                };
             }
-            throw new UnsupportedOperationException("Unknown method on CognisphereOwner class : " + method.getName());
         }
 
         if (method.getDeclaringClass() == ChatMemoryAccess.class) {

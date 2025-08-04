@@ -44,7 +44,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
         protected Object doAgentAction(DefaultCognisphere cognisphere) {
             for (int i = 0; i < maxIterations; i++) {
                 for (AgentExecutor agentExecutor : agentExecutors()) {
-                    agentExecutor.invoke(cognisphere);
+                    agentExecutor.execute(cognisphere);
                     if (exitCondition.test(cognisphere)) {
                         return cognisphere.state();
                     }

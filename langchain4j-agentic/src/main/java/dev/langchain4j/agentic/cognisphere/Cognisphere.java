@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.cognisphere;
 
 import java.util.List;
 import java.util.Map;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 
 /**
  * The Cognisphere class represents a cognitive environment where agents belonging to the same
@@ -31,6 +31,4 @@ public interface Cognisphere {
     Map<String, Object> state();
 
     String contextAsConversation(String... agentNames);
-
-    List<AgentCall> agentCalls(String agentName);
 }

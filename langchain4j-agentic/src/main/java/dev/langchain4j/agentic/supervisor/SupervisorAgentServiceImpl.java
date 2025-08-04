@@ -126,7 +126,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 }
 
                 agentInvocation.getArguments().forEach(cognisphere::writeState);
-                lastResponse = agentExec.invoke(cognisphere).toString();
+                lastResponse = agentExec.execute(cognisphere).toString();
             }
 
             if (outputName != null) {

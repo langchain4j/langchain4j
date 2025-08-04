@@ -19,7 +19,7 @@ public class CognisphereJsonSerializationIT {
                      "dev.langchain4j.agentic.Agents$RequestCategory":"MEDICAL"
                   }
                },
-               "agentsCalls":{
+               "agentInvocations":{
                   "classify":[
                      {
                         "agentName":"classify",

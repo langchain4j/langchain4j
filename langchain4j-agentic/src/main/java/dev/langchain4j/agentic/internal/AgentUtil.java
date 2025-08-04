@@ -16,6 +16,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentUtil {
 
+    private static final String MEMORY_ID_ARG_NAME = "@MemoryId";
+    private static final String COGNISPHERE_ARG_NAME = "@Cognisphere";
+
     private AgentUtil() { }
 
     public record AgentArgument(Class<?> type, String name) { }
@@ -48,7 +51,7 @@ public class AgentUtil {
                 return executor.get();
            }
         }
-        throw new IllegalArgumentException("Agent not found");
+        throw new IllegalArgumentException("Agent executor not found");
     }
 
     public static Optional<Method> getAnnotatedMethodOnClass(Class<?> clazz, Class<? extends Annotation> annotation) {
@@ -79,10 +82,10 @@ public class AgentUtil {
 
     private static String parameterName(Parameter p) {
         if (p.getAnnotation(MemoryId.class) != null) {
-            return "@MemoryId";
+            return MEMORY_ID_ARG_NAME;
         }
         if (Cognisphere.class.isAssignableFrom(p.getType())) {
-            return "@Cognisphere";
+            return COGNISPHERE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
     }
@@ -92,11 +95,11 @@ public class AgentUtil {
         int i = 0;
         for (AgentArgument arg : agentArguments) {
             String argName = arg.name();
-            if (argName.equals("@MemoryId")) {
+            if (argName.equals(MEMORY_ID_ARG_NAME)) {
                 invocationArgs[i++] = cognisphere.memoryId();
                 continue;
             }
-            if (argName.equals("@Cognisphere")) {
+            if (argName.equals(COGNISPHERE_ARG_NAME)) {
                 invocationArgs[i++] = cognisphere;
                 continue;
             }

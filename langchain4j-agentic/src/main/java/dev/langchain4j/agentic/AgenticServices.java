@@ -295,7 +295,7 @@ public class AgenticServices {
         for (SubAgent subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
                 ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
-                return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.name());
+                return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.type());
             })
                     .map(AgenticServices::cognispherePredicate)
                     .ifPresent(condition -> builder.subAgent(condition, createSubagent(subagent, chatModel)));

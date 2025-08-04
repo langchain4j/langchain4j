@@ -11,21 +11,20 @@ public interface UserMessageTransformer extends BiFunction<ChatRequest, Object, 
 
     @Override
     default ChatRequest apply(ChatRequest chatRequest, Object memoryId) {
-        return chatRequest.messages().stream()
-                .filter(UserMessage.class::isInstance)
-                .map(UserMessage.class::cast)
-                .findFirst()
-                .map(userMessage -> {
-                    UserMessage transformedMessage = UserMessage.from(transformUserMessage(userMessage.singleText(), memoryId));
-                    List<ChatMessage> messages = chatRequest.messages().stream()
-                            .map(message -> message == userMessage ? transformedMessage : message)
-                            .toList();
-                    return ChatRequest.builder()
-                            .messages(messages)
-                            .parameters(chatRequest.parameters())
-                            .build();
-                })
-                .orElse(chatRequest);
+        List<ChatMessage> messages = chatRequest.messages();
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage userMessage) {
+                UserMessage transformedMessage = UserMessage.from(transformUserMessage(userMessage.singleText(), memoryId));
+                List<ChatMessage> modifiedMessages = chatRequest.messages().stream()
+                        .map(message -> message == userMessage ? transformedMessage : message)
+                        .toList();
+                return ChatRequest.builder()
+                        .messages(modifiedMessages)
+                        .parameters(chatRequest.parameters())
+                        .build();
+            }
+        }
+        return chatRequest;
     }
 
     String transformUserMessage(String userMessage, Object memoryId);

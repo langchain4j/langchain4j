@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -14,7 +15,7 @@ import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorChatModel;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.V;
@@ -107,23 +108,23 @@ public class DeclarativeAgentIT {
     public interface ExpertsAgent {
 
         @ConditionalAgent(outputName = "response", subAgents = {
-                @SubAgent(name = "medical", type = MedicalExpert.class, outputName = "response"),
-                @SubAgent(name = "technical", type = TechnicalExpert.class, outputName = "response"),
-                @SubAgent(name = "legal", type = LegalExpert.class, outputName = "response")
+                @SubAgent(type = MedicalExpert.class, outputName = "response"),
+                @SubAgent(type = TechnicalExpert.class, outputName = "response"),
+                @SubAgent(type = LegalExpert.class, outputName = "response")
         })
         String askExpert(@V("request") String request);
 
-        @ActivationCondition("medical")
+        @ActivationCondition(MedicalExpert.class)
         static boolean activateMedical(@V("category") RequestCategory category) {
             return category == RequestCategory.MEDICAL;
         }
 
-        @ActivationCondition("technical")
+        @ActivationCondition(TechnicalExpert.class)
         static boolean activateTechnical(@V("category") RequestCategory category) {
             return category == RequestCategory.TECHNICAL;
         }
 
-        @ActivationCondition("legal")
+        @ActivationCondition(LegalExpert.class)
         static boolean activateLegal(@V("category") RequestCategory category) {
             return category == RequestCategory.LEGAL;
         }
@@ -211,15 +212,15 @@ public class DeclarativeAgentIT {
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
+        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
         assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
         assertThat(cognisphere.readState("style", "")).contains("comedy");
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentCalls("generateStory")).hasSize(1);
+        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentCall> scoreAgentCalls = cognisphere.agentCalls("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

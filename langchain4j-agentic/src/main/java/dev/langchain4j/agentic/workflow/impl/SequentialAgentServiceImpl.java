@@ -36,7 +36,7 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
 
         @Override
         protected Object doAgentAction(DefaultCognisphere cognisphere) {
-            agentExecutors().forEach(agentExecutor -> agentExecutor.invoke(cognisphere));
+            agentExecutors().forEach(agentExecutor -> agentExecutor.execute(cognisphere));
             return result(cognisphere, output.apply(cognisphere));
         }
 

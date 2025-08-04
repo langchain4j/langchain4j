@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.AgentMessage;
 import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.Kind;
-import dev.langchain4j.agentic.internal.AgentCall;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.data.message.ChatMessage;
 
 import java.util.Collection;
@@ -33,7 +33,7 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
                 .addMixIn(DefaultCognisphere.class, CognisphereMixin.class)
                 .addMixIn(AgentMessage.class, AgentMessageMixin.class)
-                .addMixIn(AgentCall.class, AgentCallMixin.class);
+                .addMixIn(AgentInvocation.class, AgentInvocationMixin.class);
     }
 
     static ObjectMapper cognisphereJsonSerializer() {
@@ -97,9 +97,9 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class AgentCallMixin {
+    private static abstract class AgentInvocationMixin {
         @JsonCreator
-        public AgentCallMixin(
+        public AgentInvocationMixin(
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("input") Object[] input,
                 @JsonProperty("output") Object output) {

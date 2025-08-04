@@ -59,7 +59,7 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
         private void parallelExecution(DefaultCognisphere cognisphere) {
             ExecutorService executors = executorService != null ? executorService : DefaultExecutorHolder.DEFAULT_EXECUTOR;
             var tasks = agentExecutors().stream()
-                    .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.invoke(cognisphere))
+                    .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.execute(cognisphere))
                     .toList();
             try {
                 for (Future<?> future : executors.invokeAll(tasks)) {
