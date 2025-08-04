@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat.response;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
 import java.util.Objects;
@@ -26,7 +27,7 @@ public class PartialToolCall {
         this.index = ensureNotNegative(builder.index, "index");
         this.id = builder.id;
         this.name = ensureNotBlank(builder.name, "name");
-        this.partialArguments = ensureNotBlank(builder.partialArguments, "partialArguments");
+        this.partialArguments = ensureNotEmpty(builder.partialArguments, "partialArguments");
     }
 
     /**
