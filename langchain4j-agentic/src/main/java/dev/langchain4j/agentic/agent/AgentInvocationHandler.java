@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.internal.AgentInstance;
+import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -43,7 +43,7 @@ public class AgentInvocationHandler implements InvocationHandler {
             };
         }
 
-        if (method.getDeclaringClass() == AgentInstance.class) {
+        if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
                 case "outputName" -> builder.outputName;
                 default ->

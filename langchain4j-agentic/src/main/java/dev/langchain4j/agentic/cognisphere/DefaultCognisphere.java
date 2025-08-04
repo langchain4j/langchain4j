@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.cognisphere;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.internal.AgentCall;
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -112,11 +112,11 @@ public class DefaultCognisphere implements Cognisphere {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentCall(AgentSpecification agentSpecification, Object agent, Object[] input, Object output) {
+    public void registerAgentCall(AgentInvoker agentInvoker, Object agent, Object[] input, Object output) {
         withReadLock(() -> {
-            agentsCalls.computeIfAbsent(agentSpecification.name(), name -> new ArrayList<>())
-                            .add(new AgentCall(agentSpecification.name(), input, output));
-            registerContext(agentSpecification, agent, input, output);
+            agentsCalls.computeIfAbsent(agentInvoker.name(), name -> new ArrayList<>())
+                            .add(new AgentCall(agentInvoker.name(), input, output));
+            registerContext(agentInvoker, agent);
         });
     }
 
@@ -141,7 +141,7 @@ public class DefaultCognisphere implements Cognisphere {
         }
     }
 
-    private void registerContext(AgentSpecification agentSpecification, Object agent, Object[] input, Object response) {
+    private void registerContext(AgentInvoker agentInvoker, Object agent) {
         if (agent instanceof ChatMemoryAccess agentWithMemory) {
             ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
             if (chatMemory != null) {
@@ -151,18 +151,14 @@ public class DefaultCognisphere implements Cognisphere {
                     for (int i = agentMessages.size() - 1; i >= 0; i--) {
                         if (agentMessages.get(i) instanceof UserMessage userMessage) {
                             // Only add to the cognisphere's context the last UserMessage ...
-                            context.add(new AgentMessage(agentSpecification.name(), userMessage));
+                            context.add(new AgentMessage(agentInvoker.name(), userMessage));
                             // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                            context.add(new AgentMessage(agentSpecification.name(), aiMessage));
+                            context.add(new AgentMessage(agentInvoker.name(), aiMessage));
                             return;
                         }
                     }
                 }
             }
-        }
-        if (agentSpecification.description() != null && !agentSpecification.description().isBlank()) {
-            context.add(new AgentMessage(agentSpecification.name(), new UserMessage(agentSpecification.description())));
-            context.add(new AgentMessage(agentSpecification.name(), AiMessage.aiMessage(response.toString())));
         }
     }
 

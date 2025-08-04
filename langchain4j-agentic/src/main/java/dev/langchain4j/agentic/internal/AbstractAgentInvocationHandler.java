@@ -41,7 +41,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     public CognisphereOwner withCognisphere(DefaultCognisphere cognisphere) {
         return (CognisphereOwner) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentInstance.class, CognisphereOwner.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
                 createSubAgentWithCognisphere(cognisphere));
     }
 
@@ -67,7 +67,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             };
         }
 
-        if (method.getDeclaringClass() == AgentInstance.class) {
+        if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
                 case "outputName" -> outputName;
                 default ->
@@ -115,7 +115,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             Parameter[] parameters = method.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 int index = i;
-                AgentSpecification.optionalParameterName(parameters[i])
+                AgentInvoker.optionalParameterName(parameters[i])
                         .ifPresent(argName -> cognisphere.writeState(argName, args[index]) );
             }
         }

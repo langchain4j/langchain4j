@@ -21,7 +21,7 @@ public @interface Agent {
     String name() default "";
 
     /**
-     * Description of the agent.
+     * Description of the agent. This is an alias of the {@code description} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
      *
      * @return description of the agent.
@@ -29,7 +29,7 @@ public @interface Agent {
     String value() default "";
 
     /**
-     * Description of the agent.
+     * Description of the agent. This is an alias of the {@code value} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
      *
      * @return description of the agent.

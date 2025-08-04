@@ -6,7 +6,7 @@ import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.internal.AgentInstance;
+import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import java.lang.reflect.InvocationHandler;
@@ -31,7 +31,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     public T build() {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentInstance.class, CognisphereOwner.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
                 new ConditionialInvocationHandler());
     }
 

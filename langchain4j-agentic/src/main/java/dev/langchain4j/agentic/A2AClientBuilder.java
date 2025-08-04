@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.internal.A2AClientInstance;
-import dev.langchain4j.agentic.internal.AgentInstance;
+import dev.langchain4j.agentic.internal.A2AClientSpecification;
+import dev.langchain4j.agentic.internal.AgentSpecification;
 import io.a2a.client.A2AClient;
 import io.a2a.spec.A2AServerException;
 import io.a2a.spec.AgentCard;
@@ -42,11 +42,11 @@ public class A2AClientBuilder<T> {
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class},
+                new Class<?>[] {agentServiceClass, A2AClientSpecification.class},
                 new InvocationHandler() {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-                        if (method.getDeclaringClass() == AgentInstance.class) {
+                        if (method.getDeclaringClass() == AgentSpecification.class) {
                             return switch (method.getName()) {
                                 case "outputName" -> outputName;
                                 default ->
@@ -55,7 +55,7 @@ public class A2AClientBuilder<T> {
                             };
                         }
 
-                        if (method.getDeclaringClass() == A2AClientInstance.class) {
+                        if (method.getDeclaringClass() == A2AClientSpecification.class) {
                             return switch (method.getName()) {
                                 case "agentCard" -> agentCard;
                                 case "inputNames" -> inputNames;
@@ -102,7 +102,7 @@ public class A2AClientBuilder<T> {
                 .filter(TextPart.class::isInstance)
                 .map(TextPart.class::cast)
                 .map(TextPart::getText)
-                .collect(Collectors.joining());
+                .collect(Collectors.joining("\n"));
     }
 
     public A2AClientBuilder<T> inputNames(String... inputNames) {

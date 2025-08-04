@@ -3,7 +3,7 @@ package dev.langchain4j.agentic.agent;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.internal.AgentInstance;
+import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.memory.ChatMemory;
@@ -72,7 +72,7 @@ public class AgentBuilder<T> {
 
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentInstance.class, ChatMemoryAccess.class, CognisphereOwner.class},
+                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, CognisphereOwner.class},
                 new AgentInvocationHandler(context, aiServices.build(), this, cognisphereDependent));
     }
 

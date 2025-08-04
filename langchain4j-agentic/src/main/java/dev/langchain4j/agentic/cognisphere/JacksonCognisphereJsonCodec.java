@@ -39,6 +39,8 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
     static ObjectMapper cognisphereJsonSerializer() {
         ObjectMapper mapper = cognisphereJsonMapperBuilder().build();
 
+        // Configure the ObjectMapper to add type information for users types
+        // At the moment, this is only needed and used for enums, but we could add support for other types in the future
         mapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfBaseType(Object.class)

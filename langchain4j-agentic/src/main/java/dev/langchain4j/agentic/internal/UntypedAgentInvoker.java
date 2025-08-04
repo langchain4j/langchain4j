@@ -3,7 +3,7 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import java.lang.reflect.Method;
 
-public record UntypedAgentSpecification(Method method, String name, String description, String outputName) implements AgentSpecification {
+public record UntypedAgentInvoker(Method method, String name, String description, String outputName) implements AgentInvoker {
 
     @Override
     public String toCard() {

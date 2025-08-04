@@ -6,8 +6,8 @@ import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.internal.AgentInstance;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.CognisphereOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -57,7 +57,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     T build(DefaultCognisphere cognisphere) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentInstance.class, CognisphereOwner.class, CognisphereAccess.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class, CognisphereAccess.class},
                 new SupervisorInvocationHandler(buildPlannerAgent(cognisphere), cognisphere));
     }
 
@@ -120,7 +120,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                     throw new IllegalStateException("No agent found with name: " + agentName);
                 }
 
-                AgentSpecification agentSpec = agentExec.agentSpecification();
+                AgentInvoker agentSpec = agentExec.agentInvoker();
                 if (agentSpec == null) {
                     throw new IllegalStateException("No specification found for agent: " + agentName);
                 }
@@ -195,7 +195,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     @Override
     public SupervisorAgentServiceImpl<T> subAgents(List<AgentExecutor> agentExecutors) {
         for (AgentExecutor agentExecutor : agentExecutors) {
-            if (!agentExecutor.agentSpecification().description().isEmpty()) {
+            if (!agentExecutor.agentInvoker().description().isEmpty()) {
                 this.agents.put(agentExecutor.agentName(), agentExecutor);
             } else {
                 throw new IllegalArgumentException("Agent '" + agentExecutor.agentName() +
@@ -204,8 +204,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
         this.agentsList = this.agents.values()
                 .stream()
-                .map(AgentExecutor::agentSpecification)
-                .map(AgentSpecification::toCard)
+                .map(AgentExecutor::agentInvoker)
+                .map(AgentInvoker::toCard)
                 .collect(Collectors.joining(", "));
         return this;
     }

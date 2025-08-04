@@ -25,23 +25,23 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
-        if (agent instanceof AgentInstance agentInstance ) {
-            return agentToExecutor(agentInstance);
+        if (agent instanceof AgentSpecification agentSpecification) {
+            return agentToExecutor(agentSpecification);
         }
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        AgentSpecification agentSpecification = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentSpecification(agenticMethod, name, spec.description(), spec.outputName(),
+        AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
+                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentSpecification.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName());
-        return new AgentExecutor(agentSpecification, agent);
+                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName());
+        return new AgentExecutor(agentInvoker, agent);
     }
 
-    public static AgentExecutor agentToExecutor(AgentInstance agent) {
+    public static AgentExecutor agentToExecutor(AgentSpecification agent) {
        for (Method method : agent.getClass().getDeclaredMethods()) {
-           Optional<AgentExecutor> executor = agent instanceof A2AClientInstance a2a ?
+           Optional<AgentExecutor> executor = agent instanceof A2AClientSpecification a2a ?
                    methodToA2AExecutor(a2a, method) :
                    methodToAgentExecutor(agent, method);
            if (executor.isPresent()) {
@@ -57,14 +57,14 @@ public class AgentUtil {
                 .findFirst();
     }
 
-    private static Optional<AgentExecutor> methodToA2AExecutor(A2AClientInstance a2aClient, Method method) {
+    private static Optional<AgentExecutor> methodToA2AExecutor(A2AClientSpecification a2aClient, Method method) {
         return getAnnotatedMethod(method, Agent.class)
-                .map(agentMethod -> new AgentExecutor(new A2AClientAgentSpecification(a2aClient, agentMethod), a2aClient));
+                .map(agentMethod -> new AgentExecutor(new A2AClientAgentInvoker(a2aClient, agentMethod), a2aClient));
     }
 
-    private static Optional<AgentExecutor> methodToAgentExecutor(AgentInstance agent, Method method) {
+    private static Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
         return getAnnotatedMethod(method, Agent.class)
-                .map(agentMethod -> new AgentExecutor(AgentSpecification.fromMethod(agent, agentMethod), agent));
+                .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
     public static Object[] methodInvocationArguments(Cognisphere cognisphere, Method method) {
@@ -84,7 +84,7 @@ public class AgentUtil {
         if (Cognisphere.class.isAssignableFrom(p.getType())) {
             return "@Cognisphere";
         }
-        return AgentSpecification.parameterName(p);
+        return AgentInvoker.parameterName(p);
     }
 
     public static Object[] methodInvocationArguments(Cognisphere cognisphere, List<AgentArgument> agentArguments) {
