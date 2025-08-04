@@ -30,6 +30,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonNativeSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -1296,6 +1297,58 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
+    @EnabledIf("supportsJsonResponseFormatWithNativeSchema")
+    protected void should_respect_JsonNativeSchema_responseFormat(M model) throws Exception {
+        var rawSchema =
+                """
+            {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string"
+                    }
+                },
+                "required": ["city"],
+                "additionalProperties": false
+            }""";
+
+        ResponseFormat schemaFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Answer")
+                        .rootElement(
+                                JsonNativeSchema.builder().schema(rawSchema).build())
+                        .build())
+                .build();
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .parameters(ChatRequestParameters.builder()
+                        .responseFormat(schemaFormat)
+                        .build())
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
     @DisabledIf("supportsJsonResponseFormatWithSchema")
     protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(M model) {
 
@@ -1630,6 +1683,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
+    }
+
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return true;
     }
 
     protected boolean supportsSingleImageInputAsBase64EncodedString() {

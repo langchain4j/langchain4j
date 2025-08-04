@@ -51,6 +51,11 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
         return false; // output format not supported
     }
 
+    @Override
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return false; // output format not supported
+    }
+
     @AfterEach
     void afterEach() {
         sleepIfNeeded();
