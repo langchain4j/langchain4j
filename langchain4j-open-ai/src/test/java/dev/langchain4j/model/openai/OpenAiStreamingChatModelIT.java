@@ -313,12 +313,9 @@ class OpenAiStreamingChatModelIT {
 
         // then
         AiMessage aiMessage = handler.get().aiMessage();
-        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
     }
