@@ -38,8 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
-import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeclarativeAgentIT {
@@ -56,7 +56,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_tests() {
-        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, BASE_MODEL);
+        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         System.out.println(story);
@@ -91,7 +91,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_and_loop_tests() {
-        StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, BASE_MODEL);
+        StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
 
         ResultWithCognisphere<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -140,7 +140,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_conditional_tests() {
-        ExpertRouterAgent expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgent.class, BASE_MODEL);
+        ExpertRouterAgent expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgent.class, baseModel());
 
         ResultWithCognisphere<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
@@ -178,7 +178,7 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_parallel_tests() {
-        EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL);
+        EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);
         assertThat(plans).hasSize(3);
@@ -199,21 +199,21 @@ public class DeclarativeAgentIT {
 
         @SupervisorChatModel
         static ChatModel chatModel() {
-            return PLANNER_MODEL;
+            return plannerModel();
         }
     }
 
     @Test
     void declarative_supervisor_tests() {
-        SupervisorStoryCreator styledWriter = AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, BASE_MODEL);
+        SupervisorStoryCreator styledWriter = AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, baseModel());
         ResultWithCognisphere<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
         System.out.println(story);
 
         Cognisphere cognisphere = result.cognisphere();
-        assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
-        assertThat(cognisphere.readState("style")).isEqualTo("comedy");
+        assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
+        assertThat(cognisphere.readState("style", "")).contains("comedy");
         assertThat(story).isEqualTo(cognisphere.readState("story"));
         assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 

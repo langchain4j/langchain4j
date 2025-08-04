@@ -35,7 +35,7 @@ import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,17 +47,17 @@ public class WorkflowAgentsIT {
     @Test
     void sequential_agents_tests() {
         CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build());
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build());
 
         StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build());
 
@@ -83,7 +83,7 @@ public class WorkflowAgentsIT {
     @Test
     void sequential_agents_with_human_in_the_loop_tests() {
         CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build());
 
@@ -98,7 +98,7 @@ public class WorkflowAgentsIT {
                 .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build());
 
@@ -123,17 +123,17 @@ public class WorkflowAgentsIT {
     @Test
     void loop_agents_tests() {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -165,17 +165,17 @@ public class WorkflowAgentsIT {
     @Test
     void typed_loop_agents_tests() {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -214,20 +214,20 @@ public class WorkflowAgentsIT {
     @Test
     void conditional_agents_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("category")
                 .build();
 
         MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("response")
                 .build());
         LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("response")
                 .build());
         TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("response")
                 .build());
 
@@ -250,22 +250,22 @@ public class WorkflowAgentsIT {
     @Test
     void memory_agents_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("category")
                 .build();
 
         MedicalExpertWithMemory medicalExpert = AgenticServices.agentBuilder(MedicalExpertWithMemory.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
                 .build();
         TechnicalExpertWithMemory technicalExpert = AgenticServices.agentBuilder(TechnicalExpertWithMemory.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputName("response")
                 .build();
         LegalExpertWithMemory legalExpert = AgenticServices.agentBuilder(LegalExpertWithMemory.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .summarizedContext("medical", "technical")
                 .outputName("response")
@@ -342,12 +342,12 @@ public class WorkflowAgentsIT {
 
     private void test_parallel_agents(boolean useDefaultExecutor) {
         FoodExpert foodExpert = AgenticServices.agentBuilder(FoodExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("meals")
                 .build();
 
         MovieExpert movieExpert = AgenticServices.agentBuilder(MovieExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("movies")
                 .build();
 

@@ -96,7 +96,7 @@ public class AgentUtil {
                 invocationArgs[i++] = cognisphere.memoryId();
                 continue;
             }
-            if (arg.type().equals("@Cognisphere")) {
+            if (argName.equals("@Cognisphere")) {
                 invocationArgs[i++] = cognisphere;
                 continue;
             }

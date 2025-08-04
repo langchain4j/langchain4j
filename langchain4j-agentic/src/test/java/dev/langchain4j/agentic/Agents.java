@@ -202,7 +202,7 @@ public class Agents {
         @UserMessage("""
             You are a great evening planner.
             Propose a list of 3 movies matching the given mood.
-            The mood is {mood}.
+            The mood is {{mood}}.
             Provide a list with the 3 items and nothing else.
             """)
         @Agent

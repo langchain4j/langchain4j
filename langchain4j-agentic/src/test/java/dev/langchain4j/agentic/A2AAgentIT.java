@@ -14,8 +14,8 @@ import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.Agents.StyledWriter;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
-import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class A2AAgentIT {
@@ -31,12 +31,12 @@ public class A2AAgentIT {
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -74,12 +74,12 @@ public class A2AAgentIT {
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -91,7 +91,7 @@ public class A2AAgentIT {
                 .build();
 
         SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
+                .chatModel(plannerModel())
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
                 .outputName("story")

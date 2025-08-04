@@ -20,8 +20,8 @@ import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
-import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.mockito.Mockito.spy;
@@ -34,17 +34,17 @@ public class SupervisorAgentIT {
         // Nothing conceptually new, just test that now we can use AiServices as tools
 
         MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build());
         LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build());
         TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build());
 
         RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(medicalExpert, legalExpert, technicalExpert)
                 .build();
 
@@ -70,20 +70,20 @@ public class SupervisorAgentIT {
         // All agents are registered in the AgentsSystem, which internally uses a planner agent that can invoke other agents
 
         RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build();
         MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build();
         LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build();
         TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build();
 
         SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
+                .chatModel(plannerModel())
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .subAgents(requestClassifierAgent, medicalExpert, legalExpert, technicalExpert)
                 .build();
@@ -173,7 +173,7 @@ public class SupervisorAgentIT {
         bankTool.createAccount("Georgios", 1000.0);
 
         BankerAgent bankerAgent = AiServices.builder(BankerAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(bankTool)
                 .build();
 
@@ -188,16 +188,16 @@ public class SupervisorAgentIT {
         bankTool.createAccount("Georgios", 1000.0);
 
         WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(bankTool)
                 .build();
         CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(bankTool)
                 .build();
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
+                .chatModel(plannerModel())
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(withdrawAgent, creditAgent)
@@ -296,11 +296,11 @@ public class SupervisorAgentIT {
         bankTool.createAccount("Georgios", 1000.0);
 
         WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(bankTool)
                 .build();
         CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .tools(bankTool)
                 .build();
 
@@ -309,7 +309,7 @@ public class SupervisorAgentIT {
         if (fullyAI) {
             // Using an AI agent
             exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
-                    .chatModel(BASE_MODEL)
+                    .chatModel(baseModel())
                     .tools(new ExchangeTool())
                     .build();
         } else {
@@ -318,7 +318,7 @@ public class SupervisorAgentIT {
         }
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
+                .chatModel(plannerModel())
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .subAgents(withdrawAgent, creditAgent, exchange)

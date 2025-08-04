@@ -7,8 +7,8 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
-import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 
 public class HoroscopeMain {
 
@@ -25,7 +25,7 @@ public class HoroscopeMain {
 
     public static void main(String[] args) {
         AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .build();
 
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
@@ -39,7 +39,7 @@ public class HoroscopeMain {
                 .build();
 
         SupervisorAgent horoscopeAgent = AgenticServices.supervisorBuilder()
-                .chatModel(PLANNER_MODEL)
+                .chatModel(plannerModel())
                 .subAgents(astrologyAgent, humanInTheLoop)
                 .build();
 

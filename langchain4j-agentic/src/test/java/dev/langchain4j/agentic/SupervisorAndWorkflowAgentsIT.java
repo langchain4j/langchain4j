@@ -14,8 +14,8 @@ import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 
-import static dev.langchain4j.agentic.Models.BASE_MODEL;
-import static dev.langchain4j.agentic.Models.PLANNER_MODEL;
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SupervisorAndWorkflowAgentsIT {
@@ -38,17 +38,17 @@ public class SupervisorAndWorkflowAgentsIT {
 
     void supervisor_with_composite_agents(boolean typedSupervisor) {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(BASE_MODEL)
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -63,7 +63,7 @@ public class SupervisorAndWorkflowAgentsIT {
 
         if (typedSupervisor) {
             SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriter.class)
-                    .chatModel(PLANNER_MODEL)
+                    .chatModel(plannerModel())
                     .requestGenerator(cognisphere -> "Write a story about " + cognisphere.readState("topic") + " in the style of a " + cognisphere.readState("style"))
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
@@ -75,7 +75,7 @@ public class SupervisorAndWorkflowAgentsIT {
 
         } else {
             SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
-                    .chatModel(PLANNER_MODEL)
+                    .chatModel(plannerModel())
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
                     .maxAgentsInvocations(5)
