@@ -13,16 +13,19 @@ public class UrlSourceTest {
     private static final String VALID_URL =
             "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
     /**
-     * An intentionally unreachable URL used to simulate network timeouts or connection failures.
+     * An intentionally unreachable URL used to simulate network timeouts or
+     * connection failures.
      * <p>
-     * The IP address {@code 10.255.255.1} is part of the private IP range (10.0.0.0/8)
-     * and is typically non-routable on public networks.
-     * Port {@code 81} is a non-standard port that is usually closed, increasing the likelihood
-     * that the connection attempt will hang or fail quickly.
+     * The IP address {@code 10.255.255.1} is part of the private IP range
+     * (10.0.0.0/8) and is typically non-routable on public networks. Port
+     * {@code 81} is a non-standard port that is usually closed, increasing the
+     * likelihood that the connection attempt will hang or fail quickly.
      * <p>
-     * This makes it ideal for testing timeout behavior or error handling in a reliable and predictable way.
+     * This makes it ideal for testing timeout behavior or error handling in a
+     * reliable and predictable way.
      *
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc1918">RFC 1918 - Address Allocation for Private Internets</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc1918">RFC 1918 -
+     *      Address Allocation for Private Internets</a>
      */
     private static final String INVALID_URL = "http://10.255.255.1:81";
 
@@ -69,6 +72,38 @@ public class UrlSourceTest {
 
         assertEquals(2345, getField(source, "connectTimeoutMillis"));
         assertEquals(6789, getField(source, "readTimeoutMillis"));
+    }
+
+    @Test
+    void should_create_url_source_from_string_with_timeouts() throws Exception {
+        UrlSource source = UrlSource.from(VALID_URL, 1500, 2500);
+
+        assertNotNull(source);
+        assertEquals(VALID_URL, source.metadata().getString("url"));
+        assertEquals(1500, getField(source, "connectTimeoutMillis"));
+        assertEquals(2500, getField(source, "readTimeoutMillis"));
+    }
+
+    @Test
+    void should_create_url_source_from_url_with_timeouts() throws Exception {
+        URL url = createUrl(VALID_URL);
+        UrlSource source = UrlSource.from(url, 3000, 4000);
+
+        assertNotNull(source);
+        assertEquals(VALID_URL, source.metadata().getString("url"));
+        assertEquals(3000, getField(source, "connectTimeoutMillis"));
+        assertEquals(4000, getField(source, "readTimeoutMillis"));
+    }
+
+    @Test
+    void should_create_url_source_from_uri_with_timeouts() throws Exception {
+        URI uri = URI.create(VALID_URL);
+        UrlSource source = UrlSource.from(uri, 5000, 6000);
+
+        assertNotNull(source);
+        assertEquals(VALID_URL, source.metadata().getString("url"));
+        assertEquals(5000, getField(source, "connectTimeoutMillis"));
+        assertEquals(6000, getField(source, "readTimeoutMillis"));
     }
 
     private int getField(UrlSource source, String fieldName) throws Exception {

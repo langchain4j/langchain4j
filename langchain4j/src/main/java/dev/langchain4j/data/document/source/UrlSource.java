@@ -67,4 +67,24 @@ public class UrlSource implements DocumentSource {
             throw new RuntimeException(e);
         }
     }
+
+    public static UrlSource from(String url, int connectTimeoutMillis, int readTimeoutMillis) {
+        try {
+            return new UrlSource(new URL(url), connectTimeoutMillis, readTimeoutMillis);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static UrlSource from(URL url, int connectTimeoutMillis, int readTimeoutMillis) {
+        return new UrlSource(url, connectTimeoutMillis, readTimeoutMillis);
+    }
+
+    public static UrlSource from(URI uri, int connectTimeoutMillis, int readTimeoutMillis) {
+        try {
+            return new UrlSource(uri.toURL(), connectTimeoutMillis, readTimeoutMillis);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
