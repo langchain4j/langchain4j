@@ -10,8 +10,14 @@ class DuckDuckGoSearchRequest {
     private String region;
     private Integer maxResults;
 
-    DuckDuckGoSearchRequest(String query, String format, Integer noHtml, Integer skipDisambig,
-                            String safeSearch, String region, Integer maxResults) {
+    DuckDuckGoSearchRequest(
+            String query,
+            String format,
+            Integer noHtml,
+            Integer skipDisambig,
+            String safeSearch,
+            String region,
+            Integer maxResults) {
         this.query = query;
         this.format = format;
         this.noHtml = noHtml;
@@ -62,8 +68,7 @@ class DuckDuckGoSearchRequest {
         private String region;
         private Integer maxResults;
 
-        DuckDuckGoSearchRequestBuilder() {
-        }
+        DuckDuckGoSearchRequestBuilder() {}
 
         public DuckDuckGoSearchRequestBuilder query(String query) {
             this.query = query;
@@ -101,14 +106,20 @@ class DuckDuckGoSearchRequest {
         }
 
         public DuckDuckGoSearchRequest build() {
-            return new DuckDuckGoSearchRequest(this.query, this.format, this.noHtml,
-                    this.skipDisambig, this.safeSearch, this.region, this.maxResults);
+            return new DuckDuckGoSearchRequest(
+                    this.query,
+                    this.format,
+                    this.noHtml,
+                    this.skipDisambig,
+                    this.safeSearch,
+                    this.region,
+                    this.maxResults);
         }
 
         public String toString() {
-            return "DuckDuckGoSearchRequest.DuckDuckGoSearchRequestBuilder(query=" + this.query +
-                    ", format=" + this.format + ", noHtml=" + this.noHtml + ", skipDisambig=" + this.skipDisambig +
-                    ", safeSearch=" + this.safeSearch + ", region=" + this.region + ", maxResults=" + this.maxResults + ")";
+            return "DuckDuckGoSearchRequest.DuckDuckGoSearchRequestBuilder(query=" + this.query + ", format="
+                    + this.format + ", noHtml=" + this.noHtml + ", skipDisambig=" + this.skipDisambig + ", safeSearch="
+                    + this.safeSearch + ", region=" + this.region + ", maxResults=" + this.maxResults + ")";
         }
     }
 }

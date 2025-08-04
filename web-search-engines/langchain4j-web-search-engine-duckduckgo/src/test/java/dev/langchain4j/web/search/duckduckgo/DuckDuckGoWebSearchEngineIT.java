@@ -7,10 +7,8 @@ import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-
 import java.time.Duration;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 class DuckDuckGoWebSearchEngineIT extends WebSearchEngineIT {
@@ -96,11 +94,10 @@ class DuckDuckGoWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(isValidUrl).isTrue();
         });
 
-        boolean hasBusinessContent = results.stream()
-                .anyMatch(result -> {
-                    String combined = (result.title() + " " + (result.snippet() != null ? result.snippet() : "")).toLowerCase();
-                    return combined.contains("microsoft") || combined.contains("azure") || combined.contains("pricing");
-                });
+        boolean hasBusinessContent = results.stream().anyMatch(result -> {
+            String combined = (result.title() + " " + (result.snippet() != null ? result.snippet() : "")).toLowerCase();
+            return combined.contains("microsoft") || combined.contains("azure") || combined.contains("pricing");
+        });
         assertThat(hasBusinessContent).isTrue();
     }
 

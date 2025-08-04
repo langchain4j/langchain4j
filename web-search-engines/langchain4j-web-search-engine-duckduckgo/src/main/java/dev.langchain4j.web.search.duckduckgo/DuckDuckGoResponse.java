@@ -44,11 +44,20 @@ class DuckDuckGoResponse {
     @JsonProperty("Results")
     private List<DuckDuckGoSearchResult> results;
 
-    public DuckDuckGoResponse(String abstractText, String abstractTextPlain, String abstractSource,
-                              String abstractUrl, String image, String heading, String answer,
-                              String answerType, String definition, String definitionSource,
-                              String definitionUrl, List<DuckDuckGoSearchResult> relatedTopics,
-                              List<DuckDuckGoSearchResult> results) {
+    public DuckDuckGoResponse(
+            String abstractText,
+            String abstractTextPlain,
+            String abstractSource,
+            String abstractUrl,
+            String image,
+            String heading,
+            String answer,
+            String answerType,
+            String definition,
+            String definitionSource,
+            String definitionUrl,
+            List<DuckDuckGoSearchResult> relatedTopics,
+            List<DuckDuckGoSearchResult> results) {
         this.abstractText = abstractText;
         this.abstractTextPlain = abstractTextPlain;
         this.abstractSource = abstractSource;
@@ -64,8 +73,7 @@ class DuckDuckGoResponse {
         this.results = results;
     }
 
-    public DuckDuckGoResponse() {
-    }
+    public DuckDuckGoResponse() {}
 
     public static DuckDuckGoResponseBuilder builder() {
         return new DuckDuckGoResponseBuilder();
@@ -138,8 +146,7 @@ class DuckDuckGoResponse {
         private List<DuckDuckGoSearchResult> relatedTopics;
         private List<DuckDuckGoSearchResult> results;
 
-        DuckDuckGoResponseBuilder() {
-        }
+        DuckDuckGoResponseBuilder() {}
 
         public DuckDuckGoResponseBuilder abstractText(String abstractText) {
             this.abstractText = abstractText;
@@ -207,19 +214,31 @@ class DuckDuckGoResponse {
         }
 
         public DuckDuckGoResponse build() {
-            return new DuckDuckGoResponse(this.abstractText, this.abstractTextPlain, this.abstractSource,
-                    this.abstractUrl, this.image, this.heading, this.answer,
-                    this.answerType, this.definition, this.definitionSource,
-                    this.definitionUrl, this.relatedTopics, this.results);
+            return new DuckDuckGoResponse(
+                    this.abstractText,
+                    this.abstractTextPlain,
+                    this.abstractSource,
+                    this.abstractUrl,
+                    this.image,
+                    this.heading,
+                    this.answer,
+                    this.answerType,
+                    this.definition,
+                    this.definitionSource,
+                    this.definitionUrl,
+                    this.relatedTopics,
+                    this.results);
         }
 
         public String toString() {
-            return "DuckDuckGoResponse.DuckDuckGoResponseBuilder(abstractText=" + this.abstractText +
-                    ", abstractTextPlain=" + this.abstractTextPlain + ", abstractSource=" + this.abstractSource +
-                    ", abstractUrl=" + this.abstractUrl + ", image=" + this.image + ", heading=" + this.heading +
-                    ", answer=" + this.answer + ", answerType=" + this.answerType + ", definition=" + this.definition +
-                    ", definitionSource=" + this.definitionSource + ", definitionUrl=" + this.definitionUrl +
-                    ", relatedTopics=" + this.relatedTopics + ", results=" + this.results + ")";
+            return "DuckDuckGoResponse.DuckDuckGoResponseBuilder(abstractText=" + this.abstractText
+                    + ", abstractTextPlain="
+                    + this.abstractTextPlain + ", abstractSource=" + this.abstractSource + ", abstractUrl="
+                    + this.abstractUrl + ", image=" + this.image + ", heading=" + this.heading + ", answer="
+                    + this.answer + ", answerType=" + this.answerType + ", definition=" + this.definition
+                    + ", definitionSource="
+                    + this.definitionSource + ", definitionUrl=" + this.definitionUrl + ", relatedTopics="
+                    + this.relatedTopics + ", results=" + this.results + ")";
         }
     }
 }

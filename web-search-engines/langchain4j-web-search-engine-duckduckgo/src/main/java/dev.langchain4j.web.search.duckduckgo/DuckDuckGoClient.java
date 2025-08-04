@@ -1,10 +1,5 @@
 package dev.langchain4j.web.search.duckduckgo;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -12,13 +7,17 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 class DuckDuckGoClient {
 
     private static final String[] SEARCH_URLS = {
-            "https://duckduckgo.com/html/?q=",
-            "https://html.duckduckgo.com/html/?q=",
-            "https://lite.duckduckgo.com/lite/?q="
+        "https://duckduckgo.com/html/?q=",
+        "https://html.duckduckgo.com/html/?q=",
+        "https://lite.duckduckgo.com/lite/?q="
     };
 
     private final int timeoutMs;
@@ -166,10 +165,10 @@ class DuckDuckGoClient {
     private boolean isValidUrl(String url) {
         if (url == null || url.isEmpty()) return false;
 
-        if (url.contains("y.js") ||
-                url.contains("duckduckgo.com/y.js") ||
-                url.contains("duckduckgo.com/d.js") ||
-                url.startsWith("/") && !url.startsWith("//")) {
+        if (url.contains("y.js")
+                || url.contains("duckduckgo.com/y.js")
+                || url.contains("duckduckgo.com/d.js")
+                || url.startsWith("/") && !url.startsWith("//")) {
             return false;
         }
 
@@ -186,8 +185,7 @@ class DuckDuckGoClient {
     public static class DuckDuckGoClientBuilder {
         private Duration timeout;
 
-        DuckDuckGoClientBuilder() {
-        }
+        DuckDuckGoClientBuilder() {}
 
         public DuckDuckGoClientBuilder timeout(Duration timeout) {
             this.timeout = timeout;
