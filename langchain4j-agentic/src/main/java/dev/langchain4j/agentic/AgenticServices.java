@@ -13,6 +13,8 @@ import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorChatModel;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
+import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentInvoker;
@@ -212,11 +214,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        try {
-            return new A2AClientBuilder(A2A.getAgentCard(a2aServerUrl), agentServiceClass);
-        } catch (A2AClientError e) {
-            throw new RuntimeException(e);
-        }
+        return A2AService.get().a2aBuilder(a2aServerUrl, agentServiceClass);
     }
 
     /**

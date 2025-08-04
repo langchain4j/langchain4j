@@ -44,9 +44,7 @@ public class AgentUtil {
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
        for (Method method : agent.getClass().getDeclaredMethods()) {
-           Optional<AgentExecutor> executor = agent instanceof A2AClientSpecification a2a ?
-                   methodToA2AExecutor(a2a, method) :
-                   methodToAgentExecutor(agent, method);
+           Optional<AgentExecutor> executor = A2AService.get().methodToAgentExecutor(agent, method);
            if (executor.isPresent()) {
                 return executor.get();
            }
@@ -58,11 +56,6 @@ public class AgentUtil {
         return Arrays.stream(clazz.getDeclaredMethods())
                 .filter(m -> m.isAnnotationPresent(annotation))
                 .findFirst();
-    }
-
-    private static Optional<AgentExecutor> methodToA2AExecutor(A2AClientSpecification a2aClient, Method method) {
-        return getAnnotatedMethod(method, Agent.class)
-                .map(agentMethod -> new AgentExecutor(new A2AClientAgentInvoker(a2aClient, agentMethod), a2aClient));
     }
 
     private static Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {

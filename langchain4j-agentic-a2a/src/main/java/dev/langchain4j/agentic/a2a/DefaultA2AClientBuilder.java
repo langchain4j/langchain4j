@@ -1,8 +1,11 @@
-package dev.langchain4j.agentic;
+package dev.langchain4j.agentic.a2a;
 
-import dev.langchain4j.agentic.internal.A2AClientSpecification;
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import io.a2a.A2A;
 import io.a2a.client.A2AClient;
+import io.a2a.spec.A2AClientError;
 import io.a2a.spec.A2AServerException;
 import io.a2a.spec.AgentCard;
 import io.a2a.spec.Message;
@@ -19,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class A2AClientBuilder<T> {
+public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     private final Class<T> agentServiceClass;
 
@@ -29,12 +32,21 @@ public class A2AClientBuilder<T> {
     private String[] inputNames;
     private String outputName;
 
-    A2AClientBuilder(AgentCard agentCard, Class<T> agentServiceClass) {
-        this.agentCard = agentCard;
+    DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
+        this.agentCard = agentCard(a2aServerUrl);
         this.a2aClient = new A2AClient(agentCard);
         this.agentServiceClass = agentServiceClass;
     }
 
+    private static AgentCard agentCard(String a2aServerUrl) {
+        try {
+            return A2A.getAgentCard(a2aServerUrl);
+        } catch (A2AClientError e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public T build() {
         if (agentServiceClass == UntypedAgent.class && inputNames == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
@@ -105,12 +117,14 @@ public class A2AClientBuilder<T> {
                 .collect(Collectors.joining("\n"));
     }
 
-    public A2AClientBuilder<T> inputNames(String... inputNames) {
+    @Override
+    public DefaultA2AClientBuilder<T> inputNames(String... inputNames) {
         this.inputNames = inputNames;
         return this;
     }
 
-    public A2AClientBuilder<T> outputName(String outputName) {
+    @Override
+    public DefaultA2AClientBuilder<T> outputName(String outputName) {
         this.outputName = outputName;
         return this;
     }

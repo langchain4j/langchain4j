@@ -943,7 +943,7 @@ waiting for the user to provide the answer, which will be then used to invoke th
 
 ## A2A Integration
 
-The `langchain4j-agentic` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
+The additional `langchain4j-agentic-a2a` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
 
 For instance if the `CreativeWriter` agent used in the first example was defined on a remote A2A server, it is possible to create an `A2ACreativeWriter` agent that can be used in the same way as a local agent, but invoking the remote one.
 

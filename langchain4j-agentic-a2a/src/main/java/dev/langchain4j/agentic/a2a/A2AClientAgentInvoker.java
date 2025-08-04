@@ -1,7 +1,8 @@
-package dev.langchain4j.agentic.internal;
+package dev.langchain4j.agentic.a2a;
 
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.util.Arrays;
