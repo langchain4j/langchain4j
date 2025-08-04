@@ -15,7 +15,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class McpHealthStdioTransportIT {
+class McpHealthStdioTransportIT {
 
     static McpClient mcpClient;
     static McpTransport transport;
@@ -44,7 +44,7 @@ public class McpHealthStdioTransportIT {
     }
 
     @Test
-    public void testHealth() throws ExecutionException, InterruptedException {
+    void health() throws ExecutionException, InterruptedException {
         mcpClient.checkHealth();
         process.destroy();
         process.onExit().get();

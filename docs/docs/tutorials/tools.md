@@ -147,6 +147,8 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
 
+### Creating Tool Specification
+
 There are two ways to create a `ToolSpecification`:
 
 1. Manually
@@ -184,6 +186,8 @@ class WeatherTools {
 List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
 ```
 
+### Using `ChatModel`
+
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 ChatRequest request = ChatRequest.builder()
@@ -201,7 +205,7 @@ Depending on the LLM, it can contain one or multiple `ToolExecutionRequest` obje
 (some LLMs support calling multiple tools in parallel).
 
 Each `ToolExecutionRequest` should contain:
-- The `id` of the tool call (some LLMs do not provide it)
+- The `id` of the tool call. Please note that some LLM providers (e.g., Google, Ollama) may omit this ID.
 - The `name` of the tool to be called, for example: `getWeather`
 - The `arguments`, for example: `{ "city": "London", "temperatureUnit": "CELSIUS" }`
 
@@ -220,6 +224,70 @@ ChatRequest request2 = ChatRequest.builder()
         .build();
 ChatResponse response2 = model.chat(request2);
 ```
+
+### Using `StreamingChatModel`
+
+Once you have a `List<ToolSpecification>`, you can call the model:
+```java
+ChatRequest request = ChatRequest.builder()
+    .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+    .toolSpecifications(toolSpecifications)
+    .build();
+
+model.chat(request, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {
+        System.out.println("onPartialToolCall: " + partialToolCall);
+    }
+
+    @Override
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+        System.out.println("onCompleteToolCall: " + completeToolCall);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+If the LLM decides to call the tool, the `onPartialToolCall(PartialToolCall)` callback
+will typically be called multiple times before an `onCompleteToolCall(CompleteToolCall)` callback
+is eventually called, indicating that streaming for that tool call is finished.
+
+:::note
+Please note that not all LLM providers stream partial tool calls.
+Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
+In those cases, `onPartialToolCall` callback won't be invoked - only `onCompleteToolCall` will be called.
+:::
+
+Here's an example of what streaming of a single tool call might look like:
+```
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "{\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "city")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = ""\":\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "London")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "\"}")
+onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"London\"}")
+```
+
+If the LLM initiates multiple tool calls, the `index` will increment, allowing you to correlate
+the different `PartialToolCall`s with each other and with the final `CompleteToolCall`.
+
+When complete response streaming is over and `onCompleteResponse(ChatResponse)` is invoked,
+the `AiMessage` inside the `ChatResponse` will contain all the tool calls that occurred during streaming.
 
 ## High Level Tool API
 At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation
@@ -268,7 +336,7 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P(required = false) Unit unit) {
+void getTemperature(String location, @P(value = "Unit of temperature", required = false) Unit unit) {
     ...
 }
 ```
@@ -299,6 +367,85 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+### AI services as tools for other AI services
+
+AI services can also be used as tools for other AI services. This can be useful in many agentic use cases, where one AI service can ask the help of another, more specialized, AI service to perform a specific task. For instance, having defined the following AI services:
+
+```java
+    interface RouterAgent {
+
+        @dev.langchain4j.service.UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+```
+
+The `RouterAgent` can be configured to use as tools the 3 other AI services, experts in specific fields, routing the user request to one of them.
+
+```java
+MedicalExpert medicalExpert = AiServices.builder(MedicalExpert.class)
+        .chatModel(model)
+        .build();
+LegalExpert legalExpert = AiServices.builder(LegalExpert.class)
+        .chatModel(model)
+        .build();
+TechnicalExpert technicalExpert = AiServices.builder(TechnicalExpert.class)
+        .chatModel(model)
+        .build();
+
+RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+        .chatModel(model)
+        .tools(medicalExpert, legalExpert, technicalExpert)
+        .build();
+
+routerAgent.askToExpert("I broke my leg what should I do");
+```
+
+:::note
+Using AI services as tools for other AI services is a powerful feature that enables to build complex agentic systems. However, this approach also comes with a few relevant drawbacks that are important to be aware of:
+- This implementation requires the LLM to copy-paste the user request without modifications as a tool call and this could be an error-prone operation.
+- The LLM calling the other LLM as a tool has to reprocess its response, as it happens for any other tool invocation, and this could be a wasteful computation in terms of both time and consumed tokens.
+- The agent-tool, being a totally separated AI service, has no access to the chat memory of the agent calling it, so it cannot use the chat memory to provide a more informed answer.
+:::
 
 ### Exception Handling
 If a method annotated with `@Tool` throws an `Exception`,

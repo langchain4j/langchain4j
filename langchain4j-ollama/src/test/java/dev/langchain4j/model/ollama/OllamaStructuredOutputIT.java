@@ -5,7 +5,6 @@ import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastruc
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -143,24 +142,6 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
         assertThat(countryInfo.languages()).contains("English", "French");
-    }
-
-    @Test
-    void should_throw_exception_when_both_format_parameters_are_set_for_ollama_chat_model() {
-        assertThatThrownBy(() -> OllamaChatModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void should_throw_exception_when_both_format_parameters_are_set_for_ollama_streaming_chat_model() {
-        assertThatThrownBy(() -> OllamaStreamingChatModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

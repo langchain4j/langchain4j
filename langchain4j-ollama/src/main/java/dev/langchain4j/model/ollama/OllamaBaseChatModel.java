@@ -4,6 +4,12 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
@@ -12,25 +18,17 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import dev.langchain4j.model.chat.response.PartialThinking;
 
 abstract class OllamaBaseChatModel {
 
     protected OllamaClient client;
     protected OllamaChatRequestParameters defaultRequestParameters;
+    protected boolean returnThinking;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
 
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
-
-        if (builder.format != null && builder.responseFormat != null) {
-            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
-        }
-
         this.client = OllamaClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -40,18 +38,19 @@ abstract class OllamaBaseChatModel {
                 .logResponses(builder.logResponses)
                 .build();
 
-        ChatRequestParameters commonParameters = getOrDefault(builder.defaultRequestParameters,
-                () -> DefaultChatRequestParameters.builder().build());
-        validate(commonParameters);
-
-        OllamaChatRequestParameters ollamaParameters;
-        if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
-            ollamaParameters = ollamaChatRequestParameters;
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            ollamaParameters = OllamaChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat; // TODO
+        OllamaChatRequestParameters ollamaParameters =
+                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
+                        ollamaChatRequestParameters :
+                        OllamaChatRequestParameters.EMPTY;
+
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
@@ -61,7 +60,7 @@ abstract class OllamaBaseChatModel {
                 .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
-                .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
                 .mirostatEta(getOrDefault(builder.mirostatEta, ollamaParameters.mirostatEta()))
@@ -72,8 +71,9 @@ abstract class OllamaBaseChatModel {
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
+                .think(getOrDefault(builder.think, ollamaParameters.think()))
                 .build();
-
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -103,8 +103,9 @@ abstract class OllamaBaseChatModel {
         protected Integer numPredict;
         protected List<String> stop;
         protected Double minP;
-        protected String format;
         protected ResponseFormat responseFormat;
+        protected Boolean think;
+        protected Boolean returnThinking;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
@@ -207,21 +208,40 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
-        /**
-         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
-         * For example: {@code responseFormat(ResponseFormat.JSON)}.
-         * <br>
-         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
-         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
-         */
-        @Deprecated(forRemoval = true, since = "1.0.0-beta5")
-        public B format(String format) {
-            this.format = format;
+        public B responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return self();
         }
 
-        public B responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+        /**
+         * Controls <a href="https://ollama.com/blog/thinking">thinking</a>.
+         * <pre>
+         * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
+         * <code>false</code>: the LLM does not think
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by </code>&lt;think&gt;</code> and </code>&lt;/think&gt;</code>, to the actual response
+         * </pre>
+         *
+         * @see #returnThinking(Boolean)
+         */
+        public B think(Boolean think) {
+            this.think = think;
+            return self();
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thinking} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #think(Boolean)
+         */
+        public B returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return self();
         }
 

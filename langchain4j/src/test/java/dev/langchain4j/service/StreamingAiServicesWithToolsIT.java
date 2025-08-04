@@ -1,5 +1,21 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
+import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,50 +30,37 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
-import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
-import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
 
     static Stream<StreamingChatModel> models() {
-        return Stream.of(
-                OpenAiStreamingChatModel.builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_4_O_MINI)
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build()
-        );
+        return Stream.of(OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
     }
 
     interface Assistant {
@@ -108,7 +111,8 @@ class StreamingAiServicesWithToolsIT {
 
         // when
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(futureResponse::complete)
                 .onError(futureResponse::completeExceptionally)
@@ -124,24 +128,20 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+                                .build()),
+                        any());
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
+                                .build()),
+                        any());
     }
 
     static class WeatherService {
@@ -165,7 +165,9 @@ class StreamingAiServicesWithToolsIT {
     }
 
     enum TemperatureUnit {
-        CELSIUS, fahrenheit, Kelvin
+        CELSIUS,
+        fahrenheit,
+        Kelvin
     }
 
     @ParameterizedTest
@@ -189,7 +191,8 @@ class StreamingAiServicesWithToolsIT {
 
         // when
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
@@ -203,24 +206,20 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(weatherService);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+                                .build()),
+                        any());
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
+                                .build()),
+                        any());
     }
 
     @Test
@@ -247,7 +246,8 @@ class StreamingAiServicesWithToolsIT {
 
         // when
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
@@ -263,24 +263,20 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
-        verify(spyModel).chat(
-                eq(
-                        ChatRequest.builder()
+                                .build()),
+                        any());
+        verify(spyModel)
+                .chat(
+                        eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()
-                ),
-                any()
-        );
+                                .build()),
+                        any());
         verifyNoMoreInteractionsFor(spyModel);
     }
 
@@ -302,11 +298,78 @@ class StreamingAiServicesWithToolsIT {
 
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<>() {
-            });
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void should_invoke_tool_before_execution_handler() throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich and London, in Celsius?";
+
+        interface TokenStreamHandler {
+            void onPartialResponse(String partialResponse);
+            void beforeToolExecution(BeforeToolExecution beforeToolExecution);
+            void onToolExecuted(ToolExecution toolExecution);
+            void onError(Throwable error);
+            void onCompleteResponse(ChatResponse completeResponse);
+        }
+
+        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
+                .beforeToolExecution(beforeToolExecution -> tokenStreamHandler.beforeToolExecution(beforeToolExecution))
+                .onToolExecuted(toolExecution -> tokenStreamHandler.onToolExecuted(toolExecution))
+                .onError(error -> {
+                    tokenStreamHandler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+
+        // then
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verify(weatherService).currentTemperature("London", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        // then
+        InOrder inOrder = inOrder(tokenStreamHandler);
+
+        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("Munich")));
+        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("Munich")));
+        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("London")));
+        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("London")));
+
+        inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(tokenStreamHandler).onCompleteResponse(any());
+
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(tokenStreamHandler);
     }
 
     @Test
@@ -329,7 +392,8 @@ class StreamingAiServicesWithToolsIT {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
 
         // when
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(ignored -> {})
                 .onToolExecuted(toolExecutions::add)
                 .onCompleteResponse(future::complete)
@@ -349,11 +413,13 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions).hasSize(2);
 
         assertThat(toolExecutions.get(0).request().name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutions.get(0).request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
+        assertThat(toolExecutions.get(0).request().arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
         assertThat(toolExecutions.get(0).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
 
         assertThat(toolExecutions.get(1).request().name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutions.get(1).request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
+        assertThat(toolExecutions.get(1).request().arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
     }
 

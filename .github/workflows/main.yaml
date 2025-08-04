@@ -28,7 +28,10 @@ on:
 jobs:
   java_build:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
+    needs:
+      - spotless
+      - compliance
+    continue-on-error: ${{ !matrix.integration_tests }}
     strategy:
       fail-fast: false
       matrix:
@@ -39,13 +42,13 @@ jobs:
         include:
           - java_version: 17
             mvn_opts: ''
-            experimental: false
+            integration_tests: false
           - java_version: 21
             mvn_opts: ''
-            experimental: false
+            integration_tests: true
           - java_version: 24
             mvn_opts: ''
-            experimental: true
+            integration_tests: false
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
@@ -69,13 +72,16 @@ jobs:
         run: |
           mvn -B -U -T8C test javadoc:aggregate \
             ${{ matrix.mvn_opts }}
+
       - name: Setup JBang
         uses: jbangdev/setup-jbang@main
+        if:  ${{ matrix.integration_tests == true }}
+
       - name: Integration test with JDK ${{ matrix.java_version }}
-        ## The step or job will only run if the `experimental` variable
-        ## in the matrix is false (not set to true)
+        ## The step or job will only run if the `integration_tests` variable
+        ## in the matrix is true
         ## and the OPENAI_API_KEY secret is available and not empty.
-        if: ${{ !matrix.experimental && env.OPENAI_API_KEY != '' }}
+        if: ${{ matrix.integration_tests == true && env.OPENAI_API_KEY != '' }}
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
@@ -90,6 +96,7 @@ jobs:
           AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
           AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           ELASTICSEARCH_CLOUD_API_KEY: ${{ secrets.ELASTICSEARCH_CLOUD_API_KEY }}
           ELASTICSEARCH_CLOUD_URL: ${{ secrets.ELASTICSEARCH_CLOUD_URL }}
           GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
@@ -114,7 +121,7 @@ jobs:
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v5
         if: success() || failure() # always run even if the previous step fails
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
@@ -139,6 +146,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:

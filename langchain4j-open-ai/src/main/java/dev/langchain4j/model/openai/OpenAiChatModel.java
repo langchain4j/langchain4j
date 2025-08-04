@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -10,6 +11,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -49,8 +51,9 @@ public class OpenAiChatModel implements ChatModel {
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
 
     private final List<ChatModelListener> listeners;
 
@@ -76,15 +79,13 @@ public class OpenAiChatModel implements ChatModel {
             validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        OpenAiChatRequestParameters openAiParameters;
-        if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
-            openAiParameters = openAiChatRequestParameters;
-        } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
-        }
+        OpenAiChatRequestParameters openAiParameters =
+                builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters ?
+                        openAiChatRequestParameters :
+                        OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
@@ -108,11 +109,13 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .customParameters(openAiParameters.customParameters())
                 .build();
         this.responseFormat = builder.responseFormat;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -139,8 +142,10 @@ public class OpenAiChatModel implements ChatModel {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -150,10 +155,11 @@ public class OpenAiChatModel implements ChatModel {
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
+                .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(openAiResponse))
+                .aiMessage(aiMessageFrom(openAiResponse, returnThinking))
                 .metadata(responseMetadata)
                 .build();
     }
@@ -203,6 +209,7 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -351,6 +358,22 @@ public class OpenAiChatModel implements ChatModel {
 
         public OpenAiChatModelBuilder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 
