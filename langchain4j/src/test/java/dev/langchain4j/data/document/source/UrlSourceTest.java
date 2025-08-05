@@ -1,10 +1,22 @@
 package dev.langchain4j.data.document.source;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.*;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.net.*;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
@@ -12,22 +24,6 @@ public class UrlSourceTest {
 
     private static final String VALID_URL =
             "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
-    /**
-     * An intentionally unreachable URL used to simulate network timeouts or
-     * connection failures.
-     * <p>
-     * The IP address {@code 10.255.255.1} is part of the private IP range
-     * (10.0.0.0/8) and is typically non-routable on public networks. Port
-     * {@code 81} is a non-standard port that is usually closed, increasing the
-     * likelihood that the connection attempt will hang or fail quickly.
-     * <p>
-     * This makes it ideal for testing timeout behavior or error handling in a
-     * reliable and predictable way.
-     *
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc1918">RFC 1918 -
-     *      Address Allocation for Private Internets</a>
-     */
-    private static final String INVALID_URL = "http://10.255.255.1:81";
 
     @Test
     void should_create_url_source_from_valid_url_and_read_content() throws IOException {
@@ -50,10 +46,27 @@ public class UrlSourceTest {
 
     @Test
     void should_fail_to_connect_due_to_timeout() {
-        UrlSource source = new UrlSource(createUrl(INVALID_URL), 1000, 1000); // 1s timeout
+        final int wireMockPort = 123;
+        WireMockServer wireMockServer = new WireMockServer(wireMockPort);
+        wireMockServer.start();
 
-        IOException ex = assertThrows(IOException.class, source::inputStream);
-        assertTrue(ex.getMessage().contains("connect") || ex.getMessage().contains("timed out"));
+        try {
+            configureFor("localhost", wireMockPort);
+
+            stubFor(get(urlEqualTo("/slow"))
+                    .willReturn(aResponse()
+                            .withFixedDelay(3000) // 3 seconds delay
+                            .withBody("Delayed response")));
+
+            String slowUrl = String.format("http://localhost:%d/slow", wireMockPort);
+            UrlSource source = new UrlSource(createUrl(slowUrl), 1000, 1000); // 1s timeout
+
+            IOException ex = assertThrows(IOException.class, source::inputStream);
+            assertTrue(ex.getMessage().contains("timed out") || ex.getMessage().contains("connect"));
+
+        } finally {
+            wireMockServer.stop();
+        }
     }
 
     @Test
