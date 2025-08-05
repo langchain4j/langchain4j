@@ -4,9 +4,12 @@ import dev.langchain4j.data.embedding.Embedding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalDouble;
 
 import static dev.langchain4j.store.embedding.CosineSimilarity.between;
 import static java.util.Comparator.comparingDouble;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 /**
  * A utility class that implements the Maximum Marginal Relevance (MMR) algorithm.
@@ -28,11 +31,12 @@ public final class MmrReranker {
      * @param queryEmbedding  The embedding of the query.
      * @param candidates      The list of candidate matches to be reranked, typically sorted by relevance.
      * @param maxResults      The maximum number of results to return.
-     * @param lambda          A value between 0 and 1 that balances relevance and diversity.
-     * A higher lambda (e.g., 0.7-0.8) prioritizes relevance, while a lower lambda (e.g., 0.3-0.4)
+     * @param lambda          A value between 0 and 1 (inclusive) that balances relevance and diversity.
+     * A higher lambda (e.g., 0.7-0.8) prioritizes relevance, while a lower lambda (e.3. 0.3-0.4)
      * prioritizes diversity. A value of 1.0 is equivalent to standard relevance-based ranking.
      * @param <Embedded>      The type of the content that has been embedded.
      * @return A new list of reranked embedding matches.
+     * @throws IllegalArgumentException if lambda is not between 0.0 and 1.0 (inclusive).
      */
     public static <Embedded> List<EmbeddingMatch<Embedded>> rerank(
             Embedding queryEmbedding,
@@ -45,7 +49,13 @@ public final class MmrReranker {
             throw new IllegalArgumentException("Lambda must be between 0.0 and 1.0 (inclusive).");
         }
 
-        if (candidates == null || candidates.isEmpty() || maxResults <= 0) {
+        // Validate queryEmbedding (though not directly used for score, it's a key input for the concept)
+        if (isNull(queryEmbedding)) {
+            throw new IllegalArgumentException("Query embedding cannot be null.");
+        }
+
+        // Handle edge cases: null/empty candidates or non-positive maxResults
+        if (isNull(candidates) || candidates.isEmpty() || maxResults <= 0) {
             return new ArrayList<>();
         }
 
@@ -59,48 +69,77 @@ public final class MmrReranker {
         List<EmbeddingMatch<Embedded>> unranked = new ArrayList<>(candidates);
 
         // MMR is an iterative selection process. It's best to start with the most relevant candidate.
-        // We sort the candidates by their initial score (relevance to the query).
+        // We sort the candidates by their initial score (relevance to the query) in descending order.
         unranked.sort(comparingDouble((EmbeddingMatch<Embedded> match) -> match.score()).reversed());
 
+        // Iterate until the desired number of results is reached or no more candidates are available
         while (ranked.size() < maxResults && !unranked.isEmpty()) {
-            double maxMmrScore = INITIAL_MMR_SCORE;
-            EmbeddingMatch<Embedded> bestCandidate = null;
-            int bestCandidateIndex = -1;
+            // Find the best candidate from the unranked list based on MMR score
+            EmbeddingMatch<Embedded> bestCandidate = findBestCandidate(unranked, ranked, lambda);
 
-            for (int i = 0; i < unranked.size(); i++) {
-                EmbeddingMatch<Embedded> candidate = unranked.get(i);
-                double relevanceScore = candidate.score(); // Score from initial search
-
-                // Diversity score is the max similarity with any item already in the ranked list.
-                double diversityScore = INITIAL_DIVERSITY_SCORE;
-                if (!ranked.isEmpty()) {
-                    double maxSimilarityWithRanked = ranked.stream()
-                            .mapToDouble(rankedMatch -> between(candidate.embedding(), rankedMatch.embedding()))
-                            .max()
-                            .orElse(INITIAL_DIVERSITY_SCORE);
-                    diversityScore = maxSimilarityWithRanked;
-                }
-
-                // MMR formula
-                double mmrScore = calculateMmrScore(lambda, relevanceScore, diversityScore);
-
-                if (mmrScore > maxMmrScore) {
-                    maxMmrScore = mmrScore;
-                    bestCandidate = candidate;
-                    bestCandidateIndex = i;
-                }
-            }
-
-            if (bestCandidate != null) {
+            // Add the best candidate to the ranked list and remove it from the unranked list
+            // The fallback logic is now handled more implicitly by the loop condition
+            // and the nature of `findBestCandidate` returning null if no suitable candidate is found
+            if (nonNull(bestCandidate)) {
                 ranked.add(bestCandidate);
-                unranked.remove(bestCandidateIndex);
+                // Remove the selected candidate from the unranked list
+                // Using remove(Object) is less efficient for large lists, but clear.
+                // If performance is critical for very large 'unranked' lists,
+                // consider using an alternative data structure or tracking indices.
+                unranked.remove(bestCandidate);
             } else {
-                // Fallback: If for some reason a best candidate cannot be found,
-                // just add the next most relevant item to avoid an infinite loop.
-                ranked.add(unranked.remove(0));
+                // This else branch should ideally not be reached if the algorithm is working correctly
+                // and there are still candidates. It implies no candidate could improve the MMR score.
+                // As a robust fallback, if no best candidate is found but results are still needed,
+                // we can add the next most relevant item (which is at index 0 after initial sort).
+                // This prevents an infinite loop if MMR calculation somehow fails to find a positive score.
+                if (!unranked.isEmpty()) {
+                    ranked.add(unranked.remove(0));
+                }
             }
         }
         return ranked;
+    }
+
+    /**
+     * Finds the best candidate from the unranked list based on the Maximum Marginal Relevance (MMR) score.
+     *
+     * @param unranked        The list of candidates not yet selected.
+     * @param ranked          The list of candidates already selected.
+     * @param lambda          A value between 0 and 1 that balances relevance and diversity.
+     * @param <Embedded>      The type of the content that has been embedded.
+     * @return The best {@link EmbeddingMatch} based on MMR score, or null if no suitable candidate is found.
+     */
+    private static <Embedded> EmbeddingMatch<Embedded> findBestCandidate(
+            List<EmbeddingMatch<Embedded>> unranked,
+            List<EmbeddingMatch<Embedded>> ranked,
+            double lambda) {
+
+        double maxMmrScore = INITIAL_MMR_SCORE;
+        EmbeddingMatch<Embedded> bestCandidate = null;
+
+        for (EmbeddingMatch<Embedded> candidate : unranked) {
+            double relevanceScore = candidate.score(); // Score from initial search (relevance to query)
+
+            // Diversity score is the maximum similarity with any item already in the ranked list.
+            double diversityScore = INITIAL_DIVERSITY_SCORE;
+            if (!ranked.isEmpty()) {
+                OptionalDouble optionalMaxSimilarity = ranked.stream()
+                        .mapToDouble(rankedMatch -> between(candidate.embedding(), rankedMatch.embedding()))
+                        .max();
+                diversityScore = optionalMaxSimilarity.orElse(INITIAL_DIVERSITY_SCORE);
+            }
+
+            // Calculate the MMR score using the formula: lambda * Relevance - (1-lambda) * Diversity
+            double mmrScore = calculateMmrScore(lambda, relevanceScore, diversityScore);
+
+            // Update the best candidate if the current one has a higher MMR score
+            if (mmrScore > maxMmrScore) {
+                maxMmrScore = mmrScore;
+                bestCandidate = candidate;
+            }
+        }
+        return bestCandidate;
     }
 
     /**
