@@ -112,11 +112,11 @@ public class DefaultCognisphere implements Cognisphere {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentCall(AgentInvoker agentInvoker, Object agent, Object[] input, Object output) {
+    public void registerAgentCall(String agentName, Object agent, Object[] input, Object output) {
         withReadLock(() -> {
-            agentInvocations.computeIfAbsent(agentInvoker.name(), name -> new ArrayList<>())
-                            .add(new AgentInvocation(agentInvoker.name(), input, output));
-            registerContext(agentInvoker, agent);
+            agentInvocations.computeIfAbsent(agentName, name -> new ArrayList<>())
+                            .add(new AgentInvocation(agentName, input, output));
+            registerContext(agentName, agent);
         });
     }
 
@@ -141,7 +141,7 @@ public class DefaultCognisphere implements Cognisphere {
         }
     }
 
-    private void registerContext(AgentInvoker agentInvoker, Object agent) {
+    private void registerContext(String agentName, Object agent) {
         if (agent instanceof ChatMemoryAccess agentWithMemory) {
             ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
             if (chatMemory != null) {
@@ -151,9 +151,9 @@ public class DefaultCognisphere implements Cognisphere {
                     for (int i = agentMessages.size() - 1; i >= 0; i--) {
                         if (agentMessages.get(i) instanceof UserMessage userMessage) {
                             // Only add to the cognisphere's context the last UserMessage ...
-                            context.add(new AgentMessage(agentInvoker.name(), userMessage));
+                            context.add(new AgentMessage(agentName, userMessage));
                             // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                            context.add(new AgentMessage(agentInvoker.name(), aiMessage));
+                            context.add(new AgentMessage(agentName, aiMessage));
                             return;
                         }
                     }

@@ -17,7 +17,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
         if (outputName != null && !outputName.isBlank()) {
             cognisphere.writeState(outputName, response);
         }
-        cognisphere.registerAgentCall(agentInvoker, invokedAgent, args, response);
+        cognisphere.registerAgentCall(agentInvoker.name(), invokedAgent, args, response);
         return response;
     }
 }
