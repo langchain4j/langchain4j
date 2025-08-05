@@ -90,8 +90,8 @@ public class UrlSourceTest {
         URL url = createUrl(VALID_URL);
         UrlSource source = new UrlSource(url, 2345, 6789);
 
-        assertEquals(2345, getField(source, "connectTimeoutMillis"));
-        assertEquals(6789, getField(source, "readTimeoutMillis"));
+        assertThat(getField(source, "connectTimeoutMillis")).isEqualTo(2345);
+        assertThat(getField(source, "readTimeoutMillis")).isEqualTo(6789);
     }
 
     @Test
@@ -99,9 +99,9 @@ public class UrlSourceTest {
         UrlSource source = UrlSource.from(VALID_URL, 1500, 2500);
 
         assertNotNull(source);
-        assertEquals(VALID_URL, source.metadata().getString("url"));
-        assertEquals(1500, getField(source, "connectTimeoutMillis"));
-        assertEquals(2500, getField(source, "readTimeoutMillis"));
+        assertThat(source.metadata().getString("url")).isEqualTo(VALID_URL);
+        assertThat(getField(source, "connectTimeoutMillis")).isEqualTo(1500);
+        assertThat(getField(source, "readTimeoutMillis")).isEqualTo(2500);
     }
 
     @Test
@@ -110,9 +110,9 @@ public class UrlSourceTest {
         UrlSource source = UrlSource.from(url, 3000, 4000);
 
         assertNotNull(source);
-        assertEquals(VALID_URL, source.metadata().getString("url"));
-        assertEquals(3000, getField(source, "connectTimeoutMillis"));
-        assertEquals(4000, getField(source, "readTimeoutMillis"));
+        assertThat(source.metadata().getString("url")).isEqualTo(VALID_URL);
+        assertThat(getField(source, "connectTimeoutMillis")).isEqualTo(3000);
+        assertThat(getField(source, "readTimeoutMillis")).isEqualTo(4000);
     }
 
     @Test
@@ -121,9 +121,9 @@ public class UrlSourceTest {
         UrlSource source = UrlSource.from(uri, 5000, 6000);
 
         assertNotNull(source);
-        assertEquals(VALID_URL, source.metadata().getString("url"));
-        assertEquals(5000, getField(source, "connectTimeoutMillis"));
-        assertEquals(6000, getField(source, "readTimeoutMillis"));
+        assertThat(source.metadata().getString("url")).isEqualTo(VALID_URL);
+        assertThat(getField(source, "connectTimeoutMillis")).isEqualTo(5000);
+        assertThat(getField(source, "readTimeoutMillis")).isEqualTo(6000);
     }
 
     private int getField(UrlSource source, String fieldName) throws Exception {
