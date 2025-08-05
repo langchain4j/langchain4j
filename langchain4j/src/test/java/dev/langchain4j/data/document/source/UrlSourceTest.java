@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
@@ -46,24 +47,28 @@ public class UrlSourceTest {
     }
 
     @Test
-    void should_fail_to_connect_due_to_timeout() {
-        final int wireMockPort = 123;
-        WireMockServer wireMockServer = new WireMockServer(wireMockPort);
+    void should_fail_to_connect_due_to_timeout() throws MalformedURLException {
+        WireMockServer wireMockServer =
+                new WireMockServer(WireMockConfiguration.options().dynamicPort());
         wireMockServer.start();
 
         try {
-            configureFor("localhost", wireMockPort);
+            int port = wireMockServer.port();
+            configureFor("localhost", port);
 
             stubFor(get(urlEqualTo("/slow"))
                     .willReturn(aResponse()
                             .withFixedDelay(3000) // 3 seconds delay
                             .withBody("Delayed response")));
 
-            String slowUrl = String.format("http://localhost:%d/slow", wireMockPort);
-            UrlSource source = new UrlSource(createUrl(slowUrl), 1000, 1000); // 1s timeout
+            String slowUrl = String.format("http://localhost:%d/slow", port);
+            UrlSource source = new UrlSource(new URL(slowUrl), 1000, 1000); // 1s timeout
 
             IOException ex = assertThrows(IOException.class, source::inputStream);
-            assertTrue(ex.getMessage().contains("timed out") || ex.getMessage().contains("connect"));
+            assertTrue(
+                    ex.getMessage().contains("timed out")
+                            || ex.getMessage().toLowerCase().contains("connect"),
+                    "Expected timeout or connection error, but got: " + ex.getMessage());
 
         } finally {
             wireMockServer.stop();
