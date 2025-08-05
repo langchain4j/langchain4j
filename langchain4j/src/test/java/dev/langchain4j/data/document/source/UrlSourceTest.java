@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -74,8 +75,8 @@ public class UrlSourceTest {
         URL url = createUrl(VALID_URL);
         UrlSource source = new UrlSource(url);
 
-        assertEquals(0, getField(source, "connectTimeoutMillis"));
-        assertEquals(0, getField(source, "readTimeoutMillis"));
+        assertThat(getField(source, "connectTimeoutMillis")).isZero();
+        assertThat(getField(source, "readTimeoutMillis")).isZero();
     }
 
     @Test
