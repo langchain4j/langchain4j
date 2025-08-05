@@ -14,6 +14,11 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 public class DefaultA2AService implements A2AService {
 
     @Override
+    public boolean isPresent() {
+        return true;
+    }
+
+    @Override
     public <T> A2AClientBuilder<T> a2aBuilder(final String a2aServerUrl, final Class<T> agentServiceClass) {
         return new DefaultA2AClientBuilder<>(a2aServerUrl, agentServiceClass);
     }

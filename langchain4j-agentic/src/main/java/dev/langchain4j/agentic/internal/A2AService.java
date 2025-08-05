@@ -9,6 +9,8 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 
 public interface A2AService {
 
+    boolean isPresent();
+
     <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass);
 
     Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification a2aClient, Method method);
@@ -39,14 +41,18 @@ public interface A2AService {
         private DummyA2AService() { }
 
         @Override
+        public boolean isPresent() {
+            return false;
+        }
+
+        @Override
         public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
             throw noA2AException();
         }
 
         @Override
         public Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
-            return getAnnotatedMethod(method, Agent.class)
-                    .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
+            throw noA2AException();
         }
 
         private static UnsupportedOperationException noA2AException() {
