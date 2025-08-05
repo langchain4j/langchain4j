@@ -9,7 +9,7 @@ public record AgentInvocation(String agentName, Object[] input, Object output) {
         return "AgentInvocation{" +
                 "agentName=" + agentName +
                 ", input=" + Arrays.toString(input) +
-                ", response=" + output +
+                ", output=" + output +
                 '}';
     }
 }
