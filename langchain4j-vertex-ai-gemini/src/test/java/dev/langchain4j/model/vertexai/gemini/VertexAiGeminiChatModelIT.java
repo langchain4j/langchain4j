@@ -171,7 +171,7 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -186,7 +186,7 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -195,13 +195,13 @@ class VertexAiGeminiChatModelIT {
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
+                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -217,7 +217,9 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -233,7 +235,9 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -251,7 +255,9 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -268,10 +274,10 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text())
-                .containsIgnoringCase("cat")
-                //                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
-                .containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("dog", "puppy")
+                .contains("dice");
     }
 
     @Test

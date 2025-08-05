@@ -25,7 +25,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -34,7 +34,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.2.0-beta8</version>
 </dependency>
 ```
 

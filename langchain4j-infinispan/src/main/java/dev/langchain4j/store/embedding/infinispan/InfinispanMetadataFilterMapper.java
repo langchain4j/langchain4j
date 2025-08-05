@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.infinispan;
 
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -16,6 +17,11 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Class used in a local methods of
+ * {@link InfinispanEmbeddingStore#search(EmbeddingSearchRequest)}
+ * {@link InfinispanEmbeddingStore#removeAll(Filter)}
+ */
 class InfinispanMetadataFilterMapper {
     private int i = -1;
 
@@ -34,26 +40,35 @@ class InfinispanMetadataFilterMapper {
     }
 
     FilterResult map(Filter filter) {
-        i++;
         String filterQuery = "";
         if (filter == null) {
             return null;
         }
         if (filter instanceof IsEqualTo) {
+            i++;
             filterQuery = mapEqual((IsEqualTo) filter);
         } else if (filter instanceof IsNotEqualTo) {
+            i++;
             filterQuery = mapNotEqual((IsNotEqualTo) filter);
         } else if (filter instanceof IsGreaterThan) {
+            i++;
             filterQuery = mapGreaterThan((IsGreaterThan) filter);
+            i++;
         } else if (filter instanceof IsGreaterThanOrEqualTo) {
+            i++;
             filterQuery = mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+            i++;
         } else if (filter instanceof IsLessThan) {
+            i++;
             filterQuery = mapLessThan((IsLessThan) filter);
         } else if (filter instanceof IsLessThanOrEqualTo) {
+            i++;
             filterQuery = mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
         } else if (filter instanceof IsIn) {
+            i++;
             filterQuery = mapIn((IsIn) filter);
         } else if (filter instanceof IsNotIn) {
+            i++;
             filterQuery = mapNotIn((IsNotIn) filter);
         } else if (filter instanceof And) {
             filterQuery = mapAnd((And) filter);
