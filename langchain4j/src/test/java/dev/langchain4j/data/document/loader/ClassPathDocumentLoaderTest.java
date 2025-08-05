@@ -9,6 +9,8 @@ import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.util.List;
@@ -324,6 +326,21 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
 
         assertThat(document.text()).isEqualTo(testResourceContent);
         assertThat(document.metadata().getString(Document.FILE_NAME)).isEqualTo(testResourceName);
+    }
+
+    @Test
+    void should_throw_when_classloader_does_not_have_resource() {
+        String missingResource = "non-existent-resource.txt";
+
+        // Create a classloader with no classpath URLs and no parent classloader.
+        // This ensures that it won't find any resources (fully isolated).
+        ClassLoader emptyClassLoader = new URLClassLoader(new URL[0], null);
+
+        // Attempt to load the missing resource using the empty classloader
+        // and verify that a RuntimeException is thrown with the resource name in the message.
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> ClassPathDocumentLoader.loadDocument(missingResource, emptyClassLoader))
+                .withMessageContaining(missingResource);
     }
 
     private class FailOnFirstNonBlankDocumentParser implements DocumentParser {
