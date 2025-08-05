@@ -99,7 +99,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         }
 
         Message message = new Message.Builder()
-                .role(Message.Role.AGENT)
+                .role(Message.Role.USER)
                 .parts(parts)
                 .build();
 
