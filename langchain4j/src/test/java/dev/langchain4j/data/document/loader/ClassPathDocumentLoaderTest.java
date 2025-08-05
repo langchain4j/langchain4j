@@ -3,6 +3,7 @@ package dev.langchain4j.data.document.loader;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocument;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocumentsRecursively;
+import static org.junit.Assert.assertNotNull;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -341,6 +342,26 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> ClassPathDocumentLoader.loadDocument(missingResource, emptyClassLoader))
                 .withMessageContaining(missingResource);
+    }
+
+    @Test
+    void should_throw_when_resource_not_visible_to_custom_classloader_but_exists_in_classpath() {
+        String resourceFromClassPath = "test-file-utf8.txt";
+
+        // This must be visible from default class loader
+        Document document = ClassPathDocumentLoader.loadDocument(resourceFromClassPath);
+        assertNotNull(document);
+        assertThat(document.text()).isEqualTo("test\ncontent");
+
+        // Create a classloader with no classpath URLs and no parent classloader.
+        // This ensures that it won't find any resources (fully isolated).
+        ClassLoader emptyClassLoader = new URLClassLoader(new URL[0], null);
+
+        // Attempt to load the missing resource using the empty classloader
+        // and verify that a RuntimeException is thrown with the resource name in the message.
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> ClassPathDocumentLoader.loadDocument(resourceFromClassPath, emptyClassLoader))
+                .withMessageContaining(resourceFromClassPath);
     }
 
     private class FailOnFirstNonBlankDocumentParser implements DocumentParser {
