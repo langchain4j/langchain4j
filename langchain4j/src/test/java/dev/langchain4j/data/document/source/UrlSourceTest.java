@@ -48,6 +48,7 @@ public class UrlSourceTest {
 
     @Test
     void should_fail_to_connect_due_to_timeout() throws MalformedURLException {
+        // Start server on dynamic port
         WireMockServer wireMockServer =
                 new WireMockServer(WireMockConfiguration.options().dynamicPort());
         wireMockServer.start();
