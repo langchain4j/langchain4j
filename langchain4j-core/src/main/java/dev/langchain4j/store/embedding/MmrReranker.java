@@ -69,7 +69,7 @@ public final class MmrReranker {
         List<EmbeddingMatch<Embedded>> unranked = new ArrayList<>(candidates);
 
         // MMR is an iterative selection process. It's best to start with the most relevant candidate.
-        // We sort the candidates by their initial score (relevance to the query) in descending order.
+        // Sort the candidates by their initial score (relevance to the query) in descending order.
         unranked.sort(comparingDouble((EmbeddingMatch<Embedded> match) -> match.score()).reversed());
 
         // Iterate until the desired number of results is reached or no more candidates are available
@@ -77,22 +77,18 @@ public final class MmrReranker {
             // Find the best candidate from the unranked list based on MMR score
             EmbeddingMatch<Embedded> bestCandidate = findBestCandidate(unranked, ranked, lambda);
 
-            // Add the best candidate to the ranked list and remove it from the unranked list
-            // The fallback logic is now handled more implicitly by the loop condition
-            // and the nature of `findBestCandidate` returning null if no suitable candidate is found
+            // If a best candidate is found, add it to the ranked list and remove it from the unranked pool.
             if (nonNull(bestCandidate)) {
                 ranked.add(bestCandidate);
-                // Remove the selected candidate from the unranked list
-                // Using remove(Object) is less efficient for large lists, but clear.
-                // If performance is critical for very large 'unranked' lists,
-                // consider using an alternative data structure or tracking indices.
+                // Remove the selected candidate. For large lists, consider alternative data structures
+                // or index-based removal if performance is critical.
                 unranked.remove(bestCandidate);
             } else {
-                // This else branch should ideally not be reached if the algorithm is working correctly
-                // and there are still candidates. It implies no candidate could improve the MMR score.
-                // As a robust fallback, if no best candidate is found but results are still needed,
-                // we can add the next most relevant item (which is at index 0 after initial sort).
-                // This prevents an infinite loop if MMR calculation somehow fails to find a positive score.
+                // Fallback: This branch should ideally not be reached if the algorithm is functioning
+                // as expected and there are still candidates. It might imply that no candidate
+                // can improve the MMR score. As a robust measure, if no best candidate is found
+                // but more results are needed, the next most relevant item (which is at index 0
+                // after the initial sort and subsequent removals) is added. This prevents infinite loops.
                 if (!unranked.isEmpty()) {
                     ranked.add(unranked.remove(0));
                 }
