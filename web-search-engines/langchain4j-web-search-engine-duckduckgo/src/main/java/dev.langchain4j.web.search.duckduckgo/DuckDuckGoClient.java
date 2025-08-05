@@ -5,8 +5,14 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -14,190 +20,205 @@ import org.jsoup.select.Elements;
 
 class DuckDuckGoClient {
 
-    private static final String[] SEARCH_URLS = {
-        "https://duckduckgo.com/html/?q=",
-        "https://html.duckduckgo.com/html/?q=",
-        "https://lite.duckduckgo.com/lite/?q="
-    };
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
+    private static final AtomicLong lastRequestTime = new AtomicLong(0);
+    private static final long MIN_REQUEST_INTERVAL_MS = 1500;
 
-    private final int timeoutMs;
+    private static final String HTML_SEARCH_URL = "https://html.duckduckgo.com/html/";
+    private static final String API_SEARCH_URL = "https://api.duckduckgo.com/";
 
-    public DuckDuckGoClient(Duration timeout) {
-        this.timeoutMs = (int) timeout.toMillis();
-    }
+    private final HttpClient httpClient;
+    private final Duration timeout;
 
-    public static DuckDuckGoClientBuilder builder() {
-        return new DuckDuckGoClientBuilder();
+    DuckDuckGoClient(HttpClient httpClient, Duration timeout) {
+        this.httpClient = httpClient;
+        this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
     }
 
     public List<DuckDuckGoSearchResult> search(String query, int maxResults) {
-        for (String baseUrl : SEARCH_URLS) {
+        try {
+            return performHtmlSearch(query, maxResults);
+        } catch (Exception e) {
             try {
-                List<DuckDuckGoSearchResult> results = performSearch(baseUrl, query, maxResults);
-                if (!results.isEmpty()) {
-                    return results;
-                }
-            } catch (Exception e) {
-                continue;
+                return performApiSearch(query, maxResults);
+            } catch (Exception apiE) {
+                return Collections.emptyList();
             }
         }
-        throw new RuntimeException("All DuckDuckGo search backends failed");
     }
 
-    private List<DuckDuckGoSearchResult> performSearch(String baseUrl, String query, int maxResults)
-            throws IOException, InterruptedException {
-        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-        String url = baseUrl + encodedQuery;
+    private List<DuckDuckGoSearchResult> performHtmlSearch(String query, int maxResults) throws IOException {
+        enforceRateLimit();
 
-        Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 3000));
+        String formData = "q=" + URLEncoder.encode(query, StandardCharsets.UTF_8) +
+                "&b=" +
+                "&kl=us-en";
 
-        Document doc = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                .header("Accept-Language", "en-US,en;q=0.9")
-                .timeout(timeoutMs)
-                .followRedirects(true)
-                .get();
+        HttpRequest request = HttpRequest.builder()
+                .url(HTML_SEARCH_URL)
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                .addHeader("Accept-Language", "en-US,en;q=0.9")
+                .addHeader("Content-Type", "application/x-www-form-urlencoded")
+                .method(HttpMethod.POST)
+                .body(formData)
+                .build();
 
-        return parseResults(doc, maxResults, baseUrl.contains("lite"));
-    }
+        SuccessfulHttpResponse response = httpClient.execute(request);
 
-    private String buildUrl(String baseUrl, String region, String safeSearch, String timeLimit) {
-        StringBuilder url = new StringBuilder(baseUrl);
-
-        if (region != null && !region.isEmpty() && !region.equals("wt-wt")) {
-            url.append("&kl=").append(region);
-        }
-        if (safeSearch != null && !safeSearch.isEmpty() && !safeSearch.equals("moderate")) {
-            url.append("&safe=").append(safeSearch);
-        }
-        if (timeLimit != null && !timeLimit.isEmpty()) {
-            url.append("&df=").append(timeLimit);
+        if (response.statusCode() == 202) {
+            throw new IOException("DuckDuckGo HTML search blocked or invalid response");
         }
 
-        return url.toString();
-    }
-
-    private List<DuckDuckGoSearchResult> parseResults(Document doc, int maxResults, boolean isLite) {
-        List<DuckDuckGoSearchResult> results = new ArrayList<>();
-
-        if (isLite) {
-            return parseLiteVersion(doc, maxResults);
-        }
-
-        Elements titleElements = doc.select(".result__title a");
-
-        for (int i = 0; i < titleElements.size() && results.size() < maxResults; i++) {
-            Element titleElement = titleElements.get(i);
-            String title = titleElement.text().trim();
-            String href = titleElement.attr("href");
-
-            String snippet = "";
-            try {
-                Element parent = titleElement.closest(".result__body, .result");
-                if (parent != null) {
-                    Element snippetElement = parent.selectFirst(".result__snippet");
-                    if (snippetElement != null) {
-                        snippet = snippetElement.text().trim();
-                    }
-                }
-            } catch (Exception e) {
-                snippet = "";
-            }
-
-            if (!title.isEmpty() && !href.isEmpty() && isValidUrl(href)) {
-                String cleanUrl = cleanUrl(href);
-                results.add(new DuckDuckGoSearchResult(title, cleanUrl, snippet));
-            }
-        }
+        Document doc = Jsoup.parse(response.body());
+        List<DuckDuckGoSearchResult> results = parseHtmlResults(doc, maxResults);
 
         if (results.isEmpty()) {
-            Elements altResults = doc.select("div.result, div[data-result]");
-            for (Element result : altResults) {
-                if (results.size() >= maxResults) break;
+            throw new IOException("No results found in HTML response");
+        }
 
-                Element titleLink = result.selectFirst("h3 a, h2 a");
-                if (titleLink == null) continue;
+        return results;
+    }
 
-                String title = titleLink.text().trim();
-                String href = titleLink.attr("href");
+    private List<DuckDuckGoSearchResult> performApiSearch(String query, int maxResults) throws IOException {
+        String url = API_SEARCH_URL + "?q=" +
+                URLEncoder.encode(query, StandardCharsets.UTF_8) +
+                "&format=json&no_html=1&skip_disambig=1";
 
-                Element snippetEl = result.selectFirst(".result-snippet, .snippet");
-                String snippet = snippetEl != null ? snippetEl.text().trim() : "";
+        HttpRequest request = HttpRequest.builder()
+                .url(url)
+                .addHeader("User-Agent", "LangChain4j-DuckDuckGo/1.0")
+                .method(HttpMethod.GET)
+                .build();
 
-                if (!title.isEmpty() && !href.isEmpty() && isValidUrl(href)) {
-                    String cleanUrl = cleanUrl(href);
-                    results.add(new DuckDuckGoSearchResult(title, cleanUrl, snippet));
-                }
+        SuccessfulHttpResponse response = httpClient.execute(request);
+        return parseApiResponse(response.body(), maxResults);
+    }
+
+    private List<DuckDuckGoSearchResult> parseHtmlResults(Document doc, int maxResults) {
+        List<DuckDuckGoSearchResult> results = new ArrayList<>();
+
+        String[] resultSelectors = {
+                "div.web-result",
+                "div.result",
+                "div[class*='result']",
+                ".links_main"
+        };
+
+        Elements resultElements = new Elements();
+        for (String selector : resultSelectors) {
+            resultElements = doc.select(selector);
+            if (!resultElements.isEmpty()) break;
+        }
+
+        for (Element element : resultElements) {
+            if (results.size() >= maxResults) break;
+
+            Element titleElement = element.selectFirst("h2 a, .result__title a, a.result__a, h3 a");
+            if (titleElement == null) continue;
+
+            String title = titleElement.text().trim();
+            String url = titleElement.attr("href");
+
+            String snippet = "";
+            Element snippetElement = element.selectFirst(".result__snippet, .result-snippet, .snippet");
+            if (snippetElement != null) {
+                snippet = snippetElement.text().trim();
+            }
+
+            if (!title.isEmpty() && isValidUrl(url)) {
+                url = cleanUrl(url);
+                results.add(DuckDuckGoSearchResult.builder()
+                        .title(title)
+                        .url(url)
+                        .snippet(snippet)
+                        .build());
             }
         }
 
         return results;
     }
 
-    private List<DuckDuckGoSearchResult> parseLiteVersion(Document doc, int maxResults) {
+    private List<DuckDuckGoSearchResult> parseApiResponse(String json, int maxResults) {
         List<DuckDuckGoSearchResult> results = new ArrayList<>();
 
-        Elements rows = doc.select("table tr");
-        for (Element row : rows) {
-            if (results.size() >= maxResults) break;
+        try {
+            String abstractText = extractJsonValue(json, "Abstract");
+            String abstractUrl = extractJsonValue(json, "AbstractURL");
+            String abstractSource = extractJsonValue(json, "AbstractSource");
 
-            Element link = row.selectFirst("td a");
-            if (link == null) continue;
-
-            String title = link.text().trim();
-            String href = link.attr("href");
-
-            String rowText = row.text().trim();
-            String snippet = rowText.replace(title, "").trim();
-            if (snippet.startsWith("- ")) snippet = snippet.substring(2);
-            if (snippet.length() > 200) snippet = snippet.substring(0, 197) + "...";
-
-            if (!title.isEmpty() && !href.isEmpty() && isValidUrl(href)) {
-                String cleanUrl = cleanUrl(href);
-                results.add(new DuckDuckGoSearchResult(title, cleanUrl, snippet));
+            if (!abstractText.isEmpty() && !abstractUrl.isEmpty()) {
+                results.add(DuckDuckGoSearchResult.builder()
+                        .title(abstractSource.isEmpty() ? "Abstract" : abstractSource)
+                        .url(abstractUrl)
+                        .snippet(abstractText)
+                        .build());
             }
-        }
 
-        return results;
+            String answer = extractJsonValue(json, "Answer");
+            if (!answer.isEmpty()) {
+                results.add(DuckDuckGoSearchResult.builder()
+                        .title("Direct Answer")
+                        .url("https://duckduckgo.com/?q=" + URLEncoder.encode(answer, StandardCharsets.UTF_8))
+                        .snippet(answer)
+                        .build());
+            }
+
+        } catch (Exception ignored) {}
+
+        return results.stream().limit(maxResults).collect(Collectors.toList());
+    }
+
+    private String extractJsonValue(String json, String key) {
+        try {
+            String pattern = "\"" + key + "\":\"";
+            int start = json.indexOf(pattern);
+            if (start == -1) return "";
+
+            start += pattern.length();
+            int end = json.indexOf("\"", start);
+            if (end == -1) return "";
+
+            return json.substring(start, end)
+                    .replace("\\\"", "\"")
+                    .replace("\\n", " ")
+                    .replace("\\r", "")
+                    .trim();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private boolean isValidUrl(String url) {
         if (url == null || url.isEmpty()) return false;
-
-        if (url.contains("y.js")
-                || url.contains("duckduckgo.com/y.js")
-                || url.contains("duckduckgo.com/d.js")
-                || url.startsWith("/") && !url.startsWith("//")) {
-            return false;
-        }
-
-        return url.startsWith("http") || url.startsWith("//");
+        if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
+        return url.startsWith("https://") || url.startsWith("http://") || url.startsWith("//");
     }
 
     private String cleanUrl(String url) {
-        if (url == null) return "";
-        if (url.startsWith("//")) return "https:" + url;
-        if (url.startsWith("/")) return "https://duckduckgo.com" + url;
+        if (url.startsWith("//")) {
+            url = "https:" + url;
+        }
+        if (url.startsWith("http://")) {
+            url = url.replace("http://", "https://");
+        }
         return url;
     }
 
-    public static class DuckDuckGoClientBuilder {
-        private Duration timeout;
+    private void enforceRateLimit() {
+        long now = System.currentTimeMillis();
+        long last = lastRequestTime.get();
+        long elapsed = now - last;
 
-        DuckDuckGoClientBuilder() {}
-
-        public DuckDuckGoClientBuilder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
+        if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+            try {
+                Thread.sleep(MIN_REQUEST_INTERVAL_MS - elapsed);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Rate limiting interrupted", e);
+            }
         }
 
-        public DuckDuckGoClient build() {
-            return new DuckDuckGoClient(timeout != null ? timeout : Duration.ofSeconds(30));
-        }
-
-        public String toString() {
-            return "DuckDuckGoClient.DuckDuckGoClientBuilder(timeout=" + this.timeout + ")";
-        }
+        lastRequestTime.set(System.currentTimeMillis());
     }
 }

@@ -1,11 +1,10 @@
 package dev.langchain4j.web.search.duckduckgo;
 
 class DuckDuckGoSearchRequest {
-
     private String query;
     private String format;
-    private Integer noHtml;
-    private Integer skipDisambig;
+    private Boolean noHtml;
+    private Boolean skipDisambig;
     private String safeSearch;
     private String region;
     private Integer maxResults;
@@ -13,8 +12,8 @@ class DuckDuckGoSearchRequest {
     DuckDuckGoSearchRequest(
             String query,
             String format,
-            Integer noHtml,
-            Integer skipDisambig,
+            Boolean noHtml,
+            Boolean skipDisambig,
             String safeSearch,
             String region,
             Integer maxResults) {
@@ -39,11 +38,11 @@ class DuckDuckGoSearchRequest {
         return this.format;
     }
 
-    public Integer getNoHtml() {
+    public Boolean getNoHtml() {
         return this.noHtml;
     }
 
-    public Integer getSkipDisambig() {
+    public Boolean getSkipDisambig() {
         return this.skipDisambig;
     }
 
@@ -62,8 +61,8 @@ class DuckDuckGoSearchRequest {
     public static class DuckDuckGoSearchRequestBuilder {
         private String query;
         private String format;
-        private Integer noHtml;
-        private Integer skipDisambig;
+        private Boolean noHtml;
+        private Boolean skipDisambig;
         private String safeSearch;
         private String region;
         private Integer maxResults;
@@ -80,12 +79,12 @@ class DuckDuckGoSearchRequest {
             return this;
         }
 
-        public DuckDuckGoSearchRequestBuilder noHtml(Integer noHtml) {
+        public DuckDuckGoSearchRequestBuilder noHtml(Boolean noHtml) {
             this.noHtml = noHtml;
             return this;
         }
 
-        public DuckDuckGoSearchRequestBuilder skipDisambig(Integer skipDisambig) {
+        public DuckDuckGoSearchRequestBuilder skipDisambig(Boolean skipDisambig) {
             this.skipDisambig = skipDisambig;
             return this;
         }
