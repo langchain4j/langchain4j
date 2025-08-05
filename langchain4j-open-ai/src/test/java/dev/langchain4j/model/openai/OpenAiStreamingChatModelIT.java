@@ -288,6 +288,39 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
+    void should_execute_a_tool_with_blank_partial_arguments() {
+
+        // given
+        ToolSpecification appendToFile = ToolSpecification.builder()
+                .name("append_to_file")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("text")
+                        .required("text")
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("Append to file the following text: '          '");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .maxOutputTokens(30)
+                .toolSpecifications(appendToFile)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+
+        // then
+        AiMessage aiMessage = handler.get().aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
+    }
+
+    @Test
     void should_execute_tool_forcefully_then_stream_answer() throws Exception {
 
         // given
