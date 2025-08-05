@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
@@ -85,7 +87,7 @@ public class AgentUtil {
         return AgentInvoker.parameterName(p);
     }
 
-    public static Object[] methodInvocationArguments(Cognisphere cognisphere, List<AgentArgument> agentArguments) {
+    public static Object[] methodInvocationArguments(Cognisphere cognisphere, List<AgentArgument> agentArguments) throws MissingArgumentException {
         Object[] invocationArgs = new Object[agentArguments.size()];
         int i = 0;
         for (AgentArgument arg : agentArguments) {
@@ -100,7 +102,7 @@ public class AgentUtil {
             }
             Object argValue = cognisphere.readState(argName);
             if (argValue == null) {
-                throw new IllegalArgumentException("Missing argument: " + argName);
+                throw new MissingArgumentException(argName);
             }
             invocationArgs[i++] = parseArgument(argValue, arg.type());
         }

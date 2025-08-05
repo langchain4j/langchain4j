@@ -401,6 +401,63 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+## Error handling
+
+In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
+
+For this reason, the `errorHandler` method allows to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
+
+```java
+record ErrorContext(String agentName, Cognisphere cognisphere, AgentInvocationException exception) { }
+```
+
+into an `ErrorRecoveryResult` that can be any of 3 possibilities:
+
+1. `ErrorRecoveryResult.throwException()` which is the default behavior and simply propagates the `Exception` causing the problem up to the root caller
+2. `ErrorRecoveryResult.retry()` that retries the agent invocation, possibly after having taken some corrective actions
+3. `ErrorRecoveryResult.result(Object result)` that ignores the problems and returns the provided result as outcome of the failing agent.
+
+For instance, if a necessary argument is omitted from the very first example of the sequential workflow
+
+```java
+UntypedAgent novelCreator = AgenticServices
+        .sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputName("story")
+        .build();
+
+Map<String, Object> input = Map.of(
+        // missing "topic" entry to trigger an error
+        // "topic", "dragons and wizards",
+        "style", "fantasy",
+        "audience", "young adults"
+);
+```
+
+the execution will fail with an exception like
+
+```
+dev.langchain4j.agentic.agent.MissingArgumentException: Missing argument: topic
+```
+
+To solve this problem, in this case it is possible to handle this error and recover from it configuring the agent with an appropriate `errorHandler` that provides the cognisphere with the missing argument as it follows.
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .errorHandler(errorContext -> {
+            if (errorContext.agentName().equals("generateStory") &&
+                    errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
+                errorContext.cognisphere().writeState("topic", "dragons and wizards");
+                errorRecoveryCalled.set(true);
+                return ErrorRecoveryResult.retry();
+            }
+            return ErrorRecoveryResult.throwException();
+        })
+        .outputName("story")
+        .build();
+```
+
 ## Declarative API
 
 All the workflow patterns discussed so far can be defined using a declarative API, which allows you to define workflows in a more concise and readable way. The `langchain4j-agentic` module provides a set of annotations that can be used to define agents and their workflows in a more declarative style.

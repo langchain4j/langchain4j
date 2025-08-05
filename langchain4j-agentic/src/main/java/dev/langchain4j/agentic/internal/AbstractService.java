@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,8 @@ public abstract class AbstractService<T, S> {
 
     private List<AgentExecutor> agentExecutors;
 
+    protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
+
     public S beforeCall(Consumer<Cognisphere> beforeCall) {
         this.beforeCall = beforeCall;
         return (S) this;
@@ -43,6 +47,11 @@ public abstract class AbstractService<T, S> {
 
     public S subAgents(List<AgentExecutor> agentExecutors) {
         addAgentExecutors(agentExecutors);
+        return (S) this;
+    }
+
+    public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
+        this.errorHandler = errorHandler;
         return (S) this;
     }
 

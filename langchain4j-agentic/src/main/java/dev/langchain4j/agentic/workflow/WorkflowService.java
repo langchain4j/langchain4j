@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.workflow;
 
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import java.util.List;
@@ -19,4 +21,6 @@ public interface WorkflowService<T, W> {
     T outputName(String outputName);
 
     T output(Function<Cognisphere, Object> output);
+
+    T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 }

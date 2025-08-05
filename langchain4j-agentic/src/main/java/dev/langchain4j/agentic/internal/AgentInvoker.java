@@ -2,6 +2,8 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.V;
@@ -21,13 +23,13 @@ public interface AgentInvoker {
 
     String toCard();
 
-    Object[] toInvocationArguments(Cognisphere cognisphere);
+    Object[] toInvocationArguments(Cognisphere cognisphere) throws MissingArgumentException;
 
-    default Object invoke(Object agent, Object... args) {
+    default Object invoke(Object agent, Object... args) throws AgentInvocationException {
         try {
             return method().invoke(agent, args);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to invoke agent method: " + method(), e);
+            throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);
         }
     }
 

@@ -1,8 +1,10 @@
 package dev.langchain4j.agentic.cognisphere;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -36,6 +38,11 @@ public class DefaultCognisphere implements Cognisphere {
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
 
     private transient Map<String, Object> agents = new ConcurrentHashMap<>();
+
+    private static Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
+            errorContext -> ErrorRecoveryResult.throwException();
+
+    private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
     public enum Kind {
         EPHEMERAL, REGISTERED, PERSISTENT
@@ -213,6 +220,17 @@ public class DefaultCognisphere implements Cognisphere {
         } else {
             action.run();
         }
+    }
+
+    public DefaultCognisphere withErrorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
+        if (errorHandler != null) {
+            this.errorHandler = errorHandler;
+        }
+        return this;
+    }
+
+    public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
+        return errorHandler.apply(new ErrorContext(agentName, this, exception));
     }
 
     DefaultCognisphere normalizeAfterDeserialization() {

@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
 import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
@@ -15,6 +17,7 @@ import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public abstract class AbstractAgentInvocationHandler implements InvocationHandler {
     protected final String outputName;
@@ -24,6 +27,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     private final Consumer<Cognisphere> beforeCall;
 
     private final DefaultCognisphere cognisphere;
+
+    private final Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
     private final AtomicReference<CognisphereRegistry> cognisphereRegistry = new AtomicReference<>();
 
@@ -35,6 +40,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this.agentServiceClass = workflowService.agentServiceClass;
         this.outputName = workflowService.outputName;
         this.beforeCall = workflowService.beforeCall;
+        this.errorHandler = workflowService.errorHandler;
         this.cognisphere = cognisphere;
     }
 
@@ -127,7 +133,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         }
 
         Object memoryId = memoryId(method, args);
-        return memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralCognisphere();
+        DefaultCognisphere newCognisphere = memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralCognisphere();
+        return newCognisphere.withErrorHandler(errorHandler);
     }
 
     private Object memoryId(Method method, Object[] args) {

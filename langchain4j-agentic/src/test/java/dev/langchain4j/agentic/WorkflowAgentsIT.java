@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.cognisphere.Cognisphere;
 import dev.langchain4j.agentic.cognisphere.CognispherePersister;
 import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
@@ -14,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -38,6 +42,7 @@ import dev.langchain4j.agentic.Agents.EveningPlan;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
@@ -75,6 +80,91 @@ public class WorkflowAgentsIT {
 
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void sequential_agents_with_error_tests() {
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputName("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                // missing "topic" entry to trigger an error
+                // "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults"
+        );
+
+        assertThat(
+                assertThrows(AgentInvocationException.class,
+                        () -> novelCreator.invoke(input))
+        ).hasMessageContaining("topic");
+    }
+
+    @Test
+    void sequential_agents_with_error_recovery_tests() {
+        AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
+
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .errorHandler(errorContext -> {
+                    if (errorContext.agentName().equals("generateStory") &&
+                            errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
+                        errorContext.cognisphere().writeState("topic", "dragons and wizards");
+                        errorRecoveryCalled.set(true);
+                        return ErrorRecoveryResult.retry();
+                    }
+                    return ErrorRecoveryResult.throwException();
+                })
+                .outputName("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                // missing "topic" entry to trigger an error
+                // "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults"
+        );
+
+        String story = (String) novelCreator.invoke(input);
+        System.out.println(story);
+
+        assertThat(errorRecoveryCalled.get()).isTrue();
 
         verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
