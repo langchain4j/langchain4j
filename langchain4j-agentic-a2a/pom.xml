@@ -15,7 +15,7 @@
 
     <properties>
         <enforcer.skip>true</enforcer.skip>
-        <a2a-java-sdk-version>0.2.3.Beta1</a2a-java-sdk-version>
+        <a2a-java-sdk-version>0.2.5</a2a-java-sdk-version>
     </properties>
 
     <dependencies>
