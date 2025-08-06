@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService<T>> implements LoopAgentService<T> {
 
     private int maxIterations = Integer.MAX_VALUE;
-    private Predicate<Cognisphere> exitCondition = state -> false;
+    private Predicate<AgenticScope> exitCondition = state -> false;
 
     private LoopAgentServiceImpl(Class<T> agentServiceClass) {
         super(agentServiceClass);
@@ -26,7 +26,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
     public T build() {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new LoopInvocationHandler());
     }
 
@@ -36,26 +36,26 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
             super(LoopAgentServiceImpl.this);
         }
 
-        private LoopInvocationHandler(DefaultCognisphere cognisphere) {
-            super(LoopAgentServiceImpl.this, cognisphere);
+        private LoopInvocationHandler(DefaultAgenticScope agenticScope) {
+            super(LoopAgentServiceImpl.this, agenticScope);
         }
 
         @Override
-        protected Object doAgentAction(DefaultCognisphere cognisphere) {
+        protected Object doAgentAction(DefaultAgenticScope agenticScope) {
             for (int i = 0; i < maxIterations; i++) {
                 for (AgentExecutor agentExecutor : agentExecutors()) {
-                    agentExecutor.execute(cognisphere);
-                    if (exitCondition.test(cognisphere)) {
-                        return cognisphere.state();
+                    agentExecutor.execute(agenticScope);
+                    if (exitCondition.test(agenticScope)) {
+                        return agenticScope.state();
                     }
                 }
             }
-            return result(cognisphere, output.apply(cognisphere));
+            return result(agenticScope, output.apply(agenticScope));
         }
 
         @Override
-        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
-            return new LoopInvocationHandler(cognisphere);
+        protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
+            return new LoopInvocationHandler(agenticScope);
         }
     }
 
@@ -74,7 +74,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
     }
 
     @Override
-    public LoopAgentServiceImpl<T> exitCondition(Predicate<Cognisphere> exitCondition) {
+    public LoopAgentServiceImpl<T> exitCondition(Predicate<AgenticScope> exitCondition) {
         this.exitCondition = exitCondition;
         return this;
     }

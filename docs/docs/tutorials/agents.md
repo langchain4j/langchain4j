@@ -59,11 +59,11 @@ The other main difference with an AI service is the presence of the `outputName`
 
 The `AgenticServices` class provides a set of static factory methods to create and define all kind of agents made available by the `langchain4j-agentic` framework.
 
-## Enter the Cognisphere
+## Introducing the AgenticScope
 
-The langchain4j-agentic module introduces the concept of a `Cognisphere`, which is a collection of data shared among the agents participating in an agentic system. The `Cognisphere` is used to store shared variables, which can be written by an agent to communicate the results it produced and read by another agent to put together the information that it needs to perform its task. This allows agents to collaborate effectively, sharing information and results as needed.
+The langchain4j-agentic module introduces the concept of an `AgenticScope`, which is a collection of data shared among the agents participating in an agentic system. The `AgenticScope` is used to store shared variables, which can be written by an agent to communicate the results it produced and read by another agent to put together the information that it needs to perform its task. This allows agents to collaborate effectively, sharing information and results as needed.
 
-The `Cognisphere` also automatically registers other relevant information like the sequence of invocations of all agents with their responses. It is automatically created when the main agent of the agentic system is invoked and programmatically provided through callbacks when necessary. The different possible usages of the `Cognisphere` will be clarified with practical examples when discussing the agentic patterns implemented by `langchain4j-agentic`.
+The `AgenticScope` also automatically registers other relevant information like the sequence of invocations of all agents with their responses. It is automatically created when the main agent of the agentic system is invoked and programmatically provided through callbacks when necessary. The different possible usages of the `AgenticScope` will be clarified with practical examples when discussing the agentic patterns implemented by `langchain4j-agentic`.
 
 ## Workflow patterns
 
@@ -92,7 +92,7 @@ public interface AudienceEditor {
 
 and with a very similar `StyleEditor` doing the same job but for a specific style.
 
-Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `Cognisphere` shared variables having those names. This allows the agent to access the output of previous agents in the workflow. If the agent class is compiled with the `-parameters` option enabled, thus retaining at runtime the names of the method parameters, the `@V` annotation can be omitted, and the variable names will be automatically inferred from the parameter names.
+Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `AgenticScope` shared variables having those names. This allows the agent to access the output of previous agents in the workflow. If the agent class is compiled with the `-parameters` option enabled, thus retaining at runtime the names of the method parameters, the `@V` annotation can be omitted, and the variable names will be automatically inferred from the parameter names.
 
 At this point it is possible to create a sequential workflow that combines these three agents, where the output of the `CreativeWriter` is passed as input to both the `AudienceEditor` and `StyleEditor`, and the final output is the edited story.
 
@@ -139,7 +139,7 @@ public interface UntypedAgent {
 }
 ```
 
-The values in that input map are copied into the `Cognisphere` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `Cognisphere` shared variable named "story", which has been formerly rewritten by other all other agents during the novel creation and editing workflow execution.
+The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by other all other agents during the novel creation and editing workflow execution.
 
 Optionally, the workflow agent can also be provided with typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
 
@@ -204,11 +204,11 @@ UntypedAgent styleReviewLoop = AgenticServices
         .loopBuilder()
         .subAgents(styleScorer, styleEditor)
         .maxIterations(5)
-        .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+        .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
         .build();
 ```
 
-Here the `styleScorer` agent writes its output to the `Cognisphere` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
+Here the `styleScorer` agent writes its output to the `AgenticScope` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
 
 At this point the `styleReviewLoop` agent can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
 
@@ -291,9 +291,9 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .subAgents(foodExpert, movieExpert)
         .executorService(Executors.newFixedThreadPool(2))
         .outputName("plans")
-        .output(cognisphere -> {
-            List<String> movies = cognisphere.readState("movies", List.of());
-            List<String> meals = cognisphere.readState("meals", List.of());
+        .output(agenticScope -> {
+            List<String> movies = agenticScope.readState("movies", List.of());
+            List<String> meals = agenticScope.readState("meals", List.of());
 
             List<EveningPlan> moviesAndMeals = new ArrayList<>();
             for (int i = 0; i < movies.size(); i++) {
@@ -309,7 +309,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `Cognisphere` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `Cognisphere`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Conditional workflow
 
@@ -387,9 +387,9 @@ TechnicalExpert technicalExpert = AgenticServices
         .build();
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-        .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-        .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
-        .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+        .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+        .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+        .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
         .build();
 
 ExpertRouterAgent expertRouterAgent = AgenticServices
@@ -408,7 +408,7 @@ In a complex agentic system, many things can go wrong, such as an agent failing 
 For this reason, the `errorHandler` method allows to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
 
 ```java
-record ErrorContext(String agentName, Cognisphere cognisphere, AgentInvocationException exception) { }
+record ErrorContext(String agentName, AgenticScope agenticScope, AgentInvocationException exception) { }
 ```
 
 into an `ErrorRecoveryResult` that can be any of 3 possibilities:
@@ -440,7 +440,7 @@ the execution will fail with an exception like
 dev.langchain4j.agentic.agent.MissingArgumentException: Missing argument: topic
 ```
 
-To solve this problem, in this case it is possible to handle this error and recover from it configuring the agent with an appropriate `errorHandler` that provides the cognisphere with the missing argument as it follows.
+To solve this problem, in this case it is possible to handle this error and recover from it configuring the agent with an appropriate `errorHandler` that provides the agenticScope with the missing argument as it follows.
 
 ```java
 UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
@@ -448,7 +448,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .errorHandler(errorContext -> {
             if (errorContext.agentName().equals("generateStory") &&
                     errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
-                errorContext.cognisphere().writeState("topic", "dragons and wizards");
+                errorContext.agenticScope().writeState("topic", "dragons and wizards");
                 errorRecoveryCalled.set(true);
                 return ErrorRecoveryResult.retry();
             }
@@ -492,7 +492,7 @@ public interface EveningPlannerAgent {
 }
 ```
 
-In this case the static method annotated with `@Output` is used to define how to combine the outputs of the subagents into a single result, exactly in the same way how this has been done passing a function of the `Cognisphere` to the `output` method.
+In this case the static method annotated with `@Output` is used to define how to combine the outputs of the subagents into a single result, exactly in the same way how this has been done passing a function of the `AgenticScope` to the `output` method.
 
 Once this interface is defined, it is possible to create an instance of the `EveningPlannerAgent` using the `AgenticServices.createAgenticSystem()` method, and then use it exactly as before.
 
@@ -587,9 +587,9 @@ String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who
 
 won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
 
-To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `Cognisphere` can come to help.
+To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
 
-In particular the `Cognisphere` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
+In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
 
 ```java
 public interface ContextSummarizer {
@@ -611,12 +611,12 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .agentBuilder(LegalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .context(cognisphere -> contextSummarizer.summarize(cognisphere.contextAsConversation()))
+        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
         .outputName("response")
         .build();
 ```
 
-More in general the context provided to an agent can be any function of the `Cognisphere` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
+More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
 
 Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
 
@@ -641,23 +641,23 @@ LegalExpertWithMemory legalExpert = AgenticServices
 
 By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
 
-### Cognisphere registry and persistence
+### AgenticScope registry and persistence
 
-The `Cognisphere` is a transient data structure that is created and used during the execution of an agentic system. There is a single `Cognisphere` per user per agentic system. For stateless executions, when no memory is used, the `Cognisphere` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
+The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
 
-Conversely, when the agentic system uses a memory, the `Cognisphere` is saved in an internal registry. In this case the `Cognisphere` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `Cognisphere` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `CognisphereAccess` so it is possible to call the `evict` method on it, passing the ID of the `Cognisphere` that has to be removed from the registry.:
-
-```java
-agent.evict(cognisphereId);
-```
-
-Both the `Cognisphere`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `Cognisphere` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `CognisphereStore` interface. It is possible to set this persistence layer either programmatically:
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.:
 
 ```java
-CognispherePersister.setStore(new MyCognisphereStore());
+agent.evictAgenticScope(memoryId);
 ```
 
-or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.cognisphere.CognisphereStore` containing the fully qualified name of the class implementing the `CognisphereStore` interface.
+Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
+
+```java
+AgenticScopePersister.setStore(new MyAgenticScopeStore());
+```
+
+or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
 
 ## Pure agentic AI
 
@@ -942,7 +942,7 @@ public record HumanInTheLoop(Consumer<String> requestWriter, Supplier<String> re
 
 This quite naive, but also very generic, implementation is based on the use of two functions, a `Consumer` of the AI request intended to forward it to the user and a `Supplier`, eventually waiting in a blocking way, of the response provided by the user.
 
-The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define these two functions together with the agent description, the state variable of the `Cognisphere` used as input to generate the request for the user and the output variable where the user's response will be written.
+The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define these two functions together with the agent description, the state variable of the `AgenticScope` used as input to generate the request for the user and the output variable where the user's response will be written.
 
 For instance, having defined an `AstrologyAgent` like:
 

@@ -1,8 +1,8 @@
 package dev.langchain4j.agentic.agent;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 
-public record ErrorContext(String agentName, Cognisphere cognisphere, AgentInvocationException exception) {
+public record ErrorContext(String agentName, AgenticScope agenticScope, AgentInvocationException exception) {
 
 
 }

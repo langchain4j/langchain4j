@@ -1,20 +1,18 @@
-package dev.langchain4j.agentic.cognisphere;
+package dev.langchain4j.agentic.scope;
 
-import java.util.List;
 import java.util.Map;
-import dev.langchain4j.agentic.internal.AgentInvocation;
 
 /**
- * The Cognisphere class represents a cognitive environment where agents belonging to the same
+ * The AgenticScope class represents a common environment where agents belonging to the same
  * agentic system can share their state.
- * It maintains the state of the environment, tracks agent invocations, and provides
+ * It maintains the state of the computation, tracks agent invocations, and provides
  * methods to allow agents to interact with the shared state.
  * <p>
  * Agents can register their calls, and the context of interactions is stored for later retrieval.
  * The class also provides methods to read and write state, manage agent invocations, and retrieve
  * the context as a conversation.
  */
-public interface Cognisphere {
+public interface AgenticScope {
 
     Object memoryId();
 

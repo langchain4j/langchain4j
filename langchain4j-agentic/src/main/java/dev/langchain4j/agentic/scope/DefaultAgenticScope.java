@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.cognisphere;
+package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
@@ -26,9 +26,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 @Internal
-public class DefaultCognisphere implements Cognisphere {
+public class DefaultAgenticScope implements AgenticScope {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultCognisphere.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
     public record AgentMessage(String agentName, ChatMessage message) {}
 
@@ -37,9 +37,9 @@ public class DefaultCognisphere implements Cognisphere {
     private final Map<String, List<AgentInvocation>> agentInvocations = new ConcurrentHashMap<>();
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
 
-    private transient Map<String, Object> agents = new ConcurrentHashMap<>();
+    private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
 
-    private static Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
+    private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
 
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
@@ -50,19 +50,19 @@ public class DefaultCognisphere implements Cognisphere {
     private final Kind kind;
 
     /**
-     * This lock is used to ensure that the Cognisphere doesn't get concurrently modified when it is going to be persisted.
-     * The internal data structures of the Cognisphere are all thread-safe, so they don't need to be guarded by a read lock
+     * This lock is used to ensure that the AgenticScope doesn't get concurrently modified when it is going to be persisted.
+     * The internal data structures of the AgenticScope are all thread-safe, so they don't need to be guarded by a read lock
      * when accessed. In essence multiple changes are allowed at the same time, but it is not allowed to persist a
-     * Cognisphere that is not in a frozen state. That's why the read lock is acquired for the firsts and a write lock
+     * AgenticScope that is not in a frozen state. That's why the read lock is acquired for the firsts and a write lock
      * when the second happens.
      */
     private transient ReadWriteLock lock = null;
 
-    DefaultCognisphere(Kind kind) {
+    DefaultAgenticScope(Kind kind) {
         this(UUID.randomUUID().toString(), kind);
     }
 
-    DefaultCognisphere(Object memoryId, Kind kind) {
+    DefaultAgenticScope(Object memoryId, Kind kind) {
         this.memoryId = memoryId;
         this.kind = kind;
         if (kind == Kind.PERSISTENT) {
@@ -115,7 +115,7 @@ public class DefaultCognisphere implements Cognisphere {
         return state;
     }
 
-    public <T> T getOrCreateAgent(String agentId, Function<DefaultCognisphere, T> agentFactory) {
+    public <T> T getOrCreateAgent(String agentId, Function<DefaultAgenticScope, T> agentFactory) {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
@@ -127,19 +127,19 @@ public class DefaultCognisphere implements Cognisphere {
         });
     }
 
-    public void rootCallStarted(CognisphereRegistry registry) {
+    public void rootCallStarted(AgenticScopeRegistry registry) {
     }
 
-    public void rootCallEnded(CognisphereRegistry registry) {
+    public void rootCallEnded(AgenticScopeRegistry registry) {
         if (kind == Kind.EPHEMERAL) {
-            // Ephemeral cognispheres are for single-use and can be evicted immediately
+            // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId);
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
     }
 
-    private void flush(CognisphereRegistry registry) {
+    private void flush(AgenticScopeRegistry registry) {
         lock.writeLock().lock();
         try {
             registry.update(this);
@@ -157,7 +157,7 @@ public class DefaultCognisphere implements Cognisphere {
                 if (lastMessage instanceof AiMessage aiMessage) {
                     for (int i = agentMessages.size() - 1; i >= 0; i--) {
                         if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                            // Only add to the cognisphere's context the last UserMessage ...
+                            // Only add to the agenticScope's context the last UserMessage ...
                             context.add(new AgentMessage(agentName, userMessage));
                             // ... and last AiMessage response, all other messages are local to the invoked agent internals
                             context.add(new AgentMessage(agentName, aiMessage));
@@ -193,7 +193,7 @@ public class DefaultCognisphere implements Cognisphere {
         }
 
         String contextAsConversation = sb.toString();
-        LOG.debug("Cognisphere context as conversation: '{}'", contextAsConversation);
+        LOG.debug("AgenticScope context as conversation: '{}'", contextAsConversation);
         return contextAsConversation;
     }
 
@@ -203,7 +203,7 @@ public class DefaultCognisphere implements Cognisphere {
 
     @Override
     public String toString() {
-        return "Cognisphere{" +
+        return "AgenticScope{" +
                 "memoryId='" + memoryId + '\'' +
                 ", state=" + state +
                 '}';
@@ -222,7 +222,7 @@ public class DefaultCognisphere implements Cognisphere {
         }
     }
 
-    public DefaultCognisphere withErrorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
+    public DefaultAgenticScope withErrorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         if (errorHandler != null) {
             this.errorHandler = errorHandler;
         }
@@ -233,7 +233,7 @@ public class DefaultCognisphere implements Cognisphere {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
     }
 
-    DefaultCognisphere normalizeAfterDeserialization() {
+    DefaultAgenticScope normalizeAfterDeserialization() {
         Map modifiedEntries = new HashMap<>();
         for (Map.Entry<String, Object> entry : state.entrySet()) {
             enumValue(entry).ifPresent(enumValue -> modifiedEntries.put(entry.getKey(), enumValue));
@@ -243,7 +243,7 @@ public class DefaultCognisphere implements Cognisphere {
     }
 
     /**
-     * This method is used only during json deserialization of a Cognisphere.
+     * This method is used only during json deserialization of a AgenticScope.
      * It checks if the value of an entry is a map with a single entry, where
      * the key is the name of an enum class and the value is the name of an
      * enum constant. If so, it returns the corresponding enum value.

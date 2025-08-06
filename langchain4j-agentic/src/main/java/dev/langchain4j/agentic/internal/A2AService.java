@@ -1,11 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.Agent;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.ServiceLoader;
-
-import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 
 public interface A2AService {
 

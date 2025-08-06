@@ -1,14 +1,14 @@
 package dev.langchain4j.agentic.supervisor;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -39,7 +39,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     private SupervisorContextStrategy contextStrategy = SupervisorContextStrategy.CHAT_MEMORY;
     private SupervisorResponseStrategy responseStrategy = SupervisorResponseStrategy.LAST;
 
-    private Function<Cognisphere, String> requestGenerator;
+    private Function<AgenticScope, String> requestGenerator;
 
     private SupervisorAgentServiceImpl(Class<T> agentServiceClass) {
         super(agentServiceClass);
@@ -54,15 +54,15 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         return build(null);
     }
 
-    T build(DefaultCognisphere cognisphere) {
+    T build(DefaultAgenticScope agenticScope) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class, CognisphereAccess.class},
-                new SupervisorInvocationHandler(buildPlannerAgent(cognisphere), cognisphere));
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class},
+                new SupervisorInvocationHandler(buildPlannerAgent(agenticScope), agenticScope));
     }
 
-    private PlannerAgent buildPlannerAgent(Cognisphere cognisphere) {
-        if (cognisphere == null && isCognisphereDependent()) {
+    private PlannerAgent buildPlannerAgent(AgenticScope agenticScope) {
+        if (agenticScope == null && isAgenticScopeDependent()) {
             return null;
         }
         var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
@@ -72,38 +72,38 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 break;
             case SUMMARIZATION:
                 builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
-                        .chatRequestTransformer(new Context.Summarizer(cognisphere, chatModel));
+                        .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
                 break;
             case CHAT_MEMORY_AND_SUMMARIZATION:
                 builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
-                        .chatRequestTransformer(new Context.Summarizer(cognisphere, chatModel));
+                        .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
                 break;
         }
         return builder.build();
     }
 
-    private boolean isCognisphereDependent() {
+    private boolean isAgenticScopeDependent() {
         return contextStrategy != SupervisorContextStrategy.CHAT_MEMORY;
     }
 
     private class SupervisorInvocationHandler extends AbstractAgentInvocationHandler {
         private final PlannerAgent plannerAgent;
 
-        public SupervisorInvocationHandler(PlannerAgent plannerAgent, DefaultCognisphere cognisphere) {
-            super(SupervisorAgentServiceImpl.this, cognisphere);
+        public SupervisorInvocationHandler(PlannerAgent plannerAgent, DefaultAgenticScope agenticScope) {
+            super(SupervisorAgentServiceImpl.this, agenticScope);
             this.plannerAgent = plannerAgent;
         }
 
         @Override
-        protected Object doAgentAction(DefaultCognisphere cognisphere) {
-            String request = requestGenerator != null ? requestGenerator.apply(cognisphere) : cognisphere.readState("request", "");
+        protected Object doAgentAction(DefaultAgenticScope agenticScope) {
+            String request = requestGenerator != null ? requestGenerator.apply(agenticScope) : agenticScope.readState("request", "");
             String lastResponse = "";
-            Object memoryId = cognisphere.memoryId();
+            Object memoryId = agenticScope.memoryId();
 
             for (int loopCount = 0; loopCount < maxAgentsInvocations; loopCount++) {
 
-                PlannerAgent planner = isCognisphereDependent() ?
-                        cognisphere.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent) :
+                PlannerAgent planner = isAgenticScopeDependent() ?
+                        agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent) :
                         this.plannerAgent;
                 AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse);
                 LOG.info("Agent Invocation: {}", agentInvocation);
@@ -125,12 +125,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                     throw new IllegalStateException("No specification found for agent: " + agentName);
                 }
 
-                agentInvocation.getArguments().forEach(cognisphere::writeState);
-                lastResponse = agentExec.execute(cognisphere).toString();
+                agentInvocation.getArguments().forEach(agenticScope::writeState);
+                lastResponse = agentExec.execute(agenticScope).toString();
             }
 
             if (outputName != null) {
-                cognisphere.writeState(outputName, lastResponse);
+                agenticScope.writeState(outputName, lastResponse);
             }
             return lastResponse;
         }
@@ -151,8 +151,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
 
         @Override
-        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
-            return new SupervisorInvocationHandler(plannerAgent, cognisphere);
+        protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
+            return new SupervisorInvocationHandler(plannerAgent, agenticScope);
         }
 
         private String agentId() {
@@ -175,7 +175,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     }
 
     @Override
-    public SupervisorAgentServiceImpl<T> requestGenerator(Function<Cognisphere, String> requestGenerator) {
+    public SupervisorAgentServiceImpl<T> requestGenerator(Function<AgenticScope, String> requestGenerator) {
         this.requestGenerator = requestGenerator;
         return this;
     }

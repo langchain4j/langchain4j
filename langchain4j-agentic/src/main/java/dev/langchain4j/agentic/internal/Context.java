@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
@@ -44,31 +44,31 @@ public class Context {
         return SUMMARIZER_INSTANCE;
     }
 
-    public static class CognisphereContextGenerator implements UserMessageTransformer {
-        private final Cognisphere cognisphere;
-        private final Function<Cognisphere, String> contextProvider;
+    public static class AgenticScopeContextGenerator implements UserMessageTransformer {
+        private final AgenticScope agenticScope;
+        private final Function<AgenticScope, String> contextProvider;
 
-        public CognisphereContextGenerator(Cognisphere cognisphere, Function<Cognisphere, String> contextProvider) {
-            this.cognisphere = cognisphere;
+        public AgenticScopeContextGenerator(AgenticScope agenticScope, Function<AgenticScope, String> contextProvider) {
+            this.agenticScope = agenticScope;
             this.contextProvider = contextProvider;
         }
 
         @Override
         public String transformUserMessage(String userMessage, Object memoryId) {
-            if (cognisphere == null) {
+            if (agenticScope == null) {
                 return userMessage;
             }
-            String cognisphereContext = contextProvider.apply(cognisphere);
-            if (isNullOrBlank(cognisphereContext)) {
+            String agenticScopeContext = contextProvider.apply(agenticScope);
+            if (isNullOrBlank(agenticScopeContext)) {
                 return userMessage;
             }
-            return "Considering this context \"" + cognisphereContext + "\"\n" + userMessage;
+            return "Considering this context \"" + agenticScopeContext + "\"\n" + userMessage;
         }
     }
 
-    public static class Summarizer extends CognisphereContextGenerator {
-        public Summarizer(Cognisphere cognisphere, ChatModel chatModel, String... agentNames) {
-            super(cognisphere, c -> {
+    public static class Summarizer extends AgenticScopeContextGenerator {
+        public Summarizer(AgenticScope agenticScope, ChatModel chatModel, String... agentNames) {
+            super(agenticScope, c -> {
                 String context = c.contextAsConversation(agentNames);
                 return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
             });

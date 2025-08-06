@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -19,7 +19,7 @@ public record MethodAgentInvoker(Method method, String name, String description,
     }
 
     @Override
-    public Object[] toInvocationArguments(Cognisphere cognisphere) throws MissingArgumentException {
-        return methodInvocationArguments(cognisphere, arguments);
+    public Object[] toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
+        return methodInvocationArguments(agenticScope, arguments);
     }
 }

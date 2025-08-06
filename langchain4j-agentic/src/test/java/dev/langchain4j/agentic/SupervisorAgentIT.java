@@ -2,7 +2,7 @@ package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
@@ -324,12 +324,12 @@ public class SupervisorAgentIT {
                 .subAgents(withdrawAgent, creditAgent, exchange)
                 .build();
 
-        ResultWithCognisphere<String> result = bankSupervisor.invokeWithCognisphere(userRequest);
+        ResultWithAgenticScope<String> result = bankSupervisor.invokeWithAgenticScope(userRequest);
         System.out.println(result.result());
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
 
-        assertThat(result.cognisphere().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
+        assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
     }
 }

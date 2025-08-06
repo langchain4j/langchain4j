@@ -2,11 +2,11 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
-import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.MemoryId;
 
@@ -24,52 +24,52 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
 
     private final Class<?> agentServiceClass;
 
-    private final Consumer<Cognisphere> beforeCall;
+    private final Consumer<AgenticScope> beforeCall;
 
-    private final DefaultCognisphere cognisphere;
+    private final DefaultAgenticScope agenticScope;
 
     private final Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
-    private final AtomicReference<CognisphereRegistry> cognisphereRegistry = new AtomicReference<>();
+    private final AtomicReference<AgenticScopeRegistry> agenticScopeRegistry = new AtomicReference<>();
 
     protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService) {
         this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultCognisphere cognisphere) {
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultAgenticScope agenticScope) {
         this.agentServiceClass = workflowService.agentServiceClass;
         this.outputName = workflowService.outputName;
         this.beforeCall = workflowService.beforeCall;
         this.errorHandler = workflowService.errorHandler;
-        this.cognisphere = cognisphere;
+        this.agenticScope = agenticScope;
     }
 
-    public CognisphereOwner withCognisphere(DefaultCognisphere cognisphere) {
-        return (CognisphereOwner) Proxy.newProxyInstance(
+    public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
+        return (AgenticScopeOwner) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
-                createSubAgentWithCognisphere(cognisphere));
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
+                createSubAgentWithAgenticScope(agenticScope));
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) {
-        CognisphereRegistry registry = cognisphereRegistry();
-        if (method.getDeclaringClass() == CognisphereOwner.class) {
+        AgenticScopeRegistry registry = agenticScopeRegistry();
+        if (method.getDeclaringClass() == AgenticScopeOwner.class) {
             return switch (method.getName()) {
-                case "withCognisphere" -> withCognisphere((DefaultCognisphere) args[0]);
+                case "withAgenticScope" -> withAgenticScope((DefaultAgenticScope) args[0]);
                 case "registry" -> registry;
                 default -> throw new UnsupportedOperationException(
-                        "Unknown method on CognisphereOwner class : " + method.getName());
+                        "Unknown method on AgenticScopeOwner class : " + method.getName());
             };
         }
 
-        if (method.getDeclaringClass() == CognisphereAccess.class) {
+        if (method.getDeclaringClass() == AgenticScopeAccess.class) {
             return switch (method.getName()) {
-                case "getCognisphere" -> registry.get(args[0]);
-                case "evictCognisphere" -> registry.evict(args[0]);
+                case "getAgenticScope" -> registry.get(args[0]);
+                case "evictAgenticScope" -> registry.evict(args[0]);
                 default ->
                         throw new UnsupportedOperationException(
-                                "Unknown method on CognisphereAccess class : " + method.getName());
+                                "Unknown method on AgenticScopeAccess class : " + method.getName());
             };
         }
 
@@ -82,59 +82,59 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             };
         }
 
-        return executeAgentMethod(currentCognisphere(registry, method, args), registry, method, args);
+        return executeAgentMethod(currentAgenticScope(registry, method, args), registry, method, args);
     }
 
-    private CognisphereRegistry cognisphereRegistry() {
+    private AgenticScopeRegistry agenticScopeRegistry() {
         if (isRootCall()) {
-            cognisphereRegistry.compareAndSet(null, new CognisphereRegistry(this.agentServiceClass.getName()));
+            agenticScopeRegistry.compareAndSet(null, new AgenticScopeRegistry(this.agentServiceClass.getName()));
         }
-        return cognisphereRegistry.get();
+        return agenticScopeRegistry.get();
     }
 
-    private Object executeAgentMethod(DefaultCognisphere cognisphere, CognisphereRegistry registry, Method method, Object[] args) {
-        writeCognisphereState(cognisphere, method, args);
-        beforeCall.accept(cognisphere);
+    private Object executeAgentMethod(DefaultAgenticScope agenticScope, AgenticScopeRegistry registry, Method method, Object[] args) {
+        writeAgenticScope(agenticScope, method, args);
+        beforeCall.accept(agenticScope);
 
         if (isRootCall()) {
-            cognisphere.rootCallStarted(registry);
+            agenticScope.rootCallStarted(registry);
         }
-        Object result = doAgentAction(cognisphere);
+        Object result = doAgentAction(agenticScope);
         if (isRootCall()) {
-            cognisphere.rootCallEnded(registry);
+            agenticScope.rootCallEnded(registry);
         }
 
-        Object output = outputName != null ? cognisphere.readState(outputName) : result;
-        return method.getReturnType().equals(ResultWithCognisphere.class) ?
-                new ResultWithCognisphere<>(cognisphere, output) :
+        Object output = outputName != null ? agenticScope.readState(outputName) : result;
+        return method.getReturnType().equals(ResultWithAgenticScope.class) ?
+                new ResultWithAgenticScope<>(agenticScope, output) :
                 output;
     }
 
     private boolean isRootCall() {
-        return this.cognisphere == null;
+        return this.agenticScope == null;
     }
 
-    private static void writeCognisphereState(DefaultCognisphere cognisphere, Method method, Object[] args) {
+    private static void writeAgenticScope(DefaultAgenticScope agenticScope, Method method, Object[] args) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
-            cognisphere.writeStates((Map<String, Object>) args[0]);
+            agenticScope.writeStates((Map<String, Object>) args[0]);
         } else {
             Parameter[] parameters = method.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 int index = i;
                 AgentInvoker.optionalParameterName(parameters[i])
-                        .ifPresent(argName -> cognisphere.writeState(argName, args[index]) );
+                        .ifPresent(argName -> agenticScope.writeState(argName, args[index]) );
             }
         }
     }
 
-    private DefaultCognisphere currentCognisphere(CognisphereRegistry registry, Method method, Object[] args) {
-        if (cognisphere != null) {
-            return cognisphere;
+    private DefaultAgenticScope currentAgenticScope(AgenticScopeRegistry registry, Method method, Object[] args) {
+        if (agenticScope != null) {
+            return agenticScope;
         }
 
         Object memoryId = memoryId(method, args);
-        DefaultCognisphere newCognisphere = memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralCognisphere();
-        return newCognisphere.withErrorHandler(errorHandler);
+        DefaultAgenticScope newAgenticScope = memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralAgenticScope();
+        return newAgenticScope.withErrorHandler(errorHandler);
     }
 
     private Object memoryId(Method method, Object[] args) {
@@ -147,19 +147,19 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         return null;
     }
 
-    protected Object result(DefaultCognisphere cognisphere, Object result) {
+    protected Object result(DefaultAgenticScope agenticScope, Object result) {
         if (outputName != null) {
             if (result != null) {
-                cognisphere.writeState(outputName, result);
+                agenticScope.writeState(outputName, result);
                 return result;
             } else {
-                return cognisphere.readState(outputName);
+                return agenticScope.readState(outputName);
             }
         }
         return result;
     }
 
-    protected abstract Object doAgentAction(DefaultCognisphere cognisphere);
+    protected abstract Object doAgentAction(DefaultAgenticScope agenticScope);
 
-    protected abstract InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere);
+    protected abstract InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope);
 }

@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 
 public record UntypedAgentInvoker(Method method, String name, String description, String outputName) implements AgentInvoker {
@@ -11,7 +11,7 @@ public record UntypedAgentInvoker(Method method, String name, String description
     }
 
     @Override
-    public Object[] toInvocationArguments(Cognisphere cognisphere) {
-        return new Object[] { cognisphere.state() };
+    public Object[] toInvocationArguments(AgenticScope agenticScope) {
+        return new Object[] { agenticScope.state() };
     }
 }

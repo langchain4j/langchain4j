@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -12,21 +12,21 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 
 public abstract class AbstractService<T, S> {
 
-    private static final Function<Cognisphere, Object> DEFAULT_OUTPUT_FUNCTION = cognisphere -> null;
-    private static final Consumer<Cognisphere> DEFAULT_INIT_FUNCTION = cognisphere -> { };
+    private static final Function<AgenticScope, Object> DEFAULT_OUTPUT_FUNCTION = agenticScope -> null;
+    private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> { };
 
     protected final Class<T> agentServiceClass;
 
-    protected Consumer<Cognisphere> beforeCall = DEFAULT_INIT_FUNCTION;
+    protected Consumer<AgenticScope> beforeCall = DEFAULT_INIT_FUNCTION;
 
     protected String outputName;
-    protected Function<Cognisphere, Object> output = DEFAULT_OUTPUT_FUNCTION;
+    protected Function<AgenticScope, Object> output = DEFAULT_OUTPUT_FUNCTION;
 
     private List<AgentExecutor> agentExecutors;
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
-    public S beforeCall(Consumer<Cognisphere> beforeCall) {
+    public S beforeCall(Consumer<AgenticScope> beforeCall) {
         this.beforeCall = beforeCall;
         return (S) this;
     }
@@ -36,7 +36,7 @@ public abstract class AbstractService<T, S> {
         return (S) this;
     }
 
-    public S output(Function<Cognisphere, Object> output) {
+    public S output(Function<AgenticScope, Object> output) {
         this.output = output;
         return (S) this;
     }

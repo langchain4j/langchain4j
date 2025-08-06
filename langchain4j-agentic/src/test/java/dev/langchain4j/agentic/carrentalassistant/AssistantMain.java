@@ -13,8 +13,8 @@ import dev.langchain4j.agentic.carrentalassistant.services.MedicalAgentService;
 import dev.langchain4j.agentic.carrentalassistant.services.PoliceAgentService;
 import dev.langchain4j.agentic.carrentalassistant.services.ResponseGeneratorService;
 import dev.langchain4j.agentic.carrentalassistant.services.TowingAgentService;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 import static dev.langchain4j.agentic.Models.baseModel;
@@ -24,7 +24,7 @@ public class AssistantMain {
     public static void main(String[] args) {
         CarRentalAssistant assistant = createAssistant();
         String memoryId = "1";
-        Cognisphere cognisphere = null;
+        AgenticScope agenticScope = null;
 
         while (true) {
             String userMessage = System.console().readLine("You: ");
@@ -32,12 +32,12 @@ public class AssistantMain {
                 break;
             }
 
-            ResultWithCognisphere<String> response = assistant.chat(memoryId, userMessage);
-            cognisphere = response.cognisphere();
+            ResultWithAgenticScope<String> response = assistant.chat(memoryId, userMessage);
+            agenticScope = response.agenticScope();
             System.out.println("Assistant: " + response.result());
         }
 
-        System.out.println(cognisphere.readState("customerInfo"));
+        System.out.println(agenticScope.readState("customerInfo"));
     }
 
     private static CarRentalAssistant createAssistant() {
@@ -59,9 +59,9 @@ public class AssistantMain {
                 .build();
 
         return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
-                .beforeCall(cognisphere -> {
-                    if (cognisphere.readState("customerInfo") == null) {
-                        cognisphere.writeState("customerInfo", new CustomerInfo());
+                .beforeCall(agenticScope -> {
+                    if (agenticScope.readState("customerInfo") == null) {
+                        agenticScope.writeState("customerInfo", new CustomerInfo());
                     }
                 })
                 .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
@@ -97,15 +97,15 @@ public class AssistantMain {
                 .build();
 
         UntypedAgent emergencyExperts = AgenticServices.conditionalBuilder()
-                .beforeCall(cognisphere -> {
-                    Emergencies emergencies = (Emergencies) cognisphere.readState("emergencies");
-                    writeEmergency(cognisphere, emergencies.getFire(), "fire");
-                    writeEmergency(cognisphere, emergencies.getMedical(), "medical");
-                    writeEmergency(cognisphere, emergencies.getPolice(), "police");
+                .beforeCall(agenticScope -> {
+                    Emergencies emergencies = (Emergencies) agenticScope.readState("emergencies");
+                    writeEmergency(agenticScope, emergencies.getFire(), "fire");
+                    writeEmergency(agenticScope, emergencies.getMedical(), "medical");
+                    writeEmergency(agenticScope, emergencies.getPolice(), "police");
                 })
-                .subAgents( cognisphere -> cognisphere.hasState("fireEmergency"), fireAgent)
-                .subAgents( cognisphere -> cognisphere.hasState("medicalEmergency"), medicalAgent)
-                .subAgents( cognisphere -> cognisphere.hasState("policeEmergency"), policeAgent)
+                .subAgents( agenticScope -> agenticScope.hasState("fireEmergency"), fireAgent)
+                .subAgents( agenticScope -> agenticScope.hasState("medicalEmergency"), medicalAgent)
+                .subAgents( agenticScope -> agenticScope.hasState("policeEmergency"), policeAgent)
                 .build();
 
         return AgenticServices.sequenceBuilder()
@@ -114,12 +114,12 @@ public class AssistantMain {
                 .build();
     }
 
-    private static void writeEmergency(Cognisphere cognisphere, String emergency, String type) {
+    private static void writeEmergency(AgenticScope agenticScope, String emergency, String type) {
         if (emergency == null || emergency.isBlank()) {
-            cognisphere.writeState(type + "Emergency", null);
-            cognisphere.writeState(type + "Response", "");
+            agenticScope.writeState(type + "Emergency", null);
+            agenticScope.writeState(type + "Response", "");
         } else {
-            cognisphere.writeState(type + "Emergency", emergency);
+            agenticScope.writeState(type + "Emergency", emergency);
         }
     }
 }

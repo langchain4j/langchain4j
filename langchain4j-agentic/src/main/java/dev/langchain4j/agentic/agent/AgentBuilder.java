@@ -2,10 +2,10 @@ package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
@@ -35,7 +35,7 @@ public class AgentBuilder<T> {
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Object[] objectsWithTools;
-    private Function<Cognisphere, String> contextProvider;
+    private Function<AgenticScope, String> contextProvider;
     private String[] agentNames;
     private ToolProvider toolProvider;
     private Integer maxSequentialToolsInvocations;
@@ -65,7 +65,7 @@ public class AgentBuilder<T> {
         return build(null);
     }
 
-    T build(DefaultCognisphere cognisphere) {
+    T build(DefaultAgenticScope agenticScope) {
         AiServiceContext context = new AiServiceContext(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
@@ -114,19 +114,19 @@ public class AgentBuilder<T> {
             aiServices.outputGuardrails(outputGuardrails);
         }
 
-        boolean cognisphereDependent = contextProvider != null || (agentNames != null && agentNames.length > 0);
-        if (cognisphere != null && cognisphereDependent) {
+        boolean agenticScopeDependent = contextProvider != null || (agentNames != null && agentNames.length > 0);
+        if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.CognisphereContextGenerator(cognisphere, contextProvider));
+                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(cognisphere, model, agentNames));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, agentNames));
             }
         }
 
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, CognisphereOwner.class},
-                new AgentInvocationHandler(context, aiServices.build(), this, cognisphereDependent));
+                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
+                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
     }
 
     String agentId() {
@@ -213,7 +213,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> context(Function<Cognisphere, String> contextProvider) {
+    public AgentBuilder<T> context(Function<AgenticScope, String> contextProvider) {
         this.contextProvider = contextProvider;
         return this;
     }

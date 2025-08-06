@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -19,7 +19,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 
 public class ConditionalAgentServiceImpl<T> extends AbstractService<T, ConditionalAgentService<T>> implements ConditionalAgentService<T> {
 
-    private record ConditionalAgent(Predicate<Cognisphere> condition, List<AgentExecutor> agentExecutors) {}
+    private record ConditionalAgent(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {}
 
     private final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
 
@@ -31,7 +31,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     public T build() {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new ConditionialInvocationHandler());
     }
 
@@ -41,25 +41,25 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
             super(ConditionalAgentServiceImpl.this);
         }
 
-        private ConditionialInvocationHandler(DefaultCognisphere cognisphere) {
-            super(ConditionalAgentServiceImpl.this, cognisphere);
+        private ConditionialInvocationHandler(DefaultAgenticScope agenticScope) {
+            super(ConditionalAgentServiceImpl.this, agenticScope);
         }
 
         @Override
-        protected Object doAgentAction(DefaultCognisphere cognisphere) {
+        protected Object doAgentAction(DefaultAgenticScope agenticScope) {
             for (ConditionalAgent conditionalAgent : conditionalAgents) {
-                if (conditionalAgent.condition.test(cognisphere)) {
+                if (conditionalAgent.condition.test(agenticScope)) {
                     for (AgentExecutor agentExecutor : conditionalAgent.agentExecutors) {
-                        agentExecutor.execute(cognisphere);
+                        agentExecutor.execute(agenticScope);
                     }
                 }
             }
-            return result(cognisphere, output.apply(cognisphere));
+            return result(agenticScope, output.apply(agenticScope));
         }
 
         @Override
-        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
-            return new ConditionialInvocationHandler(cognisphere);
+        protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
+            return new ConditionialInvocationHandler(agenticScope);
         }
     }
 
@@ -73,27 +73,27 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(Object... agents) {
-        return subAgents(cognisphere -> true, agents);
+        return subAgents(agenticScope -> true, agents);
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgents(Predicate<Cognisphere> condition, Object... agents) {
+    public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, Object... agents) {
         return subAgents(condition, agentsToExecutors(agents));
     }
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(List<AgentExecutor> agentExecutors) {
-        return subAgents(cognisphere -> true, agentExecutors);
+        return subAgents(agenticScope -> true, agentExecutors);
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgents(Predicate<Cognisphere> condition, List<AgentExecutor> agentExecutors) {
+    public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
         conditionalAgents.add(new ConditionalAgent(condition, agentExecutors));
         return this;
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgent(Predicate<Cognisphere> condition, AgentExecutor agentExecutor) {
+    public ConditionalAgentServiceImpl<T> subAgent(Predicate<AgenticScope> condition, AgentExecutor agentExecutor) {
         conditionalAgents.add(new ConditionalAgent(condition, List.of(agentExecutor)));
         return this;
     }

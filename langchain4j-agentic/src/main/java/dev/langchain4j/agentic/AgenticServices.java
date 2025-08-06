@@ -1,7 +1,10 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ExecutorService;
@@ -30,6 +33,7 @@ import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -263,6 +267,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel));
 
         buildOutput(agentServiceClass, sequenceAgent.outputName(), builder);
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         return builder.build();
     }
@@ -274,9 +279,10 @@ public class AgenticServices {
                 .maxIterations(loopAgent.maxIterations());
 
         buildOutput(agentServiceClass, loopAgent.outputName(), builder);
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
-                .map(AgenticServices::cognispherePredicate)
+                .map(AgenticServices::agenticScopePredicate)
                 .ifPresent(builder::exitCondition);
 
         return builder.build();
@@ -287,13 +293,14 @@ public class AgenticServices {
         var builder = conditionalBuilder(agentServiceClass);
 
         buildOutput(agentServiceClass, conditionalAgent.outputName(), builder);
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         for (SubAgent subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
                 ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
                 return activationCondition != null && Arrays.asList(activationCondition.value()).contains(subagent.type());
             })
-                    .map(AgenticServices::cognispherePredicate)
+                    .map(AgenticServices::agenticScopePredicate)
                     .ifPresent(condition -> builder.subAgent(condition, createSubagent(subagent, chatModel)));
         }
 
@@ -306,6 +313,8 @@ public class AgenticServices {
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel));
 
         buildOutput(agentServiceClass, parallelAgent.outputName(), builder);
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ExecutorService.class) &&
                 method.getReturnType() == java.util.concurrent.ExecutorService.class &&
                 method.getParameterCount() == 0)
@@ -335,7 +344,7 @@ public class AgenticServices {
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorRequest.class) &&
                 method.getReturnType() == String.class)
-                .map(m -> AgenticServices.cognisphereFunction(m, String.class))
+                .map(m -> AgenticServices.agenticScopeFunction(m, String.class))
                 .ifPresent(builder::requestGenerator);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorChatModel.class) &&
@@ -350,6 +359,8 @@ public class AgenticServices {
                 })
                 .ifPresentOrElse(builder::chatModel, () -> builder.chatModel(chatModel));
 
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+
         return builder.build();
     }
 
@@ -359,8 +370,19 @@ public class AgenticServices {
         }
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
-                .map(m -> AgenticServices.cognisphereFunction(m, Object.class))
+                .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))
                 .ifPresent(builder::output);
+    }
+
+    private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(Class<T> agentServiceClass) {
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
+                .map(m -> (Function<ErrorContext, ErrorRecoveryResult>) errorContext -> {
+                    try {
+                        return (ErrorRecoveryResult) m.invoke(null, errorContext);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
     }
 
     private static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
@@ -376,15 +398,15 @@ public class AgenticServices {
         return Optional.empty();
     }
 
-    private static Predicate<Cognisphere> cognispherePredicate(Method predicateMethod) {
-        return cognisphere -> cognisphereFunction(predicateMethod, boolean.class).apply(cognisphere);
+    private static Predicate<AgenticScope> agenticScopePredicate(Method predicateMethod) {
+        return agenticScope -> agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
-    private static <T> Function<Cognisphere, T> cognisphereFunction(Method functionMethod, Class<T> targetClass) {
-        boolean isCognisphereArg = functionMethod.getParameterCount() == 1 && functionMethod.getParameterTypes()[0] == Cognisphere.class;
-        return cognisphere -> {
+    private static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
+        boolean isAgenticScopeArg = functionMethod.getParameterCount() == 1 && functionMethod.getParameterTypes()[0] == AgenticScope.class;
+        return agenticScope -> {
             try {
-                Object[] args = isCognisphereArg ? new Object[] {cognisphere} : methodInvocationArguments(cognisphere, functionMethod);
+                Object[] args = isAgenticScopeArg ? new Object[] {agenticScope} : methodInvocationArguments(agenticScope, functionMethod);
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking exit condition method: " + functionMethod.getName(), e);

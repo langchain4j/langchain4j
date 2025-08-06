@@ -1,8 +1,7 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
@@ -24,7 +23,7 @@ public class SupervisorAndWorkflowAgentsIT {
     public interface SupervisorStyledWriter {
 
         @Agent
-        ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
     @Test
@@ -57,15 +56,15 @@ public class SupervisorAndWorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .outputName("story")
                 .maxIterations(5)
-                .exitCondition(cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
-        ResultWithCognisphere<String> result;
+        ResultWithAgenticScope<String> result;
 
         if (typedSupervisor) {
             SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriter.class)
                     .chatModel(plannerModel())
-                    .requestGenerator(cognisphere -> "Write a story about " + cognisphere.readState("topic") + " in the style of a " + cognisphere.readState("style"))
+                    .requestGenerator(agenticScope -> "Write a story about " + agenticScope.readState("topic") + " in the style of a " + agenticScope.readState("style"))
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
                     .maxAgentsInvocations(5)
@@ -83,21 +82,21 @@ public class SupervisorAndWorkflowAgentsIT {
                     .outputName("story")
                     .build();
 
-            result = styledWriter.invokeWithCognisphere("Write a story about dragons and wizards in the style of a comedy");
+            result = styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
         }
 
         String story = result.result();
         System.out.println(story);
 
-        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
-        assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
-        assertThat(cognisphere.readState("style", "")).contains("comedy");
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
+        assertThat(agenticScope.readState("style", "")).contains("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
+        assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

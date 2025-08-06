@@ -1,8 +1,8 @@
 package dev.langchain4j.agentic.a2a;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.cognisphere.CognisphereAccess;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
@@ -39,9 +39,9 @@ public class Agents {
         String scoreAndReview(@V("story") String story, @V("style") String style);
     }
 
-    public interface StyledWriter extends CognisphereAccess {
+    public interface StyledWriter extends AgenticScopeAccess {
 
         @Agent
-        ResultWithCognisphere<String> writeStoryWithStyle(@V("topic") String topic, @V("style") String style);
+        ResultWithAgenticScope<String> writeStoryWithStyle(@V("topic") String topic, @V("style") String style);
     }
 }

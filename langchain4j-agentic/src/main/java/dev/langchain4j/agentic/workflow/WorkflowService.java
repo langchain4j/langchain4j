@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.workflow;
 
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import java.util.List;
 import java.util.function.Consumer;
@@ -16,11 +16,11 @@ public interface WorkflowService<T, W> {
 
     T subAgents(List<AgentExecutor> agentExecutors);
 
-    T beforeCall(Consumer<Cognisphere> beforeCall);
+    T beforeCall(Consumer<AgenticScope> beforeCall);
 
     T outputName(String outputName);
 
-    T output(Function<Cognisphere, Object> output);
+    T output(Function<AgenticScope, Object> output);
 
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 }

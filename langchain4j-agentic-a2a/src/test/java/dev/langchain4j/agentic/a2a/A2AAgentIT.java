@@ -3,9 +3,9 @@ package dev.langchain4j.agentic.a2a;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
@@ -46,7 +46,7 @@ public class A2AAgentIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
@@ -54,13 +54,13 @@ public class A2AAgentIT {
                 .outputName("story")
                 .build();
 
-        ResultWithCognisphere<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 
     public interface A2ACreativeWriter {
@@ -90,7 +90,7 @@ public class A2AAgentIT {
                 .subAgents(styleScorer, styleEditor)
                 .outputName("story")
                 .maxIterations(5)
-                .exitCondition(cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
@@ -100,19 +100,19 @@ public class A2AAgentIT {
                 .outputName("story")
                 .build();
 
-        ResultWithCognisphere<String> result = styledWriter.invokeWithCognisphere("Write a story about dragons and wizards in the style of a comedy");
+        ResultWithAgenticScope<String> result = styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
         String story = result.result();
         System.out.println(story);
 
-        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
-        assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
-        assertThat(cognisphere.readState("style", "")).contains("comedy");
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
+        assertThat(agenticScope.readState("style", "")).contains("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentInvocations("Creative Writer")).hasSize(1);
+        assertThat(agenticScope.agentInvocations("Creative Writer")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

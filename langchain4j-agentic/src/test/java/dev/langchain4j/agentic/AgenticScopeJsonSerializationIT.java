@@ -1,14 +1,14 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.CognisphereSerializer;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CognisphereJsonSerializationIT {
+public class AgenticScopeJsonSerializationIT {
 
-    private static final String COGNISPHERE_JSON = """
+    private static final String AGENTIC_SCOPE_JSON = """
             {
                "memoryId":"1",
                "kind":"PERSISTENT",
@@ -112,16 +112,16 @@ public class CognisphereJsonSerializationIT {
             """;
 
     @Test
-    void cognisphere_serialization_test() {
-        DefaultCognisphere cognisphere = CognisphereSerializer.fromJson(COGNISPHERE_JSON);
-        assertThat(cognisphere.memoryId()).isEqualTo("1");
+    void agenticScope_serialization_test() {
+        DefaultAgenticScope agenticScope = AgenticScopeSerializer.fromJson(AGENTIC_SCOPE_JSON);
+        assertThat(agenticScope.memoryId()).isEqualTo("1");
 
-        assertThat(cognisphere.readState("request")).isEqualTo("I broke my leg, what should I do?");
-        assertThat(cognisphere.readState("response")).isEqualTo("BROKEN_LEG_RESPONSE");
-        assertThat(cognisphere.readState("category", Agents.RequestCategory.UNKNOWN)).isEqualTo(Agents.RequestCategory.MEDICAL);
+        assertThat(agenticScope.readState("request")).isEqualTo("I broke my leg, what should I do?");
+        assertThat(agenticScope.readState("response")).isEqualTo("BROKEN_LEG_RESPONSE");
+        assertThat(agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)).isEqualTo(Agents.RequestCategory.MEDICAL);
 
-        assertThat(cognisphere.context()).hasSize(4);
+        assertThat(agenticScope.context()).hasSize(4);
 
-        assertThat(CognisphereSerializer.toJson(cognisphere)).isEqualToIgnoringWhitespace(COGNISPHERE_JSON);
+        assertThat(AgenticScopeSerializer.toJson(agenticScope)).isEqualToIgnoringWhitespace(AGENTIC_SCOPE_JSON);
     }
 }

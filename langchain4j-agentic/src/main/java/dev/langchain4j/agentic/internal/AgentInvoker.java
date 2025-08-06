@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.V;
 import java.lang.reflect.Method;
@@ -23,7 +23,7 @@ public interface AgentInvoker {
 
     String toCard();
 
-    Object[] toInvocationArguments(Cognisphere cognisphere) throws MissingArgumentException;
+    Object[] toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
     default Object invoke(Object agent, Object... args) throws AgentInvocationException {
         try {

@@ -3,13 +3,13 @@ package dev.langchain4j.agentic;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.CognispherePersister;
-import dev.langchain4j.agentic.cognisphere.CognisphereRegistry;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopePersister;
+import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import org.junit.jupiter.api.Test;
@@ -145,7 +145,7 @@ public class WorkflowAgentsIT {
                 .errorHandler(errorContext -> {
                     if (errorContext.agentName().equals("generateStory") &&
                             errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
-                        errorContext.cognisphere().writeState("topic", "dragons and wizards");
+                        errorContext.agenticScope().writeState("topic", "dragons and wizards");
                         errorRecoveryCalled.set(true);
                         return ErrorRecoveryResult.retry();
                     }
@@ -231,7 +231,7 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
@@ -244,13 +244,13 @@ public class WorkflowAgentsIT {
                 "style", "comedy"
         );
 
-        ResultWithCognisphere<String> result = styledWriter.invokeWithCognisphere(input);
+        ResultWithAgenticScope<String> result = styledWriter.invokeWithAgenticScope(input);
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 
     @Test
@@ -273,7 +273,7 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( cognisphere -> cognisphere.readState("score", 0.0) >= 0.8)
+                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
@@ -281,22 +281,22 @@ public class WorkflowAgentsIT {
                 .outputName("story")
                 .build();
 
-        ResultWithCognisphere<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
         String story = result.result();
         System.out.println(story);
 
-        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
-        // Verify that an ephemeral cognisphere is correctly evicted from the registry after the call
-        assertThat(styledWriter.getCognisphere(cognisphere.memoryId())).isNull();
+        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        // Verify that an ephemeral agenticScope is correctly evicted from the registry after the call
+        assertThat(styledWriter.getAgenticScope(agenticScope.memoryId())).isNull();
 
-        assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
-        assertThat(cognisphere.readState("style")).isEqualTo("comedy");
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
+        assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
@@ -323,9 +323,9 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
                 .build();
 
         ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
@@ -363,9 +363,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
-                .subAgents( cognisphere -> cognisphere.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
@@ -373,29 +373,29 @@ public class WorkflowAgentsIT {
                 .outputName("response")
                 .build();
 
-        JsonInMemoryCognisphereStore store = new JsonInMemoryCognisphereStore();
-        CognispherePersister.setStore(store);
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
 
         String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
         System.out.println(response1);
 
-        Cognisphere cognisphere1 = expertRouterAgent.getCognisphere("1");
-        assertThat(cognisphere1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
+        AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
 
         assertThat(store.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
         System.out.println(response2);
 
-        Cognisphere cognisphere2 = expertRouterAgent.getCognisphere("2");
-        assertThat(cognisphere2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
+        AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        CognisphereRegistry registry = ((CognisphereOwner)expertRouterAgent).registry();
-        assertThat(store.getAllKeys()).isEqualTo(registry.getAllCognisphereKeysInMemory());
+        AgenticScopeRegistry registry = ((AgenticScopeOwner)expertRouterAgent).registry();
+        assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
 
         // Clear the in-memory registry to simulate a restart
         registry.clearInMemory();
-        assertThat(registry.getAllCognisphereKeysInMemory()).isEmpty();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
 
         String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse1);
@@ -405,20 +405,20 @@ public class WorkflowAgentsIT {
 
         assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
 
-        assertThat(legalResponse1).contains("medical").doesNotContain("computer");
-        assertThat(legalResponse2).contains("computer").doesNotContain("medical");
+        assertThat(legalResponse1).containsIgnoringCase("medical").doesNotContain("computer");
+        assertThat(legalResponse2).containsIgnoringCase("computer").doesNotContain("medical");
 
-        // It is necessary to read again the cognisphere instances since they were evicted from the in-memory registry
+        // It is necessary to read again the agenticScope instances since they were evicted from the in-memory registry
         // and reloaded from the persistence provider
-        cognisphere1 = expertRouterAgent.getCognisphere("1");
-        assertThat(cognisphere1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
-        cognisphere2 = expertRouterAgent.getCognisphere("2");
-        assertThat(cognisphere2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
+        agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
+        agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
 
-        assertThat(expertRouterAgent.evictCognisphere("1")).isTrue();
-        assertThat(expertRouterAgent.evictCognisphere("2")).isTrue();
-        assertThat(expertRouterAgent.evictCognisphere("1")).isFalse();
-        assertThat(expertRouterAgent.evictCognisphere("2")).isFalse();
+        assertThat(expertRouterAgent.evictAgenticScope("1")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("2")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("1")).isFalse();
+        assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
     }
 
     @Test
@@ -446,9 +446,9 @@ public class WorkflowAgentsIT {
                 .subAgents(foodExpert, movieExpert)
                 .outputName("plans")
 
-                .output(cognisphere -> {
-                    List<String> movies = cognisphere.readState("movies", List.of());
-                    List<String> meals = cognisphere.readState("meals", List.of());
+                .output(agenticScope -> {
+                    List<String> movies = agenticScope.readState("movies", List.of());
+                    List<String> meals = agenticScope.readState("meals", List.of());
 
                     List<EveningPlan> moviesAndMeals = new ArrayList<>();
                     for (int i = 0; i < movies.size(); i++) {

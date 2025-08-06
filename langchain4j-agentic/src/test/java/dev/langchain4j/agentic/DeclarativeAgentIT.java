@@ -1,8 +1,13 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ExecutorService;
@@ -38,10 +43,12 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DeclarativeAgentIT {
 
@@ -60,6 +67,44 @@ public class DeclarativeAgentIT {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        System.out.println(story);
+    }
+
+    @Test
+    void declarative_sequence_with_error_tests() {
+        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
+
+        assertThat(
+                assertThrows(AgentInvocationException.class,
+                        () -> storyCreator.write(null, "fantasy", "young adults"))
+        ).hasMessageContaining("topic");
+    }
+
+    public interface StoryCreatorWithErrorRecovery {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = StyleEditor.class, outputName = "story")
+        })
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+        @ErrorHandler
+        static ErrorRecoveryResult errorHandler(ErrorContext errorContext) {
+            if (errorContext.agentName().equals("generateStory") &&
+                    errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
+                errorContext.agenticScope().writeState("topic", "dragons and wizards");
+                return ErrorRecoveryResult.retry();
+            }
+            return ErrorRecoveryResult.throwException();
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_error_recover_tests() {
+        StoryCreatorWithErrorRecovery storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithErrorRecovery.class, baseModel());
+
+        String story = storyCreator.write(null, "fantasy", "young adults");
         System.out.println(story);
     }
 
@@ -87,22 +132,22 @@ public class DeclarativeAgentIT {
                 @SubAgent(type = CreativeWriter.class, outputName = "story"),
                 @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
         })
-        ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
     @Test
     void declarative_sequence_and_loop_tests() {
         StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
 
-        ResultWithCognisphere<String> result = storyCreator.write("dragons and wizards", "comedy");
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
         System.out.println(story);
 
-        Cognisphere cognisphere = result.cognisphere();
-        assertThat(cognisphere.readState("topic")).isEqualTo("dragons and wizards");
-        assertThat(cognisphere.readState("style")).isEqualTo("comedy");
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 
     public interface ExpertsAgent {
@@ -136,19 +181,19 @@ public class DeclarativeAgentIT {
                 @SubAgent(type = CategoryRouter.class, outputName = "category"),
                 @SubAgent(type = ExpertsAgent.class, outputName = "response")
         })
-        ResultWithCognisphere<String> ask(@V("request") String request);
+        ResultWithAgenticScope<String> ask(@V("request") String request);
     }
 
     @Test
     void declarative_conditional_tests() {
         ExpertRouterAgent expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgent.class, baseModel());
 
-        ResultWithCognisphere<String> result = expertRouterAgent.ask("I broke my leg what should I do");
+        ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
         System.out.println(response);
 
-        Cognisphere cognisphere = result.cognisphere();
-        assertThat(cognisphere.readState("category")).isEqualTo(RequestCategory.MEDICAL);
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
     }
 
     public interface EveningPlannerAgent {
@@ -191,7 +236,7 @@ public class DeclarativeAgentIT {
                 @SubAgent(type = CreativeWriter.class, outputName = "story"),
                 @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
         })
-        ResultWithCognisphere<String> write(@V("topic") String topic, @V("style") String style);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @SupervisorRequest
         static String request(@V("topic") String topic, @V("style") String style) {
@@ -207,20 +252,20 @@ public class DeclarativeAgentIT {
     @Test
     void declarative_supervisor_tests() {
         SupervisorStoryCreator styledWriter = AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, baseModel());
-        ResultWithCognisphere<String> result = styledWriter.write("dragons and wizards", "comedy");
+        ResultWithAgenticScope<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
         System.out.println(story);
 
-        DefaultCognisphere cognisphere = (DefaultCognisphere) result.cognisphere();
-        assertThat(cognisphere.readState("topic", "")).contains("dragons and wizards");
-        assertThat(cognisphere.readState("style", "")).contains("comedy");
-        assertThat(story).isEqualTo(cognisphere.readState("story"));
-        assertThat(cognisphere.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
+        assertThat(agenticScope.readState("style", "")).contains("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(cognisphere.agentInvocations("generateStory")).hasSize(1);
+        assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = cognisphere.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);

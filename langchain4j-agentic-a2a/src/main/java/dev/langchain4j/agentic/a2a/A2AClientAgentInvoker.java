@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.a2a;
 
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
@@ -54,10 +54,10 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public Object[] toInvocationArguments(Cognisphere cognisphere) {
+    public Object[] toInvocationArguments(AgenticScope agenticScope) {
         return isUntyped() ?
-                new Object[] { cognisphere.state() } :
-                Stream.of(inputNames).map(cognisphere::readState).toArray();
+                new Object[] { agenticScope.state() } :
+                Stream.of(inputNames).map(agenticScope::readState).toArray();
     }
 
     private boolean isUntyped() {

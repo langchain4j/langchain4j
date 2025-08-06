@@ -1,9 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -19,7 +18,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 public class AgentUtil {
 
     private static final String MEMORY_ID_ARG_NAME = "@MemoryId";
-    private static final String COGNISPHERE_ARG_NAME = "@Cognisphere";
+    private static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
 
     private AgentUtil() { }
 
@@ -67,8 +66,8 @@ public class AgentUtil {
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
-    public static Object[] methodInvocationArguments(Cognisphere cognisphere, Method method) {
-        return methodInvocationArguments(cognisphere, argumentsFromMethod(method));
+    public static Object[] methodInvocationArguments(AgenticScope agenticScope, Method method) {
+        return methodInvocationArguments(agenticScope, argumentsFromMethod(method));
     }
 
     static List<AgentArgument> argumentsFromMethod(Method method) {
@@ -81,26 +80,26 @@ public class AgentUtil {
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }
-        if (Cognisphere.class.isAssignableFrom(p.getType())) {
-            return COGNISPHERE_ARG_NAME;
+        if (AgenticScope.class.isAssignableFrom(p.getType())) {
+            return AGENTIC_SCOPE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
     }
 
-    public static Object[] methodInvocationArguments(Cognisphere cognisphere, List<AgentArgument> agentArguments) throws MissingArgumentException {
+    public static Object[] methodInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
         Object[] invocationArgs = new Object[agentArguments.size()];
         int i = 0;
         for (AgentArgument arg : agentArguments) {
             String argName = arg.name();
             if (argName.equals(MEMORY_ID_ARG_NAME)) {
-                invocationArgs[i++] = cognisphere.memoryId();
+                invocationArgs[i++] = agenticScope.memoryId();
                 continue;
             }
-            if (argName.equals(COGNISPHERE_ARG_NAME)) {
-                invocationArgs[i++] = cognisphere;
+            if (argName.equals(AGENTIC_SCOPE_ARG_NAME)) {
+                invocationArgs[i++] = agenticScope;
                 continue;
             }
-            Object argValue = cognisphere.readState(argName);
+            Object argValue = agenticScope.readState(argName);
             if (argValue == null) {
                 throw new MissingArgumentException(argName);
             }

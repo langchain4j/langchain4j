@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.cognisphere.ResultWithCognisphere;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.service.SystemMessage;
@@ -43,8 +43,8 @@ public class HoroscopeMain {
                 .subAgents(astrologyAgent, humanInTheLoop)
                 .build();
 
-        ResultWithCognisphere<String> horoscope = horoscopeAgent.invokeWithCognisphere("My name is Mario. What is my horoscope?");
-        System.out.println("User's sign: " + horoscope.cognisphere().readState("sign"));
+        ResultWithAgenticScope<String> horoscope = horoscopeAgent.invokeWithAgenticScope("My name is Mario. What is my horoscope?");
+        System.out.println("User's sign: " + horoscope.agenticScope().readState("sign"));
         System.out.println("Horoscope: " + horoscope.result());
     }
 }

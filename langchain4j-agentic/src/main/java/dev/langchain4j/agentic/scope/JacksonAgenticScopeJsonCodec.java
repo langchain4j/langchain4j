@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.cognisphere;
+package dev.langchain4j.agentic.scope;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -17,8 +17,8 @@ import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.AgentMessage;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere.Kind;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope.Kind;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.data.message.ChatMessage;
 
@@ -27,17 +27,17 @@ import java.util.Collection;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Internal
-class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
+class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
 
-    static JsonMapper.Builder cognisphereJsonMapperBuilder() {
+    static JsonMapper.Builder agenticScopeJsonMapperBuilder() {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
-                .addMixIn(DefaultCognisphere.class, CognisphereMixin.class)
+                .addMixIn(DefaultAgenticScope.class, AgenticScopeMixin.class)
                 .addMixIn(AgentMessage.class, AgentMessageMixin.class)
                 .addMixIn(AgentInvocation.class, AgentInvocationMixin.class);
     }
 
-    static ObjectMapper cognisphereJsonSerializer() {
-        ObjectMapper mapper = cognisphereJsonMapperBuilder().build();
+    static ObjectMapper agenticScopeJsonSerializer() {
+        ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
 
         // Configure the ObjectMapper to add type information for users types
         // At the moment, this is only needed and used for enums, but we could add support for other types in the future
@@ -57,31 +57,31 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
         return mapper;
     }
 
-    private static final ObjectMapper SERIALIZER_MAPPER = cognisphereJsonSerializer();
-    private static final ObjectMapper DESERIALIZER_MAPPER = cognisphereJsonMapperBuilder().build();
+    private static final ObjectMapper SERIALIZER_MAPPER = agenticScopeJsonSerializer();
+    private static final ObjectMapper DESERIALIZER_MAPPER = agenticScopeJsonMapperBuilder().build();
 
     @Override
-    public DefaultCognisphere fromJson(String json) {
+    public DefaultAgenticScope fromJson(String json) {
         try {
-            return DESERIALIZER_MAPPER.readValue(json, DefaultCognisphere.class);
+            return DESERIALIZER_MAPPER.readValue(json, DefaultAgenticScope.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to deserialize Cognisphere from JSON", e);
+            throw new RuntimeException("Failed to deserialize AgenticScope from JSON", e);
         }
     }
 
     @Override
-    public String toJson(DefaultCognisphere cognisphere) {
+    public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return SERIALIZER_MAPPER.writeValueAsString(cognisphere);
+            return SERIALIZER_MAPPER.writeValueAsString(agenticScope);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize Cognisphere to JSON", e);
+            throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class CognisphereMixin {
+    private static abstract class AgenticScopeMixin {
         @JsonCreator
-        public CognisphereMixin(
+        public AgenticScopeMixin(
                 @JsonProperty("memoryId") Object memoryId,
                 @JsonProperty("kind") Kind kind) {
         }
@@ -123,7 +123,7 @@ class JacksonCognisphereJsonCodec implements CognisphereJsonCodec {
             return className.startsWith("java.") ||
                     className.startsWith("[Ljava.") ||
                     className.startsWith("dev.langchain4j.data.message.") ||
-                    className.startsWith("dev.langchain4j.agentic.cognisphere.") ||
+                    className.startsWith("dev.langchain4j.agentic.scope.") ||
                     className.startsWith("dev.langchain4j.agentic.internal.");
         }
 

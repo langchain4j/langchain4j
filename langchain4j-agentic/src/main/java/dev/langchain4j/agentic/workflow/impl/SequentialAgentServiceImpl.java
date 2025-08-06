@@ -1,11 +1,11 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.cognisphere.DefaultCognisphere;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentSpecification;
-import dev.langchain4j.agentic.internal.CognisphereOwner;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -20,7 +20,7 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
     public T build() {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, CognisphereOwner.class},
+                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new SequentialInvocationHandler());
     }
 
@@ -30,19 +30,19 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
             super(SequentialAgentServiceImpl.this);
         }
 
-        private SequentialInvocationHandler(DefaultCognisphere cognisphere) {
-            super(SequentialAgentServiceImpl.this, cognisphere);
+        private SequentialInvocationHandler(DefaultAgenticScope agenticScope) {
+            super(SequentialAgentServiceImpl.this, agenticScope);
         }
 
         @Override
-        protected Object doAgentAction(DefaultCognisphere cognisphere) {
-            agentExecutors().forEach(agentExecutor -> agentExecutor.execute(cognisphere));
-            return result(cognisphere, output.apply(cognisphere));
+        protected Object doAgentAction(DefaultAgenticScope agenticScope) {
+            agentExecutors().forEach(agentExecutor -> agentExecutor.execute(agenticScope));
+            return result(agenticScope, output.apply(agenticScope));
         }
 
         @Override
-        protected InvocationHandler createSubAgentWithCognisphere(DefaultCognisphere cognisphere) {
-            return new SequentialInvocationHandler(cognisphere);
+        protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
+            return new SequentialInvocationHandler(agenticScope);
         }
     }
 

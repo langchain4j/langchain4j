@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Function;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.cognisphere.Cognisphere;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -16,7 +16,7 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> outputName(String outputName);
 
-    SupervisorAgentService<T> requestGenerator(Function<Cognisphere, String> requestGenerator);
+    SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);
 
     SupervisorAgentService<T> contextGenerationStrategy(SupervisorContextStrategy contextStrategy);
 

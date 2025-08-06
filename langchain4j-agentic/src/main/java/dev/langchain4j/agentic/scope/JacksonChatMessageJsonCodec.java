@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.cognisphere;
+package dev.langchain4j.agentic.scope;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
