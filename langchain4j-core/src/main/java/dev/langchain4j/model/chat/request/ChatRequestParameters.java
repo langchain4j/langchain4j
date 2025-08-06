@@ -34,6 +34,8 @@ public interface ChatRequestParameters {
 
     ResponseFormat responseFormat();
 
+
+
     /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
      * Values from the specified parameters override values from the current parameters when there is overlap.

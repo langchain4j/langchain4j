@@ -92,6 +92,7 @@ public class AiStreamingChatModel implements AiStreamChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .modelSpecificParameters(getOrDefault(builder.modelSpecificParameters, openAiParameters.modelSpecificParameters()))
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
@@ -212,6 +213,7 @@ public class AiStreamingChatModel implements AiStreamChatModel {
         private Boolean logResponses;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
+        private Map<String, Object> modelSpecificParameters;
 
         public AiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -370,6 +372,11 @@ public class AiStreamingChatModel implements AiStreamChatModel {
 
         public AiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return this;
+        }
+
+        public AiStreamingChatModelBuilder modelSpecificParameters(Map<String, Object> modelSpecificParameters) {
+            this.modelSpecificParameters = modelSpecificParameters;
             return this;
         }
 

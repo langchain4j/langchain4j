@@ -23,6 +23,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, String> metadata;
     private final String serviceTier;
     private final String reasoningEffort;
+    private Map<String, Object> modelSpecificParameters;
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -35,6 +36,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
         this.reasoningEffort = builder.reasoningEffort;
+        this.modelSpecificParameters = copy(builder.modelSpecificParameters);
     }
 
     public Integer maxCompletionTokens() {
@@ -73,6 +75,11 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         return reasoningEffort;
     }
 
+    // 新增的 getter 方法
+    public Map<String, Object> modelSpecificParameters() {
+        return modelSpecificParameters;
+    }
+
     @Override
     public OpenAiChatRequestParameters overrideWith(ChatRequestParameters that) {
         return OpenAiChatRequestParameters.builder()
@@ -95,7 +102,9 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(store, that.store)
                 && Objects.equals(metadata, that.metadata)
                 && Objects.equals(serviceTier, that.serviceTier)
-                && Objects.equals(reasoningEffort, that.reasoningEffort);
+                && Objects.equals(reasoningEffort, that.reasoningEffort)
+                && Objects.equals(modelSpecificParameters, that.modelSpecificParameters); // 包含新字段
+
     }
 
     @Override
@@ -110,7 +119,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 store,
                 metadata,
                 serviceTier,
-                reasoningEffort
+                reasoningEffort,
+                modelSpecificParameters // 包含新字段
         );
     }
 
@@ -137,6 +147,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 ", metadata=" + metadata +
                 ", serviceTier=" + quoted(serviceTier) +
                 ", reasoningEffort=" + quoted(reasoningEffort) +
+                ", modelSpecificParameters=" + modelSpecificParameters + // 包含新字段
                 '}';
     }
 
@@ -155,6 +166,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
+        private Map<String, Object> modelSpecificParameters;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -169,6 +181,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
+                // 处理新字段的合并逻辑
+                modelSpecificParameters(getOrDefault(openAiParameters.modelSpecificParameters(), modelSpecificParameters));
             }
             return this;
         }
@@ -219,6 +233,12 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        // 新增 modelSpecificParameters 的 setter 方法
+        public Builder modelSpecificParameters(Map<String, Object> modelSpecificParameters) {
+            this.modelSpecificParameters = modelSpecificParameters;
             return this;
         }
 

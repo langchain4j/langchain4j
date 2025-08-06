@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -77,6 +78,9 @@ public final class ChatCompletionRequest {
     @Deprecated
     private final FunctionCall functionCall;
 
+    private final Map<String, Object> modelSpecificParameters;
+
+
     public ChatCompletionRequest(Builder builder) {
         this.model = builder.model;
         this.messages = builder.messages;
@@ -103,6 +107,7 @@ public final class ChatCompletionRequest {
         this.serviceTier = builder.serviceTier;
         this.functions = builder.functions;
         this.functionCall = builder.functionCall;
+        this.modelSpecificParameters = builder.modelSpecificParameters;
     }
 
     public String model() {
@@ -197,6 +202,11 @@ public final class ChatCompletionRequest {
         return serviceTier;
     }
 
+    @JsonAnyGetter
+    public Map<String, Object> modelSpecificParameters() {
+        return modelSpecificParameters;
+    }
+
     @Deprecated
     public List<Function> functions() {
         return functions;
@@ -239,7 +249,9 @@ public final class ChatCompletionRequest {
                 && Objects.equals(reasoningEffort, another.reasoningEffort)
                 && Objects.equals(serviceTier, another.serviceTier)
                 && Objects.equals(functions, another.functions)
-                && Objects.equals(functionCall, another.functionCall);
+                && Objects.equals(functionCall, another.functionCall)
+                && Objects.equals(modelSpecificParameters, another.modelSpecificParameters)
+                ;
     }
 
     @Override
@@ -270,6 +282,7 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(serviceTier);
         h += (h << 5) + Objects.hashCode(functions);
         h += (h << 5) + Objects.hashCode(functionCall);
+        h += (h << 5) + Objects.hashCode(modelSpecificParameters);
         return h;
     }
 
@@ -301,6 +314,7 @@ public final class ChatCompletionRequest {
                 + ", serviceTier=" + serviceTier
                 + ", functions=" + functions
                 + ", functionCall=" + functionCall
+                + ", modelSpecificParameters=" + modelSpecificParameters
                 + "}";
     }
 
@@ -340,6 +354,7 @@ public final class ChatCompletionRequest {
         private List<Function> functions;
         @Deprecated
         private FunctionCall functionCall;
+        private Map<String, Object> modelSpecificParameters;
 
         public Builder from(ChatCompletionRequest instance) {
             model(instance.model);
@@ -367,6 +382,7 @@ public final class ChatCompletionRequest {
             serviceTier(instance.serviceTier);
             functions(instance.functions);
             functionCall(instance.functionCall);
+            modelSpecificParameters(instance.modelSpecificParameters);
             return this;
         }
 
@@ -588,6 +604,11 @@ public final class ChatCompletionRequest {
         @Deprecated
         public Builder functionCall(FunctionCall functionCall) {
             this.functionCall = functionCall;
+            return this;
+        }
+
+        public Builder modelSpecificParameters(Map<String, Object> modelSpecificParameters) {
+            this.modelSpecificParameters = modelSpecificParameters;
             return this;
         }
 
