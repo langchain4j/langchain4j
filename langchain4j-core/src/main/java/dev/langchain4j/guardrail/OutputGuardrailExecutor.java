@@ -67,24 +67,24 @@ public non-sealed class OutputGuardrailExecutor
                 throw new OutputGuardrailException(result.toString(), result.getFirstFailureException());
             }
 
-            // If we get here we know it is some kind of retry
-            // We don't want to add intermediary UserMessages to the memory
-            var chatMessages = Optional.ofNullable(
-                            accumulatedParams.requestParams().chatMemory())
-                    .map(ChatMemory::messages)
-                    .orElseGet(ArrayList::new);
-            result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
+            if (++attempt < maxAttempts) {
+                // If we get here we know it is some kind of retry
+                // We don't want to add intermediary UserMessages to the memory
+                var chatMessages = Optional.ofNullable(
+                                accumulatedParams.requestParams().chatMemory())
+                        .map(ChatMemory::messages)
+                        .orElseGet(ArrayList::new);
+                result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-            // Re-execute the request with the appended message
-            // But don't add it or the resulting message to the memory
-            var response = accumulatedParams.chatExecutor().execute(chatMessages);
-
-            attempt++;
-            accumulatedParams = OutputGuardrailRequest.builder()
-                    .responseFromLLM(response)
-                    .chatExecutor(accumulatedParams.chatExecutor())
-                    .requestParams(accumulatedParams.requestParams())
-                    .build();
+                // Re-execute the request with the appended message
+                // But don't add it or the resulting message to the memory
+                var response = accumulatedParams.chatExecutor().execute(chatMessages);
+                accumulatedParams = OutputGuardrailRequest.builder()
+                        .responseFromLLM(response)
+                        .chatExecutor(accumulatedParams.chatExecutor())
+                        .requestParams(accumulatedParams.requestParams())
+                        .build();
+            }
         }
 
         if (attempt == maxAttempts) {
