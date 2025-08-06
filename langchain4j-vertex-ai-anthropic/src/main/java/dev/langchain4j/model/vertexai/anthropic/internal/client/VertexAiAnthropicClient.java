@@ -6,6 +6,7 @@ import com.google.api.HttpBody;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.rpc.UnavailableException;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
 import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
 import com.google.cloud.aiplatform.v1.RawPredictRequest;
@@ -19,6 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class VertexAiAnthropicClient {
+
+    private static final String PUBLISHER = "anthropic";
+
+    private static final String CREDENTIALS_ENDPOINT_TEMPLATE = "%s-aiplatform.googleapis.com:443";
 
     private volatile PredictionServiceClient predictionServiceClient;
     private final String project;
@@ -48,14 +53,19 @@ public class VertexAiAnthropicClient {
         this.model = model;
         this.credentials = credentials;
         this.objectMapper = new ObjectMapper().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-        this.endpoint =
-                String.format("projects/%s/locations/%s/publishers/anthropic/models/%s", project, location, model);
+        this.endpoint = EndpointName.ofProjectLocationPublisherModelName(
+            project,
+            location,
+            PUBLISHER,
+            model
+        ).toString();
         this.predictionServiceClient = createClient();
     }
 
     private PredictionServiceClient createClient() {
         try {
             PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder();
+            settingsBuilder.setEndpoint(String.format(CREDENTIALS_ENDPOINT_TEMPLATE, location.toLowerCase()));
             if (credentials != null) {
                 GoogleCredentials scopedCredentials =
                         credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");

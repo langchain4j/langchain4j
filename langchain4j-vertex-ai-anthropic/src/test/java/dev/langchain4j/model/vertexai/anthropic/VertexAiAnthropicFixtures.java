@@ -4,7 +4,7 @@ public class VertexAiAnthropicFixtures {
 
     public static final String DEFAULT_PROJECT = "test-project";
     public static final String DEFAULT_LOCATION = "us-east5";
-    public static final String DEFAULT_MODEL_NAME = "claude-3-7-sonnet@20250219";
+    public static final String DEFAULT_MODEL_NAME = "claude-3-5-haiku@20241022";
 
     public static final String SIMPLE_QUESTION = "What is the capital of France?";
     public static final String EXPECTED_ANSWER = "Paris";
