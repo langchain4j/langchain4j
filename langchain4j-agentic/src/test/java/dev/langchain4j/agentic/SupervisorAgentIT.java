@@ -59,10 +59,10 @@ public class SupervisorAgentIT {
             Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
             and nothing else, avoiding any explanation.
             
-            The user request is: '{{it}}'.
+            The user request is: '{{request}}'.
             """)
         @Agent("An agent that categorizes the user request")
-        String categorizeRequest(String request);
+        String categorizeRequest(@V("request") String request);
     }
 
     @Test
