@@ -143,7 +143,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
          * @param name the name of the {@link NamedMap} to store serialized {@link ChatMessage chat messages}
          * @return this builder for fluent method calls
          */
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = isNullOrBlank(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
