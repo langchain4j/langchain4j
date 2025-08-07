@@ -13,6 +13,14 @@
     <artifactId>langchain4j-agentic-a2a</artifactId>
     <name>LangChain4j :: Agentic Framework :: A2A Integration</name>
 
+    <developers>
+        <developer>
+            <id>mariofusco</id>
+            <email>mario.fusco@gmail.com</email>
+            <url>https://github.com/mariofusco</url>
+        </developer>
+    </developers>
+
     <properties>
         <a2a-java-sdk-version>0.2.5</a2a-java-sdk-version>
     </properties>

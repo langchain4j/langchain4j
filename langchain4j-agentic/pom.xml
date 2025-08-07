@@ -11,6 +11,14 @@
     <artifactId>langchain4j-agentic</artifactId>
     <name>LangChain4j :: Agentic Framework</name>
 
+    <developers>
+        <developer>
+            <id>mariofusco</id>
+            <email>mario.fusco@gmail.com</email>
+            <url>https://github.com/mariofusco</url>
+        </developer>
+    </developers>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
