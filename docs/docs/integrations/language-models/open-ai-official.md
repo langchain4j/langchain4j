@@ -39,7 +39,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
