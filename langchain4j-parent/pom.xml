@@ -294,6 +294,24 @@
                 <version>3.18.0</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.microsoft.azure</groupId>
+                <artifactId>msal4j</artifactId>
+                <version>1.19.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-cosmos</artifactId>
+                <version>4.71.0-beta.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>1.21.3</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

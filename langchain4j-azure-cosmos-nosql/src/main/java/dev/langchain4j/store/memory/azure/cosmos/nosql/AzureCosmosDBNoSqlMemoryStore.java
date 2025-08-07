@@ -19,9 +19,12 @@ import com.azure.cosmos.models.IncludedPath;
 import com.azure.cosmos.models.IndexingMode;
 import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.PartitionKey;
+import com.azure.cosmos.models.SqlParameter;
+import com.azure.cosmos.models.SqlQuerySpec;
 import com.azure.cosmos.models.ThroughputProperties;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -130,9 +133,12 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
     @Override
     public List<ChatMessage> getMessages(final Object memoryId) {
         try {
-            String query = String.format("SELECT * FROM c WHERE c.id = '%s'", memoryId);
+            String query = "SELECT * FROM c WHERE c.id = @id";
+            List<SqlParameter> parameters = new ArrayList<>();
+            parameters.add(new SqlParameter("@id", memoryId));
+            SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
             return Objects.requireNonNull(this.container
-                            .queryItems(query, ChatMessage.class)
+                            .queryItems(sqlQuerySpec, ChatMessage.class)
                             .byPage(1)
                             .blockFirst())
                     .getResults();

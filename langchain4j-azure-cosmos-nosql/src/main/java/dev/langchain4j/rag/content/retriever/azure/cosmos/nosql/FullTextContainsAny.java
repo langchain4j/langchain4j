@@ -72,9 +72,4 @@ public class FullTextContainsAny implements Filter {
     public int hashCode() {
         return Objects.hash(key, searchTerms);
     }
-
-    @Override
-    public String toString() {
-        return "FullTextContainsAny{" + "key='" + key + '\'' + ", searchTerms=" + searchTerms + '}';
-    }
 }

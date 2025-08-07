@@ -129,56 +129,67 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
 
     @Override
     public List<Content> retrieve(final Query query) {
-        if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.VECTOR)) {
-            Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
-            EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                    .queryEmbedding(referenceEmbedding)
-                    .maxResults(maxResults)
-                    .minScore(minScore)
-                    .filter(filter)
-                    .build();
-
-            List<EmbeddingMatch<TextSegment>> searchResult =
-                    super.search(request).matches();
-            return searchResult.stream()
-                    .map(embeddingMatch -> Content.from(
-                            embeddingMatch.embedded(),
-                            Map.of(
-                                    ContentMetadata.SCORE, embeddingMatch.score(),
-                                    ContentMetadata.EMBEDDING_ID, embeddingMatch.embedding())))
-                    .toList();
-        } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)) {
-            String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextSearch(
-                            content, this.maxResults, this.minScore, this.filter)
-                    .matches();
-            return searchResult.stream()
-                    .map(embeddingMatch -> Content.from(embeddingMatch.embedded()))
-                    .toList();
-        } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
-            String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextRanking(
-                            content, this.maxResults, this.minScore, this.filter)
-                    .matches();
-            return searchResult.stream()
-                    .map(embeddingMatch -> Content.from(embeddingMatch.embedded()))
-                    .toList();
-        } else if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
-            Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
-            String content = query.text();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithHybridSearch(
-                            referenceEmbedding, content, this.maxResults, this.minScore, this.filter)
-                    .matches();
-            return searchResult.stream()
-                    .map(embeddingMatch -> Content.from(
-                            embeddingMatch.embedded(),
-                            Map.of(
-                                    ContentMetadata.SCORE, embeddingMatch.score(),
-                                    ContentMetadata.EMBEDDING_ID, embeddingMatch.embedding())))
-                    .toList();
-        } else {
-            throw new AzureCosmosDBNoSqlRuntimeException(
+        return switch (azureCosmosDBSearchQueryType) {
+            case VECTOR -> retrieveWithVectorSearch(query);
+            case FULL_TEXT_SEARCH -> retrieveWithFullTextSearch(query);
+            case FULL_TEXT_RANKING -> retrieveWithFullTextRanking(query);
+            case HYBRID -> retrieveWithHybridSearch(query);
+            default -> throw new AzureCosmosDBNoSqlRuntimeException(
                     "Unknown Azure AI Search Query Type: " + azureCosmosDBSearchQueryType);
-        }
+        };
+    }
+
+    private List<Content> retrieveWithVectorSearch(Query query) {
+        Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
+        return mapToContentWithScore(searchResult);
+    }
+
+    private List<Content> retrieveWithFullTextSearch(Query query) {
+        String content = query.text();
+        List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextSearch(
+                        content, this.maxResults, this.minScore, this.filter)
+                .matches();
+        return mapToContent(searchResult);
+    }
+
+    private List<Content> retrieveWithFullTextRanking(Query query) {
+        String content = query.text();
+        List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithFullTextRanking(
+                        content, this.maxResults, this.minScore, this.filter)
+                .matches();
+        return mapToContent(searchResult);
+    }
+
+    private List<Content> retrieveWithHybridSearch(Query query) {
+        Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
+        String content = query.text();
+        List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevantWithHybridSearch(
+                        referenceEmbedding, content, this.maxResults, this.minScore, this.filter)
+                .matches();
+        return mapToContentWithScore(searchResult);
+    }
+
+    private List<Content> mapToContent(List<EmbeddingMatch<TextSegment>> searchResult) {
+        return searchResult.stream()
+                .map(embeddingMatch -> Content.from(embeddingMatch.embedded()))
+                .toList();
+    }
+
+    private List<Content> mapToContentWithScore(List<EmbeddingMatch<TextSegment>> searchResult) {
+        return searchResult.stream()
+                .map(embeddingMatch -> Content.from(
+                        embeddingMatch.embedded(),
+                        Map.of(
+                                ContentMetadata.SCORE, embeddingMatch.score(),
+                                ContentMetadata.EMBEDDING_ID, embeddingMatch.embedding())))
+                .toList();
     }
 }
