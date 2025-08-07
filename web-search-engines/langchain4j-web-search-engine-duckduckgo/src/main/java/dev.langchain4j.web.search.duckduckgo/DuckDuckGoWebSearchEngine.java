@@ -16,37 +16,41 @@ import dev.langchain4j.web.search.WebSearchResults;
 
 public class DuckDuckGoWebSearchEngine implements WebSearchEngine {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
-    private static final String DEFAULT_REGION = "wt-wt";
-    private static final String DEFAULT_SAFE_SEARCH = "moderate";
 
     private final DuckDuckGoClient duckDuckGoClient;
-    private final String region;
-    private final String safeSearch;
-    private final Duration timeLimit;
 
-    public DuckDuckGoWebSearchEngine(Duration timeout, String region, String safeSearch,
-                                     Duration timeLimit, HttpClient httpClient) {
+    public DuckDuckGoWebSearchEngine(Duration timeout, HttpClient httpClient) {
         this.duckDuckGoClient = new DuckDuckGoClient(httpClient, getOrDefault(timeout, DEFAULT_TIMEOUT));
-        this.region = getOrDefault(region, DEFAULT_REGION);
-        this.safeSearch = getOrDefault(safeSearch, DEFAULT_SAFE_SEARCH);
-        this.timeLimit = timeLimit;
     }
 
     @Override
     public WebSearchResults search(WebSearchRequest webSearchRequest) {
         List<DuckDuckGoSearchResult> results = duckDuckGoClient.search(
-                webSearchRequest.searchTerms(), getOrDefault(webSearchRequest.maxResults(), 10));
+                webSearchRequest.searchTerms(),
+                getOrDefault(webSearchRequest.maxResults(), 10));
 
         final List<WebSearchOrganicResult> organicResults = results.stream()
                 .map(DuckDuckGoWebSearchEngine::toWebSearchOrganicResult)
                 .collect(toList());
 
-        return WebSearchResults.from(WebSearchInformationResult.from((long) organicResults.size()), organicResults);
+        return WebSearchResults.from(
+                WebSearchInformationResult.from((long) organicResults.size()),
+                organicResults);
     }
 
-
     public CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
-        return CompletableFuture.supplyAsync(() -> search(webSearchRequest));
+        return duckDuckGoClient.searchAsync(
+                        webSearchRequest.searchTerms(),
+                        getOrDefault(webSearchRequest.maxResults(), 10))
+                .thenApply(results -> {
+                    final List<WebSearchOrganicResult> organicResults = results.stream()
+                            .map(DuckDuckGoWebSearchEngine::toWebSearchOrganicResult)
+                            .collect(toList());
+
+                    return WebSearchResults.from(
+                            WebSearchInformationResult.from((long) organicResults.size()),
+                            organicResults);
+                });
     }
 
     public static DuckDuckGoWebSearchEngineBuilder builder() {
@@ -59,30 +63,12 @@ public class DuckDuckGoWebSearchEngine implements WebSearchEngine {
 
     public static class DuckDuckGoWebSearchEngineBuilder {
         private Duration timeout = DEFAULT_TIMEOUT;
-        private String region = DEFAULT_REGION;
-        private String safeSearch = DEFAULT_SAFE_SEARCH;
-        private Duration timeLimit;
         private HttpClient httpClient;
 
         DuckDuckGoWebSearchEngineBuilder() {}
 
         public DuckDuckGoWebSearchEngineBuilder timeout(Duration timeout) {
             this.timeout = timeout;
-            return this;
-        }
-
-        public DuckDuckGoWebSearchEngineBuilder region(String region) {
-            this.region = region;
-            return this;
-        }
-
-        public DuckDuckGoWebSearchEngineBuilder safeSearch(String safeSearch) {
-            this.safeSearch = safeSearch;
-            return this;
-        }
-
-        public DuckDuckGoWebSearchEngineBuilder timeLimit(Duration timeLimit) {
-            this.timeLimit = timeLimit;
             return this;
         }
 
@@ -96,13 +82,11 @@ public class DuckDuckGoWebSearchEngine implements WebSearchEngine {
                 throw new IllegalArgumentException("HttpClient is required");
             }
 
-            return new DuckDuckGoWebSearchEngine(this.timeout, this.region, this.safeSearch,
-                    this.timeLimit, this.httpClient);
+            return new DuckDuckGoWebSearchEngine(this.timeout, this.httpClient);
         }
 
         public String toString() {
-            return "DuckDuckGoWebSearchEngine.DuckDuckGoWebSearchEngineBuilder(timeout=" + this.timeout + ", region="
-                    + this.region + ", safeSearch=" + this.safeSearch + ", timeLimit=" + this.timeLimit + ")";
+            return "DuckDuckGoWebSearchEngine.DuckDuckGoWebSearchEngineBuilder(timeout=" + this.timeout + ")";
         }
     }
 }
