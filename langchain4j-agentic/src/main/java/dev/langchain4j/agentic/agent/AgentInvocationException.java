@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.agent;
 
-public class AgentInvocationException extends RuntimeException {
+import dev.langchain4j.exception.LangChain4jException;
+
+public class AgentInvocationException extends LangChain4jException {
 
     public AgentInvocationException(Exception cause) {
         super(cause);

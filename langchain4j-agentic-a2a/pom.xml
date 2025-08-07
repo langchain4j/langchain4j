@@ -14,7 +14,6 @@
     <name>LangChain4j :: Agentic Framework :: A2A Integration</name>
 
     <properties>
-        <enforcer.skip>true</enforcer.skip>
         <a2a-java-sdk-version>0.2.5</a2a-java-sdk-version>
     </properties>
 

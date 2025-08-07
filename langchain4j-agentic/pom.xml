@@ -11,10 +11,6 @@
     <artifactId>langchain4j-agentic</artifactId>
     <name>LangChain4j :: Agentic Framework</name>
 
-    <properties>
-        <enforcer.skip>true</enforcer.skip>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>

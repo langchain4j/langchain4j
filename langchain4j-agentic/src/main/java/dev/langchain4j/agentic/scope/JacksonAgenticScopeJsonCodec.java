@@ -21,6 +21,7 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.Kind;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.JacksonChatMessageJsonCodec;
 
 import java.util.Collection;
 
