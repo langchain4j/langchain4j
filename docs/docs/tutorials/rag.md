@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
