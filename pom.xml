@@ -214,7 +214,7 @@
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.43.4</version>
+                        <version>5.47.3</version>
                         <configuration>
                             <activeRecipes>
                                 <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>

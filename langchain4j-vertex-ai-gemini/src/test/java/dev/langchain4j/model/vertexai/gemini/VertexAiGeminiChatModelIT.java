@@ -165,7 +165,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
+                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -180,7 +180,7 @@ class VertexAiGeminiChatModelIT {
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -229,7 +229,7 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
