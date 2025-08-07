@@ -420,7 +420,6 @@ class AnthropicChatModelIT {
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .toolChoice(ToolChoice.TOOL)
                 .toolNameChoice(expectedToolName)
                 .disableParallelToolUse(true)
                 .build();

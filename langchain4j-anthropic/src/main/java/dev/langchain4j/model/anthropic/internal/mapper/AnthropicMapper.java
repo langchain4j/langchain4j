@@ -284,11 +284,10 @@ public class AnthropicMapper {
                 switch (toolChoice) {
                     case AUTO -> AnthropicToolChoiceType.AUTO;
                     case REQUIRED -> AnthropicToolChoiceType.ANY;
-                    case TOOL -> AnthropicToolChoiceType.TOOL;
                     case NONE -> AnthropicToolChoiceType.NONE;
                 };
 
-        if (toolChoiceType == AnthropicToolChoiceType.TOOL && toolNameChoice != null) {
+        if (toolNameChoice != null) {
             return AnthropicToolChoice.from(toolNameChoice, disableParallelToolUse);
         }
 

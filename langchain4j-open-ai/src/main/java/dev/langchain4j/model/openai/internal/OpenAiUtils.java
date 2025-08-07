@@ -424,7 +424,6 @@ public class OpenAiUtils {
             case AUTO -> ToolChoiceMode.AUTO;
             case REQUIRED -> ToolChoiceMode.REQUIRED;
             case NONE -> ToolChoiceMode.NONE;
-            default -> null;
         };
     }
 
