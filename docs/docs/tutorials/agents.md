@@ -536,6 +536,23 @@ public interface ExpertsAgent {
 In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
 
 ```java
+ExpertsAgent expertsAgent = AgenticServices
+        .createAgenticSystem(ExpertsAgent.class, BASE_MODEL);
+
+// This will activate the MedicalExpert
+String medicalResponse = expertsAgent.askExpert("I have a headache, what should I do?");
+
+// This will activate the TechnicalExpert  
+String technicalResponse = expertsAgent.askExpert("How do I fix my computer?");
+
+// This will activate the LegalExpert
+String legalResponse = expertsAgent.askExpert("Can I sue my neighbor for noise?");
+
+// The RequestCategory enum would be defined as:
+enum RequestCategory {
+    MEDICAL, TECHNICAL, LEGAL
+}
+```
 
 ## Memory and context engineering
 
