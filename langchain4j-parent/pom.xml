@@ -55,7 +55,7 @@
         <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
         <azure-sdk.version>1.2.34</azure-sdk.version>
         <elastic.version>8.15.3</elastic.version>
-        <github-api.version>1.318</github-api.version>
+        <github-api.version>1.329</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <infinispan.version>15.2.5.Final</infinispan.version>
         <jackson.version>2.19.2</jackson.version>
