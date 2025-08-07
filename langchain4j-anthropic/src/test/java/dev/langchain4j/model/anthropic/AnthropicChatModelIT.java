@@ -22,10 +22,9 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -415,14 +414,15 @@ class AnthropicChatModelIT {
     void should_execute_one_specific_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
         // given
         String expectedToolName = "get_weather";
-        AnthropicToolChoice toolChoice = AnthropicToolChoice.from(expectedToolName, true);
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .toolChoice(toolChoice)
+                .toolChoice(ToolChoice.TOOL)
+                .toolNameChoice(expectedToolName)
+                .disableParallelToolUse(true)
                 .build();
 
         ToolSpecification getWeather = ToolSpecification.builder()
@@ -463,14 +463,13 @@ class AnthropicChatModelIT {
     @Test
     void should_force_execution_without_tools_when_pass_tool_choice_none() {
         // given
-        AnthropicToolChoice toolChoice = AnthropicToolChoice.from(AnthropicToolChoiceType.NONE);
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .toolChoice(toolChoice)
+                .toolChoice(ToolChoice.NONE)
                 .build();
 
         ToolSpecification getWeather = ToolSpecification.builder()
@@ -509,14 +508,14 @@ class AnthropicChatModelIT {
     @Test
     void should_execute_one_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
         // given
-        AnthropicToolChoice toolChoice = AnthropicToolChoice.from(AnthropicToolChoiceType.ANY, true);
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .toolChoice(toolChoice)
+                .toolChoice(ToolChoice.REQUIRED)
+                .disableParallelToolUse(true)
                 .build();
 
         ToolSpecification getWeather = ToolSpecification.builder()

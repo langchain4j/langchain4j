@@ -21,7 +21,6 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -29,6 +28,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
@@ -62,7 +62,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
-    private AnthropicToolChoice toolChoice;
+    private final String toolNameChoice;
+    private final Boolean disableParallelToolUse;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -90,6 +91,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                         getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .build();
 
         this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
@@ -99,7 +101,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
-        this.toolChoice = builder.toolChoice;
+        this.toolNameChoice = builder.toolNameChoice;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -130,7 +133,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
-        private AnthropicToolChoice toolChoice;
+        private ToolChoice toolChoice;
+        private String toolNameChoice;
+        private Boolean disableParallelToolUse;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -283,8 +288,18 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder toolChoice(AnthropicToolChoice toolChoice) {
+        public AnthropicStreamingChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolNameChoice(String toolNameChoice) {
+            this.toolNameChoice = toolNameChoice;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
+            this.disableParallelToolUse = disableParallelToolUse;
             return this;
         }
 
@@ -303,8 +318,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
-                toolChoice,
-                true);
+                true,
+                toolNameChoice,
+                disableParallelToolUse);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 

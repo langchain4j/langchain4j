@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 
 import dev.langchain4j.Internal;
@@ -10,7 +11,6 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.ArrayList;
@@ -48,8 +48,9 @@ class InternalAnthropicHelper {
             boolean sendThinking,
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
-            AnthropicToolChoice toolChoice,
-            boolean stream) {
+            boolean stream,
+            String toolNameChoice,
+            Boolean disableParallelToolUse) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -65,8 +66,9 @@ class InternalAnthropicHelper {
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));
         }
-        if (toolChoice != null) {
-            requestBuilder.toolChoice(toolChoice);
+        if (chatRequest.toolChoice() != null) {
+            requestBuilder.toolChoice(
+                    toAnthropicToolChoice(chatRequest.toolChoice(), toolNameChoice, disableParallelToolUse));
         }
 
         return requestBuilder.build();

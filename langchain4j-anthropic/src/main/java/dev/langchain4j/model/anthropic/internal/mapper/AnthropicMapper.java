@@ -45,10 +45,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicRedactedThinkingCon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -270,6 +273,27 @@ public class AnthropicMapper {
             case "tool_use" -> TOOL_EXECUTION;
             default -> OTHER;
         };
+    }
+
+    public static AnthropicToolChoice toAnthropicToolChoice(
+            ToolChoice toolChoice, String toolNameChoice, Boolean disableParallelToolUse) {
+        if (toolChoice == null) {
+            return null;
+        }
+
+        AnthropicToolChoiceType toolChoiceType =
+                switch (toolChoice) {
+                    case AUTO -> AnthropicToolChoiceType.AUTO;
+                    case REQUIRED -> AnthropicToolChoiceType.ANY;
+                    case TOOL -> AnthropicToolChoiceType.TOOL;
+                    case NONE -> AnthropicToolChoiceType.NONE;
+                };
+
+        if (toolChoiceType == AnthropicToolChoiceType.TOOL && toolNameChoice != null) {
+            return AnthropicToolChoice.from(toolNameChoice, disableParallelToolUse);
+        }
+
+        return AnthropicToolChoice.from(toolChoiceType, disableParallelToolUse);
     }
 
     public static List<AnthropicTool> toAnthropicTools(

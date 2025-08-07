@@ -16,4 +16,14 @@ public enum ToolChoice {
      * The chat model is required to use one or more tools.
      */
     REQUIRED,
+
+    /**
+     * The chat model is required to use one specific tool
+     */
+    TOOL,
+
+    /**
+     * The chat model is force use no one tool
+     */
+    NONE,
 }
