@@ -103,14 +103,12 @@ class OpenAiChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K", // don't have access
-                "GPT_4_32K_0613", // don't have access
-                "O3", // don't have access
-                "O3_2025_04_16", // don't have access
-                "O1_MINI", // does not support 'system' role with this model
-                "O1_MINI_2024_09_12", // does not support 'system' role with this model
-                "O1_PREVIEW", // does not support 'system' role with this model
-                "O1_PREVIEW_2024_09_12", // does not support 'system' role with this model
+                    "GPT_4_32K", // don't have access
+                    "GPT_4_32K_0613", // don't have access
+                    "O3", // don't have access
+                    "O3_2025_04_16", // don't have access
+                    "O1_MINI", // does not support 'system' role with this model
+                    "O1_MINI_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
