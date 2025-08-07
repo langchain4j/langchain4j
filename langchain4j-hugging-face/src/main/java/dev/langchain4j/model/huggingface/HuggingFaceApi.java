@@ -16,7 +16,7 @@ interface HuggingFaceApi {
     @Headers({"Content-Type: application/json"})
     Call<List<TextGenerationResponse>> generate(@Body TextGenerationRequest request, @Path("modelId") String modelId);
 
-    @POST("models/{modelId}/pipeline/feature-extraction")
+    @POST("models/{modelId}")
     @Headers({"Content-Type: application/json"})
     Call<List<float[]>> embed(@Body EmbeddingRequest request, @Path("modelId") String modelId);
 }
