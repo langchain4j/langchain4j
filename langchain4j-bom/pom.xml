@@ -520,6 +520,16 @@
                 <artifactId>langchain4j-experimental-sql</artifactId>
                 <version>1.3.0-beta9-SNAPSHOT</version>
             </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-agentic</artifactId>
+                <version>1.3.0-beta9-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-agentic-a2a</artifactId>
+                <version>1.3.0-beta9-SNAPSHOT</version>
+            </dependency>
 
             <!-- spring boot -->
             <dependency>
