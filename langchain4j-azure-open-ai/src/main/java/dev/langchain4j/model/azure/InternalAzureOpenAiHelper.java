@@ -1,11 +1,11 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -288,8 +288,7 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    static List<ChatCompletionsToolDefinition> toToolDefinitions(
-            Collection<ToolSpecification> toolSpecifications) {
+    static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalAzureOpenAiHelper::toToolDefinition)
                 .collect(toList());
@@ -304,10 +303,13 @@ class InternalAzureOpenAiHelper {
     }
 
     static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
-        ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
-            case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
-            case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
-        };
+        ChatCompletionsToolSelectionPreset preset =
+                switch (toolChoice) {
+                    case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
+                    case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
+                    case NONE -> ChatCompletionsToolSelectionPreset.NONE;
+                    default -> null;
+                };
         return new ChatCompletionsToolSelection(preset);
     }
 
@@ -459,4 +461,3 @@ class InternalAzureOpenAiHelper {
         }
     }
 }
-
