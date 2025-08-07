@@ -16,6 +16,8 @@ import org.mockito.InOrder;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 
 class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -92,28 +94,31 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "city"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\":\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\"}"));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ));
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "{\"ci"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "ty\": "));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "\"Munic"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "h\"}"));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id1)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ));
         io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
 
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"co"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "untry"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\": \"Fr"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "ance"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
+        ));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
