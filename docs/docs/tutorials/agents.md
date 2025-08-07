@@ -535,8 +535,6 @@ public interface ExpertsAgent {
 
 In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
 
-```java
-
 ## Memory and context engineering
 
 All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
