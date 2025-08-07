@@ -134,8 +134,9 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
             case FULL_TEXT_SEARCH -> retrieveWithFullTextSearch(query);
             case FULL_TEXT_RANKING -> retrieveWithFullTextRanking(query);
             case HYBRID -> retrieveWithHybridSearch(query);
-            default -> throw new AzureCosmosDBNoSqlRuntimeException(
-                    "Unknown Azure AI Search Query Type: " + azureCosmosDBSearchQueryType);
+            default ->
+                throw new AzureCosmosDBNoSqlRuntimeException(
+                        "Unknown Azure AI Search Query Type: " + azureCosmosDBSearchQueryType);
         };
     }
 
