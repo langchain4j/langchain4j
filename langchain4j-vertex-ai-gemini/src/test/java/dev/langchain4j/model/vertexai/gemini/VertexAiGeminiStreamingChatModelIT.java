@@ -230,7 +230,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see?"));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

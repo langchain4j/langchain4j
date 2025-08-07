@@ -4,6 +4,7 @@ import static dev.langchain4j.JsonTestUtils.jsonify;
 import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModelThinkingIT.THOUGHT_LENGTH_THRESHOLD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -288,9 +289,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
-        if (!sendThinking) {
-            inOrder4.verify(spyHandler4).onPartialThinking(any());
-        }
+        inOrder4.verify(spyHandler4, atLeast(0)).onPartialThinking(any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
