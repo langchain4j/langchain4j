@@ -106,6 +106,9 @@
         <!-- integration tests -->
         <module>integration-tests</module>
 
+        <!-- observability -->
+        <module>langchain4j-micrometer</module>
+
     </modules>
 
     <properties>
