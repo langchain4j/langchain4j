@@ -154,12 +154,12 @@ After the server starts, you can test the endpoints in two ways:
     a. Open the file `test.http` located in `src/test/resources/`.
     
     b. The IDE will display a small green "play" icon next to each request definition: 
-    [![](/img/payara-micro-test-http.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-test-http.png)
 
     c. Click the icon next to the request you want to run. The response from the API will be displayed directly in the IDE's tool window:
-    [![](/img/payara-micro-test-results.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-test-results.png)
 
 2. Using the AI Chat Interface
 
     Navigate to http://localhost:8080/ in your browser. This will open an interactive **Chat Page** where you can explore and test the available endpoints directly from your browser:
-    [![](/img/payara-micro-ai-chat.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-ai-chat.png)
