@@ -133,11 +133,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (toolExecutor != null) {
             CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
                 ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                handleBeforeTool(toolExecutionRequest);
-                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                handleAfterTool(toolExecutionRequest, toolExecutionResult);
-                return ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
+                String toolResult = execute(toolExecutionRequest);
+                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
             }, toolExecutor);
             toolResultFutures.add(future);
         }
@@ -165,12 +162,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             } else {
                 for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                    handleBeforeTool(toolExecutionRequest);
-                    ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                    // TODO applyToolHallucinationStrategy
-                    String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                    handleAfterTool(toolExecutionRequest, toolExecutionResult);
-                    addToMemory(ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult));
+                    String toolResult = execute(toolExecutionRequest);
+                    addToMemory(ToolExecutionResultMessage.from(toolExecutionRequest, toolResult));
                 }
             }
 
@@ -238,6 +231,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
+    }
+
+    private String execute(ToolExecutionRequest toolExecutionRequest) {
+        ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+        // TODO applyToolHallucinationStrategy
+        handleBeforeTool(toolExecutionRequest);
+        String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+        handleAfterTool(toolExecutionRequest, toolExecutionResult);
+        return toolExecutionResult;
     }
 
     private void handleBeforeTool(ToolExecutionRequest toolExecutionRequest) {
