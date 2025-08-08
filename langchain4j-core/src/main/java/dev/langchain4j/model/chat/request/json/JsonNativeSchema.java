@@ -21,6 +21,10 @@ public class JsonNativeSchema implements JsonSchemaElement {
     public String schema() {
         return schema;
     }
+    
+    public static JsonNativeSchema from(String schema) {
+        return builder().schema(schema).build();
+    }
 
     public static Builder builder() {
         return new Builder();

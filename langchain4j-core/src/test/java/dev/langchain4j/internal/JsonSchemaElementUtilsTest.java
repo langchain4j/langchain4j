@@ -224,7 +224,7 @@ class JsonSchemaElementUtilsTest {
             "required": [ "name" ]
         }
         """;
-        var nativeJson = JsonNativeSchema.builder().schema(rawJsonSchema).build();
+        var nativeJson = JsonNativeSchema.from(rawJsonSchema);
         var map = toMap(nativeJson);
         assertThat(mapper.writeValueAsString(map))
                 .as("injection of existing full-blown schemas as string are possible")
