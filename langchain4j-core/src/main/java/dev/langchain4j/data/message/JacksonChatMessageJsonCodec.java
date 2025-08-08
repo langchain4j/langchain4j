@@ -29,28 +29,31 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static java.util.Collections.emptyList;
 
 @Internal
-class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
+public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
-    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
-            .visibility(FIELD, ANY)
-            .addMixIn(ChatMessage.class, ChatMessageMixin.class)
-            .addMixIn(SystemMessage.class, SystemMessageMixin.class)
-            .addMixIn(UserMessage.class, UserMessageMixin.class)
-            .addMixIn(AiMessage.class, AiMessageMixin.class)
-            .addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class)
-            .addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class)
-            .addMixIn(CustomMessage.class, CustomMessageMixin.class)
-            .addMixIn(Content.class, ContentMixin.class)
-            .addMixIn(TextContent.class, TextContentMixin.class)
-            .addMixIn(ImageContent.class, ImageContentMixin.class)
-            .addMixIn(Image.class, ImageMixin.class)
-            .addMixIn(AudioContent.class, AudioContentMixin.class)
-            .addMixIn(Audio.class, AudioMixin.class)
-            .addMixIn(VideoContent.class, VideoContentMixin.class)
-            .addMixIn(Video.class, VideoMixin.class)
-            .addMixIn(PdfFileContent.class, PdfFileContentMixin.class)
-            .addMixIn(PdfFile.class, PdfFileMixin.class)
-            .build();
+    public static JsonMapper.Builder chatMessageJsonMapperBuilder() {
+        return JsonMapper.builder()
+                .visibility(FIELD, ANY)
+                .addMixIn(ChatMessage.class, ChatMessageMixin.class)
+                .addMixIn(SystemMessage.class, SystemMessageMixin.class)
+                .addMixIn(UserMessage.class, UserMessageMixin.class)
+                .addMixIn(AiMessage.class, AiMessageMixin.class)
+                .addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class)
+                .addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class)
+                .addMixIn(CustomMessage.class, CustomMessageMixin.class)
+                .addMixIn(Content.class, ContentMixin.class)
+                .addMixIn(TextContent.class, TextContentMixin.class)
+                .addMixIn(ImageContent.class, ImageContentMixin.class)
+                .addMixIn(Image.class, ImageMixin.class)
+                .addMixIn(AudioContent.class, AudioContentMixin.class)
+                .addMixIn(Audio.class, AudioMixin.class)
+                .addMixIn(VideoContent.class, VideoContentMixin.class)
+                .addMixIn(Video.class, VideoMixin.class)
+                .addMixIn(PdfFileContent.class, PdfFileContentMixin.class)
+                .addMixIn(PdfFile.class, PdfFileMixin.class);
+    }
+
+    private static final ObjectMapper OBJECT_MAPPER = chatMessageJsonMapperBuilder().build();
 
     private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {
     }.getType();
