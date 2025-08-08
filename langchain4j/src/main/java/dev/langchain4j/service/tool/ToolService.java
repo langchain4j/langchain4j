@@ -233,7 +233,7 @@ public class ToolService {
         }
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeConcurrently( // TODO name
+    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeConcurrently(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<String, ToolExecutor> toolExecutors,
             Object memoryId) {
@@ -256,17 +256,17 @@ public class ToolService {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
             } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e); // TODO
+                throw new RuntimeException(e);
             }
         }
 
         return results;
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeSequentially( // TODO name
-                                                                                       List<ToolExecutionRequest> toolExecutionRequests,
-                                                                                       Map<String, ToolExecutor> toolExecutors,
-                                                                                       Object memoryId) {
+    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeSequentially(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<String, ToolExecutor> toolExecutors,
+            Object memoryId) {
         Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
             ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
