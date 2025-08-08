@@ -154,18 +154,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            if (toolExecutor == null) {
-                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                    handleBeforeTool(toolExecutionRequest);
-                    // TODO applyToolHallucinationStrategy
-                    ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                    String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                    handleAfterTool(toolExecutionRequest, toolExecutionResult);
-                    ToolExecutionResultMessage toolExecutionResultMessage =
-                            ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
-                    addToMemory(toolExecutionResultMessage);
-                }
-            } else {
+            if (toolExecutor != null) {
                 for (CompletableFuture<ToolExecutionResultMessage> toolResultFuture : toolResultFutures) {
                     try {
                         ToolExecutionResultMessage toolExecutionResultMessage = toolResultFuture.get();
@@ -173,6 +162,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     } catch (InterruptedException | ExecutionException e) {
                         throw new RuntimeException(e);
                     }
+                }
+            } else {
+                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                    handleBeforeTool(toolExecutionRequest);
+                    // TODO applyToolHallucinationStrategy
+                    ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+                    String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                    handleAfterTool(toolExecutionRequest, toolExecutionResult);
+                    addToMemory(ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult));
                 }
             }
 

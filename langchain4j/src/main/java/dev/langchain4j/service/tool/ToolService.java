@@ -43,7 +43,6 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private ToolProvider toolProvider;
-    private boolean executeToolsConcurrently;
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
 
@@ -92,7 +91,6 @@ public class ToolService {
      * @since 1.4.0
      */
     public void executeToolsConcurrently() {
-        this.executeToolsConcurrently = true;
         this.executor = createDefaultExecutor();
     }
 
@@ -100,11 +98,10 @@ public class ToolService {
      * @since 1.4.0
      */
     public void executeToolsConcurrently(Executor executor) {
-        this.executeToolsConcurrently = true;
         this.executor = getOrDefault(executor, ToolService::createDefaultExecutor);
     }
 
-    private static ExecutorService createDefaultExecutor() { // TODO rethink params
+    private static ExecutorService createDefaultExecutor() {
         return new ThreadPoolExecutor(
                 0, Integer.MAX_VALUE,
                 1, SECONDS,
@@ -181,18 +178,19 @@ public class ToolService {
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, memoryId);
 
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
-                ToolExecutionResultMessage result = entry.getValue();
+                ToolExecutionRequest toolExecutionRequest = entry.getKey();
+                ToolExecutionResultMessage toolExecutionResultMessage = entry.getValue();
 
                 ToolExecution toolExecution = ToolExecution.builder()
-                        .request(entry.getKey())
-                        .result(result.text())
+                        .request(toolExecutionRequest)
+                        .result(toolExecutionResultMessage.text())
                         .build();
                 toolExecutions.add(toolExecution);
 
                 if (chatMemory != null) {
-                    chatMemory.add(result);
+                    chatMemory.add(toolExecutionResultMessage);
                 } else {
-                    messages.add(result);
+                    messages.add(toolExecutionResultMessage);
                 }
             }
 
@@ -221,14 +219,10 @@ public class ToolService {
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<String, ToolExecutor> toolExecutors,
             Object memoryId) {
-        if (executeToolsConcurrently) {
-            if (toolExecutionRequests.size() > 1) {
-                return executeConcurrently(toolExecutionRequests, toolExecutors, memoryId);
-            } else {
-                // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-                return executeSequentially(toolExecutionRequests, toolExecutors, memoryId);
-            }
+        if (executor != null && toolExecutionRequests.size() > 1) {
+            return executeConcurrently(toolExecutionRequests, toolExecutors, memoryId);
         } else {
+            // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
             return executeSequentially(toolExecutionRequests, toolExecutors, memoryId);
         }
     }
@@ -242,11 +236,11 @@ public class ToolService {
         for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
             CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                return toolExecutor == null
-                        ? applyToolHallucinationStrategy(toolExecutionRequest)
-                        : ToolExecutionResultMessage.from(
-                        toolExecutionRequest,
-                        toolExecutor.execute(toolExecutionRequest, memoryId));
+                if (toolExecutor == null) {
+                    return applyToolHallucinationStrategy(toolExecutionRequest);
+                }
+                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
             }, executor);
             futures.put(toolExecutionRequest, future);
         }
@@ -270,10 +264,13 @@ public class ToolService {
         Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
             ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-            ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null
-                    ? applyToolHallucinationStrategy(toolExecutionRequest)
-                    : ToolExecutionResultMessage.from(
-                    toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
+            ToolExecutionResultMessage toolExecutionResultMessage;
+            if (toolExecutor == null) {
+                toolExecutionResultMessage = applyToolHallucinationStrategy(toolExecutionRequest);
+            } else {
+                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+            }
             toolResults.put(toolExecutionRequest, toolExecutionResultMessage);
         }
         return toolResults;
