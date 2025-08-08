@@ -48,12 +48,17 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -103,6 +108,8 @@ class AiServicesWithToolsIT {
 
     static class TransactionService {
 
+        final Queue<Thread> threads = new ConcurrentLinkedQueue<>();
+
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
@@ -114,6 +121,7 @@ class AiServicesWithToolsIT {
 
         @Tool("returns amount of a given transaction")
         double getTransactionAmount(@P("ID of a transaction") String id) {
+            threads.add(Thread.currentThread());
             System.out.printf("called getTransactionAmount(%s)%n", id);
             switch (id) {
                 case "T001":
@@ -152,6 +160,9 @@ class AiServicesWithToolsIT {
 
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
+
+        assertThat(transactionService.threads).hasSize(1);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
@@ -243,6 +254,10 @@ class AiServicesWithToolsIT {
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
 
+        assertThat(transactionService.threads).hasSize(2);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
 
@@ -331,6 +346,10 @@ class AiServicesWithToolsIT {
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
 
+        assertThat(transactionService.threads).hasSize(2);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(5);
 
@@ -375,6 +394,116 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
                         .build());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TIME = "16:28";
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTime(String city) {
+                getCurrentTimeThreads.add(Thread.currentThread());
+                return CURRENT_TIME;
+            }
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current time and temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTime("Munich");
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+    }
+
+    static List<Executor> executors() {
+        return List.of(Executors.newFixedThreadPool(2));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_single_tool_in_the_same_thread(Executor executor) {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        assertThat(spyTools.getCurrentTemperatureThreads.poll()).isEqualTo(Thread.currentThread());
     }
 
     static class IntegerListProcessor {

@@ -11,7 +11,6 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -30,9 +29,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -40,12 +37,17 @@ import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -70,6 +72,8 @@ class StreamingAiServicesWithToolsIT {
 
     static class TransactionService {
 
+        final Queue<Thread> threads = new ConcurrentLinkedQueue<>();
+
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
@@ -81,6 +85,7 @@ class StreamingAiServicesWithToolsIT {
 
         @Tool("returns amount of a given transaction")
         Double getTransactionAmount(@P("ID of a transaction") String id) {
+            threads.add(Thread.currentThread());
             System.out.printf("called getTransactionAmount(%s)%n", id);
             return switch (id) {
                 case "T001" -> 11.1;
@@ -109,13 +114,24 @@ class StreamingAiServicesWithToolsIT {
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        // when
+        TestTokenStreamHandler handler = spy(new TestTokenStreamHandler());
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        assistant
-                .chat(userMessage)
-                .onPartialResponse(ignored -> {})
-                .onCompleteResponse(futureResponse::complete)
-                .onError(futureResponse::completeExceptionally)
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(handler::onPartialResponse)
+                .onPartialThinking(handler::onPartialThinking)
+                .onIntermediateResponse(handler::onIntermediateResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
                 .start();
         ChatResponse response = futureResponse.get(60, SECONDS);
 
@@ -125,6 +141,12 @@ class StreamingAiServicesWithToolsIT {
         // then
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
+
+        // then
+        assertThat(handler.allThreads).hasSize(1);
+        assertThat(handler.allThreads.iterator().next()).isNotEqualTo(Thread.currentThread());
+        assertThat(transactionService.threads).hasSize(1);
+        assertThat(transactionService.threads.poll()).isEqualTo(handler.allThreads.iterator().next());
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
@@ -142,6 +164,184 @@ class StreamingAiServicesWithToolsIT {
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
                                 .build()),
                         any());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) throws Exception {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TIME = "16:28";
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTime(String city) {
+                getCurrentTimeThreads.add(Thread.currentThread());
+                return CURRENT_TIME;
+            }
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current time and temperature in Munich?";
+
+        TestTokenStreamHandler handler = spy(new TestTokenStreamHandler());
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(handler::onPartialResponse)
+                .onPartialThinking(handler::onPartialThinking)
+                .onIntermediateResponse(handler::onIntermediateResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
+
+        // then
+        InOrder inOrder = inOrder(handler, spyTools);
+        inOrder.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTime")));
+        inOrder.verify(spyTools).getCurrentTime("Munich");
+        inOrder.verify(handler).onToolExecuted(argThat(te -> te.request().name().equals("getCurrentTime")));
+
+        InOrder inOrder2 = inOrder(handler, spyTools);
+        inOrder2.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTemperature")));
+        inOrder2.verify(spyTools).getCurrentTemperature("Munich");
+        inOrder2.verify(handler).onToolExecuted(argThat(te -> te.request().name().equals("getCurrentTemperature")));
+
+        // then
+        assertThat(handler.allThreads).hasSize(3); // 1 for handler, 2 for tools
+
+        assertThat(handler.beforeToolExecutionThreads).hasSize(2);
+        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
+        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature")).hasSize(1);
+
+        assertThat(handler.onToolExecutedThreads).hasSize(2);
+        assertThat(handler.onToolExecutedThreads.get("getCurrentTime")).hasSize(1);
+        assertThat(handler.onToolExecutedThreads.get("getCurrentTemperature")).hasSize(1);
+
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isEqualTo(handler.beforeToolExecutionThreads.get("getCurrentTime").iterator().next());
+        assertThat(getCurrentTimeThread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTime").iterator().next());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isEqualTo(handler.beforeToolExecutionThreads.get("getCurrentTemperature").iterator().next());
+        assertThat(getCurrentTemperatureThread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTemperature").iterator().next());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+    }
+
+    static List<Executor> executors() {
+        return List.of(Executors.newFixedThreadPool(2));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_single_tool_concurrently(Executor executor) throws Exception {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current temperature in Munich?";
+
+        TestTokenStreamHandler handler = spy(new TestTokenStreamHandler());
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(handler::onPartialResponse)
+                .onPartialThinking(handler::onPartialThinking)
+                .onIntermediateResponse(handler::onIntermediateResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(Tools.CURRENT_TEMPERATURE);
+
+        // then
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        // then
+        assertThat(handler.allThreads).hasSize(2); // 1 for handler, 1 for tool
+
+        assertThat(handler.beforeToolExecutionThreads).hasSize(1);
+        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature")).hasSize(1);
+
+        assertThat(handler.onToolExecutedThreads).hasSize(1);
+        assertThat(handler.onToolExecutedThreads.get("getCurrentTemperature")).hasSize(1);
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread thread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(thread).isEqualTo(handler.beforeToolExecutionThreads.get("getCurrentTemperature").iterator().next());
+        assertThat(thread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTemperature").iterator().next());
     }
 
     static class WeatherService {
@@ -320,28 +520,20 @@ class StreamingAiServicesWithToolsIT {
 
         String userMessage = "What is the temperature in Munich and London, in Celsius?";
 
-        interface TokenStreamHandler {
-            void onPartialResponse(String partialResponse);
-            void beforeToolExecution(BeforeToolExecution beforeToolExecution);
-            void onToolExecuted(ToolExecution toolExecution);
-            void onError(Throwable error);
-            void onCompleteResponse(ChatResponse completeResponse);
-        }
-
-        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
         assistant.chat(userMessage)
-                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
-                .beforeToolExecution(beforeToolExecution -> tokenStreamHandler.beforeToolExecution(beforeToolExecution))
-                .onToolExecuted(toolExecution -> tokenStreamHandler.onToolExecuted(toolExecution))
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
                 .onError(error -> {
-                    tokenStreamHandler.onError(error);
+                    handler.onError(error);
                     futureResponse.completeExceptionally(error);
                 })
                 .onCompleteResponse(completeResponse -> {
-                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    handler.onCompleteResponse(completeResponse);
                     futureResponse.complete(completeResponse);
                 })
                 .start();
@@ -358,18 +550,18 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(weatherService);
 
         // then
-        InOrder inOrder = inOrder(tokenStreamHandler);
+        InOrder inOrder = inOrder(handler);
 
-        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("Munich")));
-        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("Munich")));
-        inOrder.verify(tokenStreamHandler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("London")));
-        inOrder.verify(tokenStreamHandler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("London")));
+        inOrder.verify(handler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("Munich")));
+        inOrder.verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("Munich")));
+        inOrder.verify(handler).beforeToolExecution(argThat(bfe -> bfe.request().arguments().contains("London")));
+        inOrder.verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.request().arguments().contains("London")));
 
-        inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialResponse(any());
-        inOrder.verify(tokenStreamHandler).onCompleteResponse(any());
+        inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(handler).onCompleteResponse(any());
 
         inOrder.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(tokenStreamHandler);
+        verifyNoMoreInteractions(handler);
     }
 
     @Test
