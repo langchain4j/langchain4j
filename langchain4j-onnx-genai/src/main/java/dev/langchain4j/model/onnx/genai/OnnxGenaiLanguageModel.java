@@ -60,12 +60,9 @@ public class OnnxGenaiLanguageModel implements LanguageModel, AutoCloseable {
 
     @Override
     public Response<String> generate(String prompt) {
-        // Convert LangChain4j parameters to GenAI parameters via SimpleGenAI
         try (GeneratorParams params = simpleGenAI.createGeneratorParams()) {
-            // Apply parameters from the provider
             applyParameters(params, parametersProvider);
 
-            // Generate text with an optional listener
             AtomicReference<StringBuilder> responseBuilder = new AtomicReference<>(new StringBuilder());
             Consumer<String> tokenListener = token -> responseBuilder.get().append(token);
 
