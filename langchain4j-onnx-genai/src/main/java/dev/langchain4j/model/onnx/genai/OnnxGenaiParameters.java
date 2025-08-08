@@ -127,13 +127,10 @@ public class OnnxGenaiParameters implements OnnxGenaiParametersProvider {
     @SuppressWarnings("unchecked")
     private static Constructor<GeneratorParams> getGeneratorParamsConstructor() throws Exception {
         try {
-            // Try no-arg constructor first
             return (Constructor<GeneratorParams>) GeneratorParams.class.getDeclaredConstructor();
         } catch (NoSuchMethodException e) {
-            // Try to find a constructor that might work
             Constructor<?>[] constructors = GeneratorParams.class.getDeclaredConstructors();
             if (constructors.length > 0) {
-                // Try to find a no-arg constructor
                 for (Constructor<?> constructor : constructors) {
                     if (constructor.getParameterCount() == 0) {
                         constructor.setAccessible(true);
@@ -141,7 +138,6 @@ public class OnnxGenaiParameters implements OnnxGenaiParametersProvider {
                     }
                 }
 
-                // If no no-arg constructor, use the first one and try to provide default values
                 Constructor<?> firstConstructor = constructors[0];
                 firstConstructor.setAccessible(true);
                 return (Constructor<GeneratorParams>) firstConstructor;
@@ -155,7 +151,6 @@ public class OnnxGenaiParameters implements OnnxGenaiParametersProvider {
      */
     private static GeneratorParams createDefaultParams() {
         try {
-            // Try to use createDefaultParams if it exists
             java.lang.reflect.Method method = GeneratorParams.class.getDeclaredMethod("createDefaultParams");
             method.setAccessible(true);
             return (GeneratorParams) method.invoke(null);
@@ -173,7 +168,6 @@ public class OnnxGenaiParameters implements OnnxGenaiParametersProvider {
             field.setAccessible(true);
             field.set(params, value);
         } catch (Exception e) {
-            // If the field doesn't exist with this name, try alternative names
             try {
                 if ("maxTokens".equals(fieldName)) {
                     setField(params, "max_length", value);
