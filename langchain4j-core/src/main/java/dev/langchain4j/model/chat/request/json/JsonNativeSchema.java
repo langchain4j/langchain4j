@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.request.json;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.Objects;
 
@@ -11,7 +12,7 @@ public class JsonNativeSchema implements JsonSchemaElement {
 
     public JsonNativeSchema(Builder builder) {
         this.description = builder.description;
-        this.schema = builder.schema;
+        this.schema = ensureNotBlank(builder.schema, "schema");
     }
 
     @Override
