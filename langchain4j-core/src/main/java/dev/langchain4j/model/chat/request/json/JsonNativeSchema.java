@@ -66,6 +66,6 @@ public class JsonNativeSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonNativeSchema {" + "description = " + quoted(description) + ", schema = " + schema + " }";
+        return "JsonNativeSchema {" + "description = " + quoted(description) + ", schema = " + quoted(schema) + " }";
     }
 }
