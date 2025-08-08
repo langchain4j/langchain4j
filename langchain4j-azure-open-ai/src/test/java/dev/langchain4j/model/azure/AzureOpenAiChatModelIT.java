@@ -3,6 +3,8 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
+import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
+import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -467,6 +469,24 @@ class AzureOpenAiChatModelIT {
         // when
         assertThatThrownBy(() -> model.chat("hi"))
                 .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_work_with_o_models() {
+
+        // given
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
     }
 
     @AfterEach

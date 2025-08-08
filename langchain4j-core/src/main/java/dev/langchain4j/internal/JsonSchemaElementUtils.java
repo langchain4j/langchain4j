@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -267,7 +268,11 @@ public class JsonSchemaElementUtils {
             if (jsonArraySchema.description() != null) {
                 map.put("description", jsonArraySchema.description());
             }
-            map.put("items", toMap(jsonArraySchema.items(), strict));
+            if (jsonArraySchema.items() != null) {
+                map.put("items", toMap(jsonArraySchema.items(), strict));
+            } else {
+                map.put("items", Collections.emptyMap());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
