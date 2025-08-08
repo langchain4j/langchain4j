@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
@@ -116,7 +115,7 @@ public class McpToolProvider implements ToolProvider {
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
-            var defaultToolExecutor = new DefaultToolExecutor(mcpClient);
+            var defaultToolExecutor = new McpToolExecutor(mcpClient);
             try {
                 mcpClient.listTools().stream()
                         .filter(tool -> mcpToolsFilter.test(mcpClient, tool))
@@ -238,16 +237,4 @@ public class McpToolProvider implements ToolProvider {
         }
     }
 
-    private static class DefaultToolExecutor implements ToolExecutor {
-        private final McpClient mcpClient;
-
-        public DefaultToolExecutor(McpClient mcpClient) {
-            this.mcpClient = mcpClient;
-        }
-
-        @Override
-        public String execute(ToolExecutionRequest executionRequest, Object memoryId) {
-            return mcpClient.executeTool(executionRequest);
-        }
-    }
 }
