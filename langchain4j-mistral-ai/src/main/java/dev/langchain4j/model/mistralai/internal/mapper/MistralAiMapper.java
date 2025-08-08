@@ -185,6 +185,8 @@ public class MistralAiMapper {
         return switch (toolChoice) {
             case AUTO -> MistralAiToolChoiceName.AUTO;
             case REQUIRED -> MistralAiToolChoiceName.ANY;
+            case NONE -> MistralAiToolChoiceName.NONE;
+            default -> null;
         };
     }
 
@@ -206,9 +208,10 @@ public class MistralAiMapper {
         }
         return switch (responseFormat.type()) {
             case TEXT -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
-            case JSON -> responseFormat.jsonSchema() != null
-                    ? MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema())
-                    : MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+            case JSON ->
+                responseFormat.jsonSchema() != null
+                        ? MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema())
+                        : MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
         };
     }
 
@@ -219,9 +222,9 @@ public class MistralAiMapper {
                         return new MistralAiTextContent(textContent.text());
                     } else if (content instanceof ImageContent imageContent) {
                         Image image = imageContent.image();
-                        return image.url() != null ?
-                                new MistralAiImageUrlContent(image.url().toString()) :
-                                new MistralAiImageBase64Content(image.base64Data());
+                        return image.url() != null
+                                ? new MistralAiImageUrlContent(image.url().toString())
+                                : new MistralAiImageBase64Content(image.base64Data());
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }
