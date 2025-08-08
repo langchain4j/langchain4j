@@ -1,0 +1,1 @@
+Today is {{current_date}}
