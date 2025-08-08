@@ -7,17 +7,15 @@ import java.util.Objects;
 
 public class JsonNativeSchema implements JsonSchemaElement {
 
-    private final String description;
     private final String schema;
-
+    
     public JsonNativeSchema(Builder builder) {
-        this.description = builder.description;
         this.schema = ensureNotBlank(builder.schema, "schema");
     }
 
     @Override
     public String description() {
-        return description;
+        return null;
     }
 
     public String schema() {
@@ -31,12 +29,6 @@ public class JsonNativeSchema implements JsonSchemaElement {
     public static class Builder {
 
         public String schema;
-        private String description;
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
 
         public Builder schema(String schema) {
             this.schema = schema;
@@ -57,16 +49,16 @@ public class JsonNativeSchema implements JsonSchemaElement {
             return false;
         }
         JsonNativeSchema that = (JsonNativeSchema) o;
-        return Objects.equals(this.description, that.description) && Objects.equals(this.schema, that.schema);
+        return Objects.equals(this.schema, that.schema);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(description, schema);
+        return Objects.hash(schema);
     }
 
     @Override
     public String toString() {
-        return "JsonNativeSchema {" + "description = " + quoted(description) + ", schema = " + quoted(schema) + " }";
+        return "JsonNativeSchema {" + "schema = " + quoted(schema) + " }";
     }
 }
