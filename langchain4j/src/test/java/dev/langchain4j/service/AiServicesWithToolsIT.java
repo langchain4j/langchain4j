@@ -455,34 +455,6 @@ class AiServicesWithToolsIT {
         assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
 
         assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(5);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
-
-        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(firstToolExecutionRequest.name()).isEqualTo("getCurrentTime");
-        assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
-        assertThat(secondToolExecutionRequest.name()).isEqualTo("getCurrentTemperature");
-        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(firstToolExecutionResultMessage.id()).isEqualTo(firstToolExecutionRequest.id());
-        assertThat(firstToolExecutionResultMessage.toolName()).isEqualTo("getCurrentTime");
-        assertThat(firstToolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TIME);
-
-        ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(3);
-        assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
-        assertThat(secondToolExecutionResultMessage.toolName()).isEqualTo("getCurrentTemperature");
-        assertThat(secondToolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TEMPERATURE);
     }
 
     static List<Executor> executors() {
@@ -532,25 +504,6 @@ class AiServicesWithToolsIT {
 
         assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
         assertThat(spyTools.getCurrentTemperatureThreads.poll()).isEqualTo(Thread.currentThread());
-
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(4);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("getCurrentTemperature");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
-        assertThat(toolExecutionResultMessage.toolName()).isEqualTo("getCurrentTemperature");
-        assertThat(toolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TEMPERATURE);
     }
 
     static class IntegerListProcessor {

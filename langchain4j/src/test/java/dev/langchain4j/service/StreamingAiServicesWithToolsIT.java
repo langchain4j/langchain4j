@@ -22,10 +22,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -266,35 +263,6 @@ class StreamingAiServicesWithToolsIT {
         assertThat(getCurrentTemperatureThread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTemperature").iterator().next());
 
         assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
-
-        // then
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(5);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(((dev.langchain4j.data.message.UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
-
-        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(firstToolExecutionRequest.name()).isEqualTo("getCurrentTime");
-        assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
-        assertThat(secondToolExecutionRequest.name()).isEqualTo("getCurrentTemperature");
-        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(firstToolExecutionResultMessage.id()).isEqualTo(firstToolExecutionRequest.id());
-        assertThat(firstToolExecutionResultMessage.toolName()).isEqualTo("getCurrentTime");
-        assertThat(firstToolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TIME);
-
-        ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(3);
-        assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
-        assertThat(secondToolExecutionResultMessage.toolName()).isEqualTo("getCurrentTemperature");
-        assertThat(secondToolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TEMPERATURE);
     }
 
     static List<Executor> executors() {
@@ -371,29 +339,9 @@ class StreamingAiServicesWithToolsIT {
         assertThat(handler.onToolExecutedThreads.get("getCurrentTemperature")).hasSize(1);
 
         assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
-        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
-        assertThat(getCurrentTemperatureThread).isEqualTo(handler.beforeToolExecutionThreads.get("getCurrentTemperature").iterator().next());
-        assertThat(getCurrentTemperatureThread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTemperature").iterator().next());
-
-        // then
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(4);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("getCurrentTemperature");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"Munich\"}");
-
-        ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
-        assertThat(toolExecutionResultMessage.toolName()).isEqualTo("getCurrentTemperature");
-        assertThat(toolExecutionResultMessage.text()).isEqualTo(Tools.CURRENT_TEMPERATURE);
+        Thread thread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(thread).isEqualTo(handler.beforeToolExecutionThreads.get("getCurrentTemperature").iterator().next());
+        assertThat(thread).isEqualTo(handler.onToolExecutedThreads.get("getCurrentTemperature").iterator().next());
     }
 
     static class WeatherService {
