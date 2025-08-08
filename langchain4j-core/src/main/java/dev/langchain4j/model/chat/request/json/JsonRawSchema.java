@@ -5,11 +5,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.Objects;
 
-public class JsonNativeSchema implements JsonSchemaElement {
+public class JsonRawSchema implements JsonSchemaElement {
 
     private final String schema;
     
-    public JsonNativeSchema(Builder builder) {
+    public JsonRawSchema(Builder builder) {
         this.schema = ensureNotBlank(builder.schema, "schema");
     }
 
@@ -22,7 +22,7 @@ public class JsonNativeSchema implements JsonSchemaElement {
         return schema;
     }
     
-    public static JsonNativeSchema from(String schema) {
+    public static JsonRawSchema from(String schema) {
         return builder().schema(schema).build();
     }
 
@@ -39,8 +39,8 @@ public class JsonNativeSchema implements JsonSchemaElement {
             return this;
         }
 
-        public JsonNativeSchema build() {
-            return new JsonNativeSchema(this);
+        public JsonRawSchema build() {
+            return new JsonRawSchema(this);
         }
     }
 
@@ -52,7 +52,7 @@ public class JsonNativeSchema implements JsonSchemaElement {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        JsonNativeSchema that = (JsonNativeSchema) o;
+        JsonRawSchema that = (JsonRawSchema) o;
         return Objects.equals(this.schema, that.schema);
     }
 

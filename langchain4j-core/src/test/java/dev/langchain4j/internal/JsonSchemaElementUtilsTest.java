@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.model.chat.request.json.JsonNativeSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -224,7 +224,7 @@ class JsonSchemaElementUtilsTest {
             "required": [ "name" ]
         }
         """;
-        var nativeJson = JsonNativeSchema.from(rawJsonSchema);
+        var nativeJson = JsonRawSchema.from(rawJsonSchema);
         var map = toMap(nativeJson);
         assertThat(mapper.writeValueAsString(map))
                 .as("injection of existing full-blown schemas as string are possible")

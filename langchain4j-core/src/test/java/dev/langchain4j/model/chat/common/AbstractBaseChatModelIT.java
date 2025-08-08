@@ -30,7 +30,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonNativeSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -1317,8 +1317,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .type(ResponseFormatType.JSON)
                 .jsonSchema(JsonSchema.builder()
                         .name("Answer")
-                        .rootElement(
-                                JsonNativeSchema.builder().schema(rawSchema).build())
+                        .rootElement(JsonRawSchema.from(rawSchema))
                         .build())
                 .build();
 
