@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>dev.langchain4j</groupId>
+        <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>1.8.0-beta15-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
@@ -28,7 +28,7 @@
     <dependencies>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
+            <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.8.0-TB</version>
             <scope>compile</scope>
@@ -59,7 +59,7 @@
         <!-- test dependencies -->
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
+            <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.8.0-TB</version>
             <classifier>tests</classifier>
@@ -92,14 +92,14 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
+            <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-azure-open-ai</artifactId>
             <version>1.8.0-TB</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
+            <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>1.8.0-TB</version>
             <scope>test</scope>

@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>dev.langchain4j</groupId>
+        <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>1.8.0-beta15-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
@@ -25,37 +25,37 @@
         <dependencies>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-test</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-http-client</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-http-client-jdk</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-kotlin</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -67,7 +67,7 @@
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-easy-rag</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -75,133 +75,133 @@
             <!-- model providers -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-anthropic</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-azure-open-ai</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-bedrock</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-github-models</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-hugging-face</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-jlama</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-jina</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-onnx-scoring</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-local-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-mistral-ai</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-nomic</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai-official</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-ovh-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai-gemini</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-google-ai-gemini</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-workers-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-voyage-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-watsonx</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -215,61 +215,61 @@
             <!-- embedding stores -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-azure-ai-search</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-cassandra</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-chroma</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-coherence</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-couchbase</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-elasticsearch</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-infinispan</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-mariadb</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-mcp</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -281,67 +281,67 @@
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-milvus</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-mongodb-atlas</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-opensearch</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-pgvector</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-pinecone</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-qdrant</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-tablestore</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-vespa</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-weaviate</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-azure-cosmos-nosql</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-oracle</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -429,13 +429,13 @@
             <!-- code execution engines -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-code-execution-engine-judge0</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -449,43 +449,43 @@
             <!-- document loaders -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-amazon-s3</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-github</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-selenium</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-playwright</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -493,19 +493,19 @@
             <!-- document parsers -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-poi</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-tika</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -525,7 +525,7 @@
             <!-- document transformers -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-document-transformer-jsoup</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -533,41 +533,41 @@
             <!-- embedding store filter parsers -->
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <!-- web searchers -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-web-search-engine-google-custom</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-web-search-engine-tavily</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-web-search-engine-searchapi</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <!-- experimental -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-experimental-sql</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-agentic</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.langchain4j</groupId>
+                <groupId>org.thingsboard.langchain4j</groupId>
                 <artifactId>langchain4j-agentic-a2a</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>

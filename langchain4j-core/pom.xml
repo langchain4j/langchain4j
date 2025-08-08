@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>dev.langchain4j</groupId>
+        <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>1.8.0-beta15-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
@@ -166,38 +166,38 @@
                             <rules>
                                 <rule>
                                     <excludes>
-                                        <exclude>dev.langchain4j.observability.api</exclude>
-                                        <exclude>dev.langchain4j.observability.api.event</exclude>
-                                        <exclude>dev.langchain4j.observability.event</exclude>
-                                        <exclude>dev.langchain4j.classinstance</exclude>
-                                        <exclude>dev.langchain4j.data.document</exclude>
-                                        <exclude>dev.langchain4j.data.text</exclude>
-                                        <exclude>dev.langchain4j.exception</exclude>
-                                        <exclude>dev.langchain4j.guardrail</exclude>
-                                        <exclude>dev.langchain4j.guardrail.config</exclude>
-                                        <exclude>dev.langchain4j.internal</exclude>
-                                        <exclude>dev.langchain4j.invocation</exclude>
-                                        <exclude>dev.langchain4j.memory</exclude>
-                                        <exclude>dev.langchain4j.model.chat</exclude>
-                                        <exclude>dev.langchain4j.model.chat.listener</exclude>
-                                        <exclude>dev.langchain4j.model.chat.request</exclude>
-                                        <exclude>dev.langchain4j.model.chat.request.json</exclude>
-                                        <exclude>dev.langchain4j.model.chat.response</exclude>
-                                        <exclude>dev.langchain4j.model.listener</exclude>
-                                        <exclude>dev.langchain4j.spi</exclude>
-                                        <exclude>dev.langchain4j.store.embedding</exclude>
-                                        <exclude>dev.langchain4j.store.embedding.filter</exclude>
-                                        <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>
-                                        <exclude>dev.langchain4j.store.embedding.filter.comparison</exclude>
-                                        <exclude>dev.langchain4j.rag</exclude>
-                                        <exclude>dev.langchain4j.rag.content</exclude>
-                                        <exclude>dev.langchain4j.rag.content.aggregator</exclude>
-                                        <exclude>dev.langchain4j.rag.content.injector</exclude>
-                                        <exclude>dev.langchain4j.rag.content.retriever</exclude>
-                                        <exclude>dev.langchain4j.rag.query</exclude>
-                                        <exclude>dev.langchain4j.rag.query.router</exclude>
-                                        <exclude>dev.langchain4j.rag.query.transformer</exclude>
-                                        <exclude>dev.langchain4j.retriever</exclude>
+                                        <exclude>org.thingsboard.langchain4j.observability.api</exclude>
+                                        <exclude>org.thingsboard.langchain4j.observability.api.event</exclude>
+                                        <exclude>org.thingsboard.langchain4j.observability.event</exclude>
+                                        <exclude>org.thingsboard.langchain4j.classinstance</exclude>
+                                        <exclude>org.thingsboard.langchain4j.data.document</exclude>
+                                        <exclude>org.thingsboard.langchain4j.data.text</exclude>
+                                        <exclude>org.thingsboard.langchain4j.exception</exclude>
+                                        <exclude>org.thingsboard.langchain4j.guardrail</exclude>
+                                        <exclude>org.thingsboard.langchain4j.guardrail.config</exclude>
+                                        <exclude>org.thingsboard.langchain4j.internal</exclude>
+                                        <exclude>org.thingsboard.langchain4j.invocation</exclude>
+                                        <exclude>org.thingsboard.langchain4j.memory</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.chat</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.chat.listener</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.chat.request</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.chat.request.json</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.chat.response</exclude>
+                                        <exclude>org.thingsboard.langchain4j.model.listener</exclude>
+                                        <exclude>org.thingsboard.langchain4j.spi</exclude>
+                                        <exclude>org.thingsboard.langchain4j.store.embedding</exclude>
+                                        <exclude>org.thingsboard.langchain4j.store.embedding.filter</exclude>
+                                        <exclude>org.thingsboard.langchain4j.store.embedding.filter.logical</exclude>
+                                        <exclude>org.thingsboard.langchain4j.store.embedding.filter.comparison</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.content</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.content.aggregator</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.content.injector</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.content.retriever</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.query</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.query.router</exclude>
+                                        <exclude>org.thingsboard.langchain4j.rag.query.transformer</exclude>
+                                        <exclude>org.thingsboard.langchain4j.retriever</exclude>
                                     </excludes>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -210,14 +210,14 @@
                                 </rule>
                                 <rule>
                                     <includes>
-                                        <include>dev.langchain4j.rag</include>
-                                        <include>dev.langchain4j.rag.content</include>
-                                        <include>dev.langchain4j.rag.content.aggregator</include>
-                                        <include>dev.langchain4j.rag.content.injector</include>
-                                        <include>dev.langchain4j.rag.content.retriever</include>
-                                        <include>dev.langchain4j.rag.query</include>
-                                        <include>dev.langchain4j.rag.query.router</include>
-                                        <include>dev.langchain4j.rag.query.transformer</include>
+                                        <include>org.thingsboard.langchain4j.rag</include>
+                                        <include>org.thingsboard.langchain4j.rag.content</include>
+                                        <include>org.thingsboard.langchain4j.rag.content.aggregator</include>
+                                        <include>org.thingsboard.langchain4j.rag.content.injector</include>
+                                        <include>org.thingsboard.langchain4j.rag.content.retriever</include>
+                                        <include>org.thingsboard.langchain4j.rag.query</include>
+                                        <include>org.thingsboard.langchain4j.rag.query.router</include>
+                                        <include>org.thingsboard.langchain4j.rag.query.transformer</include>
                                     </includes>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -230,11 +230,11 @@
                                 </rule>
                                 <rule>
                                     <includes>
-                                        <include>dev.langchain4j.data.document</include>
-                                        <include>dev.langchain4j.store.embedding</include>
-                                        <include>dev.langchain4j.store.embedding.filter</include>
-                                        <include>dev.langchain4j.store.embedding.filter.logical</include>
-                                        <include>dev.langchain4j.store.embedding.filter.comparison</include>
+                                        <include>org.thingsboard.langchain4j.data.document</include>
+                                        <include>org.thingsboard.langchain4j.store.embedding</include>
+                                        <include>org.thingsboard.langchain4j.store.embedding.filter</include>
+                                        <include>org.thingsboard.langchain4j.store.embedding.filter.logical</include>
+                                        <include>org.thingsboard.langchain4j.store.embedding.filter.comparison</include>
                                     </includes>
                                     <element>PACKAGE</element>
                                     <limits>
