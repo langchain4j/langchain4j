@@ -28,6 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CoherenceChatMemoryStoreIT {
 
@@ -148,5 +151,26 @@ class CoherenceChatMemoryStoreIT {
         assertThatThrownBy(() -> memoryStore.deleteMessages(null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource // covers null and empty string ""
+    @ValueSource(strings = {"  ", "  \t\n "}) // strings with spaces, tabs, newlines
+    void should_use_default_map_name_when_name_is_blank(String name) {
+        CoherenceChatMemoryStore store =
+                CoherenceChatMemoryStore.builder().session(session).name(name).build();
+
+        assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
+    }
+
+    @Test
+    void should_use_custom_name_when_set() {
+        String name = "custom-chat-memory";
+        CoherenceChatMemoryStore store = CoherenceChatMemoryStore.builder()
+                .session(session)
+                .name(name) // Custom Name
+                .build();
+
+        assertThat(store.chatMemory.getName()).isEqualTo(name);
     }
 }
