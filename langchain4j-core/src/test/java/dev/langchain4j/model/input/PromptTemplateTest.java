@@ -1,9 +1,14 @@
 package dev.langchain4j.model.input;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.document.DocumentSource;
+import dev.langchain4j.data.document.Metadata;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -12,11 +17,9 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PromptTemplateTest {
 
@@ -161,7 +164,8 @@ class PromptTemplateTest {
         // given
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{name}} and now is {{current_date_time}}", clock);
+        PromptTemplate promptTemplate =
+                new PromptTemplate("My name is {{name}} and now is {{current_date_time}}", clock);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("name", "Klaus");
@@ -174,23 +178,24 @@ class PromptTemplateTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "$",
-            "$$",
-            "{",
-            "{{",
-            "}",
-            "}}",
-            "{}",
-            "{{}}",
-            "*",
-            "**",
-            "\\",
-            "\\\\",
-            "${}*\\",
-            "${ *hello* }",
-            "\\$\\{ \\*hello\\* \\}"
-    })
+    @ValueSource(
+            strings = {
+                "$",
+                "$$",
+                "{",
+                "{{",
+                "}",
+                "}}",
+                "{}",
+                "{{}}",
+                "*",
+                "**",
+                "\\",
+                "\\\\",
+                "${}*\\",
+                "${ *hello* }",
+                "\\$\\{ \\*hello\\* \\}"
+            })
     void should_support_special_characters(String s) {
 
         // given
@@ -201,5 +206,82 @@ class PromptTemplateTest {
 
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");
+    }
+
+    @Test
+    void should_create_prompt_from_document_source() throws IOException {
+        // given
+        PromptTemplate promptTemplate =
+                PromptTemplate.fromDocumentSource(new ClassPathResource("/templates/template1.txt"));
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("name", "Krishna");
+        variables.put("city", "Bangalore");
+
+        // when
+        Prompt prompt = promptTemplate.apply(variables);
+
+        // then
+        assertThat(prompt.text()).isEqualTo("My name is Krishna and i am from Bangalore");
+    }
+
+    @Test
+    void should_fail_when_document_source_not_found() {
+        // given
+        DocumentSource source = new ClassPathResource("/templates/missing.txt");
+
+        // when-then
+        assertThatThrownBy(() -> PromptTemplate.fromDocumentSource(source))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("inputStream cannot be null");
+    }
+
+    @Test
+    void should_fail_when_document_source_variable_is_missing() throws IOException {
+        // given
+        PromptTemplate promptTemplate =
+                PromptTemplate.fromDocumentSource(new ClassPathResource("/templates/template1.txt"));
+
+        Map<String, Object> variables = new HashMap<>(); // no variables
+
+        // when-then
+        assertThatThrownBy(() -> promptTemplate.apply(variables))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Value for the variable 'city' is missing");
+    }
+
+    @Test
+    void should_provide_date_automatically_from_file() throws IOException {
+        // given
+        // given
+        PromptTemplate promptTemplate =
+                PromptTemplate.fromDocumentSource(new ClassPathResource("/templates/template2.txt"));
+
+        Map<String, Object> variables = emptyMap();
+
+        // when
+        Prompt prompt = promptTemplate.apply(variables);
+
+        // then
+        assertThat(prompt.text()).isEqualTo("Today is " + LocalDate.now());
+    }
+
+    static class ClassPathResource implements DocumentSource {
+        private String resource;
+
+        public ClassPathResource(String resource) {
+            this.resource = resource;
+        }
+
+        @Override
+        public InputStream inputStream() throws IOException {
+            return getClass().getResourceAsStream(resource);
+        }
+
+        @Override
+        public Metadata metadata() {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 }
