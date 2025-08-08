@@ -82,6 +82,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return BedrockChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
