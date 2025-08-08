@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -13,7 +14,6 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -147,6 +147,50 @@ class ToolSpecificationsTest implements WithAssertions {
                 Person.class,
                 int.class,
                 int.class);
+    }
+
+    @SuppressWarnings("unused")
+    public static class Base {
+        @JsonIgnore
+        public String ignoredBaseField;
+
+        public String baseField;
+
+        public static String staticBaseField;
+    }
+
+    @SuppressWarnings("unused")
+    public static class Sub extends Base {
+        public String subField;
+
+        public static String staticSubField;
+
+        @JsonIgnore
+        public String ignoredSubField;
+    }
+
+    @SuppressWarnings("unused")
+    public static class TestSuperTool {
+        @Tool("Tool description")
+        public void toolCall(Sub sub) {}
+    }
+
+    @Test
+    void tool_specifications_from_with_ignored_fields_and_superclass() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new TestSuperTool());
+        ToolSpecification toolSpecification = specs.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("toolCall");
+        assertThat(toolSpecification.parameters()).isNotNull();
+        assertThat(toolSpecification.parameters().properties()).hasSize(1);
+        JsonObjectSchema schema =
+                (JsonObjectSchema) toolSpecification.parameters().properties().get("arg0");
+        assertThat(schema.properties()).hasSize(2);
+        assertThat(schema.properties().get("subField")).isNotNull();
+        assertThat(schema.properties().get("staticSubField")).isNull();
+        assertThat(schema.properties().get("ignoredSubField")).isNull();
+        assertThat(schema.properties().get("baseField")).isNotNull();
+        assertThat(schema.properties().get("staticBaseField")).isNull();
+        assertThat(schema.properties().get("ignoredBaseField")).isNull();
     }
 
     @Test
