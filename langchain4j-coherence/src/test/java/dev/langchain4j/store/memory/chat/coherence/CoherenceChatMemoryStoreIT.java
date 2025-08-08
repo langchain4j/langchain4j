@@ -28,6 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CoherenceChatMemoryStoreIT {
 
@@ -150,31 +153,13 @@ class CoherenceChatMemoryStoreIT {
                 .hasMessage("memoryId cannot be null");
     }
 
-    @Test
-    void should_use_default_map_name_when_name_is_blank() {
-        CoherenceChatMemoryStore store = CoherenceChatMemoryStore.builder()
-                .session(session)
-                .name(null) // null
-                .build();
+    @ParameterizedTest
+    @NullAndEmptySource // covers null and empty string ""
+    @ValueSource(strings = {"  ", "  \t\n "}) // strings with spaces, tabs, newlines
+    void should_use_default_map_name_when_name_is_blank(String name) {
+        CoherenceChatMemoryStore store =
+                CoherenceChatMemoryStore.builder().session(session).name(name).build();
 
-        assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
-
-        store = CoherenceChatMemoryStore.builder()
-                .session(session)
-                .name("") // Empty string
-                .build();
-        assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
-
-        store = CoherenceChatMemoryStore.builder()
-                .session(session)
-                .name("  ") // Empty Spaces
-                .build();
-        assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
-
-        store = CoherenceChatMemoryStore.builder()
-                .session(session)
-                .name("  \t\n ")
-                .build();
         assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
     }
 
