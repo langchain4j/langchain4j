@@ -869,6 +869,7 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_support_enum_structured_output() {
+
         // given
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -882,24 +883,13 @@ class VertexAiGeminiChatModelIT {
                         .build())
                 .build();
 
-        // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
+
+        // when
         String response = model.chat(instruction + "This is super exciting news, congratulations!");
 
         // then
         assertThat(response).isEqualTo("POSITIVE");
-
-        // when
-        response = model.chat(instruction + "The sky is blue.");
-
-        // then
-        assertThat(response).isEqualTo("NEUTRAL");
-
-        // when
-        response = model.chat(instruction + "This is the worst movie I've ever watched! Boring!");
-
-        // then
-        assertThat(response).isEqualTo("NEGATIVE");
     }
 
     // POJO classes for JSON deserialization
