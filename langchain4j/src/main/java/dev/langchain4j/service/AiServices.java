@@ -387,7 +387,7 @@ public abstract class AiServices<T> {
     /**
      * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
      * If you enable this option, tools will be executed concurrently (with one exception, see below),
-     * using the default {@link Executor}. TODO
+     * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
      * <ul>
      *     <li>When using {@link ChatModel}:</li>
@@ -421,7 +421,7 @@ public abstract class AiServices<T> {
     /**
      * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
      * <p>
-     * If {@code null} is specified, the default {@link Executor} will be used. TODO
+     * If {@code null} is specified, the default {@link Executor} will be used.
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
