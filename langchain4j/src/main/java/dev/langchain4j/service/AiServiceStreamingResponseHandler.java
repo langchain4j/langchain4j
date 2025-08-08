@@ -166,8 +166,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } else {
                 for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                     handleBeforeTool(toolExecutionRequest);
-                    // TODO applyToolHallucinationStrategy
                     ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+                    // TODO applyToolHallucinationStrategy
                     String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                     handleAfterTool(toolExecutionRequest, toolExecutionResult);
                     addToMemory(ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult));
