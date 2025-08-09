@@ -120,5 +120,4 @@ class ContentTest {
         assertThatThrownBy(() -> content.metadata().put(ContentMetadata.EMBEDDING_ID, "test"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
-
 }
