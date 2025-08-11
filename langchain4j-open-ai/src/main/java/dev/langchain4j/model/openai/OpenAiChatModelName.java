@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 public enum OpenAiChatModelName {
-
     GPT_3_5_TURBO("gpt-3.5-turbo"), // alias
     GPT_3_5_TURBO_1106("gpt-3.5-turbo-1106"),
     GPT_3_5_TURBO_0125("gpt-3.5-turbo-0125"),
