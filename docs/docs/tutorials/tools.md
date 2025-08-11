@@ -550,9 +550,9 @@ and wish to distinguish between them inside the `@Tool` method.
 
 ### Executing Tools Concurrently
 
-By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
-If you want the tools to be executed concurrently, you can call
-`executeToolsConcurrently()` or `executeToolsConcurrently(Executor)` when building the AI Service.
+By default, when the LLM calls **_multiple_** tools at once (also known as parallel tool calling),
+the AI Service executes them sequentially. If you want the tools to be executed concurrently,
+you can call `executeToolsConcurrently()` or `executeToolsConcurrently(Executor)` when building the AI Service.
 If you enable one of these options, the tools will be executed concurrently (with one exception - see below),
 using either the default or the specified `Executor`.
 
