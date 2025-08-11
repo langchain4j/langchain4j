@@ -8,6 +8,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -18,6 +19,7 @@ public class AiServiceTokenStreamParameters {
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
@@ -28,6 +30,7 @@ public class AiServiceTokenStreamParameters {
         this.messages = builder.messages;
         this.toolSpecifications = builder.toolSpecifications;
         this.toolExecutors = builder.toolExecutors;
+        this.toolExecutor = builder.toolExecutor;
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
         this.memoryId = builder.memoryId;
@@ -54,6 +57,13 @@ public class AiServiceTokenStreamParameters {
      */
     public Map<String, ToolExecutor> toolExecutors() {
         return toolExecutors;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public Executor toolExecutor() {
+        return toolExecutor;
     }
 
     /**
@@ -114,6 +124,7 @@ public class AiServiceTokenStreamParameters {
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
         private Map<String, ToolExecutor> toolExecutors;
+        private Executor toolExecutor;
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private Object memoryId;
@@ -152,6 +163,14 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
             this.toolExecutors = toolExecutors;
+            return this;
+        }
+
+        /**
+         * @since 1.4.0
+         */
+        public Builder toolExecutor(Executor toolExecutor) {
+            this.toolExecutor = toolExecutor;
             return this;
         }
 

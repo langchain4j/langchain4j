@@ -340,7 +340,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
+                .modelName("gemini-2.5-pro")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
