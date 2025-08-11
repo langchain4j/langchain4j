@@ -20,16 +20,15 @@ import io.milvus.grpc.DescribeIndexResponse;
 import io.milvus.grpc.IndexDescription;
 import io.milvus.grpc.KeyValuePair;
 import io.milvus.param.ConnectParam;
-import java.util.AbstractMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
 import io.milvus.param.R;
 import io.milvus.param.index.DescribeIndexParam;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -44,10 +43,8 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final AbstractMap.SimpleEntry<String, Integer> HNSW_EF_CONSTRUCTION_PARAM =
             new AbstractMap.SimpleEntry<>("efConstruction", 200);
-    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_M_PARAM =
-            new AbstractMap.SimpleEntry<>("M", 16);
-    private static final AbstractMap.SimpleEntry<String, Integer> IVFPQ_M_PARAM =
-            new AbstractMap.SimpleEntry<>("m", 8);
+    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_M_PARAM = new AbstractMap.SimpleEntry<>("M", 16);
+    private static final AbstractMap.SimpleEntry<String, Integer> IVFPQ_M_PARAM = new AbstractMap.SimpleEntry<>("m", 8);
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
@@ -180,13 +177,14 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metricType(MetricType.COSINE)
                 .build();
 
-        final R<DescribeIndexResponse> indexDescribeResponse = milvusServiceClient
-                .describeIndex(DescribeIndexParam.newBuilder()
+        final R<DescribeIndexResponse> indexDescribeResponse =
+                milvusServiceClient.describeIndex(DescribeIndexParam.newBuilder()
                         .withCollectionName(COLLECTION_NAME)
                         .build());
 
         assertThat(indexDescribeResponse.getData().getIndexDescriptionsList()).hasSize(1);
-        final IndexDescription indexDescription = indexDescribeResponse.getData().getIndexDescriptions(0);
+        final IndexDescription indexDescription =
+                indexDescribeResponse.getData().getIndexDescriptions(0);
         assertThat(indexDescription.getIndexName()).isEqualTo("vector_field_hnsw");
 
         // Verify that the extra parameters were set correctly
@@ -197,8 +195,12 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         for (KeyValuePair param : params) {
             paramMap.put(param.getKey(), param.getValue());
         }
-        assertThat(paramMap).containsEntry(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue().toString());
-        assertThat(paramMap).containsEntry(HNSW_EF_CONSTRUCTION_PARAM.getKey(), HNSW_EF_CONSTRUCTION_PARAM.getValue().toString());
+        assertThat(paramMap)
+                .containsEntry(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue().toString());
+        assertThat(paramMap)
+                .containsEntry(
+                        HNSW_EF_CONSTRUCTION_PARAM.getKey(),
+                        HNSW_EF_CONSTRUCTION_PARAM.getValue().toString());
     }
 
     @Test
@@ -228,13 +230,14 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metricType(MetricType.COSINE)
                 .build();
 
-        final R<DescribeIndexResponse> indexDescribeResponse = milvusServiceClient
-                .describeIndex(DescribeIndexParam.newBuilder()
+        final R<DescribeIndexResponse> indexDescribeResponse =
+                milvusServiceClient.describeIndex(DescribeIndexParam.newBuilder()
                         .withCollectionName(COLLECTION_NAME)
                         .build());
 
         assertThat(indexDescribeResponse.getData().getIndexDescriptionsList()).hasSize(1);
-        final IndexDescription indexDescription = indexDescribeResponse.getData().getIndexDescriptions(0);
+        final IndexDescription indexDescription =
+                indexDescribeResponse.getData().getIndexDescriptions(0);
         assertThat(indexDescription.getIndexName()).isEqualTo("vector_field_ivfpq");
 
         // Verify that the extra parameters were set correctly
@@ -245,7 +248,8 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         for (KeyValuePair param : params) {
             paramMap.put(param.getKey(), param.getValue());
         }
-        assertThat(paramMap).containsEntry(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue().toString());
+        assertThat(paramMap)
+                .containsEntry(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue().toString());
     }
 
     @Override
