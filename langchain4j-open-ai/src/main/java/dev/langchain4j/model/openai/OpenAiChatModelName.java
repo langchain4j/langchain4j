@@ -28,6 +28,16 @@ public enum OpenAiChatModelName {
     GPT_4_O_MINI("gpt-4o-mini"), // alias
     GPT_4_O_MINI_2024_07_18("gpt-4o-mini-2024-07-18"),
 
+    GPT_5("gpt-5"), // alias
+    GPT_5_2025_08_07("gpt-5-2025-08-07"),
+    GPT_5_CHAT_LATEST("gpt-5-chat-latest"),
+
+    GPT_5_MINI("gpt-5-mini"),
+    GPT_5_MINI_2025_08_07("gpt-5-mini-2025-08-07"),
+
+    GPT_5_NANO("gpt-5-nano"),
+    GPT_5_NANO_2025_08_07("gpt-5-nano-2025-08-07"),
+
     O1("o1"), // alias
     O1_2024_12_17("o1-2024-12-17"),
 
