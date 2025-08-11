@@ -221,6 +221,11 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // vision model only supports a single image per message
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return false; // not tested
+    }
 
     @Override
     protected boolean assertResponseId() {

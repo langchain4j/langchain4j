@@ -51,4 +51,9 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return false; // not tested
+    }
 }

@@ -79,4 +79,9 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
         return false;
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+        return false; // not tested
+    }
 }
