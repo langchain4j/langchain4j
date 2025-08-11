@@ -386,7 +386,7 @@ public abstract class AiServices<T> {
 
     /**
      * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
-     * If you enable this option, tools will be executed concurrently (with one exception, see below),
+     * If you enable this option, tools will be executed concurrently (with one exception - see below),
      * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
      * <ul>
