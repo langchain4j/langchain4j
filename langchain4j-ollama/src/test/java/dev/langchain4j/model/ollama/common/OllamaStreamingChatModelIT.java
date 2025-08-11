@@ -215,7 +215,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
     
     @Override
-    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // not tested
     }
 

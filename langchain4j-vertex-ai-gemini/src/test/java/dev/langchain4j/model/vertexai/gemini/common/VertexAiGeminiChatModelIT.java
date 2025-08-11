@@ -55,7 +55,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     }
     
     @Override
-    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // not tested
     }
 

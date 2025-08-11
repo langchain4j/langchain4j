@@ -67,7 +67,7 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // TODO check if supported
     }
 

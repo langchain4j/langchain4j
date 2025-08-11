@@ -1684,7 +1684,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
     }
 
-    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return true;
     }
 

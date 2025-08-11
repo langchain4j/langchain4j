@@ -53,7 +53,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
     }
     
     @Override
-    protected boolean supportsJsonResponseFormatWithNativeSchema() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // not tested
     }
 }
