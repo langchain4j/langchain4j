@@ -23,7 +23,7 @@ public class SupervisorAndWorkflowAgentsIT {
     public interface SupervisorStyledWriter {
 
         @Agent
-        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style, @V("businessContext") String businessContext);
     }
 
     @Test
@@ -34,6 +34,44 @@ public class SupervisorAndWorkflowAgentsIT {
     @Test
     void typed_supervisor_with_composite_agents_test() {
         supervisor_with_composite_agents(true);
+    }
+
+    @Test
+    void typed_supervisor_business_context_is_stored_test() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputName("score")
+                .build();
+
+        StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
+                .subAgents(styleScorer, styleEditor)
+                .outputName("story")
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriter.class)
+                .chatModel(plannerModel())
+                .requestGenerator(agenticScope -> "Write a story about " + agenticScope.readState("topic") + " in the style of a " + agenticScope.readState("style"))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .maxAgentsInvocations(5)
+                .outputName("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.write("dragons and wizards", "comedy", "Audience: kids; Compliance: avoid violence");
+        DefaultAgenticScope scope = (DefaultAgenticScope) result.agenticScope();
+        assertThat(scope.readState("businessContext", "")).contains("Audience: kids; Compliance: avoid violence");
     }
 
     void supervisor_with_composite_agents(boolean typedSupervisor) {
@@ -71,7 +109,7 @@ public class SupervisorAndWorkflowAgentsIT {
                     .outputName("story")
                     .build();
 
-            result = styledWriter.write("dragons and wizards", "comedy");
+            result = styledWriter.write("dragons and wizards", "comedy", "Audience: kids; Compliance: avoid violence");
 
         } else {
             SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()

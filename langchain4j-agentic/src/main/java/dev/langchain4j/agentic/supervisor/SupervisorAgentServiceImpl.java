@@ -105,7 +105,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 PlannerAgent planner = isAgenticScopeDependent() ?
                         agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent) :
                         this.plannerAgent;
-                AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse);
+                String businessContext = agenticScope.readState("businessContext", "");
+                AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse, businessContext);
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
                 if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {

@@ -883,6 +883,43 @@ AgenticServices.supervisorBuilder()
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
+### Providing business context to the planner
+
+In many real-world scenarios, the planner benefits from an optional business context: constraints, policies, or preferences that should guide planning (for example, "prefer internal tools", "do not call external services", "currency must be USD", etc.).
+
+The supervisor passes this context to the planner via an `AgenticScope` variable named `businessContext`.
+
+- If you use a typed Supervisor interface, add a parameter annotated with `@V("businessContext")`:
+
+```java
+public interface SupervisorAgent {
+    @Agent
+    String invoke(@V("request") String request, @V("businessContext") String businessContext);
+}
+```
+
+Then invoke it like:
+
+```java
+bankSupervisor.invoke(
+        "Transfer 100 EUR from Mario's account to Georgios' one",
+        "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+```
+
+- If you use an untyped agent, set `businessContext` in the input map:
+
+```java
+Map<String, Object> input = Map.of(
+        "request", "Transfer 100 EUR from Mario's account to Georgios' one",
+        "businessContext", "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+
+String result = (String) bankSupervisor.invoke(input);
+```
+
+If `businessContext` is omitted or empty, the planner proceeds without additional constraints.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
