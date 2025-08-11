@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
@@ -91,17 +90,25 @@ public class ToolService {
      * @since 1.4.0
      */
     public void executeToolsConcurrently() {
-        this.executor = createDefaultExecutor();
+        this.executor = defaultExecutor();
     }
 
     /**
      * @since 1.4.0
      */
     public void executeToolsConcurrently(Executor executor) {
-        this.executor = getOrDefault(executor, ToolService::createDefaultExecutor);
+        this.executor = getOrDefault(executor, ToolService::defaultExecutor);
     }
 
-    private static ExecutorService createDefaultExecutor() {
+    private static Executor defaultExecutor() {
+        return DefaultExecutorHolder.INSTANCE;
+    }
+
+    private static class DefaultExecutorHolder {
+        private static final Executor INSTANCE = createDefaultExecutor();
+    }
+
+    private static Executor createDefaultExecutor() {
         return new ThreadPoolExecutor(
                 0, Integer.MAX_VALUE,
                 1, SECONDS,
