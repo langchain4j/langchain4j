@@ -158,6 +158,39 @@ class WebSearchOrganicResultTest {
     }
 
     @Test
+    void should_return_textSegment_when_metadata_is_null_with_all_factories_and_constructors() {
+        URI url = URI.create("https://google.com");
+
+        // 1. Using factory method with content and metadata (both null)
+        WebSearchOrganicResult fromWithContentAndMetadata =
+                WebSearchOrganicResult.from("title", url, "snippet", null, null);
+
+        // 2. Using factory method without content (metadata is null)
+        WebSearchOrganicResult fromWithoutContent = WebSearchOrganicResult.from(
+                "title", url, "snippet", null // metadata
+                );
+
+        // 3. Using constructor directly
+        WebSearchOrganicResult usingConstructor = new WebSearchOrganicResult("title", url, "snippet", null, null);
+
+        // Expected text
+        String expectedText = "title\nsnippet";
+
+        // Expected metadata
+        Metadata expectedMetadata = Metadata.from(Map.of("url", "https://google.com"));
+
+        // Assertions
+        assertThat(fromWithContentAndMetadata.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(fromWithContentAndMetadata.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+
+        assertThat(fromWithoutContent.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(fromWithoutContent.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+
+        assertThat(usingConstructor.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(usingConstructor.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+    }
+
+    @Test
     void should_return_document() {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from(
                 "title",

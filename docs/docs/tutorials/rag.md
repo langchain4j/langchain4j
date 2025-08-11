@@ -57,7 +57,7 @@ However, in some scenarios, end users may want to upload their custom documents 
 In this case, indexing should be performed online and be a part of the main application.
 
 Here is a simplified diagram of the indexing stage:
-[![](/img/rag-ingestion.png)](/tutorials/rag)
+![](/img/rag-ingestion.png)
 
 
 ### Retrieval
@@ -70,7 +70,7 @@ and performing a similarity search in the embedding store.
 Relevant segments (pieces of the original documents) are then injected into the prompt and sent to the LLM.
 
 Here is a simplified diagram of the retrieval stage:
-[![](/img/rag-retrieval.png)](/tutorials/rag)
+![](/img/rag-retrieval.png)
 
 
 ## RAG Flavours in LangChain4j
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
@@ -696,7 +696,7 @@ Advanced RAG can be implemented with LangChain4j with the following core compone
 - `ContentInjector`
 
 The following diagram shows how these components work together:
-[![](/img/advanced-rag.png)](/tutorials/rag)
+![](/img/advanced-rag.png)
 
 The process is as follows:
 1. The user produces a `UserMessage`, which is converted into a `Query`
