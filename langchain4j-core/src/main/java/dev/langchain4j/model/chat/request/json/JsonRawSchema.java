@@ -63,6 +63,6 @@ public class JsonRawSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonNativeSchema {" + "schema = " + quoted(schema) + " }";
+        return "JsonRawSchema {" + "schema = " + quoted(schema) + " }";
     }
 }

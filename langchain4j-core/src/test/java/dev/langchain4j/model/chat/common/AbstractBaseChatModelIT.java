@@ -1297,8 +1297,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    @EnabledIf("supportsJsonResponseFormatWithNativeSchema")
-    protected void should_respect_JsonNativeSchema_responseFormat(M model) throws Exception {
+    @EnabledIf("supportsJsonResponseFormatWithRawSchema")
+    protected void should_respect_JsonRawSchema_responseFormat(M model) throws Exception {
         var rawSchema =
                 """
             {
