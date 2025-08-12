@@ -1109,9 +1109,11 @@ class AiServicesWithToolsIT {
 
         ChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .tools(new FailingTool());
+                .tools(spyTool);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
@@ -1121,6 +1123,9 @@ class AiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?");
 
         // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
@@ -1157,9 +1162,11 @@ class AiServicesWithToolsIT {
 
         ChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .tools(new FailingTool())
+                .tools(spyTool)
                 .toolErrorHandler(toolErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
@@ -1170,6 +1177,9 @@ class AiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?");
 
         // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
@@ -1205,9 +1215,11 @@ class AiServicesWithToolsIT {
 
         ChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .tools(new FailingTool())
+                .tools(spyTool)
                 .toolErrorHandler(toolErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
@@ -1222,7 +1234,15 @@ class AiServicesWithToolsIT {
                 .isSameAs(toolError);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyTool).getWeather("Munich");
+        if (executeToolsConcurrently) {
+            // when executed sequentially, second tool is not executed,
+            // the whole AI Service fails after the first tool fails
+            verify(spyTool).getWeather("Paris");
+        }
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }

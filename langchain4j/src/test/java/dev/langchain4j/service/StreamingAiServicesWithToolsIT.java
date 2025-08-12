@@ -636,9 +636,11 @@ class StreamingAiServicesWithToolsIT {
 
         StreamingChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
-                .tools(new FailingTool());
+                .tools(spyTool);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
@@ -659,6 +661,9 @@ class StreamingAiServicesWithToolsIT {
         future.get(30, SECONDS);
 
         // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
@@ -697,9 +702,11 @@ class StreamingAiServicesWithToolsIT {
 
         StreamingChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
-                .tools(new FailingTool())
+                .tools(spyTool)
                 .toolErrorHandler(toolErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
@@ -721,6 +728,9 @@ class StreamingAiServicesWithToolsIT {
         future.get(30, SECONDS);
 
         // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
@@ -757,9 +767,11 @@ class StreamingAiServicesWithToolsIT {
 
         StreamingChatModel spyModel = spy(models().findFirst().get());
 
+        FailingTool spyTool = spy(new FailingTool());
+
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
-                .tools(new FailingTool())
+                .tools(spyTool)
                 .toolErrorHandler(toolErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
@@ -782,7 +794,9 @@ class StreamingAiServicesWithToolsIT {
         assertThat(future.get(30, SECONDS))
                 .isSameAs(toolError);
 
-        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
         verifyNoMoreInteractionsFor(spyModel);
 
