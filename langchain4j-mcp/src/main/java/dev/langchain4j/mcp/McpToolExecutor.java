@@ -8,7 +8,6 @@ import dev.langchain4j.service.tool.ToolExecutor;
 
 public class McpToolExecutor implements ToolExecutor {
     private final McpClient mcpClient;
-    // TODO propagate?
 
     public McpToolExecutor(McpClient mcpClient) {
         this.mcpClient = ensureNotNull(mcpClient, "mcpClient");
