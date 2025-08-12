@@ -386,20 +386,6 @@
         </dependency>
     </dependencies>
 
-    <repositories>
-        <repository>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <id>central-portal-snapshots</id>
-            <name>Central Portal Snapshots</name>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </repository>
-    </repositories>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -908,5 +894,16 @@
         </profile>
 
     </profiles>
+
+    <distributionManagement>
+        <repository>
+            <id>thingsboard-local-repo</id>
+            <name>ThingsBoard Local Repo</name>
+            <url>https://repo.thingsboard.io/artifactory/libs-release-local</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </distributionManagement>
 
 </project>
