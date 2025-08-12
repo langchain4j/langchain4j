@@ -137,7 +137,7 @@ with the following subtypes:
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
 - `JsonAnyOfSchema` - to support polymorphism (e.g., `Shape` can be either `Circle` or `Rectangle`).
 - `JsonNullSchema` - to support nullable type.
-- `JsonRawSchema` - to use your custom fully defined JSON schema (e.g. from a class resource or remote reference).
+- `JsonRawSchema` - to use your custom fully defined JSON schema.
 
 #### `JsonObjectSchema`
 
@@ -332,7 +332,7 @@ The `JsonAnyOfSchema` is currently supported only by OpenAI and Azure OpenAI.
 
 #### `JsonRawSchema`
 
-An example of creating a `JsonRawSchema` from an existing string:
+An example of creating a `JsonRawSchema` from an existing schema string:
 
 ```java
 var rawSchema = """
@@ -352,13 +352,9 @@ var rawSchema = """
 JsonRawSchema schema = JsonRawSchema.from(rawSchema);
 ```
 
-Load the schema out of an existing resource file:
-
-```java
-try(InputStream is = getClass().getResourceAsStream("my-schema.json")) {
-    JsonRawSchema schema = JsonRawSchema.from(new String(is.readAllBytes()));
-}
-```
+:::note
+The `JsonRawSchema` is currently supported only by Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official.
+:::
 
 
 #### Adding Description

@@ -223,11 +223,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
     
     @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // not tested
-    }
-
-    @Override
     protected boolean assertResponseId() {
         return false; // Ollama does not return response ID
     }

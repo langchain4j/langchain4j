@@ -215,11 +215,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
     
     @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // not tested
-    }
-
-    @Override
     protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
         return false; // vision model only supports a single image per message
     }
