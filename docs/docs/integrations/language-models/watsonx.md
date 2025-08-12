@@ -13,7 +13,7 @@ sidebar_position: 22
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0-beta10</version>
 </dependency>
 ```
 
@@ -75,27 +75,8 @@ The `ChatService.Builder` supports several optional configuration methods:
 | `logResponses(...)`    | Whether to log the response payload                                                              | false                                 |
 | `httpClient(...)`      | Custom HTTP client instance                                                                      | Default Java `HttpClient`             |
 | `authenticationProvider(...)` | Auth mechanism to use (e.g. `IAMAuthenticator`)                                           | _Required_                            |
-| `foundationModelService(...)` | Optional custom instance to query foundation model specs                                 | Auto-created if not specified         |
 
 > 🔗 [View available model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
-
-You can also retrieve model details programmatically using the `FoundationModelService`:
-
-```java
-FoundationModelService service = FoundationModelService.builder()
-        .url(CloudRegion.FRANKFURT)
-        .build();
-
-service.getModels().resources();
-```
-
-Alternatively, if you already have a `ChatService` instance, you can retrieve the model metadata directly using:
-
-```java
-FoundationModel modelInfo = chatService.getModelDetails();
-```
-
-> 🔗 [FoundationModelService API reference](https://cloud.ibm.com/apidocs/watsonx-ai#list-foundation-model-specs)
 
 ### Creating the LangChain4j ChatModel
 
@@ -106,7 +87,7 @@ ChatModel model = WatsonxChatModel.builder()
         .service(chatService)
         .build();
 
-String answer = model.chat("Say 'Hello World'");
+String answer = model.chat("Hello");
 System.out.println(answer);
 ```
 
@@ -122,13 +103,13 @@ Streaming is supported using the same configuration structure and parameters as 
 
 ```java
 AuthenticationProvider authProvider = IAMAuthenticator.builder()
-        .apiKey("<your-api-key>")
+        .apiKey("<api-key>")
         .build();
 
 ChatService chatService = ChatService.builder()
         .url(CloudRegion.FRANKFURT)
         .authenticationProvider(authProvider)
-        .projectId("<your-project-id>")
+        .projectId("<project-id>")
         .modelId("mistralai/mistral-small-3-1-24b-instruct-2503")
         .build();
 ```
@@ -215,28 +196,22 @@ It implements the LangChain4j `EmbeddingModel` interface.
 ### Example: LangChain4j Integration
 
 ```java
-public class WatsonxEmbeddingModelTest {
+AuthenticationProvider authProvider = IAMAuthenticator.builder()
+    .apiKey("<api-key>")
+    .build();
 
-    static AuthenticationProvider authProvider = IAMAuthenticator.builder()
-        .apiKey(System.getenv("WATSONX_API_KEY"))
-        .build();
+EmbeddingService embeddingService = EmbeddingService.builder()
+    .url(CloudRegion.FRANKFURT)
+    .authenticationProvider(authProvider)
+    .projectId(System.getenv("<project-id>"))
+    .modelId("ibm/granite-embedding-278m-multilingual")
+    .build();
 
-    static EmbeddingService embeddingService = EmbeddingService.builder()
-        .url(CloudRegion.FRANKFURT)
-        .authenticationProvider(authProvider)
-        .projectId(System.getenv("WATSONX_PROJECT_ID"))
-        .modelId("ibm/granite-embedding-278m-multilingual")
-        .build();
+EmbeddingModel model = WatsonxEmbeddingModel.builder()
+    .service(embeddingService)
+    .build();
 
-    public static void main(String... args) {
-
-        EmbeddingModel model = WatsonxEmbeddingModel.builder()
-            .service(embeddingService)
-            .build();
-
-        System.out.println(model.embed("Hello from watsonx.ai"));
-    }
-}
+System.out.println(model.embed("Hello from watsonx.ai"));
 ```
 
 ---
@@ -267,36 +242,31 @@ It is particularly useful for ranking a list of documents (or text segments) bas
 ### Example: LangChain4j Integration
 
 ```java
-public class WatsonxScoringModelTest {
 
-    static AuthenticationProvider authProvider = IAMAuthenticator.builder()
-        .apiKey(System.getenv("WATSONX_API_KEY"))
-        .build();
+AuthenticationProvider authProvider = IAMAuthenticator.builder()
+    .apiKey("<api-key>"))
+    .build();
 
-    static RerankService rerankService = RerankService.builder()
-        .url(CloudRegion.FRANKFURT)
-        .authenticationProvider(authProvider)
-        .projectId(System.getenv("WATSONX_PROJECT_ID"))
-        .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
-        .build();
+RerankService rerankService = RerankService.builder()
+    .url(CloudRegion.FRANKFURT)
+    .authenticationProvider(authProvider)
+    .projectId("<project-d>")
+    .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
+    .build();
 
-    public static void main(String... args) {
+ScoringModel model = WatsonxScoringModel.builder()
+    .service(rerankService)
+    .build();
 
-        ScoringModel model = WatsonxScoringModel.builder()
-            .service(rerankService)
-            .build();
+var scores = model.scoreAll(
+    List.of(
+        TextSegment.from("Example_1"),
+        TextSegment.from("Example_2")
+    ),
+    "Hello from watsonx.ai"
+);
 
-        var scores = model.scoreAll(
-            List.of(
-                TextSegment.from("Example_1"),
-                TextSegment.from("Example_2")
-            ),
-            "Hello from watsonx.ai"
-        );
-
-        System.out.println(scores);
-    }
-}
+System.out.println(scores);
 ```
 
 ---
