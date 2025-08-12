@@ -587,6 +587,7 @@ class InternalOpenAiOfficialHelper {
         return switch (toolChoice) {
             case AUTO -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.AUTO);
             case REQUIRED -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.REQUIRED);
+            default -> null;
         };
     }
 
