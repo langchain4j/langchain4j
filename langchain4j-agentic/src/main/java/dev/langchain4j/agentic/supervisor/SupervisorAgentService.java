@@ -1,12 +1,12 @@
 package dev.langchain4j.agentic.supervisor;
 
-import java.util.List;
-import java.util.function.Function;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
+import java.util.List;
+import java.util.function.Function;
 
 public interface SupervisorAgentService<T> {
 
@@ -21,6 +21,8 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> contextGenerationStrategy(SupervisorContextStrategy contextStrategy);
 
     SupervisorAgentService<T> responseStrategy(SupervisorResponseStrategy responseStrategy);
+
+    SupervisorAgentService<T> supervisorContext(String supervisorContext);
 
     SupervisorAgentService<T> subAgents(Object... agents);
 
