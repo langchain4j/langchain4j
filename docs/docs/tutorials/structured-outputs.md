@@ -356,7 +356,7 @@ Load the schema out of an existing resource file:
 
 ```java
 try(InputStream is = getClass().getResourceAsStream("my-schema.json")) {
-    JsonRawSchema mySchema = JsonRawSchema.from(new String(is.readAllBytes()));
+    JsonRawSchema schema = JsonRawSchema.from(new String(is.readAllBytes()));
 }
 
 ```
