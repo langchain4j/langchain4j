@@ -390,23 +390,25 @@ public abstract class AiServices<T> {
      * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
      * <ul>
-     *     <li>When using {@link ChatModel}:</li>
-     *     <ul>
-     *         <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
-     *             using the {@link Executor}.</li>
-     *         <li>When the LLM calls a single tool, it is executed in the same (caller) thread,
-     *             the {@link Executor} is not used to avoid wasting resources.</li>
-     *     </ul>
-     *     <li>When using {@link StreamingChatModel}:</li>
-     *     <ul>
-     *         <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
-     *             using the {@link Executor}.
-     *             Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
-     *             is called, without waiting for other tools or for the response streaming to complete.</li>
-     *         <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
-     *             We cannot execute it in the same thread because, at that point,
-     *             we do not yet know how many tools the LLM will call.</li>
-     *     </ul>
+     *     <li>When using {@link ChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.</li>
+     *             <li>When the LLM calls a single tool, it is executed in the same (caller) thread,
+     *                 the {@link Executor} is not used to avoid wasting resources.</li>
+     *         </ul>
+     *     </li>
+     *     <li>When using {@link StreamingChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.
+     *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
+     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
+     *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
+     *                 We cannot execute it in the same thread because, at that point,
+     *                 we do not yet know how many tools the LLM will call.</li>
+     *         </ul>
+     *     </li>
      * </ul>
      *
      * @return builder
