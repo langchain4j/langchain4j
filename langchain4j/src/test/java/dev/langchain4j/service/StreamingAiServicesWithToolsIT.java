@@ -779,7 +779,8 @@ class StreamingAiServicesWithToolsIT {
                 .start();
 
         // then
-        assertThat(future.get(30, SECONDS)).isSameAs(toolError); // TODO should be wrapped into ToolExecutionException?
+        assertThat(future.get(30, SECONDS))
+                .isSameAs(toolError);
 
         // then
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());

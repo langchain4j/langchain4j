@@ -1219,7 +1219,7 @@ class AiServicesWithToolsIT {
 
         // when
         assertThatThrownBy(() -> assistant.chat(userMessage))
-                .isSameAs(toolError); // TODO should be wrapped into ToolExecutionException?
+                .isSameAs(toolError);
 
         // then
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
