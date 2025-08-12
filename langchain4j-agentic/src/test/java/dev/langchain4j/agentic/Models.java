@@ -48,6 +48,7 @@ public class Models {
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
+            .think(false)
             .build();
 
     public static ChatModel baseModel() {
