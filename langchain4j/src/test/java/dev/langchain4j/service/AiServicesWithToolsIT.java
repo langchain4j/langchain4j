@@ -3,9 +3,11 @@ package dev.langchain4j.service;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.service.tool.ToolErrorHandlerResult.returnText;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +42,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -59,6 +62,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -1089,31 +1093,29 @@ class AiServicesWithToolsIT {
     }
 
     @ParameterizedTest
-    @MethodSource("models")
-    void should_propagate_exception_thrown_from_tool_method_to_LLM(ChatModel model) {
+    @ValueSource(booleans = {false, true})
+    void should_propagate_error_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) {
 
         // given
-        String exceptionMessage = "Weather service is unavailable";
+        String errorMessage = "Weather service is unavailable";
 
         class FailingTool {
 
             @Tool
             String getWeather(String ignored) {
-                throw new RuntimeException(exceptionMessage);
+                throw new RuntimeException(errorMessage);
             }
         }
 
-        interface Assistant {
+        ChatModel spyModel = spy(models().findFirst().get());
 
-            String chat(String userMessage);
-        }
-
-        ChatModel spyModel = spy(model);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .tools(new FailingTool())
-                .build();
+                .tools(new FailingTool());
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
 
         // when
         assistant.chat("What is the weather in Munich?");
@@ -1122,12 +1124,110 @@ class AiServicesWithToolsIT {
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(exceptionMessage)));
-        ignoreOtherInvocations(spyModel);
+                && toolResult.text().equals(errorMessage)));
+        ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
-    private static void ignoreOtherInvocations(ChatModel model) {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_customize_error_returned_from_tool_before_sending_to_LLM(boolean executeToolsConcurrently) {
+
+        // given
+        RuntimeException toolError = new RuntimeException("Can't connect to the reliable-weather.com");
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw toolError;
+            }
+        }
+
+        String customizedErrorMessage = "Weather service is unavailable";
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+            assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
+            assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            return returnText(customizedErrorMessage);
+        };
+
+        ChatModel spyModel = spy(models().findFirst().get());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(new FailingTool())
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assistant.chat("What is the weather in Munich?");
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_when_tool_throws_error(boolean executeToolsConcurrently) {
+
+        // given
+        RuntimeException toolError = new RuntimeException("Weather service is unavailable");
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw toolError;
+            }
+        }
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+            assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
+            assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            throw (RuntimeException) error; // TODO casting
+        };
+
+
+        ChatModel spyModel = spy(models().findFirst().get());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(new FailingTool())
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // asking for 2 tools to make sure tools will be executed concurrently using executor
+        String userMessage = "What is the weather in Munich and Paris?";
+
+        // when
+        assertThatThrownBy(() -> assistant.chat(userMessage))
+                .isSameAs(toolError); // TODO should be wrapped into ToolExecutionException?
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    private static void ignoreOtherInteractions(ChatModel model) {
         verify(model, atLeast(0)).doChat(any());
         verify(model, atLeast(0)).defaultRequestParameters();
         verify(model, atLeast(0)).listeners();

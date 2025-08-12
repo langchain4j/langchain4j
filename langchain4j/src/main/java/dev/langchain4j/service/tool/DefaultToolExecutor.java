@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
@@ -22,18 +24,28 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Object object;
     private final Method originalMethod;
     private final Method methodToInvoke;
+    private final boolean propagateToolExecutionException;
+
+    public DefaultToolExecutor(Builder builder) {
+        this.object = ensureNotNull(builder.object, "object");
+        this.originalMethod = ensureNotNull(builder.originalMethod, "originalMethod");
+        this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
+        this.propagateToolExecutionException = getOrDefault(builder.propagateToolExecutionException, false);
+    }
 
     public DefaultToolExecutor(Object object, Method method) {
-        this.object = Objects.requireNonNull(object, "object");
-        this.originalMethod = Objects.requireNonNull(method, "method");
+        this.object = ensureNotNull(object, "object");
+        this.originalMethod = ensureNotNull(method, "method");
         this.methodToInvoke = this.originalMethod;
+        this.propagateToolExecutionException = false;
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
-        this.object = Objects.requireNonNull(object, "object");
-        Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
+        this.object = ensureNotNull(object, "object");
+        ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
         this.originalMethod = findMethod(object, toolExecutionRequest);
         this.methodToInvoke = this.originalMethod;
+        this.propagateToolExecutionException = false;
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -60,9 +72,10 @@ public class DefaultToolExecutor implements ToolExecutor {
      * @param methodToInvoke the method that should actually be invoked
      */
     public DefaultToolExecutor(Object object, Method originalMethod, Method methodToInvoke) {
-        this.object = Objects.requireNonNull(object, "object");
-        this.originalMethod = Objects.requireNonNull(originalMethod, "originalMethod");
-        this.methodToInvoke = Objects.requireNonNull(methodToInvoke, "methodToInvoke");
+        this.object = ensureNotNull(object, "object");
+        this.originalMethod = ensureNotNull(originalMethod, "originalMethod");
+        this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
+        this.propagateToolExecutionException = false;
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
@@ -78,10 +91,18 @@ public class DefaultToolExecutor implements ToolExecutor {
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                return e2.getCause().getMessage();
+                if (propagateToolExecutionException) {
+                    throw new ToolExecutionException(e2.getCause());
+                } else {
+                    return e2.getCause().getMessage();
+                }
             }
         } catch (InvocationTargetException e) {
-            return  e.getCause().getMessage();
+            if (propagateToolExecutionException) {
+                throw new ToolExecutionException(e.getCause());
+            } else {
+                return e.getCause().getMessage();
+            }
         }
     }
 
@@ -257,5 +278,41 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static boolean hasNoFractionalPart(Double doubleValue) {
         return doubleValue.equals(Math.floor(doubleValue));
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Object object;
+        private Method originalMethod;
+        private Method methodToInvoke;
+        private Boolean propagateToolExecutionException;
+
+        public Builder object(Object object) {
+            this.object = object;
+            return this;
+        }
+
+        public Builder originalMethod(Method originalMethod) {
+            this.originalMethod = originalMethod;
+            return this;
+        }
+
+        public Builder methodToInvoke(Method methodToInvoke) {
+            this.methodToInvoke = methodToInvoke;
+            return this;
+        }
+
+        public Builder propagateToolExecutionException(Boolean propagateToolExecutionException) {
+            this.propagateToolExecutionException = propagateToolExecutionException;
+            return this;
+        }
+
+        public DefaultToolExecutor build() {
+            return new DefaultToolExecutor(this);
+        }
     }
 }

@@ -33,6 +33,8 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -450,6 +452,20 @@ public abstract class AiServices<T> {
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        return this;
+    }
+
+    /**
+     * TODO
+     * TODO does not work when using custom ToolExecutor or creating DefaultToolExecutor manually.
+     * // TODO make sure {@link ToolExecutor} can throw an exception.
+     * // TODO When creating {@link DefaultToolExecutor} explicitly,
+     * // TODO enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)}
+     * @param toolErrorHandler
+     * @return
+     */
+    public AiServices<T> toolErrorHandler(ToolErrorHandler toolErrorHandler) {
+        context.toolService.errorHandler(toolErrorHandler);
         return this;
     }
 

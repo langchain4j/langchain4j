@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
@@ -28,9 +29,12 @@ import java.util.function.Consumer;
 public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
+
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolErrorHandler toolErrorHandler;
     private final Executor toolExecutor;
+
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
@@ -66,6 +70,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
         this.toolSpecifications = copy(parameters.toolSpecifications());
         this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolErrorHandler = parameters.toolErrorHandler(); // TODO default value: here or where?
         this.toolExecutor = parameters.toolExecutor();
         this.retrievedContents = copy(parameters.gretrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
@@ -169,6 +174,7 @@ public class AiServiceTokenStream implements TokenStream {
                 new TokenUsage(),
                 toolSpecifications,
                 toolExecutors,
+                toolErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
                 methodKey);
