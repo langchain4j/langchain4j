@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.tool.ToolErrorHandlerResult.returnText;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.Internal;
@@ -40,7 +39,8 @@ import java.util.function.Function;
 @Internal
 public class ToolService {
 
-    private static final ToolErrorHandler DEFAULT_ERROR_HANDLER = (error, context) -> returnText(error.getMessage());
+    private static final ToolErrorHandler DEFAULT_ERROR_HANDLER = (error, context) ->
+            ToolErrorHandlerResult.from(error.getMessage());
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -329,7 +329,7 @@ public class ToolService {
                         .toolExecutionRequest(toolExecutionRequest)
                         .memoryId(memoryId)
                         .build();
-                ToolErrorHandlerResult errorHandlerResult = errorHandler().handle(e.getCause(), errorContext);
+                ToolErrorHandlerResult errorHandlerResult = errorHandler().handle((Exception) e.getCause(), errorContext);
                 toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, errorHandlerResult.text());
             } else {
                 throw e; // TODO should be handled the same way? e.g. errors when with arguments

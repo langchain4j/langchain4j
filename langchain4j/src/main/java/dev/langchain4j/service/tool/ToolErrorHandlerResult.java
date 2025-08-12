@@ -28,7 +28,7 @@ public class ToolErrorHandlerResult {
      * @param text
      * @return
      */
-    public static ToolErrorHandlerResult returnText(String text) { // TODO name
+    public static ToolErrorHandlerResult from(String text) { // TODO name
         return new ToolErrorHandlerResult(text);
     }
 

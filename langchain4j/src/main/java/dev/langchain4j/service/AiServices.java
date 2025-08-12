@@ -457,12 +457,12 @@ public abstract class AiServices<T> {
 
     /**
      * TODO
-     * TODO does not work when using custom ToolExecutor or creating DefaultToolExecutor manually.
-     * // TODO make sure {@link ToolExecutor} can throw an exception.
-     * // TODO When creating {@link DefaultToolExecutor} explicitly,
-     * // TODO enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)}
-     * @param toolErrorHandler
-     * @return
+     * // - make sure {@link ToolExecutor} can throw an exception.
+     * // - when creating {@link DefaultToolExecutor} explicitly,
+     * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)}
+     *
+     * @param toolErrorHandler TODO
+     * @return TODO
      */
     public AiServices<T> toolErrorHandler(ToolErrorHandler toolErrorHandler) {
         context.toolService.errorHandler(toolErrorHandler);

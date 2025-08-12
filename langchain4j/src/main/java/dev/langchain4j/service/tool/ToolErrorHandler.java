@@ -10,11 +10,14 @@ public interface ToolErrorHandler {
 
     /**
      * TODO
-     * TODO options: return String, re-throw, etc
+     * Currently, there are 2 options how tool error can be handled:
+     * - return ToolErrorHandlerResult with text that will be sent to the LLM. LLM will have an option to react to it and possibly retry
+     * - re-throw an exception (in this case the AI Service invocation fails with this exception)
      *
-     * @param error
-     * @param context
-     * @return
+     * @param error   TODO
+     * @param context TODO
+     * @return TODO
      */
-    ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context);
+    ToolErrorHandlerResult handle(Exception error, ToolErrorContext context);
+    // TODO error: Throwable or RuntimeException?
 }

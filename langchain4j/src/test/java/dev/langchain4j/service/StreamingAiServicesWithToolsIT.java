@@ -4,7 +4,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
-import static dev.langchain4j.service.tool.ToolErrorHandlerResult.returnText;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -33,6 +32,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.tool.ToolErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -692,7 +692,7 @@ class StreamingAiServicesWithToolsIT {
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
 
-            return returnText(customizedErrorMessage);
+            return ToolErrorHandlerResult.from(customizedErrorMessage);
         };
 
         StreamingChatModel spyModel = spy(models().findFirst().get());

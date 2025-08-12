@@ -70,7 +70,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
         this.toolSpecifications = copy(parameters.toolSpecifications());
         this.toolExecutors = copy(parameters.toolExecutors());
-        this.toolErrorHandler = parameters.toolErrorHandler(); // TODO default value: here or where?
+        this.toolErrorHandler = parameters.toolErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
         this.retrievedContents = copy(parameters.gretrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");

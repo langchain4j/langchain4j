@@ -112,7 +112,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.toolSpecifications = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
-        this.toolErrorHandler = toolErrorHandler;
+        this.toolErrorHandler = ensureNotNull(toolErrorHandler, "toolErrorHandler");
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
@@ -266,7 +266,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .toolExecutionRequest(toolExecutionRequest)
                         .memoryId(memoryId)
                         .build();
-                ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle(e.getCause(), errorContext);
+                ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle((Exception) e.getCause(), errorContext);
                 return errorHandlerResult.text();
             } else {
                 throw e; // TODO should be handled the same way? e.g. errors when with arguments
