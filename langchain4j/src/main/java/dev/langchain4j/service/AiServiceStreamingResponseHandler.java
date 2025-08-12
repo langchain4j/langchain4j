@@ -170,7 +170,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             throw new RuntimeException(e);
                         }
                     } catch (InterruptedException e) {
-                        throw new RuntimeException(e); // TODO
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
                     }
                 }
             } else {
@@ -268,8 +269,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle(e.getCause(), errorContext);
                 return errorHandlerResult.text();
             } else {
-                // onError(e)
-                throw e; // TODO should be handled the same way? e.g. problems with arguments
+                throw e; // TODO should be handled the same way? e.g. errors when with arguments
             }
         }
     }

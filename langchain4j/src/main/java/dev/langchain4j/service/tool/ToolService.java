@@ -290,7 +290,8 @@ public class ToolService {
                     throw new RuntimeException(e);
                 }
             } catch (InterruptedException e) {
-                throw new RuntimeException(e); // TODO
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
             }
         }
 
@@ -331,7 +332,7 @@ public class ToolService {
                 ToolErrorHandlerResult errorHandlerResult = errorHandler().handle(e.getCause(), errorContext);
                 toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, errorHandlerResult.text());
             } else {
-                throw e; // TODO should be handled the same way? e.g. problems with arguments
+                throw e; // TODO should be handled the same way? e.g. errors when with arguments
             }
         }
         return toolExecutionResultMessage;
