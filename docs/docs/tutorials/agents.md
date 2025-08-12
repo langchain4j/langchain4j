@@ -883,42 +883,51 @@ AgenticServices.supervisorBuilder()
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
-### Providing business context to the planner
+### Providing context to the supervisor
 
-In many real-world scenarios, the planner benefits from an optional business context: constraints, policies, or preferences that should guide planning (for example, "prefer internal tools", "do not call external services", "currency must be USD", etc.).
+In many real-world scenarios, the supervisor benefits from an optional context: constraints, policies, or preferences that should guide planning (for example, "prefer internal tools", "do not call external services", "currency must be USD", etc.).
 
-The supervisor passes this context to the planner via an `AgenticScope` variable named `businessContext`.
+This context is stored in the `AgenticScope`, variable named `supervisorContext`. You can provide it in two ways:
 
-- If you use a typed Supervisor interface, add a parameter annotated with `@V("businessContext")`:
+- Build-time configuration:
+
+```java
+SupervisorAgent bankSupervisor = AgenticServices
+        .supervisorBuilder()
+        .chatModel(PLANNER_MODEL)
+        .supervisorContext("Policies: prefer internal tools; currency USD; no external APIs")
+        .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+        .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+        .build();
+```
+
+- Invocation (typed supervisor): add a parameter annotated with `@V("supervisorContext")`:
 
 ```java
 public interface SupervisorAgent {
     @Agent
-    String invoke(@V("request") String request, @V("businessContext") String businessContext);
+    String invoke(@V("request") String request, @V("supervisorContext") String supervisorContext);
 }
-```
 
-Then invoke it like:
-
-```java
+// Example call (overrides the build-time value for this invocation)
 bankSupervisor.invoke(
         "Transfer 100 EUR from Mario's account to Georgios' one",
         "Policies: convert to USD first; use bank tools only; no external APIs"
 );
 ```
 
-- If you use an untyped agent, set `businessContext` in the input map:
+- Invocation (untyped supervisor): set `supervisorContext` in the input map:
 
 ```java
 Map<String, Object> input = Map.of(
         "request", "Transfer 100 EUR from Mario's account to Georgios' one",
-        "businessContext", "Policies: convert to USD first; use bank tools only; no external APIs"
+        "supervisorContext", "Policies: convert to USD first; use bank tools only; no external APIs"
 );
 
 String result = (String) bankSupervisor.invoke(input);
 ```
 
-If `businessContext` is omitted or empty, the planner proceeds without additional constraints.
+If both are provided, the invocation value overrides the build-time `supervisorContext`.
 
 ## Non-AI agents
 
