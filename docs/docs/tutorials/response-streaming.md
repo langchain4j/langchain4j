@@ -42,7 +42,7 @@ Depending on the LLM provider, partial response text can consist of a single or 
 For instance, you can send the token directly to the UI as soon as it becomes available.
 - When the next partial thinking/reasoning text is generated: `onPartialThinking(PartialThinking)` is invoked.
 Depending on the LLM provider, partial thinking text can consist of a single or more tokens.
-- When the next [partial tool call](/tutorials/tools#using-streaming-chat-model) is generated: `onPartialToolCall(PartialToolCall)` is invoked.
+- When the next [partial tool call](/tutorials/tools#using-streamingchatmodel) is generated: `onPartialToolCall(PartialToolCall)` is invoked.
 - When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
