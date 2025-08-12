@@ -60,6 +60,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return false; // output format not supported
     }
 
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // output format not supported
+    }
+
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @Override
     @ParameterizedTest

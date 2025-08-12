@@ -213,6 +213,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // Ollama does not support tool choice
         // also for OpenAI-compatible API: https://github.com/ollama/ollama/blob/main/docs/openai.md
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
+    }
 
     @Override
     protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
