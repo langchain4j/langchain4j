@@ -119,6 +119,24 @@ Bot bot = AiServices.builder(Bot.class)
     .build();
 ```
 
+Alternatively, you can provide tools using a `Map<ToolSpecification, ToolExecutor>`.
+
+```java
+Map<ToolSpecification, ToolExecutor> tools = mcpClient.listTools().stream().collect(Collectors.toMap(
+        tool -> tool, 
+        tool -> new McpToolExecutor(mcpClient)
+));
+```
+
+To bind tools to an AI service, simply use the `tools` method of an AI service builder:
+
+```java
+Bot bot = AiServices.builder(Bot.class)
+    .chatModel(model)
+    .tools(tools)
+    .build();
+```
+
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
 ## Logging
