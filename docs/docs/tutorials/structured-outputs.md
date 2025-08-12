@@ -349,7 +349,7 @@ var rawSchema = """
 }
 """;
 
-JsonRawSchema questSchema = JsonRawSchema.from(rawSchema);
+JsonRawSchema schema = JsonRawSchema.from(rawSchema);
 ```
 
 Load the schema out of an existing resource file:
