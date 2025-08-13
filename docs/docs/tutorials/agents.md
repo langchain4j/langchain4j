@@ -289,7 +289,7 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executorService(Executors.newFixedThreadPool(2))
+        .executor(Executors.newFixedThreadPool(2))
         .outputName("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -309,7 +309,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Conditional workflow
 
@@ -473,8 +473,8 @@ public interface EveningPlannerAgent {
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
-    @ExecutorService
-    static ExecutorService executor() {
+    @ParallelExecutor
+    static Executor executor() {
         return Executors.newFixedThreadPool(2);
     }
 
