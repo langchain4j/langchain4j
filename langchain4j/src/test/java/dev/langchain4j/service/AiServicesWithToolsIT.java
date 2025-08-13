@@ -43,7 +43,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.service.tool.ToolArgumentException;
+import dev.langchain4j.service.tool.ToolArgumentParsingException;
 import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -1337,7 +1337,7 @@ class AiServicesWithToolsIT {
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
                     .hasCauseExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
@@ -1397,7 +1397,7 @@ class AiServicesWithToolsIT {
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
                     .hasCauseExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);

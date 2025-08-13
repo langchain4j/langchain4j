@@ -91,9 +91,9 @@ public class DefaultToolExecutor implements ToolExecutor { // TODO test backward
         } catch (Exception e) {
             if (wrapToolArgumentException) {
                 if (e.getClass() == RuntimeException.class && e.getCause() != null) {
-                    throw new ToolArgumentException(e.getCause());
+                    throw new ToolArgumentParsingException(e.getCause());
                 } else {
-                    throw new ToolArgumentException(e);
+                    throw new ToolArgumentParsingException(e);
                 }
             } else {
                 throw e;
