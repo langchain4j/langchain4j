@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.service.tool.ToolService.DEFAULT_ERROR_HANDLER;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -179,6 +180,7 @@ class AiServiceTokenStreamTest {
                         .userMessageTemplate("")
                         .variables(Map.of())
                         .build())
+                .toolErrorHandler(DEFAULT_ERROR_HANDLER)
                 .build());
     }
 }
