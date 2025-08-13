@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 
 import com.ibm.watsonx.ai.chat.ChatHandler;
@@ -14,7 +13,6 @@ import com.ibm.watsonx.ai.chat.ChatResponse;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
-import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
@@ -27,10 +25,14 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +51,7 @@ public class WatsonxStreamingChatModelTest {
     ChatService mockChatService;
 
     @Captor
-    ArgumentCaptor<ChatParameters> chatParameterCaptor;
+    ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
 
     static ChatResponse chatResponse;
 
@@ -77,7 +79,7 @@ public class WatsonxStreamingChatModelTest {
 
         var messages = List.<ChatMessage>of(com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"));
         doAnswer(invocation -> {
-                    ChatHandler handler = invocation.getArgument(3);
+                    ChatHandler handler = invocation.getArgument(1);
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
@@ -89,7 +91,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(eq(messages), eq(null), chatParameterCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any());
 
         StreamingChatModel streamingChatModel =
                 WatsonxStreamingChatModel.builder().service(mockChatService).build();
@@ -119,46 +121,54 @@ public class WatsonxStreamingChatModelTest {
         };
 
         streamingChatModel.chat(chatRequest, streamingHandler);
+        assertEquals(messages, chatRequestCaptor.getValue().getMessages());
+        var parameters = chatRequestCaptor.getValue().getParameters();
+
         boolean completed = latch.await(2, TimeUnit.SECONDS);
         assertTrue(completed, "Handler did not complete in time");
         assertEquals(List.of("Hello", "World"), receivedResponses);
-        assertNull(chatParameterCaptor.getValue().getFrequencyPenalty());
-        assertNull(chatParameterCaptor.getValue().getJsonSchema());
-        assertNull(chatParameterCaptor.getValue().getLogitBias());
-        assertNull(chatParameterCaptor.getValue().getLogprobs());
-        assertNull(chatParameterCaptor.getValue().getMaxCompletionTokens());
-        assertNull(chatParameterCaptor.getValue().getModelId());
-        assertNull(chatParameterCaptor.getValue().getN());
-        assertNull(chatParameterCaptor.getValue().getPresencePenalty());
-        assertNull(chatParameterCaptor.getValue().getProjectId());
-        assertNull(chatParameterCaptor.getValue().getResponseFormat());
-        assertNull(chatParameterCaptor.getValue().getSeed());
-        assertNull(chatParameterCaptor.getValue().getSpaceId());
-        assertEquals(List.of(), chatParameterCaptor.getValue().getStop());
-        assertNull(chatParameterCaptor.getValue().getTemperature());
-        assertEquals(10000, chatParameterCaptor.getValue().getTimeLimit());
-        assertNull(chatParameterCaptor.getValue().getToolChoice());
-        assertNull(chatParameterCaptor.getValue().getToolChoiceOption());
-        assertNull(chatParameterCaptor.getValue().getTopLogprobs());
-        assertNull(chatParameterCaptor.getValue().getTopP());
+        assertNull(parameters.getFrequencyPenalty());
+        assertNull(parameters.getJsonSchema());
+        assertNull(parameters.getLogitBias());
+        assertNull(parameters.getLogprobs());
+        assertNull(parameters.getMaxCompletionTokens());
+        assertNull(parameters.getModelId());
+        assertNull(parameters.getN());
+        assertNull(parameters.getPresencePenalty());
+        assertNull(parameters.getProjectId());
+        assertNull(parameters.getResponseFormat());
+        assertNull(parameters.getSeed());
+        assertNull(parameters.getSpaceId());
+        assertEquals(List.of(), parameters.getStop());
+        assertNull(parameters.getTemperature());
+        assertEquals(10000, parameters.getTimeLimit());
+        assertNull(parameters.getToolChoice());
+        assertNull(parameters.getToolChoiceOption());
+        assertNull(parameters.getTopLogprobs());
+        assertNull(parameters.getTopP());
     }
 
     @Test
     public void testDoChatWithTool() throws Exception {
 
-        var messages = List.<ChatMessage>of(com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"));
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, "refusal", List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "tool_calls");
         chatResponse.setChoices(List.of(resultChoice));
 
         doAnswer(invocation -> {
-                    ChatHandler handler = invocation.getArgument(3);
+                    ChatHandler handler = invocation.getArgument(1);
                     handler.onCompleteResponse(chatResponse);
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
+                            0, null, "name", "{"));
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
+                            0, "id", "name", "}"));
+                    handler.onCompleteToolCall(toolCall);
+                    handler.onPartialThinking("test", null);
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(eq(messages), any(), any(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any());
 
         StreamingChatModel streamingChatModel =
                 WatsonxStreamingChatModel.builder().service(mockChatService).build();
@@ -225,6 +235,29 @@ public class WatsonxStreamingChatModelTest {
             }
 
             @Override
+            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                assertEquals(0, completeToolCall.index());
+                assertEquals("id", completeToolCall.toolExecutionRequest().id());
+                assertEquals("name", completeToolCall.toolExecutionRequest().name());
+                assertEquals("{}", completeToolCall.toolExecutionRequest().arguments());
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                assertEquals(0, partialToolCall.index());
+                assertTrue(Objects.isNull(partialToolCall.id())
+                        || partialToolCall.id().equals("id"));
+                assertEquals("name", partialToolCall.name());
+                assertTrue(partialToolCall.partialArguments().equals("{")
+                        || partialToolCall.partialArguments().equals("}"));
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                assertEquals("test", partialThinking.text());
+            }
+
+            @Override
             public void onError(Throwable error) {
                 fail("Unexpected error: " + error);
             }
@@ -243,13 +276,13 @@ public class WatsonxStreamingChatModelTest {
         chatResponse.setChoices(List.of(resultChoice));
 
         doAnswer(invocation -> {
-                    ChatHandler handler = invocation.getArgument(3);
+                    ChatHandler handler = invocation.getArgument(1);
                     handler.onCompleteResponse(chatResponse);
                     handler.onError(new Exception("test"));
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(any(), any(), chatParameterCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any());
 
         StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
                 .enableJsonSchema(true)
@@ -293,12 +326,13 @@ public class WatsonxStreamingChatModelTest {
         };
 
         streamingChatModel.chat("Hello", streamingHandler);
-        boolean completed = latch.await(2, TimeUnit.SECONDS);
+        var parameters = chatRequestCaptor.getValue().getParameters();
+        var completed = latch.await(2, TimeUnit.SECONDS);
         assertTrue(completed, "Handler did not complete in time");
-        assertEquals("json_schema", chatParameterCaptor.getValue().getResponseFormat());
-        assertNotNull(chatParameterCaptor.getValue().getJsonSchema());
+        assertEquals("json_schema", parameters.getResponseFormat());
+        assertNotNull(parameters.getJsonSchema());
         assertEquals(1, streamingChatModel.supportedCapabilities().size());
         assertTrue(streamingChatModel.supportedCapabilities().contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA));
-        assertEquals("required", chatParameterCaptor.getValue().getToolChoiceOption());
+        assertEquals("required", parameters.getToolChoiceOption());
     }
 }

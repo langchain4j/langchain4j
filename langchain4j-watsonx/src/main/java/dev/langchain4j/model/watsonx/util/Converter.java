@@ -28,6 +28,8 @@ import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
 import java.util.List;
@@ -82,6 +84,20 @@ public class Converter {
         }
 
         return AiMessage.from(assistantMessage.content(), toolExecutionRequests);
+    }
+
+    public static CompleteToolCall toCompleteToolCall(ToolCall toolCall) {
+        return new CompleteToolCall(toolCall.index(), toToolExecutionRequest(toolCall));
+    }
+
+    public static PartialToolCall toPartialToolCall(
+            com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall partialToolCall) {
+        return PartialToolCall.builder()
+                .id(partialToolCall.id())
+                .index(partialToolCall.index())
+                .name(partialToolCall.name())
+                .partialArguments(partialToolCall.arguments())
+                .build();
     }
 
     public static ChatParameters toChatParameters(ChatRequest chatRequest) {
