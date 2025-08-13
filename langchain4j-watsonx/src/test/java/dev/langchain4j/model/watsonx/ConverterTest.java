@@ -29,6 +29,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.watsonx.util.Converter;
 import java.time.Duration;
@@ -269,6 +271,34 @@ public class ConverterTest {
     }
 
     @Test
+    void testToCompleteToolCall() {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("{\"name\":\"Klaus\",\"address\":null}")
+                .build();
+
+        ToolCall toolCall = ToolCall.of(10, "id", "name", "{\"name\":\"Klaus\",\"address\":null}");
+        assertEquals(new CompleteToolCall(10, toolExecutionRequest), Converter.toCompleteToolCall(toolCall));
+    }
+
+    @Test
+    void testToPartialToolCall() {
+
+        var EXPECTED = PartialToolCall.builder()
+                .id("id")
+                .index(10)
+                .name("name")
+                .partialArguments("{\"name\":\"Klaus\"")
+                .build();
+
+        var toConvert = new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
+                10, "id", "name", "{\"name\":\"Klaus\"");
+        assertEquals(EXPECTED, Converter.toPartialToolCall(toConvert));
+    }
+
+    @Test
     @SuppressWarnings("rawtypes")
     void testToChatParameters() {
 
@@ -420,15 +450,15 @@ public class ConverterTest {
         assertEquals(true, p.getJsonSchema().strict());
         JSONAssert.assertEquals(
                 """
-            {
-                "type" : "object",
-                "properties" : {
-                    "test" : {
-                      "type" : boolean
-                    }
-                },
-                required : [ ]
-            }""",
+                                {
+                                    "type" : "object",
+                                    "properties" : {
+                                        "test" : {
+                                          "type" : boolean
+                                        }
+                                    },
+                                    required : [ ]
+                                }""",
                 Json.toJson(p.getJsonSchema().schema()),
                 true);
         // --------------

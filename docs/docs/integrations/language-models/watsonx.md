@@ -185,6 +185,99 @@ System.out.println(answer);
 > **NOTE:** Ensure your selected model supports tool use.
 ---
 
+## Enabling Thinking / Reasoning Output
+
+Some IBM foundation models can include "thinking" or "reasoning" steps in their responses.  
+You can capture and separate this reasoning content from the final answer by using the `thinking(...)` builder method with `ExtractionTags`.
+
+`ExtractionTags` defines the XML-like tags used to extract different parts of the model output:
+
+- **Reasoning tag**: typically `<think>` — contains the model's internal reasoning.
+- **Response tag**: typically `<response>` — contains the user-facing answer.
+
+If no `response` tag is provided, it defaults to `"root"`, meaning that text directly under the root element is treated as the final response.
+
+#### Example ChatModel
+
+```java
+ChatService chatService = ChatService.builder()
+    .url(CloudRegion.FRANKFURT)
+    .authenticationProvider(authProvider)
+    .projectId("<project-id>")
+    .modelId("ibm/granite-3-3-8b-instruct")
+    .timeout(Duration.ofSeconds(30))
+    .build();
+
+ChatModel model = WatsonxChatModel.builder()
+    .service(chatService)
+    .thinking(ExtractionTags.of("think", "response"))
+    .build();
+
+ChatResponse chatResponse = chatModel.chat(
+    CustomMessage.from(Map.of("content", "thinking")),
+    UserMessage.userMessage("Why the sky is blue?")
+);
+
+AiMessage aiMessage = chatResponse.aiMessage();
+
+System.out.println(aiMessage.thinking());
+System.out.println(aiMessage.text());
+```
+
+#### Example StreamingChatModel
+
+```java
+ChatService chatService = ChatService.builder()
+    .url(CloudRegion.FRANKFURT)
+    .authenticationProvider(authProvider)
+    .projectId("<project-id>")
+    .modelId("ibm/granite-3-3-8b-instruct")
+    .timeout(Duration.ofSeconds(30))
+    .build();
+
+StreamingChatModel model = WatsonxStreamingChatModel.builder()
+    .service(chatService)
+    .thinking(ExtractionTags.of("think", "response"))
+    .build();
+
+List<ChatMessage> messages = List.of(
+    CustomMessage.from(Map.of("content", "thinking")),
+    UserMessage.userMessage("Why the sky is blue?")
+);
+
+ChatRequest chatRequest = ChatRequest.builder()
+    .messages(messages)
+    .maxOutputTokens(0)
+    .build();
+
+model.chat(chatRequest, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        ...  
+    }
+
+    @Override
+    public void onPartialThinking(PartialThinking partialThinking) {
+        ...
+    }
+
+});
+```
+
+You can also provide only the reasoning tag — in that case, the `response` tag defaults to `"root"`:
+
+```java
+ChatModel model = WatsonxChatModel.builder()
+    .service(chatService)
+    .thinking(ExtractionTags.of("think"))
+    .build();
+```
+
+**Note**  
+- This feature works the same way for both `WatsonxChatModel` and `WatsonxStreamingChatModel`.
+- Ensure that the selected model is enabled for reasoning.
+
 ## WatsonxEmbeddingModel
 
 The `WatsonxEmbeddingModel` enables you to generate embeddings using IBM watsonx.ai and integrate them with LangChain4j's vector-based operations such as search, retrieval-augmented generation (RAG), and similarity comparison.
@@ -295,7 +388,9 @@ See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/wats
 ## Examples
 
 - [WatsonxChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxChatModelTest.java)
+- [WatsonxChatModelReasoningTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxChatModelReasoningTest.java)
 - [WatsonxStreamingChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxStreamingChatModelTest.java)
+- [WatsonxStreamingChatModelReasoningTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxStreamingChatModelTest.java)
 - [WatsonxToolsTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxToolsTest.java)
 - [WatsonxEmbeddingModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxEmbeddingModelTest.java)
 - [WatsonxScoringModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxScoringModelTest.java)

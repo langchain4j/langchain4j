@@ -35,7 +35,7 @@
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai</artifactId>
-            <version>999-SNAPSHOT</version>
+            <version>0.6.0</version>
         </dependency>
 
         <!-- test dependencies -->

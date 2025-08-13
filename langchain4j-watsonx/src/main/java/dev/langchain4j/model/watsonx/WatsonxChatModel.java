@@ -75,25 +75,38 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 : null;
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest);
-        com.ibm.watsonx.ai.chat.ChatResponse chatResponse = chatProvider.chat(messages, tools, parameters);
+
+        com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
+                chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
+                        .messages(messages)
+                        .tools(tools)
+                        .parameters(parameters)
+                        .build());
 
         ResultChoice choice = chatResponse.getChoices().get(0);
         ChatUsage usage = chatResponse.getUsage();
         ResultMessage message = choice.message();
 
-        AiMessage aiMessage =
-                nonNull(message.toolCalls()) && !message.toolCalls().isEmpty()
-                        ? AiMessage.from(message.toolCalls().stream()
-                                .map(Converter::toToolExecutionRequest)
-                                .toList())
-                        : AiMessage.from(message.content().trim());
+        AiMessage.Builder aiMessage = AiMessage.builder();
+
+        if (nonNull(message.toolCalls()) && !message.toolCalls().isEmpty()) {
+            aiMessage.toolExecutionRequests(message.toolCalls().stream()
+                    .map(Converter::toToolExecutionRequest)
+                    .toList());
+        } else if (nonNull(tags)) {
+            var parts = chatResponse.toTextByTags(Set.of(tags.think(), tags.response()));
+            aiMessage.thinking(parts.get(tags.think()));
+            aiMessage.text(parts.get(tags.response()));
+        } else {
+            aiMessage.text(message.content());
+        }
 
         FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
         TokenUsage tokenUsage =
                 new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
 
         return ChatResponse.builder()
-                .aiMessage(aiMessage)
+                .aiMessage(aiMessage.build())
                 .metadata(WatsonxChatResponseMetadata.builder()
                         .created(chatResponse.getCreated())
                         .createdAt(chatResponse.getCreatedAt())
