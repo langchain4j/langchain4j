@@ -19,6 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +34,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -41,9 +43,11 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolArgumentException;
 import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -1092,9 +1096,11 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
     }
 
+    // Error Handling: Tool Error
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void should_propagate_error_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) {
+    void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) {
 
         // given
         String errorMessage = "Weather service is unavailable";
@@ -1152,7 +1158,9 @@ class AiServicesWithToolsIT {
         String customizedErrorMessage = "Weather service is unavailable";
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error).isSameAs(toolError);
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolExecutionException.class)
+                    .hasCause(toolError);
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -1204,14 +1212,15 @@ class AiServicesWithToolsIT {
         }
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error).isSameAs(toolError);
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolExecutionException.class)
+                    .hasCause(toolError);
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
 
-            throw (RuntimeException) error; // TODO casting
+            throw toolError;
         };
-
 
         ChatModel spyModel = spy(models().findFirst().get());
 
@@ -1241,6 +1250,177 @@ class AiServicesWithToolsIT {
             verify(spyTool).getWeather("Paris");
         }
         verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    // Error Handling: Argument Error
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_when_cannot_parse_tool_arguments_by_default(boolean executeToolsConcurrently) {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(spyTool);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assertThatThrownBy(() -> assistant.chat("What is the weather in Munich?"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("Unexpected character");
+
+        // then
+        verifyNoInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_customize_argument_parsing_error_before_sending_to_LLM(boolean executeToolsConcurrently) {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{\"arg0\":\"Munich\"}")
+                .build();
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest1),
+                AiMessage.from(toolExecutionRequest2),
+                AiMessage.from("sunny")
+        ));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        String customizedErrorMessage = "Invalid JSON, try again";
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            return ToolErrorHandlerResult.from(customizedErrorMessage);
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(spyTool)
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assistant.chat("What is the weather in Munich?");
+
+        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_with_custom_exception_when_tool_arguments_cannot_be_parsed(boolean executeToolsConcurrently) {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            throw customException;
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(spyTool)
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assertThatThrownBy(() -> assistant.chat("What is the weather in Munich?"))
+                .isSameAs(customException);
+
+        // then
+        verifyNoInteractions(spyTool);
 
         verify(spyModel).chat(any(ChatRequest.class));
         ignoreOtherInteractions(spyModel);

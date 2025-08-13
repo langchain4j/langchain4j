@@ -39,7 +39,7 @@ import java.util.function.Function;
 @Internal
 public class ToolService {
 
-    private static final ToolErrorHandler DEFAULT_ERROR_HANDLER = (error, context) ->
+    public static final ToolErrorHandler DEFAULT_ERROR_HANDLER = (error, context) ->
             ToolErrorHandlerResult.from(error.getMessage());
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
@@ -95,6 +95,7 @@ public class ToolService {
                 .object(object)
                 .originalMethod(method)
                 .methodToInvoke(method)
+                .wrapToolArgumentException(true)
                 .propagateToolExecutionException(true)
                 .build();
     }
@@ -319,23 +320,36 @@ public class ToolService {
     private ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolExecutionRequest,
                                                                 ToolExecutor toolExecutor,
                                                                 Object memoryId) {
-        ToolExecutionResultMessage toolExecutionResultMessage;
+        String toolResult;
         try {
-            String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-            toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+            toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
         } catch (Exception e) {
             if (e instanceof ToolExecutionException) {
-                ToolErrorContext errorContext = ToolErrorContext.builder()
-                        .toolExecutionRequest(toolExecutionRequest)
-                        .memoryId(memoryId)
-                        .build();
-                ToolErrorHandlerResult errorHandlerResult = errorHandler().handle((Exception) e.getCause(), errorContext);
-                toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, errorHandlerResult.text());
+                toolResult = handle(e, toolExecutionRequest, memoryId);
             } else {
-                throw e; // TODO should be handled the same way? e.g. errors when with arguments
+                if (errorHandler() == DEFAULT_ERROR_HANDLER) {
+                    // for backward compatibility
+                    if (e.getCause() instanceof RuntimeException re) {
+                        throw re;
+                    } else {
+                        throw new RuntimeException(e.getCause());
+                    }
+                } else {
+                    toolResult = handle(e, toolExecutionRequest, memoryId);
+                }
             }
+            // TODO check other types of exceptions, also MCP
         }
-        return toolExecutionResultMessage;
+        return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+    }
+
+    private String handle(Exception e, ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        ToolErrorContext errorContext = ToolErrorContext.builder()
+                .toolExecutionRequest(toolExecutionRequest)
+                .memoryId(memoryId)
+                .build();
+        ToolErrorHandlerResult errorHandlerResult = errorHandler().handle(e, errorContext);
+        return errorHandlerResult.text();
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

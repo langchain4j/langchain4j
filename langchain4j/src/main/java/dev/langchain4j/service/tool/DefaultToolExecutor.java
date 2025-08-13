@@ -19,17 +19,19 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
-public class DefaultToolExecutor implements ToolExecutor {
+public class DefaultToolExecutor implements ToolExecutor { // TODO test backward compatibility
 
     private final Object object;
     private final Method originalMethod;
     private final Method methodToInvoke;
-    private final boolean propagateToolExecutionException;
+    private final boolean wrapToolArgumentException; // TODO name
+    private final boolean propagateToolExecutionException; // TODO name
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
         this.originalMethod = ensureNotNull(builder.originalMethod, "originalMethod");
         this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
+        this.wrapToolArgumentException = getOrDefault(builder.wrapToolArgumentException, false);
         this.propagateToolExecutionException = getOrDefault(builder.propagateToolExecutionException, false);
     }
 
@@ -37,6 +39,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.object = ensureNotNull(object, "object");
         this.originalMethod = ensureNotNull(method, "method");
         this.methodToInvoke = this.originalMethod;
+        this.wrapToolArgumentException = false;
         this.propagateToolExecutionException = false;
     }
 
@@ -45,6 +48,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
         this.originalMethod = findMethod(object, toolExecutionRequest);
         this.methodToInvoke = this.originalMethod;
+        this.wrapToolArgumentException = false;
         this.propagateToolExecutionException = false;
     }
 
@@ -75,13 +79,27 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.object = ensureNotNull(object, "object");
         this.originalMethod = ensureNotNull(originalMethod, "originalMethod");
         this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
+        this.wrapToolArgumentException = false;
         this.propagateToolExecutionException = false;
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        Object[] arguments;
+        try {
+            Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
+            arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
+        } catch (Exception e) {
+            if (wrapToolArgumentException) {
+                if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+                    throw new ToolArgumentException(e.getCause());
+                } else {
+                    throw new ToolArgumentException(e);
+                }
+            } else {
+                throw e;
+            }
+        }
 
-        Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
             return execute(arguments);
         } catch (IllegalAccessException e) {
@@ -289,6 +307,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         private Object object;
         private Method originalMethod;
         private Method methodToInvoke;
+        private Boolean wrapToolArgumentException;
         private Boolean propagateToolExecutionException;
 
         public Builder object(Object object) {
@@ -303,6 +322,11 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         public Builder methodToInvoke(Method methodToInvoke) {
             this.methodToInvoke = methodToInvoke;
+            return this;
+        }
+
+        public Builder wrapToolArgumentException(Boolean wrapToolArgumentException) {
+            this.wrapToolArgumentException = wrapToolArgumentException;
             return this;
         }
 

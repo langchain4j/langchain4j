@@ -5,9 +5,9 @@ import dev.langchain4j.exception.LangChain4jException;
 /**
  * @since 1.4.0
  */
-public class ToolExecutionException extends LangChain4jException { // TODO name, need, location
+public class ToolArgumentException extends LangChain4jException { // TODO name, need, location
 
-    public ToolExecutionException(Throwable cause) {
+    public ToolArgumentException(Throwable cause) {
         super(cause);
     }
 }

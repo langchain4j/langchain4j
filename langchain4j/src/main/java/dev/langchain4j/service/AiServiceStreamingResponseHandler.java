@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolService.DEFAULT_ERROR_HANDLER;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -257,21 +258,37 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         return toolResult;
     }
 
+    // TODO reduce duplication
     private String executeWithErrorHandling(ToolExecutionRequest toolExecutionRequest, ToolExecutor toolExecutor) {
         try {
             return toolExecutor.execute(toolExecutionRequest, memoryId);
         } catch (Exception e) {
             if (e instanceof ToolExecutionException) {
-                ToolErrorContext errorContext = ToolErrorContext.builder()
-                        .toolExecutionRequest(toolExecutionRequest)
-                        .memoryId(memoryId)
-                        .build();
-                ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle((Exception) e.getCause(), errorContext);
-                return errorHandlerResult.text();
+                return handle(e, toolExecutionRequest, memoryId);
             } else {
-                throw e; // TODO should be handled the same way? e.g. errors when with arguments
+                if (toolErrorHandler == DEFAULT_ERROR_HANDLER) {
+                    // for backward compatibility
+                    if (e.getCause() instanceof RuntimeException re) {
+                        throw re;
+                    } else {
+                        throw new RuntimeException(e.getCause());
+                    }
+                } else {
+                    return handle(e, toolExecutionRequest, memoryId);
+                }
             }
+            // TODO other exceptions, also MCP
         }
+    }
+
+    // TODO reduce duplication
+    private String handle(Exception e, ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        ToolErrorContext errorContext = ToolErrorContext.builder()
+                .toolExecutionRequest(toolExecutionRequest)
+                .memoryId(memoryId)
+                .build();
+        ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle(e, errorContext);
+        return errorHandlerResult.text();
     }
 
     private void handleBeforeTool(ToolExecutionRequest toolExecutionRequest) {

@@ -13,8 +13,10 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,18 +24,22 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.tool.ToolArgumentException;
 import dev.langchain4j.service.tool.ToolErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -619,9 +625,11 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
     }
 
+    // Error Handling: Tool Error
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void should_propagate_error_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) throws Exception {
+    void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) throws Exception {
 
         // given
         String errorMessage = "Weather service is unavailable";
@@ -692,7 +700,9 @@ class StreamingAiServicesWithToolsIT {
         String customizedErrorMessage = "Weather service is unavailable";
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error).isSameAs(toolError);
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolExecutionException.class)
+                    .hasCause(toolError);
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -757,12 +767,14 @@ class StreamingAiServicesWithToolsIT {
         }
 
         ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error).isSameAs(toolError);
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolExecutionException.class)
+                    .hasCause(toolError);
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
 
-            throw (RuntimeException) error; // TODO casting
+            throw toolError;
         };
 
         StreamingChatModel spyModel = spy(models().findFirst().get());
@@ -801,6 +813,231 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractionsFor(spyModel);
 
         assertThat(toolExecutions).isEmpty();
+    }
+
+    // Error Handling: Argument Error
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_when_cannot_parse_tool_arguments_by_default(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
+                .start();
+
+        // then
+        Throwable error = futureError.get(60, SECONDS);
+
+        assertThat(error)
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("Unexpected character");
+
+        verifyNoInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        // TODO verify tool execution handler, also in tests below
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_customize_argument_parsing_error_before_sending_to_LLM(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{\"arg0\":\"Munich\"}")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(toolExecutionRequest1),
+                AiMessage.from(toolExecutionRequest2),
+                AiMessage.from("sunny")
+        ));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        String customizedErrorMessage = "Invalid JSON, try again";
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            return ToolErrorHandlerResult.from(customizedErrorMessage);
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+
+        // then
+        futureResponse.get(60, SECONDS);
+
+        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5), any());
+        verifyNoMoreInteractionsFor(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_with_custom_exception_when_tool_arguments_cannot_be_parsed(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
+
+        ToolErrorHandler toolErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(ToolArgumentException.class)
+                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            throw customException;
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolErrorHandler(toolErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
+                .start();
+
+        Throwable error = futureError.get(60, SECONDS);
+
+        assertThat(error).isSameAs(customException);
+
+        // then
+        verifyNoInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class), any());
+        verifyNoMoreInteractionsFor(spyModel);
     }
 
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
