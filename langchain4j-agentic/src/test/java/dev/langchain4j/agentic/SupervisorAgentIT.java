@@ -104,24 +104,24 @@ public class SupervisorAgentIT {
 
     public interface WithdrawAgent {
         @SystemMessage("""
-            You are a banker that can only withdraw US dollars (USD) from a user account,
+            You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
         @UserMessage("""
-            Withdraw {{amount}} USD from {{user}}'s account and return the new balance.
+            Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
-        String withdraw(@V("user") String user, @V("amount") Double amount);
+        String withdraw(@V("user") String user, @V("amountInUSD") Double amount);
     }
 
     public interface CreditAgent {
         @SystemMessage("""
-            You are a banker that can only credit US dollars (USD) to a user account,
+            You are a banker that can only credit US dollars (USD) to a user account.
             """)
         @UserMessage("""
-            Credit {{amount}} USD to {{user}}'s account and return the new balance.
+            Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
-        String credit(@V("user") String user, @V("amount") Double amount);
+        String credit(@V("user") String user, @V("amountInUSD") Double amount);
     }
 
     static class BankTool {
