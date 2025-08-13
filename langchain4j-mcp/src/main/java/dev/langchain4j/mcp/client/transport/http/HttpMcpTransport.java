@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * The legacy HTTP/SSE transport (see <a href="https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse">specification</a>).
  * Whenever possible, it is recommended to use {@link StreamableHttpMcpTransport} instead.
  */
-@Deprecated(forRemoval = true)
+@Deprecated(forRemoval = true, since = "1.4.0-beta10")
 public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
