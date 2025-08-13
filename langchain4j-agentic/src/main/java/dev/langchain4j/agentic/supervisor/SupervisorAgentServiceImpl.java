@@ -55,8 +55,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
         if (supervisorContext != null) {
             this.beforeCall(agenticScope -> {
-                Object existing = agenticScope.readState(SUPERVISOR_CONTEXT_KEY, null);
-                if (existing == null) {
+                if (!agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)) {
                     agenticScope.writeState(SUPERVISOR_CONTEXT_KEY, supervisorContext);
                 }
             });
