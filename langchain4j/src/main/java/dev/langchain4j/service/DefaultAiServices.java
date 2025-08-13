@@ -409,6 +409,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .toolExecutions(toolServiceResult.toolExecutions())
                                     .intermediateResponses(toolServiceResult.intermediateResponses())
                                     .finalResponse(toolServiceResult.finalResponse())
+                                    .metadata(context.metadata)
                                     .build();
 
                             context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
@@ -449,6 +450,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .toolExecutions(toolServiceResult.toolExecutions())
                                         .intermediateResponses(toolServiceResult.intermediateResponses())
                                         .finalResponse(toolServiceResult.finalResponse())
+                                        .metadata(context.metadata)
                                         .build()
                                 : parsedResponse;
 

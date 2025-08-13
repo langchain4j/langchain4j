@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -37,6 +38,7 @@ public class Result<T> {
     private final List<ToolExecution> toolExecutions;
     private final List<ChatResponse> intermediateResponses;
     private final ChatResponse finalResponse;
+    private final Map<String, Object> metadata;
 
     /**
      * @since 1.2.0
@@ -49,6 +51,7 @@ public class Result<T> {
         this.toolExecutions = copy(builder.toolExecutions);
         this.intermediateResponses = copy(builder.intermediateResponses);
         this.finalResponse = builder.finalResponse;
+        this.metadata = builder.metadata;
     }
 
     public Result(T content,
@@ -63,6 +66,7 @@ public class Result<T> {
         this.toolExecutions = copy(toolExecutions);
         this.intermediateResponses = List.of();
         this.finalResponse = null;
+        this.metadata = null;
     }
 
     public static <T> ResultBuilder<T> builder() {
@@ -121,6 +125,10 @@ public class Result<T> {
         return finalResponse;
     }
 
+    public Map<String, Object> metadata() {
+        return metadata;
+    }
+
     public static class ResultBuilder<T> {
 
         private T content;
@@ -130,6 +138,7 @@ public class Result<T> {
         private List<ToolExecution> toolExecutions;
         private List<ChatResponse> intermediateResponses;
         private ChatResponse finalResponse;
+        private Map<String, Object> metadata;
 
         ResultBuilder() {
         }
@@ -172,6 +181,11 @@ public class Result<T> {
          */
         public ResultBuilder<T> finalResponse(ChatResponse finalResponse) {
             this.finalResponse = finalResponse;
+            return this;
+        }
+
+        public ResultBuilder<T> metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
             return this;
         }
 

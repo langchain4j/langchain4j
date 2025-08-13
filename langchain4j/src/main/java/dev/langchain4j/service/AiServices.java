@@ -911,6 +911,11 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> metadata(Map<String, Object> metadata) {
+        context.metadata = metadata;
+        return this;
+    }
+
     /**
      * Constructs and returns the AI Service.
      *
