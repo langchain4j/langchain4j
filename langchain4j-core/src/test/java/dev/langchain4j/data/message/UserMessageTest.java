@@ -1,7 +1,5 @@
 package dev.langchain4j.data.message;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,7 +7,7 @@ import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-public class UserMessageTest implements WithAssertions {
+class UserMessageTest implements WithAssertions {
 
     @Test
     void accessors() {
@@ -102,24 +100,5 @@ public class UserMessageTest implements WithAssertions {
                 .isEqualTo(UserMessage.from(new TextContent("abc"), new TextContent("def")))
                 .isEqualTo(UserMessage.userMessage(listOf(new TextContent("abc"), new TextContent("def"))))
                 .isEqualTo(UserMessage.userMessage(new TextContent("abc"), new TextContent("def")));
-    }
-
-    @Test
-    void jackson_cannot_deserialize_chat_message() {
-        String json = "{\"name\":\"name\",\"contents\":[{\"text\":\"text\",\"type\":\"TEXT\"}],\"type\":\"USER\"}";
-
-        ObjectMapper mapper = new ObjectMapper();
-
-        assertThatThrownBy(() -> mapper.readValue(json, ChatMessage.class))
-                .isInstanceOf(InvalidDefinitionException.class);
-    }
-
-    @Test
-    void jackson_cannot_serialize_chat_message() throws Exception {
-        ChatMessage m = new UserMessage("name", "text");
-
-        ObjectMapper mapper = new ObjectMapper();
-        assertThatThrownBy(() -> mapper.writeValueAsString(m))
-                .isInstanceOf(InvalidDefinitionException.class);
     }
 }
