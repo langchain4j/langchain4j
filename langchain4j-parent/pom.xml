@@ -537,11 +537,6 @@
                     <version>4.6.0</version>
                     <extensions>true</extensions>
                 </plugin>
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>flatten-maven-plugin</artifactId>
-                    <version>1.7.0</version>
-                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -748,34 +743,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>flatten-maven-plugin</artifactId>
-                <configuration>
-                    <flattenMode>ossrh</flattenMode>
-                    <pomElements>
-                        <build>remove</build>
-                        <repositories>remove</repositories>
-                    </pomElements>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>flatten</id>
-                        <goals>
-                            <goal>flatten</goal>
-                        </goals>
-                        <phase>process-resources</phase>
-                    </execution>
-                    <execution>
-                        <id>flatten.clean</id>
-                        <goals>
-                            <goal>clean</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
         </plugins>
     </build>
 
@@ -913,7 +880,7 @@
         <repository>
             <id>thingsboard-local-repo</id>
             <name>ThingsBoard Local Repo</name>
-            <url>https://repo.thingsboard.io/artifactory/libs-release-local</url>
+            <url>https://repo.thingsboard.io/artifactory/libs-snapshot-local</url>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
