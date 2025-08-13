@@ -466,7 +466,7 @@ public class AgenticServices {
         Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
         if (parallelMethod.isPresent()) {
             Method method = parallelMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildConditionalAgent(agentServiceClass, parallelMethod.get(), chatModel);
+            AgentSpecification agent = (AgentSpecification) buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel);
             ParallelAgent annotation = method.getAnnotation(ParallelAgent.class);
             String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
             String description = annotation == null ? "" : String.join("\n", annotation.description());
