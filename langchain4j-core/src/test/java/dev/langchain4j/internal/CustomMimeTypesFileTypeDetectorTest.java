@@ -1,8 +1,6 @@
 package dev.langchain4j.internal;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -11,10 +9,11 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class CustomMimeTypesFileTypeDetectorTest {
+class CustomMimeTypesFileTypeDetectorTest {
     @Test
     void should_return_a_mime_type_from_default_mapping_from_path() {
         // given
@@ -104,12 +103,13 @@ public class CustomMimeTypesFileTypeDetectorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-        "http://example.org/cat",
-        "http://example.org/cat.banana",
-        "http://example.org/some.path/cat",
-        "http://example.org/cat?query=dog.png"
-    })
+    @ValueSource(
+            strings = {
+                "http://example.org/cat",
+                "http://example.org/cat.banana",
+                "http://example.org/some.path/cat",
+                "http://example.org/cat?query=dog.png"
+            })
     void should_fail_to_detect_mime_type(String url) throws MalformedURLException, URISyntaxException {
         // given
         CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();

@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.tablestore;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.search.FieldSchema;
 import com.alicloud.openservices.tablestore.model.search.FieldType;
@@ -25,6 +28,10 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang3.function.TriConsumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -34,14 +41,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_ID", matches = ".+")
@@ -49,7 +48,7 @@ import static org.assertj.core.api.Assertions.fail;
 class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    private final static long WAIT_FOR_REPLICA_TIME_IN_MILLS = TimeUnit.SECONDS.toMillis(3);
+    private static final long WAIT_FOR_REPLICA_TIME_IN_MILLS = TimeUnit.SECONDS.toMillis(3);
 
     private final TablestoreEmbeddingStore embeddingStore;
 
@@ -60,89 +59,88 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         String instanceName = System.getenv("TABLESTORE_INSTANCE_NAME");
         String accessKeyId = System.getenv("TABLESTORE_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
-        this.embeddingStore = new TablestoreEmbeddingStore(
-                new SyncClient(endpoint,
-                        accessKeyId,
-                        accessKeySecret,
-                        instanceName),
-                384,
-                Arrays.asList(
-                        new FieldSchema("name", FieldType.KEYWORD),
-                        new FieldSchema("name2", FieldType.KEYWORD),
-                        new FieldSchema("key", FieldType.KEYWORD),
-                        new FieldSchema("key2", FieldType.KEYWORD),
-                        new FieldSchema("city", FieldType.KEYWORD),
-                        new FieldSchema("country", FieldType.KEYWORD),
-                        new FieldSchema("age", FieldType.LONG),
-                        new FieldSchema("age2", FieldType.LONG),
-                        new FieldSchema("meta_example_double", FieldType.DOUBLE),
-                        new FieldSchema("meta_example_text_max_word", FieldType.TEXT).setAnalyzer(FieldSchema.Analyzer.MaxWord),
-                        new FieldSchema("meta_example_text_fuzzy", FieldType.TEXT).setAnalyzer(FieldSchema.Analyzer.Fuzzy)
-                )
-        ) {
-            // Override for test
-            @Override
-            public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-                if (request.maxResults() > 100) {
-                    request = new EmbeddingSearchRequest(request.queryEmbedding(), 100, request.minScore(), request.filter());
-                }
-                return super.search(request);
-            }
+        this.embeddingStore =
+                new TablestoreEmbeddingStore(
+                        new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName),
+                        384,
+                        Arrays.asList(
+                                new FieldSchema("name", FieldType.KEYWORD),
+                                new FieldSchema("name2", FieldType.KEYWORD),
+                                new FieldSchema("key", FieldType.KEYWORD),
+                                new FieldSchema("key2", FieldType.KEYWORD),
+                                new FieldSchema("city", FieldType.KEYWORD),
+                                new FieldSchema("country", FieldType.KEYWORD),
+                                new FieldSchema("age", FieldType.LONG),
+                                new FieldSchema("age2", FieldType.LONG),
+                                new FieldSchema("meta_example_double", FieldType.DOUBLE),
+                                new FieldSchema("meta_example_text_max_word", FieldType.TEXT)
+                                        .setAnalyzer(FieldSchema.Analyzer.MaxWord),
+                                new FieldSchema("meta_example_text_fuzzy", FieldType.TEXT)
+                                        .setAnalyzer(FieldSchema.Analyzer.Fuzzy))) {
+                    // Override for test
+                    @Override
+                    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+                        if (request.maxResults() > 100) {
+                            request = new EmbeddingSearchRequest(
+                                    request.queryEmbedding(), 100, request.minScore(), request.filter());
+                        }
+                        return super.search(request);
+                    }
 
-            // Override for test
-            @Override
-            protected void innerAdd(String id, Embedding embedding, TextSegment textSegment) {
-                super.innerAdd(id, embedding, textSegment);
-                trackDocsForTest.incrementAndGet();
-            }
+                    // Override for test
+                    @Override
+                    protected void innerAdd(String id, Embedding embedding, TextSegment textSegment) {
+                        super.innerAdd(id, embedding, textSegment);
+                        trackDocsForTest.incrementAndGet();
+                    }
 
-            // Override for test
-            @Override
-            protected void innerDelete(String id) {
-                super.innerDelete(id);
-                trackDocsForTest.decrementAndGet();
-            }
+                    // Override for test
+                    @Override
+                    protected void innerDelete(String id) {
+                        super.innerDelete(id);
+                        trackDocsForTest.decrementAndGet();
+                    }
 
-            // Override for test: exclude the use of incorrect field types in base class testing
-            @Override
-            protected Query mapFilterToQuery(Filter filter) {
-                if (filter instanceof IsEqualTo) {
-                    if (((IsEqualTo) filter).comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
+                    // Override for test: exclude the use of incorrect field types in base class testing
+                    @Override
+                    protected Query mapFilterToQuery(Filter filter) {
+                        if (filter instanceof IsEqualTo) {
+                            if (((IsEqualTo) filter).comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        if (filter instanceof IsNotEqualTo) {
+                            if (((IsNotEqualTo) filter).comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        if (filter instanceof IsLessThan) {
+                            IsLessThan t = (IsLessThan) filter;
+                            if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        if (filter instanceof IsLessThanOrEqualTo) {
+                            IsLessThanOrEqualTo t = (IsLessThanOrEqualTo) filter;
+                            if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        if (filter instanceof IsGreaterThan) {
+                            IsGreaterThan t = (IsGreaterThan) filter;
+                            if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        if (filter instanceof IsGreaterThanOrEqualTo) {
+                            IsGreaterThanOrEqualTo t = (IsGreaterThanOrEqualTo) filter;
+                            if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
+                                Assumptions.abort("keyword not support number");
+                            }
+                        }
+                        return super.mapFilterToQuery(filter);
                     }
-                }
-                if (filter instanceof IsNotEqualTo) {
-                    if (((IsNotEqualTo) filter).comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
-                    }
-                }
-                if (filter instanceof IsLessThan) {
-                    IsLessThan t = (IsLessThan) filter;
-                    if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
-                    }
-                }
-                if (filter instanceof IsLessThanOrEqualTo) {
-                    IsLessThanOrEqualTo t = (IsLessThanOrEqualTo) filter;
-                    if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
-                    }
-                }
-                if (filter instanceof IsGreaterThan) {
-                    IsGreaterThan t = (IsGreaterThan) filter;
-                    if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
-                    }
-                }
-                if (filter instanceof IsGreaterThanOrEqualTo) {
-                    IsGreaterThanOrEqualTo t = (IsGreaterThanOrEqualTo) filter;
-                    if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
-                        Assumptions.abort("keyword not support number");
-                    }
-                }
-                return super.mapFilterToQuery(filter);
-            }
-        };
+                };
         this.embeddingStore.init();
         this.embeddingStore.removeAll();
         ensureSearchDataReady(0);
@@ -175,7 +173,7 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Test
-    void test_match_and_match_phrase_and_double_range() {
+    void match_and_match_phrase_and_double_range() {
         Embedding embedding = embeddingModel().embed("ok").content();
         embeddingStore.add(
                 embedding,
@@ -184,9 +182,7 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                         new Metadata()
                                 .put("meta_example_double", 1d)
                                 .put("meta_example_text_max_word", "a b c ab ac")
-                                .put("meta_example_text_fuzzy", "a b c abac")
-                )
-        );
+                                .put("meta_example_text_fuzzy", "a b c abac")));
         awaitUntilPersisted();
         TriConsumer<String, String, Integer> matchTester = (field, value, expectSize) -> {
             EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
@@ -195,7 +191,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     .maxResults(100)
                     .build();
             // when
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore().search(embeddingSearchRequest).matches();
 
             // then
             assertThat(matches).hasSize(expectSize);
@@ -220,7 +217,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     .maxResults(100)
                     .build();
             // when
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore().search(embeddingSearchRequest).matches();
             // then
             assertThat(matches).hasSize(1);
         }
@@ -232,7 +230,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     .maxResults(100)
                     .build();
             // when
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore().search(embeddingSearchRequest).matches();
             // then
             assertThat(matches).hasSize(1);
         }
@@ -243,7 +242,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     .maxResults(100)
                     .build();
             // when
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore().search(embeddingSearchRequest).matches();
             // then
             assertThat(matches).isEmpty();
         }
@@ -254,7 +254,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     .maxResults(100)
                     .build();
             // when
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore().search(embeddingSearchRequest).matches();
             // then
             assertThat(matches).hasSize(1);
         }
@@ -268,7 +269,8 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             SearchQuery searchQuery = new SearchQuery();
             searchQuery.setQuery(new MatchAllQuery());
             searchQuery.setLimit(0);
-            SearchRequest searchRequest = new SearchRequest(embeddingStore.getTableName(), embeddingStore.getSearchIndexName(), searchQuery);
+            SearchRequest searchRequest =
+                    new SearchRequest(embeddingStore.getTableName(), embeddingStore.getSearchIndexName(), searchQuery);
             searchQuery.setGetTotalCount(true);
             SearchResponse resp = embeddingStore.getClient().search(searchRequest);
             assertThat(resp.isAllSuccess()).isTrue();

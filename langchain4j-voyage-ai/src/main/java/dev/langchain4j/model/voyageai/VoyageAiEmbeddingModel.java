@@ -1,23 +1,24 @@
 package dev.langchain4j.model.voyageai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import java.util.Map;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -34,6 +35,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxSegmentsPerBatch;
 
     public VoyageAiEmbeddingModel(
+            HttpClientBuilder httpClientBuilder,
+            Map<String, String> customHeaders,
             String baseUrl,
             Duration timeout,
             Integer maxRetries,
@@ -44,9 +47,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             String encodingFormat,
             Boolean logRequests,
             Boolean logResponses,
-            Integer maxSegmentsPerBatch
-    ) {
-        this.maxRetries = getOrDefault(maxRetries, 3);
+            Integer maxSegmentsPerBatch) {
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 128);
         this.truncation = truncation;
@@ -54,19 +56,19 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.encodingFormat = encodingFormat;
 
         this.client = VoyageAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
+                .customHeaders(customHeaders)
                 .build();
     }
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         return embedTexts(texts);
     }
@@ -86,7 +88,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .encodingFormat(encodingFormat)
                     .build();
 
-            EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
+            EmbeddingResponse response = withRetryMappingExceptions(() -> this.client.embed(request), maxRetries);
 
             embeddings.addAll(getEmbeddings(response));
             inputTokenCount += getTokenUsage(response);
@@ -121,6 +123,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
+        private Map<String, String> customHeaders;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -132,6 +136,16 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Integer maxSegmentsPerBatch;
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -238,6 +252,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public VoyageAiEmbeddingModel build() {
             return new VoyageAiEmbeddingModel(
+                    httpClientBuilder,
+                    customHeaders,
                     baseUrl,
                     timeout,
                     maxRetries,
@@ -248,8 +264,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     encodingFormat,
                     logRequests,
                     logResponses,
-                    maxSegmentsPerBatch
-            );
+                    maxSegmentsPerBatch);
         }
     }
 }

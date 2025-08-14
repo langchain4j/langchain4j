@@ -1,8 +1,5 @@
 package dev.langchain4j.store.embedding.filter;
 
-import dev.langchain4j.data.document.Metadata;
-import org.junit.jupiter.api.Test;
-
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -10,10 +7,13 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.document.Metadata;
+import org.junit.jupiter.api.Test;
+
 class FilterTest {
 
     @Test
-    void test_in_string() {
+    void in_string() {
 
         // given
         Metadata metadata = new Metadata().put("id", "1");
@@ -29,12 +29,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isIn(1).test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
     }
 
     @Test
-    void test_not_in_string() {
+    void not_in_string() {
 
         // given
         Metadata metadata = new Metadata().put("id", "1");
@@ -50,12 +50,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isNotIn(1).test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
     }
 
     @Test
-    void test_in_integer() {
+    void in_integer() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);
@@ -74,12 +74,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.Integer, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.Integer, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_not_in_integer() {
+    void not_in_integer() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);
@@ -98,12 +98,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isNotIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.Integer, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.Integer, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_in_long() {
+    void in_long() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1L);
@@ -122,12 +122,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.Long, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.Long, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_not_in_long() {
+    void not_in_long() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1L);
@@ -146,12 +146,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isNotIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) " +
-                        "has type java.lang.Long, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1) "
+                        + "has type java.lang.Long, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_in_float() {
+    void in_float() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1f);
@@ -170,12 +170,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) " +
-                        "has type java.lang.Float, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) "
+                        + "has type java.lang.Float, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_not_in_float() {
+    void not_in_float() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1f);
@@ -194,12 +194,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isNotIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) " +
-                        "has type java.lang.Float, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) "
+                        + "has type java.lang.Float, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_in_double() {
+    void in_double() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1d);
@@ -218,12 +218,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) " +
-                        "has type java.lang.Double, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) "
+                        + "has type java.lang.Double, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_not_in_double() {
+    void not_in_double() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1d);
@@ -242,12 +242,12 @@ class FilterTest {
 
         assertThatThrownBy(() -> metadataKey("id").isNotIn("1").test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) " +
-                        "has type java.lang.Double, while comparison value (1) has type java.lang.String");
+                .hasMessage("Type mismatch: actual value of metadata key \"id\" (1.0) "
+                        + "has type java.lang.Double, while comparison value (1) has type java.lang.String");
     }
 
     @Test
-    void test_in_empty_list() {
+    void in_empty_list() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);
@@ -258,7 +258,7 @@ class FilterTest {
     }
 
     @Test
-    void test_in_list_with_null() {
+    void in_list_with_null() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);
@@ -269,7 +269,7 @@ class FilterTest {
     }
 
     @Test
-    void test_not_in_empty_list() {
+    void not_in_empty_list() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);
@@ -280,7 +280,7 @@ class FilterTest {
     }
 
     @Test
-    void test_not_in_list_with_null() {
+    void not_in_list_with_null() {
 
         // given
         Metadata metadata = new Metadata().put("id", 1);

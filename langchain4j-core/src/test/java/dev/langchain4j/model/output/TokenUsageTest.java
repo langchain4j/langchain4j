@@ -1,28 +1,24 @@
 package dev.langchain4j.model.output;
 
+import static dev.langchain4j.model.output.TokenUsage.sum;
+
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.model.output.TokenUsage.sum;
-
 class TokenUsageTest implements WithAssertions {
     @Test
-    public void test_constructors() {
-        assertThat(new TokenUsage())
-                .isEqualTo(new TokenUsage(null, null, null));
+    void constructors() {
+        assertThat(new TokenUsage()).isEqualTo(new TokenUsage(null, null, null));
 
-        assertThat(new TokenUsage(1))
-                .isEqualTo(new TokenUsage(1, null, 1));
+        assertThat(new TokenUsage(1)).isEqualTo(new TokenUsage(1, null, 1));
 
-        assertThat(new TokenUsage(1, 2))
-                .isEqualTo(new TokenUsage(1, 2, 3));
+        assertThat(new TokenUsage(1, 2)).isEqualTo(new TokenUsage(1, 2, 3));
 
-        assertThat(new TokenUsage(1, 2, 3))
-                .isEqualTo(new TokenUsage(1, 2, 3));
+        assertThat(new TokenUsage(1, 2, 3)).isEqualTo(new TokenUsage(1, 2, 3));
     }
 
     @Test
-    public void test_accessors() {
+    void accessors() {
         {
             TokenUsage tu = new TokenUsage(1, 2, 3);
             assertThat(tu.inputTokenCount()).isEqualTo(1);
@@ -38,7 +34,7 @@ class TokenUsageTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_hash() {
+    void equals_hash() {
         TokenUsage tu1 = new TokenUsage(1, 2, 3);
         TokenUsage tu2 = new TokenUsage(1, 2, 3);
 
@@ -49,21 +45,15 @@ class TokenUsageTest implements WithAssertions {
                 .isEqualTo(tu2)
                 .hasSameHashCodeAs(tu2);
 
-        assertThat(new TokenUsage(null, 2, 3))
-                .isNotEqualTo(tu1)
-                .doesNotHaveSameHashCodeAs(tu1);
+        assertThat(new TokenUsage(null, 2, 3)).isNotEqualTo(tu1).doesNotHaveSameHashCodeAs(tu1);
 
-        assertThat(new TokenUsage(1, null, 3))
-                .isNotEqualTo(tu1)
-                .doesNotHaveSameHashCodeAs(tu1);
+        assertThat(new TokenUsage(1, null, 3)).isNotEqualTo(tu1).doesNotHaveSameHashCodeAs(tu1);
 
-        assertThat(new TokenUsage(1, 2, null))
-                .isNotEqualTo(tu1)
-                .doesNotHaveSameHashCodeAs(tu1);
+        assertThat(new TokenUsage(1, 2, null)).isNotEqualTo(tu1).doesNotHaveSameHashCodeAs(tu1);
     }
 
     @Test
-    public void test_toString() {
+    void to_string() {
         assertThat(new TokenUsage(1, 2, 3))
                 .hasToString("TokenUsage { inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }");
         assertThat(new TokenUsage(null, null, null))
@@ -71,34 +61,20 @@ class TokenUsageTest implements WithAssertions {
     }
 
     @Test
-    public void test_sum() {
-        assertThat(sum(
-                new TokenUsage(1, 2, 3),
-                new TokenUsage(4, 5, 6)
-        )).isEqualTo(new TokenUsage(5, 7, 9));
+    void test_sum() {
+        assertThat(sum(new TokenUsage(1, 2, 3), new TokenUsage(4, 5, 6))).isEqualTo(new TokenUsage(5, 7, 9));
 
-        assertThat(sum(
-                new TokenUsage(1, 2, 3),
-                new TokenUsage(null, null, null)
-        )).isEqualTo(new TokenUsage(1, 2, 3));
+        assertThat(sum(new TokenUsage(1, 2, 3), new TokenUsage(null, null, null)))
+                .isEqualTo(new TokenUsage(1, 2, 3));
 
-        assertThat(sum(new TokenUsage(null, null, null),
-                new TokenUsage(4, 5, 6)
-        )).isEqualTo(new TokenUsage(4, 5, 6));
+        assertThat(sum(new TokenUsage(null, null, null), new TokenUsage(4, 5, 6)))
+                .isEqualTo(new TokenUsage(4, 5, 6));
 
-        assertThat(sum(
-                new TokenUsage(null, null, null),
-                new TokenUsage(null, null, null)
-        )).isEqualTo(new TokenUsage(null, null, null));
+        assertThat(sum(new TokenUsage(null, null, null), new TokenUsage(null, null, null)))
+                .isEqualTo(new TokenUsage(null, null, null));
 
-        assertThat(sum(
-                new TokenUsage(1, 2, 3),
-                null
-        )).isEqualTo(new TokenUsage(1, 2, 3));
+        assertThat(sum(new TokenUsage(1, 2, 3), null)).isEqualTo(new TokenUsage(1, 2, 3));
 
-        assertThat(sum(
-                null,
-                new TokenUsage(4, 5, 6)
-        )).isEqualTo(new TokenUsage(4, 5, 6));
+        assertThat(sum(null, new TokenUsage(4, 5, 6))).isEqualTo(new TokenUsage(4, 5, 6));
     }
 }

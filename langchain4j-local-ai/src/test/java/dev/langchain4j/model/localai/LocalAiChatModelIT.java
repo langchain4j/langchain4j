@@ -3,8 +3,8 @@ package dev.langchain4j.model.localai;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,11 +13,11 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
+class LocalAiChatModelIT {
 
-    ChatLanguageModel model = LocalAiChatModel.builder()
-            .baseUrl(localAi.getBaseUrl())
-            .modelName("ggml-gpt4all-j")
+    ChatModel model = LocalAiChatModel.builder()
+            .baseUrl("http://localhost:8082/v1")
+            .modelName("gpt-4")
             .maxTokens(3)
             .logRequests(true)
             .logResponses(true)
@@ -30,7 +30,7 @@ class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
         String userMessage = "hello";
 
         // when
-        String response = model.generate(userMessage);
+        String response = model.chat(userMessage);
 
         // then
         assertThat(response).isNotBlank();
@@ -43,10 +43,10 @@ class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
         List<ChatMessage> messages = singletonList(UserMessage.from("hello"));
 
         // when
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
 
         assertThat(response.tokenUsage()).isNull();

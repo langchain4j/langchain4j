@@ -3,7 +3,6 @@ package dev.langchain4j.data.document.splitter;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-
 class SegmentBuilderTest implements WithAssertions {
     @Test
     void shouldAppendText() {
@@ -15,10 +14,8 @@ class SegmentBuilderTest implements WithAssertions {
     }
 
     @Test
-    public void test_by_words() {
-        SegmentBuilder builder = new SegmentBuilder(10,
-                text -> text.split(" ").length,
-                " ; ");
+    void by_words() {
+        SegmentBuilder builder = new SegmentBuilder(10, text -> text.split(" ").length, " ; ");
 
         builder.append("one fish");
 
@@ -37,10 +34,8 @@ class SegmentBuilderTest implements WithAssertions {
     }
 
     @Test
-    public void test_reset() {
-        SegmentBuilder builder = new SegmentBuilder(10,
-                text -> text.split(" ").length,
-                " ; ");
+    void reset() {
+        SegmentBuilder builder = new SegmentBuilder(10, text -> text.split(" ").length, " ; ");
 
         builder.append("one fish");
 
@@ -51,12 +46,12 @@ class SegmentBuilderTest implements WithAssertions {
         builder.reset();
 
         assertThat(builder.isNotEmpty()).isFalse();
-        assertThat(builder.getSize()).isEqualTo(0);
+        assertThat(builder.getSize()).isZero();
         assertThat(builder.toString()).isEqualTo("");
     }
 
     @Test
-    public void test_append_prepend() {
+    void append_prepend() {
         {
             SegmentBuilder builder = new SegmentBuilder(10, String::length, " ");
             builder.append("Hello");

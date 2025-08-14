@@ -1,15 +1,16 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class NotTest {
@@ -25,10 +26,17 @@ class NotTest {
     }
 
     @Test
+    void shouldReturnFalseWhenNotMetadata() {
+        boolean result = subject.test(new Object());
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
     void shouldReturnFalseWhenFilterReturnsTrue() {
         Mockito.when(filter.test(any())).thenReturn(true);
 
-        boolean result = subject.test(new Object());
+        boolean result = subject.test(new Metadata());
 
         assertThat(result).isFalse();
     }
@@ -37,7 +45,7 @@ class NotTest {
     void shouldReturnTrueWhenFilterReturnsFalse() {
         Mockito.when(filter.test(any())).thenReturn(false);
 
-        boolean result = subject.test(new Object());
+        boolean result = subject.test(new Metadata());
 
         assertThat(result).isTrue();
     }
@@ -58,9 +66,7 @@ class NotTest {
     void shouldReturnTrueForEqualsWithSameExpression() {
         Not anotherWithSameExp = new Not(filter);
 
-        assertThat(subject)
-            .isEqualTo(anotherWithSameExp)
-            .hasSameHashCodeAs(anotherWithSameExp);
+        assertThat(subject).isEqualTo(anotherWithSameExp).hasSameHashCodeAs(anotherWithSameExp);
     }
 
     @Test

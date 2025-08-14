@@ -1,135 +1,169 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.output.Response;
-import lombok.extern.slf4j.Slf4j;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.emptyList;
 
-@Experimental
-@Slf4j
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+
 abstract class BaseGeminiChatModel {
+
     protected final GeminiService geminiService;
-    protected final String apiKey;
-    protected final String modelName;
-    protected final Double temperature;
-    protected final Integer topK;
-    protected final Double topP;
-    protected final Integer maxOutputTokens;
-    protected final List<String> stopSequences;
-    protected final ResponseFormat responseFormat;
-    protected final GeminiFunctionCallingConfig toolConfig;
+    protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
+    protected final GeminiThinkingConfig thinkingConfig;
+    protected final Boolean returnThinking;
+    protected final boolean sendThinking;
+    protected final Integer seed;
+    protected final Integer logprobs;
+    protected final Boolean responseLogprobs;
+    protected final Boolean enableEnhancedCivicAnswers;
+
+    protected final ChatRequestParameters defaultRequestParameters;
 
     protected BaseGeminiChatModel(
-        String apiKey,
-        String modelName,
-        Double temperature,
-        Integer topK,
-        Double topP,
-        Integer maxOutputTokens,
-        Duration timeout,
-        ResponseFormat responseFormat,
-        List<String> stopSequences,
-        GeminiFunctionCallingConfig toolConfig,
-        Boolean allowCodeExecution,
-        Boolean includeCodeExecutionOutput,
-        Boolean logRequestsAndResponses,
-        List<GeminiSafetySetting> safetySettings,
-        List<ChatModelListener> listeners,
-        Integer maxRetries
-    ) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
-        this.topK = topK;
-        this.topP = topP;
-        this.maxOutputTokens = maxOutputTokens;
-        this.stopSequences = getOrDefault(stopSequences, emptyList());
-        this.toolConfig = toolConfig;
+            HttpClientBuilder httpClientBuilder,
+            String apiKey,
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Integer topK,
+            Integer seed,
+            Double topP,
+            Double frequencyPenalty,
+            Double presencePenalty,
+            Integer maxOutputTokens,
+            Integer logprobs,
+            Duration timeout,
+            ResponseFormat responseFormat,
+            List<String> stopSequences,
+            GeminiFunctionCallingConfig functionCallingConfig,
+            Boolean allowCodeExecution,
+            Boolean includeCodeExecutionOutput,
+            Boolean logRequestsAndResponses,
+            Boolean responseLogprobs,
+            Boolean enableEnhancedCivicAnswers,
+            List<GeminiSafetySetting> safetySettings,
+            List<ChatModelListener> listeners,
+            Integer maxRetries,
+            GeminiThinkingConfig thinkingConfig,
+            Boolean returnThinking,
+            Boolean sendThinking,
+            ChatRequestParameters defaultRequestParameters) {
+        ensureNotBlank(apiKey, "apiKey");
+        this.geminiService = new GeminiService(
+                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
+
+        this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
         this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(safetySettings);
-        this.responseFormat = responseFormat;
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.geminiService = new GeminiService(
-            getOrDefault(logRequestsAndResponses, false) ? log : null,
-            getOrDefault(timeout, ofSeconds(60))
-        );
+        this.listeners = copy(listeners);
+        this.maxRetries = getOrDefault(maxRetries, 2);
+        this.thinkingConfig = thinkingConfig;
+        this.returnThinking = returnThinking;
+        this.sendThinking = getOrDefault(sendThinking, false);
+        this.seed = seed;
+        this.responseLogprobs = getOrDefault(responseLogprobs, false);
+        this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
+        this.logprobs = logprobs;
+
+        ChatRequestParameters parameters;
+        if (defaultRequestParameters != null) {
+            parameters = defaultRequestParameters;
+        } else {
+            parameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        this.defaultRequestParameters = ChatRequestParameters.builder()
+                .modelName(getOrDefault(modelName, parameters.modelName()))
+                .temperature(getOrDefault(temperature, parameters.temperature()))
+                .topP(getOrDefault(topP, parameters.topP()))
+                .topK(getOrDefault(topK, parameters.topK()))
+                .frequencyPenalty(getOrDefault(frequencyPenalty, parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(presencePenalty, parameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(maxOutputTokens, parameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(stopSequences, parameters.stopSequences()))
+                .toolSpecifications(parameters.toolSpecifications())
+                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
+                .responseFormat(getOrDefault(responseFormat, parameters.responseFormat()))
+                .build();
     }
 
-    protected GeminiGenerateContentRequest createGenerateContentRequest(
-        List<ChatMessage> messages,
-        List<ToolSpecification> toolSpecifications,
-        ResponseFormat responseFormat
-    ) {
-        GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList = fromMessageToGContent(messages, systemInstruction);
+    protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
 
+        GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
+        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+
+        ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
         if (responseFormat != null && responseFormat.jsonSchema() != null) {
             schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
         }
 
         return GeminiGenerateContentRequest.builder()
-            .contents(geminiContentList)
-            .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
-            .generationConfig(GeminiGenerationConfig.builder()
-                .candidateCount(1) // Multiple candidates aren't supported by langchain4j
-                .maxOutputTokens(this.maxOutputTokens)
-                .responseMimeType(computeMimeType(responseFormat))
-                .responseSchema(schema)
-                .stopSequences(this.stopSequences)
-                .temperature(this.temperature)
-                .topK(this.topK)
-                .topP(this.topP)
-                .build())
-            .safetySettings(this.safetySettings)
-            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
-            .toolConfig(new GeminiToolConfig(this.toolConfig))
-            .build();
+                .model(chatRequest.modelName())
+                .contents(geminiContentList)
+                .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
+                .generationConfig(GeminiGenerationConfig.builder()
+                        .candidateCount(1) // Multiple candidates aren't supported by langchain4j
+                        .maxOutputTokens(parameters.maxOutputTokens())
+                        .responseMimeType(computeMimeType(responseFormat))
+                        .responseSchema(schema)
+                        .stopSequences(parameters.stopSequences())
+                        .temperature(parameters.temperature())
+                        .topK(parameters.topK())
+                        .seed(seed)
+                        .topP(parameters.topP())
+                        .presencePenalty(parameters.presencePenalty())
+                        .frequencyPenalty(parameters.frequencyPenalty())
+                        .responseLogprobs(responseLogprobs)
+                        .logprobs(logprobs)
+                        .thinkingConfig(this.thinkingConfig)
+                        .build())
+                .safetySettings(this.safetySettings)
+                .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
+                .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                .build();
     }
 
-    protected ChatModelRequest createChatModelRequest(
-        List<ChatMessage> messages,
-        List<ToolSpecification> toolSpecifications
-    ) {
-        return ChatModelRequest.builder()
-            .model(modelName)
-            .temperature(temperature)
-            .topP(topP)
-            .maxTokens(maxOutputTokens)
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+    private GeminiToolConfig toToolConfig(ToolChoice toolChoice, GeminiFunctionCallingConfig functionCallingConfig) {
+        if (toolChoice == null && functionCallingConfig == null) {
+            return null;
+        }
+
+        GeminiMode geminiMode = Optional.ofNullable(functionCallingConfig)
+                .map(GeminiFunctionCallingConfig::getMode)
+                .orElse(null);
+        List<String> allowedFunctionNames = Optional.ofNullable(functionCallingConfig)
+                .map(GeminiFunctionCallingConfig::getAllowedFunctionNames)
+                .orElse(null);
+
+        if (toolChoice != null) {
+            geminiMode = toGeminiMode(toolChoice);
+        }
+
+        return new GeminiToolConfig(new GeminiFunctionCallingConfig(geminiMode, allowedFunctionNames));
     }
 
     protected static String computeMimeType(ResponseFormat responseFormat) {
@@ -137,56 +171,32 @@ abstract class BaseGeminiChatModel {
             return "text/plain";
         }
 
-        if (ResponseFormatType.JSON.equals(responseFormat.type()) &&
-            responseFormat.jsonSchema() != null &&
-            responseFormat.jsonSchema().rootElement() != null &&
-            responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+        if (ResponseFormatType.JSON.equals(responseFormat.type())
+                && responseFormat.jsonSchema() != null
+                && responseFormat.jsonSchema().rootElement() != null
+                && responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
             return "text/x.enum";
         }
 
         return "application/json";
     }
 
-    protected void notifyListenersOnRequest(ChatModelRequestContext context) {
-        listeners.forEach((listener) -> {
-            try {
-                listener.onRequest(context);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener (onRequest)", e);
-            }
-        });
+    private static GeminiMode toGeminiMode(ToolChoice toolChoice) {
+        return switch (toolChoice) {
+            case AUTO -> GeminiMode.AUTO;
+            case REQUIRED -> GeminiMode.ANY;
+        };
     }
 
-    protected void notifyListenersOnResponse(Response<AiMessage> response, ChatModelRequest request,
-                                             ConcurrentHashMap<Object, Object> attributes) {
-        ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-            .model(modelName)
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
-        ChatModelResponseContext context = new ChatModelResponseContext(
-            chatModelResponse, request, attributes);
-        listeners.forEach((listener) -> {
-            try {
-                listener.onResponse(context);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener (onResponse)", e);
-            }
-        });
-    }
+    private static ToolChoice toToolChoice(GeminiFunctionCallingConfig config) {
+        if (config == null || config.getMode() == null) {
+            return null;
+        }
 
-    protected void notifyListenersOnError(Exception exception, ChatModelRequest request,
-                                          ConcurrentHashMap<Object, Object> attributes) {
-        listeners.forEach((listener) -> {
-            try {
-                ChatModelErrorContext context = new ChatModelErrorContext(
-                    exception, request, null, attributes);
-                listener.onError(context);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener (onError)", e);
-            }
-        });
+        return switch (config.getMode()) {
+            case AUTO -> ToolChoice.AUTO;
+            case ANY -> ToolChoice.REQUIRED;
+            case NONE -> null;
+        };
     }
 }
-

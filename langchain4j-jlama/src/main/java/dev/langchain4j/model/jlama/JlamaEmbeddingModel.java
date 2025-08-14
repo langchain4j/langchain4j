@@ -10,7 +10,6 @@ import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.jlama.spi.JlamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,7 +22,6 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final BertModel model;
     private final Generator.PoolingType poolingType;
 
-    @Builder
     public JlamaEmbeddingModel(Path modelCachePath,
                                String modelName,
                                String authToken,
@@ -33,7 +31,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 2);
 
         if (jlamaModel.getModelType() != ModelSupport.ModelType.BERT) {
             throw new IllegalArgumentException("Model type must be BERT");
@@ -76,9 +74,60 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class JlamaEmbeddingModelBuilder {
+        private Path modelCachePath;
+        private String modelName;
+        private String authToken;
+        private Integer threadCount;
+        private Boolean quantizeModelAtRuntime;
+        private Generator.PoolingType poolingType;
+        private Path workingDirectory;
+
         public JlamaEmbeddingModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public JlamaEmbeddingModelBuilder modelCachePath(Path modelCachePath) {
+            this.modelCachePath = modelCachePath;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder authToken(String authToken) {
+            this.authToken = authToken;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder threadCount(Integer threadCount) {
+            this.threadCount = threadCount;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder quantizeModelAtRuntime(Boolean quantizeModelAtRuntime) {
+            this.quantizeModelAtRuntime = quantizeModelAtRuntime;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder poolingType(Generator.PoolingType poolingType) {
+            this.poolingType = poolingType;
+            return this;
+        }
+
+        public JlamaEmbeddingModelBuilder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
+            return this;
+        }
+
+        public JlamaEmbeddingModel build() {
+            return new JlamaEmbeddingModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.poolingType, this.workingDirectory);
+        }
+
+        public String toString() {
+            return "JlamaEmbeddingModel.JlamaEmbeddingModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", poolingType=" + this.poolingType + ", workingDirectory=" + this.workingDirectory + ")";
         }
     }
 }

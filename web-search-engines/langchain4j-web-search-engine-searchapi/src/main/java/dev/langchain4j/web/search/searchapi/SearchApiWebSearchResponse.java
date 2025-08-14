@@ -3,14 +3,10 @@ package dev.langchain4j.web.search.searchapi;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
 
-@Getter
-@NoArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 class SearchApiWebSearchResponse {
@@ -36,10 +32,31 @@ class SearchApiWebSearchResponse {
      * May or may not be present
      */
     private Map<String, Object> searchMetadata;
+
+    public SearchApiWebSearchResponse() {
+    }
+
+    public List<OrganicResult> getOrganicResults() {
+        return this.organicResults;
+    }
+
+    public Map<String, Object> getSearchParameters() {
+        return this.searchParameters;
+    }
+
+    public Map<String, Object> getPagination() {
+        return this.pagination;
+    }
+
+    public Map<String, Object> getSearchInformation() {
+        return this.searchInformation;
+    }
+
+    public Map<String, Object> getSearchMetadata() {
+        return this.searchMetadata;
+    }
 }
 
-@Getter
-@NoArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 class OrganicResult {
@@ -52,4 +69,23 @@ class OrganicResult {
      * May or may not be present
      */
     private String snippet;
+
+    public OrganicResult() {
+    }
+
+    public String getTitle() {
+        return this.title;
+    }
+
+    public String getLink() {
+        return this.link;
+    }
+
+    public String getPosition() {
+        return this.position;
+    }
+
+    public String getSnippet() {
+        return this.snippet;
+    }
 }

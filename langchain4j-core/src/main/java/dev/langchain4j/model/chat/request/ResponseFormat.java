@@ -1,13 +1,11 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
 public class ResponseFormat {
 
     public static final ResponseFormat TEXT = ResponseFormat.builder().type(ResponseFormatType.TEXT).build();

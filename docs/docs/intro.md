@@ -20,7 +20,7 @@ Here's how:
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
-   to high-level patterns like AI Services and RAG.
+   to high-level patterns like Agents and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
    LangChain4j offers a wide variety of options.
@@ -40,7 +40,7 @@ The library is under active development. While some features are still being wor
 the core functionality is in place, allowing you to start building LLM-powered apps now!
 
 For easier integration, LangChain4j also includes integration with
-[Quarkus](/tutorials/quarkus-integration) and [Spring Boot](/tutorials/spring-boot-integration).
+[Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration), [Helidon](/tutorials/helidon-integration) and [Micronaut](/tutorials/micronaut-integration)
 
 
 ## LangChain4j Features
@@ -74,11 +74,12 @@ For easier integration, LangChain4j also includes integration with
     - Customization of each step in the RAG flow
 - Text classification
 - Tools for tokenization and estimation of token counts
+- [Kotlin Extensions](/tutorials/kotlin): Asynchronous non-blocking handling of chat interactions using Kotlin's coroutine capabilities.
 
 ## 2 levels of abstraction
 LangChain4j operates on two levels of abstraction:
 - Low level. At this level, you have the most freedom and access to all the low-level components such as
-[ChatLanguageModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
+[ChatModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
 These are the "primitives" of your LLM-powered application.
 You have complete control over how to combine them, but you will need to write more glue code.
 - High level. At this level, you interact with LLMs using high-level APIs like [AI Services](/tutorials/ai-services),
@@ -90,7 +91,7 @@ You still have the flexibility to adjust and fine-tune the behavior, but it is d
 
 ## LangChain4j Library Structure
 LangChain4j features a modular design, comprising:
-- The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
+- The `langchain4j-core` module, which defines core abstractions (such as `ChatModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like document loaders, [chat memory](/tutorials/chat-memory) implementations as well as a high-level features like [AI Services](/tutorials/ai-services).
 - A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
@@ -132,3 +133,9 @@ Here are some examples:
   - Summarize
   - Proofread and rewrite
   - Translate
+
+## Community Integrations
+LangChain4j maintains some integrations in [community repo](https://github.com/langchain4j/langchain4j-community). 
+They support the same functionality as integrations in the main repository. 
+The only difference between them is that community has different artifact and package name from the main repo (i.e. the `community` prefix in artifact and package name).
+The community was created to separate the maintenance of some integrations, thus making it easier to maintain the main repository.

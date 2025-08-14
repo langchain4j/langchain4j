@@ -1,16 +1,15 @@
 package dev.langchain4j.web.search.tavily;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchResults;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.net.URI;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".+")
 class TavilyWebSearchEngineIT extends WebSearchEngineIT {
@@ -36,11 +35,10 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isNotBlank();
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
-        assertThat(results).anyMatch(result -> result.content().contains("LangChain4j"));
+        assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
     @Test
@@ -64,7 +62,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
         assertThat(answerResult.snippet()).isNotBlank();
         assertThat(answerResult.content()).isNull();
-        assertThat(answerResult.metadata()).isNull();
+        assertThat(answerResult.metadata()).isEmpty();
 
         results.subList(1, results.size()).forEach(result -> {
             assertThat(result.title()).isNotBlank();
@@ -73,8 +71,23 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.content()).isNull();
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
+    }
 
-        assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j.dev"));
+    @Test
+    void complex_url_parsing() {
+
+        // given
+        TavilyWebSearchEngine tavilyWebSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .includeAnswer(true)
+                .build();
+
+        // when
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("Release notes for ADP Workforce Now");
+
+        // then
+        List<WebSearchOrganicResult> results = webSearchResults.results();
+        assertThat(results).hasSize(5 + 1); // +1 for answer
     }
 
     @Override

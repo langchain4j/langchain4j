@@ -2,8 +2,11 @@ package dev.langchain4j.model.jina.internal.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.jina.internal.api.*;
-import lombok.Builder;
+import dev.langchain4j.model.jina.internal.api.JinaApi;
+import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
+import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
+import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
+import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
@@ -21,7 +24,6 @@ public class JinaClient {
     private final JinaApi jinaApi;
     private final String authorizationHeader;
 
-    @Builder
     JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
@@ -47,10 +49,14 @@ public class JinaClient {
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
     }
 
+    public static JinaClientBuilder builder() {
+        return new JinaClientBuilder();
+    }
+
     public JinaEmbeddingResponse embed(JinaEmbeddingRequest request) {
         try {
-            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse
-                    = jinaApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse =
+                    jinaApi.embed(request, authorizationHeader).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -63,8 +69,8 @@ public class JinaClient {
 
     public JinaRerankingResponse rerank(JinaRerankingRequest request) {
         try {
-            retrofit2.Response<JinaRerankingResponse> retrofitResponse
-                    = jinaApi.rerank(request, authorizationHeader).execute();
+            retrofit2.Response<JinaRerankingResponse> retrofitResponse =
+                    jinaApi.rerank(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -81,5 +87,49 @@ public class JinaClient {
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    public static class JinaClientBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private boolean logRequests;
+        private boolean logResponses;
+
+        JinaClientBuilder() {
+        }
+
+        public JinaClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public JinaClientBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public JinaClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public JinaClientBuilder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public JinaClientBuilder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public JinaClient build() {
+            return new JinaClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "JinaClient.JinaClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

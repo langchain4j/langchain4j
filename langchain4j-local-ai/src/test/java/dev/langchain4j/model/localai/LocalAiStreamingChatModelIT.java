@@ -1,9 +1,9 @@
 package dev.langchain4j.model.localai;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -12,11 +12,11 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
+class LocalAiStreamingChatModelIT {
 
-    StreamingChatLanguageModel model = LocalAiStreamingChatModel.builder()
-            .baseUrl(localAi.getBaseUrl())
-            .modelName("ggml-gpt4all-j")
+    StreamingChatModel model = LocalAiStreamingChatModel.builder()
+            .baseUrl("http://localhost:8082/v1")
+            .modelName("gpt-4")
             .maxTokens(3)
             .logRequests(true)
             .logResponses(true)
@@ -30,18 +30,18 @@ class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
 
         // when
         StringBuilder answerBuilder = new StringBuilder();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+        model.chat(userMessage, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
+            public void onPartialResponse(String partialResponse) {
+                answerBuilder.append(partialResponse);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -50,16 +50,16 @@ class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
         String streamedAnswer = answerBuilder.toString();
 
         // then
         assertThat(streamedAnswer).isNotBlank();
 
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(streamedAnswer);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 }

@@ -40,7 +40,11 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @AfterEach
     protected void clear() {
-        embeddingStore.removeAll();
+        try {
+            embeddingStore.removeAll();
+        } catch (Exception e) {
+            // ignore
+        }
     }
 
     @Override

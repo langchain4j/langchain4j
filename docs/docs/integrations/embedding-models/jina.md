@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Jina
@@ -13,7 +13,7 @@ https://jina.ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jina</artifactId>
-    <version>0.35.0</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 

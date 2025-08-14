@@ -1,19 +1,14 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import oracle.sql.CHAR;
-import oracle.sql.CharacterSet;
-import oracle.ucp.jdbc.PoolDataSource;
-import oracle.ucp.jdbc.PoolDataSourceFactory;
-import org.testcontainers.oracle.OracleContainer;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,8 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import javax.sql.DataSource;
+import oracle.jdbc.OracleConnection;
+import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
+import oracle.ucp.jdbc.PoolDataSource;
+import oracle.ucp.jdbc.PoolDataSourceFactory;
+import org.testcontainers.oracle.OracleContainer;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -40,37 +40,34 @@ final class CommonTestOperations {
     /** Name of a database table used by tests */
     public static final String TABLE_NAME = "LANGCHAIN4J_EMBEDDING_STORE";
 
+    private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+    private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+
+    private static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-slim-faststart";
+
     /**
      * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to
      * re-execute it with the same random numbers.
      */
-    private static final long SEED = Long.getLong(
-            "dev.langchain4j.store.embedding.oracle.SEED", System.currentTimeMillis());
-    static {
-        Logger.getLogger(CommonTestOperations.class.getName())
-                .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
-    }
+    private static final long SEED =
+            Long.getLong("dev.langchain4j.store.embedding.oracle.SEED", System.currentTimeMillis());
 
     /**
      * Used to generate random numbers, such as those for an embedding vector.
      */
     private static final Random RANDOM = new Random(SEED);
 
-    private CommonTestOperations() {}
-
-    private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
-
-    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.5-slim-faststart";
-
     static {
+        Logger.getLogger(CommonTestOperations.class.getName())
+                .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
+
         try {
             DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
             String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
 
             if (urlFromEnv == null) {
                 // The Ryuk component is relied upon to stop this container.
-                OracleContainer oracleContainer =
-                    new OracleContainer(ORACLE_IMAGE_NAME)
+                OracleContainer oracleContainer = new OracleContainer(ORACLE_IMAGE_NAME)
                         .withStartupTimeout(Duration.ofSeconds(600))
                         .withConnectTimeoutSeconds(600)
                         .withDatabaseName("pdb1")
@@ -78,16 +75,39 @@ final class CommonTestOperations {
                         .withPassword("testpwd");
                 oracleContainer.start();
 
-                DATA_SOURCE.setURL(oracleContainer.getJdbcUrl());
-                DATA_SOURCE.setUser(oracleContainer.getUsername());
-                DATA_SOURCE.setPassword(oracleContainer.getPassword());
+                initDataSource(
+                        DATA_SOURCE,
+                        oracleContainer.getJdbcUrl(),
+                        oracleContainer.getUsername(),
+                        oracleContainer.getPassword());
+                initDataSource(SYSDBA_DATA_SOURCE, oracleContainer.getJdbcUrl(), "sys", oracleContainer.getPassword());
+            } else {
+                initDataSource(
+                        DATA_SOURCE,
+                        urlFromEnv,
+                        System.getenv("ORACLE_JDBC_USER"),
+                        System.getenv("ORACLE_JDBC_PASSWORD"));
+                initDataSource(
+                        SYSDBA_DATA_SOURCE,
+                        urlFromEnv,
+                        System.getenv("ORACLE_JDBC_USER"),
+                        System.getenv("ORACLE_JDBC_PASSWORD"));
             }
-            else {
-                DATA_SOURCE.setURL(urlFromEnv);
-                DATA_SOURCE.setUser(System.getenv("ORACLE_JDBC_USER"));
-                DATA_SOURCE.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
-            }
+            SYSDBA_DATA_SOURCE.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_INTERNAL_LOGON, "SYSDBA");
 
+        } catch (SQLException sqlException) {
+            throw new AssertionError(sqlException);
+        }
+    }
+
+    private CommonTestOperations() {}
+
+    static void initDataSource(PoolDataSource dataSource, String url, String username, String password) {
+        try {
+            dataSource.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
+            dataSource.setURL(url);
+            dataSource.setUser(username);
+            dataSource.setPassword(password);
         } catch (SQLException sqlException) {
             throw new AssertionError(sqlException);
         }
@@ -99,6 +119,10 @@ final class CommonTestOperations {
 
     static DataSource getDataSource() {
         return DATA_SOURCE;
+    }
+
+    static DataSource getSysDBADataSource() {
+        return SYSDBA_DATA_SOURCE;
     }
 
     /**
@@ -145,7 +169,7 @@ final class CommonTestOperations {
      */
     static void dropTable(String tableName) throws SQLException {
         try (Connection connection = DATA_SOURCE.getConnection();
-             Statement statement = connection.createStatement()) {
+                Statement statement = connection.createStatement()) {
             statement.addBatch("DROP INDEX IF EXISTS " + tableName + "_EMBEDDING_INDEX");
             statement.addBatch("DROP TABLE IF EXISTS " + tableName);
             statement.executeBatch();
@@ -158,8 +182,8 @@ final class CommonTestOperations {
      */
     static CharacterSet getCharacterSet() throws SQLException {
         try (Connection connection = CommonTestOperations.getDataSource().getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery("SELECT 'c' FROM sys.dual")) {
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery("SELECT 'c' FROM sys.dual")) {
             resultSet.next();
             return resultSet.getObject(1, CHAR.class).getCharacterSet();
         }
@@ -174,8 +198,7 @@ final class CommonTestOperations {
     static float[] randomFloats(int length) {
         float[] floats = new float[length];
 
-        for (int i = 0; i < floats.length; i++)
-            floats[i] = RANDOM.nextFloat();
+        for (int i = 0; i < floats.length; i++) floats[i] = RANDOM.nextFloat();
 
         return floats;
     }
@@ -194,8 +217,7 @@ final class CommonTestOperations {
         float[] vector1 = vector0.clone();
 
         // Only higher indexes are increased in order to effect the cosine angle, and not just magnitude
-        for (int i = 0; i < vector1.length / 2; i++)
-            vector1[i] += 0.1f;
+        for (int i = 0; i < vector1.length / 2; i++) vector1[i] += 0.1f;
 
         List<Embedding> embeddings = new ArrayList<>(2);
         embeddings.add(Embedding.from(vector0));
@@ -211,9 +233,7 @@ final class CommonTestOperations {
 
         // Verify the first vector is matched
         EmbeddingMatch<TextSegment> match =
-                embeddingStore.search(request)
-                        .matches()
-                        .get(0);
+                embeddingStore.search(request).matches().get(0);
         assertThat(match.embeddingId()).isEqualTo(ids.get(1));
         assertThat(match.embedding().vector()).containsExactly(vector1);
     }

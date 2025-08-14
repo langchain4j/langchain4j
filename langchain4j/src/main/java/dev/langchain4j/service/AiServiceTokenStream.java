@@ -1,67 +1,91 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutor;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
+
+@Internal
 public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
+    private final GuardrailRequestParams commonGuardrailParams;
+    private final Object methodKey;
 
-    private Consumer<String> tokenHandler;
+    private Consumer<String> partialResponseHandler;
+    private Consumer<PartialThinking> partialThinkingHandler;
     private Consumer<List<Content>> contentsHandler;
+    private Consumer<ChatResponse> intermediateResponseHandler;
+    private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
+    private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
-    private Consumer<Response<AiMessage>> completionHandler;
 
-    private int onNextInvoked;
-    private int onCompleteInvoked;
+    private int onPartialResponseInvoked;
+    private int onPartialThinkingInvoked;
+    private int onIntermediateResponseInvoked;
+    private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
+    private int beforeToolExecutionInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    public AiServiceTokenStream(List<ChatMessage> messages,
-                                List<ToolSpecification> toolSpecifications,
-                                Map<String, ToolExecutor> toolExecutors,
-                                List<Content> retrievedContents,
-                                AiServiceContext context,
-                                Object memoryId) {
-        this.messages = ensureNotEmpty(messages, "messages");
-        this.toolSpecifications = copyIfNotNull(toolSpecifications);
-        this.toolExecutors = copyIfNotNull(toolExecutors);
-        this.retrievedContents = retrievedContents;
-        this.context = ensureNotNull(context, "context");
-        this.memoryId = ensureNotNull(memoryId, "memoryId");
-        ensureNotNull(context.streamingChatModel, "streamingChatModel");
+    /**
+     * Creates a new instance of {@link AiServiceTokenStream} with the given parameters.
+     *
+     * @param parameters the parameters for creating the token stream
+     */
+    public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
+        ensureNotNull(parameters, "parameters");
+        this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
+        this.toolSpecifications = copy(parameters.toolSpecifications());
+        this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolExecutor = parameters.toolExecutor();
+        this.retrievedContents = copy(parameters.gretrievedContents());
+        this.context = ensureNotNull(parameters.context(), "context");
+        ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
+        this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
+        this.commonGuardrailParams = parameters.commonGuardrailParams();
+        this.methodKey = parameters.methodKey();
     }
 
     @Override
-    public TokenStream onNext(Consumer<String> tokenHandler) {
-        this.tokenHandler = tokenHandler;
-        this.onNextInvoked++;
+    public TokenStream onPartialResponse(Consumer<String> partialResponseHandler) {
+        this.partialResponseHandler = partialResponseHandler;
+        this.onPartialResponseInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
+        this.partialThinkingHandler = partialThinkingHandler;
+        this.onPartialThinkingInvoked++;
         return this;
     }
 
@@ -73,6 +97,20 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
+        this.intermediateResponseHandler = intermediateResponseHandler;
+        this.onIntermediateResponseInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        this.beforeToolExecutionHandler = beforeToolExecutionHandler;
+        this.beforeToolExecutionInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
         this.toolExecutionHandler = toolExecutionHandler;
         this.onToolExecutedInvoked++;
@@ -80,9 +118,9 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
-        this.completionHandler = completionHandler;
-        this.onCompleteInvoked++;
+    public TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler) {
+        this.completeResponseHandler = completionHandler;
+        this.onCompleteResponseInvoked++;
         return this;
     }
 
@@ -104,53 +142,80 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
+        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                ChatRequest.builder()
+                        .messages(messages)
+                        .toolSpecifications(toolSpecifications)
+                        .build(),
+                memoryId);
+
+        ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
+                .errorHandler(errorHandler)
+                .chatRequest(chatRequest)
+                .build();
+
+        var handler = new AiServiceStreamingResponseHandler(
+                chatExecutor,
                 context,
                 memoryId,
-                tokenHandler,
+                partialResponseHandler,
+                partialThinkingHandler,
+                beforeToolExecutionHandler,
                 toolExecutionHandler,
-                completionHandler,
+                intermediateResponseHandler,
+                completeResponseHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolSpecifications,
-                toolExecutors
-        );
+                toolExecutors,
+                toolExecutor,
+                commonGuardrailParams,
+                methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
         }
 
-        if (isNullOrEmpty(toolSpecifications)) {
-            context.streamingChatModel.generate(messages, handler);
-        } else {
-            context.streamingChatModel.generate(messages, toolSpecifications, handler);
-        }
+        context.streamingChatModel.chat(chatRequest, handler);
     }
 
     private void validateConfiguration() {
-        if (onNextInvoked != 1) {
-            throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
+        if (onPartialResponseInvoked != 1) {
+            throw new IllegalConfigurationException("onPartialResponse must be invoked on TokenStream exactly 1 time");
         }
-        if (onCompleteInvoked > 1) {
-            throw new IllegalConfigurationException("onComplete must be invoked at most 1 time");
+        if (onPartialThinkingInvoked > 1) {
+            throw new IllegalConfigurationException("onPartialThinking can be invoked on TokenStream at most 1 time");
+        }
+        if (onIntermediateResponseInvoked > 1) {
+            throw new IllegalConfigurationException(
+                    "onIntermediateResponse can be invoked on TokenStream at most 1 time");
+        }
+        if (onCompleteResponseInvoked > 1) {
+            throw new IllegalConfigurationException("onCompleteResponse can be invoked on TokenStream at most 1 time");
         }
         if (onRetrievedInvoked > 1) {
-            throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");
+            throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");
+        }
+        if (beforeToolExecutionInvoked > 1) {
+            throw new IllegalConfigurationException("beforeToolExecution can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
-            throw new IllegalConfigurationException("onToolExecuted must be invoked at most 1 time");
+            throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
-            throw new IllegalConfigurationException("One of onError or ignoreErrors must be invoked exactly 1 time");
+            throw new IllegalConfigurationException(
+                    "One of [onError, ignoreErrors] " + "must be invoked on TokenStream exactly 1 time");
         }
     }
 
-    private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
-        if (context.hasChatMemory()) {
-            return emptyList();
-        } else {
-            return new ArrayList<>(messagesToSend);
+    private ChatMemory initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
+        var chatMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+
+        if (!context.hasChatMemory()) {
+            chatMemory.add(messagesToSend);
         }
+
+        return chatMemory;
     }
 }

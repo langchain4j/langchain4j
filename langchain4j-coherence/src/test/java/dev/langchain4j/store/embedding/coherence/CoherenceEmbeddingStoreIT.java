@@ -11,21 +11,18 @@ import com.oracle.bedrock.runtime.java.options.IPv4Preferred;
 import com.oracle.bedrock.runtime.java.options.SystemProperty;
 import com.oracle.bedrock.runtime.options.DisplayName;
 import com.oracle.bedrock.testsupport.junit.TestLogsExtension;
-
 import com.tangosol.net.Session;
-
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 /**
- * An extension of the LangChain4J {@link EmbeddingStoreIT} tests
+ * An extension of the LangChain4j {@link EmbeddingStoreIT} tests
  * that use Coherence as an {@link EmbeddingStore}.
  */
 class CoherenceEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
@@ -35,15 +32,13 @@ class CoherenceEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("CoherenceEmbeddingStoreIT"),
+            .with(
+                    ClusterName.of("CoherenceEmbeddingStoreIT"),
                     WellKnownAddress.loopback(),
                     LocalHost.only(),
                     IPv4Preferred.autoDetect(),
                     SystemProperty.of("coherence.serializer", "pof"))
-            .include(3, CoherenceClusterMember.class,
-                    DisplayName.of("storage"),
-                    RoleName.of("storage"),
-                    testLogs);
+            .include(3, CoherenceClusterMember.class, DisplayName.of("storage"), RoleName.of("storage"), testLogs);
 
     static Session session;
 
@@ -52,7 +47,7 @@ class CoherenceEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     static CoherenceEmbeddingStore embeddingStore;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         session = cluster.buildSession(SessionBuilders.storageDisabledMember(RoleName.of("test")));
         embeddingStore = CoherenceEmbeddingStore.builder().session(session).build();
     }

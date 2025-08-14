@@ -1,10 +1,10 @@
 package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -37,8 +37,8 @@ class WorkersAiChatModelIT {
     @Test
     void should_generate_answer_and_return_finish_reason_stop() {
         UserMessage userMessage = userMessage("hello, how are you?");
-        Response<AiMessage> response = chatModel.generate(userMessage);
-        assertThat(response.content().text()).isNotBlank();
+        ChatResponse response = chatModel.chat(userMessage);
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -50,10 +50,10 @@ class WorkersAiChatModelIT {
                 "no other text or message, " +
                 "just the name of the city"));
         conversation.add(userMessage("France"));
-        Response<AiMessage> response = chatModel.generate(conversation);
+        ChatResponse response = chatModel.chat(conversation);
         assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
-        assertThat(chatModel.generate(conversation).content().text().toUpperCase()).isEqualTo("PARIS");
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(chatModel.chat(conversation).aiMessage().text().toUpperCase()).isEqualTo("PARIS");
     }
 
     @Test
@@ -62,12 +62,14 @@ class WorkersAiChatModelIT {
         toolSpecifications.add(ToolSpecification.builder().build());
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage("hello, how are you?"));
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
         assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> {
-            chatModel.generate(messages, toolSpecifications);
+            chatModel.chat(request);
         });
     }
-
-
-
-
 }

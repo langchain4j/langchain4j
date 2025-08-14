@@ -1,25 +1,37 @@
 package dev.langchain4j.model.input.structured;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.ToNumberPolicy;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
 
 import java.util.Map;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 /**
  * Default implementation of {@link StructuredPromptFactory}.
  */
-public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
-    private static final Gson GSON = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
+@Internal
+class DefaultStructuredPromptFactory implements StructuredPromptFactory {
+
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .visibility(FIELD, ANY)
+            .build();
+
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
+    };
 
     /**
      * Create a default structured prompt factory.
      */
-    public DefaultStructuredPromptFactory() {}
+    public DefaultStructuredPromptFactory() {
+    }
 
     @Override
     public Prompt toPrompt(Object structuredPrompt) {
@@ -35,12 +47,16 @@ public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
 
     /**
      * Extracts the variables from the structured prompt.
+     *
      * @param structuredPrompt The structured prompt.
      * @return The variables map.
      */
     private static Map<String, Object> extractVariables(Object structuredPrompt) {
-        String json = GSON.toJson(structuredPrompt);
-        TypeToken<Map<String, Object>> mapType = new TypeToken<Map<String, Object>>() {};
-        return GSON.fromJson(json, mapType);
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(structuredPrompt);
+            return OBJECT_MAPPER.readValue(json, MAP_TYPE);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

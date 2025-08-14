@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.BlankDocumentException;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TextDocumentParserTest {
 

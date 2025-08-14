@@ -13,6 +13,8 @@ import com.mongodb.client.result.InsertManyResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.bson.BsonArray;
@@ -108,12 +110,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer m,
             Integer efConstruction,
             Integer efSearch) {
-        if (mongoClient == null && (connectionString == null || connectionString.isEmpty())) {
+        if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or " +
                     "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
         }
 
-        if (databaseName == null || databaseName.isEmpty() || collectionName == null || collectionName.isEmpty()) {
+        if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
             throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
         }
         createIndex = getOrDefault(createIndex, false);
@@ -121,7 +123,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         applicationName = getOrDefault(applicationName, "LangChain4j");
         this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4J only
+        // TODO: update this value as a user input once LangChain4j only
         //  supports other similarity types other than Cosine.
         this.dimensions = getOrDefault(dimensions, 1536);
         this.m = getOrDefault(m, 16);
@@ -182,20 +184,21 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
-        return ids;
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+        return new EmbeddingSearchResult<>(matches);
     }
 
-    @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();
@@ -298,10 +301,11 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
             return;

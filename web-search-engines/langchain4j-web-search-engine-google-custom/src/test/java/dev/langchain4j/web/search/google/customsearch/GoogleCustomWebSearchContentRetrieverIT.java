@@ -1,6 +1,6 @@
 package dev.langchain4j.web.search.google.customsearch;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
 import dev.langchain4j.rag.content.retriever.WebSearchContentRetrieverIT;
@@ -9,6 +9,7 @@ import dev.langchain4j.web.search.WebSearchEngine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
@@ -22,8 +23,9 @@ class GoogleCustomWebSearchContentRetrieverIT extends WebSearchContentRetrieverI
             .logResponses(true)
             .build();
 
-    ChatLanguageModel chatModel = OpenAiChatModel.builder()
+    ChatModel chatModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .modelName(GPT_4_O_MINI)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -42,7 +44,7 @@ class GoogleCustomWebSearchContentRetrieverIT extends WebSearchContentRetrieverI
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatModel)
+                .chatModel(chatModel)
                 .contentRetriever(contentRetriever)
                 .build();
 

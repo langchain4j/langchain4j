@@ -1,22 +1,20 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import dev.langchain4j.store.embedding.TestUtils;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStoreRemovalIT.class);
 
@@ -25,7 +23,7 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
     private final AzureAiSearchEmbeddingStore embeddingStore = AzureAiSearchEmbeddingStore.builder()
             .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
             .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-            .indexName(randomUUID())
+            .indexName("bbb" + randomUUID())
             .dimensions(embeddingModel.dimension())
             .build();
 
@@ -39,17 +37,24 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
         return embeddingModel;
     }
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
-        Thread.sleep(2_000);
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        deleteIndex();
+        sleep();
     }
 
-    @AfterEach
-    void afterEach() {
+    private void deleteIndex() {
         try {
-            embeddingStore.deleteIndex();
+            withRetry(embeddingStore::deleteIndex, 5);
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
+        }
+    }
+
+    private static void sleep() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_AI_SEARCH");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }

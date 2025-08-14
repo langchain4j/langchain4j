@@ -1,14 +1,12 @@
 package dev.langchain4j.data.audio;
 
-import dev.langchain4j.Experimental;
-
 import java.net.URI;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class Audio {
+
     private final URI url;
     private final byte[] audioData;
     private final String base64Data;
@@ -16,6 +14,7 @@ public class Audio {
 
     /**
      * Create a new {@link Audio} from the Builder.
+     *
      * @param builder the builder.
      */
     private Audio(Builder builder) {
@@ -27,6 +26,7 @@ public class Audio {
 
     /**
      * Create a new {@link Builder}.
+     *
      * @return the new {@link Builder}.
      */
     public static Builder builder() {
@@ -35,6 +35,7 @@ public class Audio {
 
     /**
      * Get the url of the audio.
+     *
      * @return the url of the audio, or null if not set.
      */
     public URI url() {
@@ -51,6 +52,7 @@ public class Audio {
 
         /**
      * Get the base64 data of the audio.
+     *
      * @return the base64 data of the audio, or null if not set.
      */
     public String base64Data() {
@@ -59,6 +61,7 @@ public class Audio {
 
     /**
      * Get the mime type of the audio.
+     *
      * @return the mime type of the audio, or null if not set.
      */
     public String mimeType() {
@@ -70,10 +73,9 @@ public class Audio {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
-        return Objects.equals(this.url, that.url)
-            && Objects.equals(this.audioData, that.audioData)
-            && Objects.equals(this.base64Data, that.base64Data)
-            && Objects.equals(this.mimeType, that.mimeType);
+    return Objects.equals(this.url, that.url)
+        && Objects.equals(this.base64Data, that.base64Data)
+        && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -83,12 +85,11 @@ public class Audio {
 
     @Override
     public String toString() {
-        return "Audio {" +
-            " url = " + quoted(url) +
-            ", audioData = " + quoted(audioData) +
-            ", base64Data = " + quoted(base64Data) +
-            ", mimeType = " + quoted(mimeType) +
-            " }";
+    return "Audio {" +
+        " url = " + quoted(url) +
+        ", base64Data = " + quoted(base64Data) +
+        ", mimeType = " + quoted(mimeType) +
+        " }";
     }
 
     /**
@@ -104,10 +105,12 @@ public class Audio {
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {}
+        public Builder() {
+        }
 
         /**
          * Set the url of the audio.
+         *
          * @param url the url of the audio.
          * @return {@code this}
          */
@@ -118,6 +121,7 @@ public class Audio {
 
         /**
          * Set the url of the audio.
+         *
          * @param url the url of the audio.
          * @return {@code this}
          */
@@ -137,6 +141,7 @@ public class Audio {
 
         /**
          * Set the base64 data of the audio.
+         *
          * @param base64Data the base64 data of the audio.
          * @return {@code this}
          */
@@ -147,6 +152,7 @@ public class Audio {
 
         /**
          * Set the mime type of the audio.
+         *
          * @param mimeType the mime type of the audio.
          * @return {@code this}
          */
@@ -157,6 +163,7 @@ public class Audio {
 
         /**
          * Build the {@link Audio}.
+         *
          * @return the {@link Audio}.
          */
         public Audio build() {

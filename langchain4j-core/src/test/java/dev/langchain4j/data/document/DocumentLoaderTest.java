@@ -1,14 +1,12 @@
 package dev.langchain4j.data.document;
 
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class DocumentLoaderTest implements WithAssertions {
     public static final class StringSource implements DocumentSource {
@@ -39,8 +37,7 @@ class DocumentLoaderTest implements WithAssertions {
 
         try {
             try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                while ((readLen = inputStream.read(buf, 0, bufLen)) != -1)
-                    outputStream.write(buf, 0, readLen);
+                while ((readLen = inputStream.read(buf, 0, bufLen)) != -1) outputStream.write(buf, 0, readLen);
 
                 return outputStream.toByteArray();
             }
@@ -49,11 +46,12 @@ class DocumentLoaderTest implements WithAssertions {
             throw e;
         } finally {
             if (exception == null) inputStream.close();
-            else try {
-                inputStream.close();
-            } catch (IOException e) {
-                exception.addSuppressed(e);
-            }
+            else
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    exception.addSuppressed(e);
+                }
         }
     }
 
@@ -72,33 +70,31 @@ class DocumentLoaderTest implements WithAssertions {
     }
 
     @Test
-    public void test_load() {
+    void load() {
         StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
         Document document = DocumentLoader.load(source, new TrivialParser());
         assertThat(document).isEqualTo(Document.from("Hello, world!", new Metadata().put("foo", "bar")));
 
         assertThatExceptionOfType(RuntimeException.class)
-            .isThrownBy(() -> DocumentLoader.load(new DocumentSource() {
-                @Override
-                public InputStream inputStream() throws IOException {
-                    throw new IOException("Failed to open input stream");
-                }
+                .isThrownBy(() -> DocumentLoader.load(
+                        new DocumentSource() {
+                            @Override
+                            public InputStream inputStream() throws IOException {
+                                throw new IOException("Failed to open input stream");
+                            }
 
-                @Override
-                public Metadata metadata() {
-                    return new Metadata();
-                }
-            }, new TrivialParser()))
-            .withMessageContaining("Failed to load document");
+                            @Override
+                            public Metadata metadata() {
+                                return new Metadata();
+                            }
+                        },
+                        new TrivialParser()))
+                .withMessageContaining("Failed to load document");
 
         assertThatExceptionOfType(RuntimeException.class)
-            .isThrownBy(() -> DocumentLoader.load(
-                source,
-                inputStream -> {
+                .isThrownBy(() -> DocumentLoader.load(source, inputStream -> {
                     throw new RuntimeException("Failed to parse document");
-                }
-
-            ))
-            .withMessageContaining("Failed to load document");
+                }))
+                .withMessageContaining("Failed to load document");
     }
 }

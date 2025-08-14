@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>dev.langchain4j</groupId>
+  <artifactId>langchain4j-classpath-test-lib</artifactId>
+  <versioning>
+    <lastUpdated>20241114005116</lastUpdated>
+    <snapshot>
+      <localCopy>true</localCopy>
+    </snapshot>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>jar</extension>
+        <value>999-SNAPSHOT</value>
+        <updated>20241114005116</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>999-SNAPSHOT</value>
+        <updated>20241114005116</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+  <version>999-SNAPSHOT</version>
+</metadata>

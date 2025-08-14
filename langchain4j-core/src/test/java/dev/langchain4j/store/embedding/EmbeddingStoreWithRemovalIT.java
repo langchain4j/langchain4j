@@ -140,7 +140,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     @EnabledIf("supportsRemoveAll")
-    void should_remove_all() {
+    protected void should_remove_all() {
 
         // given
         Embedding embedding1 = embeddingModel().embed("test1").content();

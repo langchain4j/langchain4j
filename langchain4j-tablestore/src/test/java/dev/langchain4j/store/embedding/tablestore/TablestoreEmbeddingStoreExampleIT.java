@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.tablestore;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.search.FieldSchema;
 import com.alicloud.openservices.tablestore.model.search.FieldType;
@@ -12,12 +14,9 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.Arrays;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
@@ -26,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TablestoreEmbeddingStoreExampleIT {
 
     @Test
-    void test_simple() {
+    void simple() {
 
         EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -38,18 +37,14 @@ class TablestoreEmbeddingStoreExampleIT {
         String accessKeyId = System.getenv("TABLESTORE_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
         TablestoreEmbeddingStore embeddingStore = new TablestoreEmbeddingStore(
-                new SyncClient(endpoint,
-                        accessKeyId,
-                        accessKeySecret,
-                        instanceName),
+                new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName),
                 384,
                 Arrays.asList(
                         new FieldSchema("meta_example_keyword", FieldType.KEYWORD),
                         new FieldSchema("meta_example_long", FieldType.LONG),
                         new FieldSchema("meta_example_double", FieldType.DOUBLE),
-                        new FieldSchema("meta_example_text", FieldType.TEXT).setAnalyzer(FieldSchema.Analyzer.MaxWord)
-                )
-        );
+                        new FieldSchema("meta_example_text", FieldType.TEXT)
+                                .setAnalyzer(FieldSchema.Analyzer.MaxWord)));
         /*
          * Step 2: init.
          *
@@ -63,21 +58,21 @@ class TablestoreEmbeddingStoreExampleIT {
          */
         TextSegment segment1 = TextSegment.from(
                 "I like football.",
-                new Metadata().put("meta_example_keyword", "a")
+                new Metadata()
+                        .put("meta_example_keyword", "a")
                         .put("meta_example_long", 123)
                         .put("meta_example_double", 1.5)
-                        .put("meta_example_text", "dog cat")
-        );
+                        .put("meta_example_text", "dog cat"));
         Embedding embedding1 = embeddingModel.embed(segment1).content();
         embeddingStore.add(embedding1, segment1);
 
         TextSegment segment2 = TextSegment.from(
                 "The weather is good today.",
-                new Metadata().put("meta_example_keyword", "b")
+                new Metadata()
+                        .put("meta_example_keyword", "b")
                         .put("meta_example_long", 456)
                         .put("meta_example_double", 5.6)
-                        .put("meta_example_text", "foo boo")
-        );
+                        .put("meta_example_text", "foo boo"));
         Embedding embedding2 = embeddingModel.embed(segment2).content();
         embeddingStore.add(embedding2, segment2);
 
@@ -85,7 +80,8 @@ class TablestoreEmbeddingStoreExampleIT {
          * Step 4: Search
          */
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embeddingModel.embed("What is your favourite sport?").content())
+                .queryEmbedding(
+                        embeddingModel.embed("What is your favourite sport?").content())
                 .filter(new IsLessThan("meta_example_double", 0.5))
                 .maxResults(100)
                 .build();

@@ -6,6 +6,7 @@ import dev.langchain4j.model.output.TokenUsage;
  * Represents the result of a {@link EmbeddingStoreIngestor} ingestion process.
  */
 public class IngestionResult {
+
     /**
      * The token usage information.
      */

@@ -1,17 +1,18 @@
 package dev.langchain4j.model.vertexai;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+@Disabled("TODO: configure custom model")
 class VertexAiChatModelIT {
 
     @Test
-    void testChatModel() {
+    void chatModel() {
 
         VertexAiChatModel vertexAiChatModel = VertexAiChatModel.builder()
                 .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
@@ -23,12 +24,12 @@ class VertexAiChatModelIT {
                 .maxOutputTokens(50)
                 .topK(0)
                 .topP(0.0)
-                .maxRetries(3)
+                .maxRetries(2)
                 .build();
 
-        Response<AiMessage> response = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        ChatResponse response = vertexAiChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);

@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.couchbase;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.manager.search.SearchIndex;
@@ -10,6 +13,7 @@ import com.couchbase.client.java.search.vector.VectorSearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.*;
 import reactor.util.annotation.NonNull;
 import reactor.util.annotation.Nullable;
@@ -216,7 +220,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void add(@NonNull String id, @NonNull Embedding embedding) {
-        addInternal(Collections.singletonList(id), Collections.singletonList(embedding), null);
+        addAll(Collections.singletonList(id), Collections.singletonList(embedding), null);
     }
 
     @Override
@@ -230,16 +234,8 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(@NonNull List<Embedding> embeddings, @Nullable List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(i -> UUID.randomUUID().toString())
-                .collect(Collectors.toList());
-        addInternal(ids, embeddings, embedded);
-        return ids;
-    }
-
-    private void addInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (ids == null || embeddings == null || ids.isEmpty() || embeddings.isEmpty()) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
         }
 
@@ -264,9 +260,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("ids cannot be null or empty");
-        }
+        ensureNotEmpty(ids, "ids");
         ids.forEach(collection::remove);
     }
 

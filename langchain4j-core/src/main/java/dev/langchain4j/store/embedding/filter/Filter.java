@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.filter;
 
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
@@ -33,6 +34,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * @see IsLessThanOrEqualTo
  * @see IsIn
  * @see IsNotIn
+ * @see ContainsString
  * @see And
  * @see Not
  * @see Or

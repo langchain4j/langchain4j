@@ -1,6 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.pdf.PdfFile;
 
 import java.net.URI;
@@ -10,9 +9,8 @@ import static dev.langchain4j.data.message.ContentType.PDF;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
 public class PdfFileContent implements Content {
-    
+
     private final PdfFile pdfFile;
 
     @Override
@@ -27,8 +25,8 @@ public class PdfFileContent implements Content {
      */
     public PdfFileContent(URI url) {
         this.pdfFile = PdfFile.builder()
-            .url(ensureNotNull(url, "url"))
-            .build();
+                .url(ensureNotNull(url, "url"))
+                .build();
     }
 
     /**
@@ -44,12 +42,13 @@ public class PdfFileContent implements Content {
      * Create a new {@link PdfFileContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the PDF.
-     * @param mimeType the mime type of the PDF.
+     * @param mimeType   the mime type of the PDF.
      */
     public PdfFileContent(String base64Data, String mimeType) {
         this.pdfFile = PdfFile.builder()
-            .base64Data(ensureNotBlank(base64Data, "base64data"))
-            .build();
+                .base64Data(ensureNotBlank(base64Data, "base64data"))
+                .mimeType(mimeType)
+                .build();
     }
 
     /**
@@ -63,6 +62,7 @@ public class PdfFileContent implements Content {
 
     /**
      * Get the {@code PdfFile}.
+     *
      * @return the {@code PdfFile}.
      */
     public PdfFile pdfFile() {
@@ -85,8 +85,8 @@ public class PdfFileContent implements Content {
     @Override
     public String toString() {
         return "PdfFileContent {" +
-            " pdfFile = " + pdfFile +
-            " }";
+                " pdfFile = " + pdfFile +
+                " }";
     }
 
     /**
@@ -113,7 +113,7 @@ public class PdfFileContent implements Content {
      * Create a new {@link PdfFileContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the PDF.
-     * @param mimeType the mime type of the PDF.
+     * @param mimeType   the mime type of the PDF.
      * @return the new {@link PdfFileContent}.
      */
     public static PdfFileContent from(String base64Data, String mimeType) {

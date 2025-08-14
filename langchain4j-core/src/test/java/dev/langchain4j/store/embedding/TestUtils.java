@@ -5,7 +5,7 @@ import org.awaitility.core.ThrowingRunnable;
 
 import java.time.Duration;
 
-public class TestUtils {
+public final class TestUtils {
     private TestUtils() {
     }
 

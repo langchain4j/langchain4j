@@ -1,19 +1,19 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
 import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
 
@@ -22,7 +22,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
 
-    DefaultHuggingFaceClient(String apiKey, String modelId, Duration timeout) {
+    DefaultHuggingFaceClient(String baseUrl, String apiKey, String modelId, Duration timeout) {
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
@@ -33,7 +33,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(Objects.isNull(baseUrl) ? BASE_URL : baseUrl)
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create())
                 .build();
@@ -50,8 +50,8 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
     @Override
     public TextGenerationResponse generate(TextGenerationRequest request) {
         try {
-            retrofit2.Response<List<TextGenerationResponse>> retrofitResponse
-                    = huggingFaceApi.generate(request, modelId).execute();
+            retrofit2.Response<List<TextGenerationResponse>> retrofitResponse =
+                    huggingFaceApi.generate(request, modelId).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return toOneResponse(retrofitResponse);
@@ -68,14 +68,16 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
         if (responses != null && responses.size() == 1) {
             return responses.get(0);
         } else {
-            throw new RuntimeException("Expected only one generated_text, but was: " + (responses == null ? 0 : responses.size()));
+            throw new RuntimeException(
+                    "Expected only one generated_text, but was: " + (responses == null ? 0 : responses.size()));
         }
     }
 
     @Override
     public List<float[]> embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<List<float[]>> retrofitResponse = huggingFaceApi.embed(request, modelId).execute();
+            Response<List<float[]>> retrofitResponse =
+                    huggingFaceApi.embed(request, modelId).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {

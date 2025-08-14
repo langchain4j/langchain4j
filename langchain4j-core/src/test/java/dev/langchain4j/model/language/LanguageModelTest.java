@@ -14,10 +14,9 @@ class LanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_generate() {
+    void generate() {
         LanguageModel model = new EchoLanguageModel();
 
-        assertThat(model.generate(Prompt.from("text")))
-                .isEqualTo(new Response<>("text"));
+        assertThat(model.generate(Prompt.from("text"))).isEqualTo(new Response<>("text"));
     }
 }

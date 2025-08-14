@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Internal;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -9,8 +11,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
+@Internal
 public class TypeUtils {
 
     public static Class<?> getRawClass(Type type) {
@@ -35,8 +40,8 @@ public class TypeUtils {
         return rawClass.equals(getRawClass(type));
     }
 
-    public static Class<?> resolveFirstGenericParameterClass(Type returnType) {
-        Type[] typeArguments = getTypeArguments(returnType);
+    public static Class<?> resolveFirstGenericParameterClass(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
 
         if (typeArguments.length == 0) {
             return null;
@@ -52,24 +57,22 @@ public class TypeUtils {
         return null;
     }
 
-    private static Type[] getTypeArguments(Type returnType) {
-        if (returnType == null) {
-            throw new IllegalArgumentException("returnType parameter cannot be null.");
-        }
+    public static Type resolveFirstGenericParameterType(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
+        return typeArguments.length > 0 ? typeArguments[0] : null;
+    }
 
-        if (!(returnType instanceof ParameterizedType)) {
+    private static Type[] getTypeArguments(Type type) {
+        ensureNotNull(type, "type");
+
+        if (!(type instanceof ParameterizedType parameterizedType)) {
             return new Type[0];
         }
 
-        ParameterizedType type = (ParameterizedType) returnType;
-        Type[] typeArguments = type.getActualTypeArguments();
-
-        if (typeArguments.length == 0) {
-            throw new IllegalArgumentException("Parameterized type has no type arguments.");
-        }
+        Type[] typeArguments = parameterizedType.getActualTypeArguments();
+        ensureNotEmpty(typeArguments, "%s", "Parameterized type has no type arguments.");
         return typeArguments;
     }
-
 
     /**
      * <p>Ensures that no wildcard and/or parametrized types are being used as service method return type.</p>
@@ -94,16 +97,15 @@ public class TypeUtils {
      * </ul>*
      *
      * @param methodName the method name
-     * @param type the return type
+     * @param type       the return type
      */
     public static void validateReturnTypesAreProperlyParametrized(String methodName, Type type) {
         TypeUtils.validateReturnTypesAreProperlyParametrized(methodName, type, new ArrayList<>());
     }
 
     private static void validateReturnTypesAreProperlyParametrized(String methodName, Type type, List<Type> typeChain) {
-        if (type instanceof ParameterizedType) {
+        if (type instanceof ParameterizedType parameterizedType) {
             // Recursively check all parametrized types
-            ParameterizedType parameterizedType = (ParameterizedType) type;
             for (Type actualTypeArgument : parameterizedType.getActualTypeArguments()) {
                 typeChain.add(parameterizedType);
                 validateReturnTypesAreProperlyParametrized(methodName, actualTypeArgument, typeChain);
@@ -116,15 +118,13 @@ public class TypeUtils {
             // Type variable: Result<T> ask(String question)
             typeChain.add(type);
             throw genericNotProperlySpecifiedException(methodName, typeChain);
-        } else if (type instanceof Class<?>) {
-            Class<?> clazz = (Class<?>) type;
-            if (clazz.getTypeParameters().length > 0) {
-                //  Raw type:  Result ask(String question)
-                typeChain.add(type);
-                throw genericNotProperlySpecifiedException(methodName, typeChain);
-            }
+        } else if (type instanceof Class<?> clazz && clazz.getTypeParameters().length > 0) {
+            //  Raw type:  Result ask(String question)
+            typeChain.add(type);
+            throw genericNotProperlySpecifiedException(methodName, typeChain);
         }
     }
+
 
     private static IllegalArgumentException genericNotProperlySpecifiedException(String methodName, List<Type> typeChain) {
 
@@ -146,9 +146,7 @@ public class TypeUtils {
                 return TypeUtils.getRawClass(type).getSimpleName();
             }
         }).collect(Collectors.joining("<")));
-        for (int i = 0; i < typeChain.size() - 1; i++) {
-            actualDeclaration.append(">");
-        }
+        actualDeclaration.append(">".repeat(Math.max(0, typeChain.size() - 1)));
         return actualDeclaration.toString();
     }
 
@@ -156,9 +154,7 @@ public class TypeUtils {
         List<Type> rawTypesOnly = typeChain.stream().filter(type -> !(type instanceof WildcardType || type instanceof TypeVariable)).collect(toList());
         StringBuilder declarationExample = new StringBuilder(rawTypesOnly.stream().map(type -> TypeUtils.getRawClass(type).getSimpleName()).collect(Collectors.joining("<")));
         declarationExample.append("<").append(forType);
-        for (int i = 0; i < rawTypesOnly.size(); i++) {
-            declarationExample.append(">");
-        }
+        declarationExample.append(">".repeat(rawTypesOnly.size()));
         return declarationExample.toString();
     }
 

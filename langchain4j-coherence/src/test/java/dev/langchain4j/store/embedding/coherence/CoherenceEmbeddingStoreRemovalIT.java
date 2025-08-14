@@ -28,15 +28,13 @@ class CoherenceEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("CoherenceEmbeddingStoreRemovalIT"),
-                  WellKnownAddress.loopback(),
-                  LocalHost.only(),
-                  IPv4Preferred.autoDetect(),
-                  SystemProperty.of("coherence.serializer", "pof"))
-            .include(3, CoherenceClusterMember.class,
-                     DisplayName.of("storage"),
-                     RoleName.of("storage"),
-                     testLogs);
+            .with(
+                    ClusterName.of("CoherenceEmbeddingStoreRemovalIT"),
+                    WellKnownAddress.loopback(),
+                    LocalHost.only(),
+                    IPv4Preferred.autoDetect(),
+                    SystemProperty.of("coherence.serializer", "pof"))
+            .include(3, CoherenceClusterMember.class, DisplayName.of("storage"), RoleName.of("storage"), testLogs);
 
     static Session session;
 
@@ -45,15 +43,16 @@ class CoherenceEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     static CoherenceEmbeddingStore embeddingStore;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         session = cluster.buildSession(SessionBuilders.storageDisabledMember(RoleName.of("test")));
         embeddingStore = CoherenceEmbeddingStore.builder().session(session).build();
     }
 
     @BeforeEach
-    public void clearEmbeddings() {
+    void clearEmbeddings() {
         embeddingStore.removeAll();
     }
+
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;

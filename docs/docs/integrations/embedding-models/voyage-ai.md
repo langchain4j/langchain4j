@@ -1,5 +1,5 @@
 ---
-sidebar_position: 17
+sidebar_position: 19
 ---
 
 # Voyage AI
@@ -10,7 +10,7 @@ sidebar_position: 17
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-voyage-ai</artifactId>
-    <version>0.35.0</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 

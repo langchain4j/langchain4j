@@ -2,6 +2,12 @@ package dev.langchain4j.data.message;
 
 /**
  * Abstract base interface for message content.
+ *
+ * @see TextContent
+ * @see ImageContent
+ * @see AudioContent
+ * @see VideoContent
+ * @see PdfFileContent
  */
 public interface Content {
     /**

@@ -1,35 +1,33 @@
 package dev.langchain4j.store.embedding.coherence;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.stream.Collectors.toSet;
+
 import com.oracle.coherence.ai.DocumentChunk;
 import com.oracle.coherence.ai.Float32Vector;
 import com.oracle.coherence.ai.QueryResult;
 import com.oracle.coherence.ai.Vector;
 import com.oracle.coherence.ai.VectorIndexExtractor;
-
 import com.oracle.coherence.ai.search.SimilaritySearch;
 import com.oracle.coherence.common.base.Logger;
-
 import com.tangosol.internal.util.processor.CacheProcessors;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
 import com.tangosol.net.Session;
-
 import com.tangosol.util.Filter;
 import com.tangosol.util.UUID;
-
 import com.tangosol.util.ValueExtractor;
 import dev.langchain4j.data.document.Metadata;
-
 import dev.langchain4j.data.embedding.Embedding;
-
 import dev.langchain4j.data.segment.TextSegment;
-
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,11 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * An {@link EmbeddingStore} backed by an Oracle Coherence {@link NamedMap}.
@@ -51,8 +44,8 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      * The {@link ValueExtractor} to extract the float vector from a {@link DocumentChunk}.
      */
     private static final ValueExtractor<DocumentChunk, Vector<float[]>> EXTRACTOR =
-        ValueExtractor.of(DocumentChunk::vector);
-    
+            ValueExtractor.of(DocumentChunk::vector);
+
     /**
      * The default {@link NamedMap} name.
      */
@@ -75,8 +68,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param normalizeEmbeddings  {@code true} if this {@link CoherenceEmbeddingStore} should call
      *                             {@link Embedding#normalize()} on embeddings when adding or searching
      */
-    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap,
-                                      boolean normalizeEmbeddings) {
+    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap, boolean normalizeEmbeddings) {
         this.documentChunks = namedMap;
         this.normalizeEmbeddings = normalizeEmbeddings;
     }
@@ -106,13 +98,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<DocumentChunk.Id> keys = generateKeys(embeddings.size());
-        addAllInternal(keys, embeddings, embedded);
-        return keys.stream().map(DocumentChunk.Id::toString).collect(Collectors.toList());
-    }
-
-    @Override
     public void remove(String id) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("id cannot be null or blank");
@@ -123,23 +108,18 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("ids cannot be null or empty");
-        }
+        ensureNotEmpty(ids, "ids");
 
-        Set<DocumentChunk.Id> chunkIds = ids.stream()
-            .map(DocumentChunk.Id::parse)
-            .collect(toSet());
+        Set<DocumentChunk.Id> chunkIds =
+                ids.stream().map(DocumentChunk.Id::parse).collect(toSet());
 
         documentChunks.keySet().removeAll(chunkIds);
     }
 
     @Override
     public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
-        if (filter == null) {
-            throw new IllegalArgumentException("filter cannot be null");
-        }
-        
+        ensureNotNull(filter, "filter");
+
         Filter<DocumentChunk> chunkFilter = CoherenceMetadataFilterMapper.map(filter);
         documentChunks.invokeAll(chunkFilter, CacheProcessors.removeBlind());
     }
@@ -161,11 +141,11 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         Float32Vector vector = new Float32Vector(queryEmbedding.vector());
 
         SimilaritySearch<DocumentChunk.Id, DocumentChunk, float[]> aggregator =
-            new SimilaritySearch<>(EXTRACTOR, vector, request.maxResults());
+                new SimilaritySearch<>(EXTRACTOR, vector, request.maxResults());
         if (filter != null) {
             aggregator = aggregator.filter(filter);
         }
-            
+
         List<QueryResult<DocumentChunk.Id, DocumentChunk>> results = documentChunks.aggregate(aggregator);
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
@@ -194,8 +174,8 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param embeddings  the {@link Embedding} to add
      * @param segments    an optional list of {@link TextSegment} to add with the embeddings
      */
-    private void addAllInternal(List<DocumentChunk.Id> ids, List<Embedding> embeddings,
-                                List<TextSegment> segments) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             Logger.info("Skipped adding empty embeddings");
             return;
@@ -203,18 +183,17 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         boolean hasEmbedded = segments != null && !segments.isEmpty();
 
-        ensureTrue(ids.size() == embeddings.size(),
-            "ids size is not equal to embeddings size");
+        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         if (hasEmbedded) {
-            ensureTrue(embeddings.size() == segments.size(),
-                "embeddings size is not equal to embedded size");
+            ensureTrue(embeddings.size() == segments.size(), "embeddings size is not equal to embedded size");
         }
 
         Map<DocumentChunk.Id, DocumentChunk> map = new HashMap<>();
         for (int i = 0; i < embeddings.size(); i++) {
             Embedding embedding = embeddings.get(i);
             TextSegment segment = hasEmbedded ? segments.get(i) : null;
-            map.put(ids.get(i), createChunk(embedding, segment));
+            final String id = ids.get(i);
+            map.put(new DocumentChunk.Id(id, 0), createChunk(embedding, segment));
         }
         documentChunks.putAll(map);
     }
@@ -228,8 +207,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      *
      * @return an {@link EmbeddingMatch} created from the {@link QueryResult}
      */
-    private EmbeddingMatch<TextSegment> embeddingMatch(double score, DocumentChunk.Id id,
-                                                       DocumentChunk chunk) {
+    private EmbeddingMatch<TextSegment> embeddingMatch(double score, DocumentChunk.Id id, DocumentChunk chunk) {
         String key = id.toString();
         String text = chunk.text();
         TextSegment segment = text == null ? null : new TextSegment(chunk.text(), mapToMetadata(chunk.metadata()));
@@ -262,7 +240,8 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private DocumentChunk createChunk(Embedding embedding, TextSegment segment) {
         String text = segment == null ? null : segment.text();
-        Map<String, Object> metadata = segment == null ? Collections.emptyMap() : segment.metadata().toMap();
+        Map<String, Object> metadata =
+                segment == null ? Collections.emptyMap() : segment.metadata().toMap();
         DocumentChunk chunk = new DocumentChunk(text, metadata);
         if (normalizeEmbeddings) {
             embedding.normalize();
@@ -270,21 +249,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         Float32Vector vector = new Float32Vector(embedding.vector());
         chunk.setVector(vector);
         return chunk;
-    }
-
-    /**
-     * Generate a number of {@link DocumentChunk.Id} instances.
-     *
-     * @param size  the number of {@link DocumentChunk.Id} instances to create
-     *
-     * @return a list of {@link DocumentChunk.Id} instances
-     */
-    private List<DocumentChunk.Id> generateKeys(int size) {
-        List<DocumentChunk.Id> keys = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            keys.add(new DocumentChunk.Id(new UUID().toString(), 0));
-        }
-        return keys;
     }
 
     /**
@@ -351,7 +315,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * The {@link VectorIndexExtractor} to use to create a vector index used to query the {@link NamedMap}.
          */
-        private VectorIndexExtractor<DocumentChunk, Vector<?>> extractor;
+        private VectorIndexExtractor<DocumentChunk, float[]> extractor;
 
         /**
          * A flag that when {@code true} forces normalization of embeddings on adding and searching
@@ -361,8 +325,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * Create a {@link CoherenceEmbeddingStore.Builder}.
          */
-        protected Builder() {
-        }
+        protected Builder() {}
 
         /**
          * Set the name of the {@link NamedMap} that will hold the
@@ -374,7 +337,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return this builder for fluent method calls
          */
         public Builder name(String name) {
-            this.name = name == null || name.isEmpty() ? DEFAULT_MAP_NAME : name;
+            this.name = isNullOrEmpty(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
 
@@ -413,7 +376,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
          *
          * @return this builder for fluent method calls
          */
-        public Builder index(VectorIndexExtractor<DocumentChunk, Vector<?>> extractor) {
+        public Builder index(VectorIndexExtractor<DocumentChunk, float[]> extractor) {
             this.extractor = extractor;
             return this;
         }
@@ -441,8 +404,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (session == null) {
                 if (sessionName != null) {
                     session = Coherence.getInstance().getSession(sessionName);
-                }
-                else {
+                } else {
                     session = Coherence.getInstance().getSession();
                 }
             }

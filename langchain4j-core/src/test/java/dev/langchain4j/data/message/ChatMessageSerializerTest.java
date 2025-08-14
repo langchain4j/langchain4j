@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -50,7 +51,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("aGVsbG8=", "image/png")),
-                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8=\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(AudioContent.from("bXAz", "audio/mp3")),
@@ -62,34 +63,45 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
-                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"attributes\":{},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .name("weather")
                                 .arguments("{\"city\": \"Munich\"}")
                                 .build()),
-                        "{\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"type\":\"AI\"}"
+                        "{\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{},\"type\":\"AI\"}"
+                ),
+                Arguments.of(
+                        AiMessage.builder()
+                                .text("test-text")
+                                .thinking("test-thinking")
+                                .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                        .name("weather")
+                                        .arguments("{\"city\": \"Munich\"}")
+                                        .build()))
+                                .attributes(new LinkedHashMap<>() {{
+                                    put("name", "Klaus");
+                                    put("age", 42);
+                                    put("extra", List.of("one", "two"));
+                                }})
+                                .build(),
+                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"
-                )
-        );
-    }
-
-    @Test
-    void should_deserialize_user_message_in_old_schema() {
-
-        String json = "{\"text\":\"hello\",\"type\":\"USER\"}";
-
-        ChatMessage deserializedMessage = messageFromJson(json);
-
-        assertThat(deserializedMessage).isEqualTo(UserMessage.from("hello"));
+                ),
+                Arguments.of(
+                        CustomMessage.from(new LinkedHashMap<>() {{
+                            put("k1", "v1");
+                            put("k2", "v2");
+                        }}),
+                        "{\"attributes\":{\"k1\":\"v1\", \"k2\":\"v2\"},\"type\":\"CUSTOM\"}"));
     }
 
     @Test
@@ -121,12 +133,13 @@ class ChatMessageSerializerTest {
     }
 
     @Test
-    void should_serialize_and_deserialize_list_with_one_message_in_old_schema() {
+    void should_deserialize_empty_AiMessage() {
 
-        String json = "[{\"text\":\"hello\",\"type\":\"USER\"}]";
+        AiMessage deserialized = (AiMessage) messageFromJson("{\"type\":\"AI\"}");
 
-        List<ChatMessage> deserializedMessages = messagesFromJson(json);
-
-        assertThat(deserializedMessages).containsExactly(UserMessage.from("hello"));
+        assertThat(deserialized.text()).isNull();
+        assertThat(deserialized.thinking()).isNull();
+        assertThat(deserialized.toolExecutionRequests()).isEmpty();
+        assertThat(deserialized.attributes()).isEmpty();
     }
 }

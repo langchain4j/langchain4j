@@ -1,18 +1,15 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class JsonSchema {
 
     private final String name;
     private final JsonSchemaElement rootElement;
 
-    public JsonSchema(Builder builder) {
+    private JsonSchema(Builder builder) {
         this.name = builder.name;
         this.rootElement = builder.rootElement;
     }

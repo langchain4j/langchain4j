@@ -1,10 +1,8 @@
 package dev.langchain4j.store.embedding.milvus;
 
-class RequestToMilvusFailedException extends RuntimeException {
+import dev.langchain4j.exception.LangChain4jException;
 
-    public RequestToMilvusFailedException() {
-        super();
-    }
+class RequestToMilvusFailedException extends LangChain4jException {
 
     public RequestToMilvusFailedException(String message) {
         super(message);

@@ -1,30 +1,41 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.mockito.Mockito.mock;
-
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
 
+    static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
+    static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
+    static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
+    static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
+    static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
+
     List<ChatMessage> messages = new ArrayList<>();
+
     @Mock
     List<Content> content;
-    @Mock
-    AiServiceContext context;
+
     @Mock
     Object memoryId;
 
@@ -37,75 +48,137 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_correctConfigured_shouldNotThrowException() {
+    void start_with_onPartialResponse_shouldNotThrowException() {
+        tokenStream.onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER).ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onPartialResponseNotInvoked_shouldThrowException() {
+        tokenStream.ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onPartialResponse must be invoked on TokenStream exactly 1 time");
+    }
+
+    @Test
+    void start_onPartialResponseInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onNext(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onPartialResponse must be invoked on TokenStream exactly 1 time");
+    }
+
+    @Test
+    void start_beforeToolExecutionInvoked_shouldNotThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
-    void start_onNextNotInvoked_shouldThrowException() {
+    void start_beforeToolExecutionInvokedMultipleTimes_shouldThrowException() {
         tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
                 .ignoreErrors();
 
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
-    }
-
-    @Test
-    void start_onNextInvokedMultipleTimes_shouldThrowException() {
-        tokenStream
-                .onNext(System.out::println)
-                .onNext(System.out::println)
-                .ignoreErrors();
-
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
     void start_onErrorNorIgnoreErrorsInvoked_shouldThrowException() {
-        tokenStream
-                .onNext(System.out::println);
+        tokenStream.onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER);
 
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("One of [onError, ignoreErrors] must be invoked on TokenStream exactly 1 time");
     }
 
     @Test
     void start_onErrorAndIgnoreErrorsInvoked_shouldThrowException() {
         tokenStream
-                .onNext(System.out::println)
-                .onError(Throwable::printStackTrace)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onError(DUMMY_ERROR_HANDLER)
                 .ignoreErrors();
 
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("One of [onError, ignoreErrors] must be invoked on TokenStream exactly 1 time");
     }
 
     @Test
-    void start_onCompleteInvokedOneTime_shouldNotThrowException() {
+    void start_onPartialThinkingInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onNext(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onPartialThinking(DUMMY_PARTIAL_THINKING_HANDLER)
+                .onPartialThinking(DUMMY_PARTIAL_THINKING_HANDLER)
                 .ignoreErrors()
-                .onComplete(r -> System.out.println(r.content()));
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
 
-        assertThatNoException().isThrownBy(() -> tokenStream.start());
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onPartialThinking can be invoked on TokenStream at most 1 time");
     }
 
     @Test
-    void start_onCompleteInvokedMultipleTimes_shouldThrowException() {
+    void start_onCompleteResponseInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onNext(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors()
-                .onComplete(r -> System.out.println(r.content()))
-                .onComplete(r -> System.out.println(r.content()));
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
 
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onCompleteResponse can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onIntermediateResponseInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .ignoreErrors()
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onIntermediateResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onIntermediateResponse can be invoked on TokenStream at most 1 time");
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatLanguageModel model = mock(StreamingChatLanguageModel.class);
+        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        ChatModel chatModel = mock(ChatModel.class);
+
         AiServiceContext context = new AiServiceContext(getClass());
-        context.streamingChatModel = model;
-        return new AiServiceTokenStream(messages, null, null, content, context, memoryId);
+        context.streamingChatModel = streamingModel;
+        context.chatModel = chatModel;
+
+        return new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                .messages(messages)
+                .retrievedContents(content)
+                .context(context)
+                .memoryId(memoryId)
+                .commonGuardrailParams(GuardrailRequestParams.builder()
+                        .chatMemory(null)
+                        .augmentationResult(null)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
+                .build());
     }
 }

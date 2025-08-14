@@ -83,6 +83,6 @@ class DefaultAzureAiSearchFilterMapperTest {
                 return false;
             }
         };
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> mapper.map(unsupportedFilter));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mapper.map(unsupportedFilter));
     }
 }

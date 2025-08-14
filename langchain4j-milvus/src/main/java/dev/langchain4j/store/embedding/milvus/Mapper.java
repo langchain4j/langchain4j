@@ -71,7 +71,7 @@ class Mapper {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
-        if (queryForVectorOnSearch) {
+        if (queryForVectorOnSearch && !resultsWrapper.getRowRecords().isEmpty()) {
             try {
                 List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(fieldDefinition.getIdFieldName()).getFieldData();
                 idToEmbedding.putAll(queryEmbeddings(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel));
@@ -100,7 +100,8 @@ class Mapper {
 
     private static TextSegment toTextSegment(RowRecord rowRecord, FieldDefinition fieldDefinition) {
 
-        String text = (String) rowRecord.get(fieldDefinition.getTextFieldName());
+        Object textField = rowRecord.get(fieldDefinition.getTextFieldName());
+        String text = textField == null ? null : textField.toString();
         if (isNullOrBlank(text)) {
             return null;
         }

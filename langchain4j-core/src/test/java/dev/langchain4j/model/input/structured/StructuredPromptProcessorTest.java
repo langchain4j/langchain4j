@@ -1,84 +1,75 @@
 package dev.langchain4j.model.input.structured;
 
-import dev.langchain4j.model.input.Prompt;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.input.Prompt;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
 class StructuredPromptProcessorTest {
 
-  @StructuredPrompt("Hello, my name is {{name}}")
-  static class Greeting {
+    @StructuredPrompt("Hello, my name is {{name}}")
+    record Greeting(String name) {}
 
-    private String name;
-  }
+    @Test
+    void prompt_with_single_variable() {
+        Greeting structuredPrompt = new Greeting("Klaus");
 
-  @Test
-  void test_prompt_with_single_variable() {
-    Greeting structuredPrompt = new Greeting();
-    structuredPrompt.name = "Klaus";
+        Prompt prompt = toPrompt(structuredPrompt);
 
-    Prompt prompt = toPrompt(structuredPrompt);
-
-    assertThat(prompt.text()).isEqualTo("Hello, my name is Klaus");
-  }
-
-  @StructuredPrompt(
-    {
-      "Suggest tasty {{dish}} recipes that can be prepared in {{maxPreparationTime}} minutes.",
-      "I have only {{ingredients}} in my fridge.",
+        assertThat(prompt.text()).isEqualTo("Hello, my name is Klaus");
     }
-  )
-  static class SuggestRecipes {
 
-    private String dish;
-    private int maxPreparationTime;
-    private List<String> ingredients;
-  }
+    @StructuredPrompt({
+        "Suggest tasty {{dish}} recipes that can be prepared in {{maxPreparationTime}} minutes.",
+        "I have only {{ingredients}} in my fridge.",
+    })
+    static class SuggestRecipes {
 
-  @Test
-  void test_prompt_with_multiple_variables() {
-    SuggestRecipes structuredPrompt = new SuggestRecipes();
-    structuredPrompt.dish = "salad";
-    structuredPrompt.maxPreparationTime = 5;
-    structuredPrompt.ingredients = asList("Tomato", "Cucumber", "Onion");
+        private String dish;
+        private int maxPreparationTime;
+        private List<String> ingredients;
+    }
 
-    Prompt prompt = toPrompt(structuredPrompt);
+    @Test
+    void prompt_with_multiple_variables() {
+        SuggestRecipes structuredPrompt = new SuggestRecipes();
+        structuredPrompt.dish = "salad";
+        structuredPrompt.maxPreparationTime = 5;
+        structuredPrompt.ingredients = asList("Tomato", "Cucumber", "Onion");
 
-    assertThat(prompt.text())
-      .isEqualTo(
-        "Suggest tasty salad recipes that can be prepared in 5 minutes.\nI have only [Tomato, Cucumber, Onion] in my fridge."
-      );
-  }
+        Prompt prompt = toPrompt(structuredPrompt);
 
-  @StructuredPrompt(
-    "Example of numbers with floating point: {{nDouble}}, {{nFloat}} and whole numbers: {{nInt}}, {{nShort}}, {{nLong}}"
-  )
-  static class VariousNumbers {
+        assertThat(prompt.text())
+                .isEqualTo(
+                        "Suggest tasty salad recipes that can be prepared in 5 minutes.\nI have only [Tomato, Cucumber, Onion] in my fridge.");
+    }
 
-    private double nDouble;
-    private float nFloat;
-    private int nInt;
-    private short nShort;
-    private long nLong;
-  }
+    @StructuredPrompt(
+            "Example of numbers with floating point: {{nDouble}}, {{nFloat}} and whole numbers: {{nInt}}, {{nShort}}, {{nLong}}")
+    static class VariousNumbers {
 
-  @Test
-  void test_prompt_with_various_number_types() {
-    VariousNumbers numbers = new VariousNumbers();
-    numbers.nDouble = 17.15;
-    numbers.nFloat = 1;
-    numbers.nInt = 2;
-    numbers.nShort = 10;
-    numbers.nLong = 12;
+        private double nDouble;
+        private float nFloat;
+        private int nInt;
+        private short nShort;
+        private long nLong;
+    }
 
-    Prompt prompt = toPrompt(numbers);
+    @Test
+    void prompt_with_various_number_types() {
+        VariousNumbers numbers = new VariousNumbers();
+        numbers.nDouble = 17.15;
+        numbers.nFloat = 1;
+        numbers.nInt = 2;
+        numbers.nShort = 10;
+        numbers.nLong = 12;
 
-    assertThat(prompt.text())
-      .isEqualTo("Example of numbers with floating point: 17.15, 1.0 and whole numbers: 2, 10, 12");
-  }
+        Prompt prompt = toPrompt(numbers);
+
+        assertThat(prompt.text())
+                .isEqualTo("Example of numbers with floating point: 17.15, 1.0 and whole numbers: 2, 10, 12");
+    }
 }
