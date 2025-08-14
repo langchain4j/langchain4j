@@ -1,14 +1,13 @@
 package dev.langchain4j.internal;
 
-import dev.langchain4j.Internal;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
+import dev.langchain4j.Internal;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Utility class for validating method arguments.
@@ -273,6 +272,21 @@ public class ValidationUtils {
     public static long ensureBetween(Long i, long min, long max, String name) {
         if (i == null || i < min || i > max) {
             throw illegalArgument("%s must be between %s and %s, but is: %s", name, min, max, i);
+        }
+        return i;
+    }
+
+    /**
+     * Ensures that the given value is not negative.
+     *
+     * @param i The value to check.
+     * @param name The name of the parameter (used in error message).
+     * @return The value if it is not negative.
+     * @throws IllegalArgumentException if the value is negative or null.
+     */
+    public static int ensureNonNegative(Integer i, String name) {
+        if (i == null || i < 0) {
+            throw illegalArgument("%s must be non-null and non-negative, but is: %s", name, i);
         }
         return i;
     }
