@@ -457,7 +457,7 @@ public abstract class AiServices<T> {
 
     /**
      * TODO
-     * // - make sure {@link ToolExecutor} can throw an exception.
+     * // - make sure {@link ToolExecutor} throws an exception in case or any issues.
      * // - when creating {@link DefaultToolExecutor} explicitly,
      * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} and {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)}
      *

@@ -19,7 +19,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
-public class DefaultToolExecutor implements ToolExecutor { // TODO test backward compatibility
+public class DefaultToolExecutor implements ToolExecutor { // TODO test no breaking changes
 
     private final Object object;
     private final Method originalMethod;
@@ -84,21 +84,7 @@ public class DefaultToolExecutor implements ToolExecutor { // TODO test backward
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        Object[] arguments;
-        try {
-            Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
-        } catch (Exception e) {
-            if (wrapToolArgumentException) {
-                if (e.getClass() == RuntimeException.class && e.getCause() != null) {
-                    throw new ToolArgumentParsingException(e.getCause());
-                } else {
-                    throw new ToolArgumentParsingException(e);
-                }
-            } else {
-                throw e;
-            }
-        }
+        Object[] arguments = prepareArguments(toolExecutionRequest, memoryId);
 
         try {
             return execute(arguments);
@@ -120,6 +106,23 @@ public class DefaultToolExecutor implements ToolExecutor { // TODO test backward
                 throw new ToolExecutionException(e.getCause());
             } else {
                 return e.getCause().getMessage();
+            }
+        }
+    }
+
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        try {
+            Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
+            return prepareArguments(originalMethod, argumentsMap, memoryId);
+        } catch (Exception e) {
+            if (wrapToolArgumentException) {
+                if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+                    throw new ToolArgumentParsingException(e.getCause());
+                } else {
+                    throw new ToolArgumentParsingException(e);
+                }
+            } else {
+                throw e;
             }
         }
     }

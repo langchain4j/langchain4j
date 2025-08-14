@@ -21,4 +21,6 @@ public interface ToolErrorHandler {
      */
     ToolErrorHandlerResult handle(Exception error, ToolErrorContext context);
     // TODO error: Throwable or RuntimeException?
+
+    // TODO separate methods/classes for handling ToolExecutionException and ToolArgumentParsingException?
 }
