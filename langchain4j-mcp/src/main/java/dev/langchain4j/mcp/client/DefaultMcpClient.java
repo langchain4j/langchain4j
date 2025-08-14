@@ -239,7 +239,7 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolExecutionException(e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e); // TODO
+            throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
         }
