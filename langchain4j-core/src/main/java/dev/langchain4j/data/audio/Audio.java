@@ -105,8 +105,7 @@ public class Audio {
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Set the url of the audio.
