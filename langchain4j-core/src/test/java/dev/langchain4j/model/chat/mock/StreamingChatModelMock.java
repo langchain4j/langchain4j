@@ -32,7 +32,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private final Queue<AiMessage> aiMessages;
 
     public StreamingChatModelMock(List<String> tokens) {
-        this.aiMessages = new ConcurrentLinkedQueue<>(List.of(AiMessage.from(String.join("", tokens))));
+        this(List.of(toAiMessage(tokens)));
     }
 
     public StreamingChatModelMock(Collection<AiMessage> aiMessages) {
@@ -44,7 +44,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
         AiMessage aiMessage = ensureNotNull(aiMessages.poll(), "aiMessage");
 
         new Thread(() -> {
-            toTokens(aiMessage.text()).forEach(token -> onPartialResponse(handler, token));
+            toTokens(aiMessage).forEach(token -> onPartialResponse(handler, token));
 
             for (int i = 0; i < aiMessage.toolExecutionRequests().size(); i++) {
                 ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(i);
@@ -59,13 +59,18 @@ public class StreamingChatModelMock implements StreamingChatModel {
         }).start();
     }
 
-    private static List<String> toTokens(String text) {
-        if (isNullOrEmpty(text)) {
+    private static AiMessage toAiMessage(List<String> tokens) {
+        String text = String.join("", tokens);
+        return AiMessage.from(text);
+    }
+
+    private static List<String> toTokens(AiMessage aiMessage) {
+        if (isNullOrEmpty(aiMessage.text())) {
             return List.of();
         }
 
         // approximating: each symbol will become a token
-        return Stream.of(text.toCharArray())
+        return Stream.of(aiMessage.text().toCharArray())
                 .map(String::valueOf)
                 .toList();
     }
