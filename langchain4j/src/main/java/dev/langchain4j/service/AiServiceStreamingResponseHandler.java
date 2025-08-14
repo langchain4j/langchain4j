@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolService.DEFAULT_ERROR_HANDLER;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,7 +21,11 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolErrorContext;
+import dev.langchain4j.service.tool.ToolErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +68,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolErrorHandler toolErrorHandler;
     private final Executor toolExecutor;
     private final Queue<CompletableFuture<ToolExecutionResultMessage>> toolResultFutures = new ConcurrentLinkedQueue<>();
 
@@ -84,6 +90,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             TokenUsage tokenUsage,
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
+            ToolErrorHandler toolErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
             Object methodKey) {
@@ -106,6 +113,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.toolSpecifications = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
+        this.toolErrorHandler = ensureNotNull(toolErrorHandler, "toolErrorHandler");
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
@@ -156,7 +164,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     try {
                         ToolExecutionResultMessage toolExecutionResultMessage = toolResultFuture.get();
                         addToMemory(toolExecutionResultMessage);
-                    } catch (InterruptedException | ExecutionException e) {
+                    } catch (ExecutionException e) {
+                        if (e.getCause() instanceof RuntimeException re) {
+                            throw re;
+                        } else {
+                            throw new RuntimeException(e);
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
                     }
                 }
@@ -187,6 +202,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors,
+                    toolErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
                     methodKey);
@@ -237,9 +253,42 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
         // TODO applyToolHallucinationStrategy
         handleBeforeTool(toolExecutionRequest);
-        String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-        handleAfterTool(toolExecutionRequest, toolExecutionResult);
-        return toolExecutionResult;
+        String toolResult = executeWithErrorHandling(toolExecutionRequest, toolExecutor);
+        handleAfterTool(toolExecutionRequest, toolResult);
+        return toolResult;
+    }
+
+    // TODO reduce duplication
+    private String executeWithErrorHandling(ToolExecutionRequest toolExecutionRequest, ToolExecutor toolExecutor) {
+        try {
+            return toolExecutor.execute(toolExecutionRequest, memoryId);
+        } catch (Exception e) {
+            if (e instanceof ToolExecutionException) {
+                return handle(e, toolExecutionRequest, memoryId);
+            } else {
+                if (toolErrorHandler == DEFAULT_ERROR_HANDLER) {
+                    // for backward compatibility
+                    if (e.getCause() instanceof RuntimeException re) {
+                        throw re;
+                    } else {
+                        throw new RuntimeException(e.getCause());
+                    }
+                } else {
+                    return handle(e, toolExecutionRequest, memoryId);
+                }
+            }
+            // TODO other exceptions, also MCP
+        }
+    }
+
+    // TODO reduce duplication
+    private String handle(Exception e, ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        ToolErrorContext errorContext = ToolErrorContext.builder()
+                .toolExecutionRequest(toolExecutionRequest)
+                .memoryId(memoryId)
+                .build();
+        ToolErrorHandlerResult errorHandlerResult = toolErrorHandler.handle(e, errorContext);
+        return errorHandlerResult.text();
     }
 
     private void handleBeforeTool(ToolExecutionRequest toolExecutionRequest) {

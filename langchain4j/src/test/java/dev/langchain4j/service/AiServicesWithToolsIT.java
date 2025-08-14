@@ -9,9 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -1086,52 +1084,5 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_propagate_exception_thrown_from_tool_method_to_LLM(ChatModel model) {
-
-        // given
-        String exceptionMessage = "Weather service is unavailable";
-
-        class FailingTool {
-
-            @Tool
-            String getWeather(String ignored) {
-                throw new RuntimeException(exceptionMessage);
-            }
-        }
-
-        interface Assistant {
-
-            String chat(String userMessage);
-        }
-
-        ChatModel spyModel = spy(model);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyModel)
-                .tools(new FailingTool())
-                .build();
-
-        // when
-        assistant.chat("What is the weather in Munich?");
-
-        // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(exceptionMessage)));
-        ignoreOtherInvocations(spyModel);
-        verifyNoMoreInteractions(spyModel);
-    }
-
-    private static void ignoreOtherInvocations(ChatModel model) {
-        verify(model, atLeast(0)).doChat(any());
-        verify(model, atLeast(0)).defaultRequestParameters();
-        verify(model, atLeast(0)).listeners();
-        verify(model, atLeast(0)).provider();
-        verify(model, atLeast(0)).supportedCapabilities();
     }
 }

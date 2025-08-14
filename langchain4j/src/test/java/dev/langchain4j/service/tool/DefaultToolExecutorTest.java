@@ -317,7 +317,7 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+    void should_not_execute_tool_with_wrong_execution_request() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("unknownMethod")
@@ -331,7 +331,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     @Test
     void should_not_execute_tool_with_null_execution_request() {
-        assertThatExceptionOfType(NullPointerException.class)
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
     }
 

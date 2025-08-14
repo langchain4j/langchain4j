@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.RetryUtils.retryPolicyBuilder;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
 import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
@@ -19,6 +20,8 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 
 /**
@@ -100,6 +103,15 @@ public class ChatModelMock implements ChatModel {
 
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
+    }
+
+    public static ChatModelMock thatAlwaysResponds(AiMessage aiMessage) {
+        return new ChatModelMock(ignored -> aiMessage);
+    }
+
+    public static ChatModelMock thatAlwaysResponds(AiMessage... aiMessages) {
+        Queue<AiMessage> queue = new ConcurrentLinkedQueue<>(asList(aiMessages));
+        return new ChatModelMock(ignored -> queue.poll());
     }
 
     public static ChatModelMock thatAlwaysThrowsException() {

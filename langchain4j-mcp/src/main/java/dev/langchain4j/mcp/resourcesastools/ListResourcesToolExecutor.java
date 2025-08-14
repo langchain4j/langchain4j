@@ -5,6 +5,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpResource;
 import dev.langchain4j.mcp.client.McpResourceTemplate;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,14 @@ class ListResourcesToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        try {
+            return doExecute();
+        } catch (Exception e) {
+            throw new ToolExecutionException(e);
+        }
+    }
+
+    private String doExecute() {
         List<ResourceDescription> descriptions = new ArrayList<>();
         for (McpClient client : mcpClients) {
             for (McpResource resource : client.listResources()) {
