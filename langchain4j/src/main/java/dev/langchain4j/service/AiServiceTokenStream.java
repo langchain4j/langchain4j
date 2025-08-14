@@ -21,6 +21,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 @Internal
@@ -29,6 +30,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
@@ -64,6 +66,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
         this.toolSpecifications = copy(parameters.toolSpecifications());
         this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolExecutor = parameters.toolExecutor();
         this.retrievedContents = copy(parameters.gretrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
@@ -166,6 +169,7 @@ public class AiServiceTokenStream implements TokenStream {
                 new TokenUsage(),
                 toolSpecifications,
                 toolExecutors,
+                toolExecutor,
                 commonGuardrailParams,
                 methodKey);
 

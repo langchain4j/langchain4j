@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 
 <dependency>
@@ -38,8 +38,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.2.0'
-implementation 'dev.langchain4j:langchain4j-jlama:1.2.0-beta8'
+implementation 'dev.langchain4j:langchain4j:1.3.0'
+implementation 'dev.langchain4j:langchain4j-jlama:1.3.0-beta9'
 ```
 
 ## Embedding

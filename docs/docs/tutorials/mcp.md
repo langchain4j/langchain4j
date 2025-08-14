@@ -7,10 +7,16 @@ website](https://modelcontextprotocol.io/).
 
 The protocol specifies two types of transport, both of these are supported:
 
-- `HTTP`: The client requests an SSE channel to receive events from the
-  server and then sends commands via HTTP POST requests.
-- `stdio`: The client can run an MCP server as a local subprocess and
+- [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http):
+  The client sends HTTP requests and the server responds either with a regular response or opens
+  an SSE stream if it needs to send multiple responses over time.
+- [stdio](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio): The client 
+  can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
+
+LangChain4j also supports the legacy 
+[HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
+but this is deprecated and will be removed in the future.
 
 To let your chat model or AI service run tools provided by an MCP server,
 you need to create an instance of an MCP tool provider.
@@ -30,7 +36,23 @@ McpTransport transport = new StdioMcpTransport.Builder()
     .build();
 ```
 
-For HTTP, you need two URLs, one for starting the SSE channel and one for submitting commands via `POST`:
+For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
+
+```java
+McpTransport transport = new StreamableHttpMcpTransport.Builder()
+        .url("http://localhost:3001/mcp")
+        .logRequests(true) // if you want to see the traffic in the log
+        .logResponses(true)
+        .build();
+```
+
+**_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
+(as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
+Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
+If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work. 
+
+For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
+The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
 
 ```java
 McpTransport transport = new HttpMcpTransport.Builder()
@@ -116,6 +138,24 @@ of an AI service builder:
 Bot bot = AiServices.builder(Bot.class)
     .chatModel(model)
     .toolProvider(toolProvider)
+    .build();
+```
+
+Alternatively, you can provide tools using a `Map<ToolSpecification, ToolExecutor>`.
+
+```java
+Map<ToolSpecification, ToolExecutor> tools = mcpClient.listTools().stream().collect(Collectors.toMap(
+        tool -> tool, 
+        tool -> new McpToolExecutor(mcpClient)
+));
+```
+
+To bind tools to an AI service, simply use the `tools` method of an AI service builder:
+
+```java
+Bot bot = AiServices.builder(Bot.class)
+    .chatModel(model)
+    .tools(tools)
     .build();
 ```
 
