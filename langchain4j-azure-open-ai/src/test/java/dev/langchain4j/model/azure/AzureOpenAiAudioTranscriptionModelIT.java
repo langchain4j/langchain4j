@@ -66,6 +66,11 @@ public class AzureOpenAiAudioTranscriptionModelIT {
         logger.info("Successfully transcribed audio with new API: {}", text);
     }
     
+    /**
+     * This test uses the deprecated API for backward compatibility testing.
+     * The deprecated method is intentionally used here to ensure it still works.
+     */
+    @SuppressWarnings("deprecation")
     @Test
     void should_transcribe_audio_with_legacy_api() throws IOException {
         String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
