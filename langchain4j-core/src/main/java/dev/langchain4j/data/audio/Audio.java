@@ -6,6 +6,21 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
+/**
+ * Represents audio data that can be used with various AI model implementations.
+ * This class supports multiple formats for storing audio:
+ * 
+ * <ul>
+ *   <li><b>URL:</b> A reference to audio data located at a specific URI</li>
+ *   <li><b>Audio Data:</b> Raw binary audio data as a byte array, primarily used by
+ *       implementations like Azure OpenAI</li>
+ *   <li><b>Base64 Data:</b> Base64 encoded string representation of audio data, primarily
+ *       used by implementations like OpenAI</li>
+ * </ul>
+ * 
+ * Different AI model implementations may require different audio data formats,
+ * so this class provides flexibility to support various use cases.
+ */
 public class Audio {
 
     private final URI url;
@@ -44,17 +59,22 @@ public class Audio {
     }
 
     /**
-     * Get the data as byte array of the audio.
-     * @return the data as byte array of the audio, or null if not set.
+     * Get the raw binary data of the audio as a byte array.
+     * This format is primarily used by implementations like Azure OpenAI that require
+     * raw binary audio data for processing.
+     * 
+     * @return the raw binary data of the audio as a byte array, or null if not set.
      */
     public byte[] audioData() {
         return audioData;
     }
 
         /**
-     * Get the base64 data of the audio.
+     * Get the Base64 encoded string representation of the audio data.
+     * This format is primarily used by implementations like OpenAI that accept
+     * Base64 encoded audio data in API requests.
      *
-     * @return the base64 data of the audio, or null if not set.
+     * @return the Base64 encoded string representation of the audio data, or null if not set.
      */
     public String base64Data() {
         return base64Data;
@@ -75,6 +95,7 @@ public class Audio {
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
     return Objects.equals(this.url, that.url)
+        && Objects.equals(this.audioData, that.audioData)
         && Objects.equals(this.base64Data, that.base64Data)
         && Objects.equals(this.mimeType, that.mimeType);
     }
@@ -130,8 +151,11 @@ public class Audio {
         }
 
         /**
-         * Set the data in byte Array of the audio.
-         * @param audioData the data in byte Array of the audio.
+         * Set the raw binary data of the audio as a byte array.
+         * This is the preferred format for implementations like Azure OpenAI that require
+         * raw binary audio data for processing.
+         *
+         * @param audioData the raw binary data of the audio as a byte array.
          * @return {@code this}
          */
         public Builder audioData(byte[] audioData) {
@@ -140,9 +164,11 @@ public class Audio {
         }
 
         /**
-         * Set the base64 data of the audio.
+         * Set the Base64 encoded string representation of the audio data.
+         * This is the preferred format for implementations like OpenAI that accept
+         * Base64 encoded audio data in API requests.
          *
-         * @param base64Data the base64 data of the audio.
+         * @param base64Data the Base64 encoded string representation of the audio.
          * @return {@code this}
          */
         public Builder base64Data(String base64Data) {
