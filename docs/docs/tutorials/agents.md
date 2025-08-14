@@ -883,6 +883,52 @@ AgenticServices.supervisorBuilder()
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
+### Providing context to the supervisor
+
+In many real-world scenarios, the supervisor benefits from an optional context: constraints, policies, or preferences that should guide planning (for example, "prefer internal tools", "do not call external services", "currency must be USD", etc.).
+
+This context is stored in the `AgenticScope`, variable named `supervisorContext`. You can provide it in two ways:
+
+- Build-time configuration:
+
+```java
+SupervisorAgent bankSupervisor = AgenticServices
+        .supervisorBuilder()
+        .chatModel(PLANNER_MODEL)
+        .supervisorContext("Policies: prefer internal tools; currency USD; no external APIs")
+        .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+        .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+        .build();
+```
+
+- Invocation (typed supervisor): add a parameter annotated with `@V("supervisorContext")`:
+
+```java
+public interface SupervisorAgent {
+    @Agent
+    String invoke(@V("request") String request, @V("supervisorContext") String supervisorContext);
+}
+
+// Example call (overrides the build-time value for this invocation)
+bankSupervisor.invoke(
+        "Transfer 100 EUR from Mario's account to Georgios' one",
+        "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+```
+
+- Invocation (untyped supervisor): set `supervisorContext` in the input map:
+
+```java
+Map<String, Object> input = Map.of(
+        "request", "Transfer 100 EUR from Mario's account to Georgios' one",
+        "supervisorContext", "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+
+String result = (String) bankSupervisor.invoke(input);
+```
+
+If both are provided, the invocation value overrides the build-time `supervisorContext`.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
