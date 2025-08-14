@@ -461,7 +461,7 @@ public class WorkflowAgentsIT {
                 });
 
         if (!useDefaultExecutor) {
-            builder.executorService(Executors.newFixedThreadPool(2));
+            builder.executor(Executors.newFixedThreadPool(2));
         }
 
         EveningPlannerAgent eveningPlannerAgent = builder.build();
