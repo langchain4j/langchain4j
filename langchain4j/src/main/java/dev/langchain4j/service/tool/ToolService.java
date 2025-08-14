@@ -328,7 +328,7 @@ public class ToolService {
                 toolResult = handle(e, toolExecutionRequest, memoryId);
             } else {
                 if (errorHandler() == DEFAULT_ERROR_HANDLER) {
-                    // for backward compatibility
+                    // for backward compatibility, custom ToolErrorHandler is not configured
                     if (e.getCause() instanceof RuntimeException re) {
                         throw re;
                     } else {

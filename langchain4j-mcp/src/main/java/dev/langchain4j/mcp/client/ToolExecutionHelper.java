@@ -32,7 +32,7 @@ class ToolExecutionHelper {
                 String errorMessage = extractErrorMessage(result.get("error"));
                 Integer errorCode = extractErrorCode(result.get("error"));
                 if (errorCode != null && errorCode == ERROR_CODE_INVALID_PARAMETERS) {
-                    throw new ToolArgumentParsingException(errorMessage);
+                    throw new ToolArgumentParsingException(errorMessage, errorCode);
                 } else {
                     throw new ToolExecutionException(errorMessage, errorCode);
                 }

@@ -120,10 +120,7 @@ public class McpToolProvider implements ToolProvider {
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
-            ToolExecutor toolExecutor =  McpToolExecutor.builder()
-                    .mcpClient(mcpClient)
-                    .propagateToolExecutionException(propagateToolExecutionException)
-                    .build();
+            ToolExecutor toolExecutor =  new McpToolExecutor(mcpClient);
             try {
                 mcpClient.listTools().stream()
                         .filter(tool -> mcpToolsFilter.test(mcpClient, tool))

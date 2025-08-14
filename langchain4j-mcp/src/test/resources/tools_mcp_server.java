@@ -59,4 +59,13 @@ public class tools_mcp_server {
         return new ToolResponse(true, lst);
     }
 
+    @Tool
+    public ToolResponse getWeatherThrowingException(String arg0) {
+        return new ToolResponse(true, List.of(new TextContent("Weather service is unavailable")));
+    }
+
+    @Tool
+    public String getWeather(String arg0) {
+        return "Sunny";
+    }
 }
