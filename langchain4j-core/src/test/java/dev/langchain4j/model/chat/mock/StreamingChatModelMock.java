@@ -69,7 +69,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
             return List.of();
         }
 
-        // approximating: each symbol will become a token
+        // approximating: each char will become a token
         return Stream.of(aiMessage.text().toCharArray())
                 .map(String::valueOf)
                 .toList();
