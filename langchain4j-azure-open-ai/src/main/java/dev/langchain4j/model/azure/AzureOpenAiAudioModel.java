@@ -6,21 +6,17 @@ import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import com.azure.ai.openai.models.AudioTranscriptionOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioModel;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioModelBuilderFactory;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -55,10 +51,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiAudioModel implements AudioModel {
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiAudioModel.class);
     private OpenAIClient client;
     private final String deploymentName;
-    private Audio audio;
     private String prompt = null;
     private AudioTranscriptionFormat responseFormat = AudioTranscriptionFormat.JSON;
     private String language;
@@ -90,7 +84,7 @@ public class AzureOpenAiAudioModel implements AudioModel {
                                  Map<String, String> customHeaders) {
     
         this(deploymentName, audio, language, user, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, new NettyAsyncHttpClientProvider(), proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiAudioModel(String endpoint,
@@ -109,7 +103,7 @@ public class AzureOpenAiAudioModel implements AudioModel {
                                  Map<String, String> customHeaders) {
 
         this(deploymentName, audio, language, user, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, new NettyAsyncHttpClientProvider(), proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiAudioModel(String endpoint,
@@ -128,15 +122,16 @@ public class AzureOpenAiAudioModel implements AudioModel {
                                  Map<String, String> customHeaders) {
 
         this(deploymentName, audio, language, user, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, new NettyAsyncHttpClientProvider(), proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
 
     private AzureOpenAiAudioModel(String deploymentName, Audio audio, String language, String user, String responseFormat) {
-        this.deploymentName = getOrDefault(deploymentName, "whisper-1");
-        if (audio != null) {
-            this.audio = audio;
+        if (deploymentName == null || deploymentName.isBlank()) {
+            throw new IllegalArgumentException("deploymentName is required");
         }
+        this.deploymentName = deploymentName;
+        // audio parameter is no longer stored as a field
         if (language != null) {
             this.language = language;
         }
@@ -148,24 +143,21 @@ public class AzureOpenAiAudioModel implements AudioModel {
 
     @Override
     public Response<String> transcribe(Audio audio) {
+        String filename = audio.getFilename();
+        if (filename == null) {
+            filename = "audio.mp3"; // Default filename if not provided
+        }
+        
         AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.audioData())
                 .setPrompt(prompt)
                 .setModel(deploymentName)
                 .setLanguage(language)
-                .setFilename(audio.getFilename())
-                .setResponseFormat(responseFormat);
-        try {
-            AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
-            return Response.from(audioTranscription.getText());
-        } catch (HttpResponseException httpResponseException) {
-            logger.info("Error retrieving transcription, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
-            return Response.from(
-                    AudioTranscriptionFormat.JSON.toString(),
-                    null,
-                    exceptionFinishReason
-            );
-        }
+                .setFilename(filename)
+                .setResponseFormat(responseFormat)
+                .setTemperature(0.0); // Adding temperature parameter
+                
+        AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
+        return Response.from(audioTranscription.getText());
     }
 
     public static Builder builder() {
@@ -277,19 +269,7 @@ public class AzureOpenAiAudioModel implements AudioModel {
 
 
         /**
-         * Sets the response format of the audio. This is an optional parameter.
-         *
-         * @param responseFormat The response format of the audio.
-         * @return builder
-         */
-        public Builder responseFormat(String responseFormat) {
-            this.responseFormat = responseFormat;
-            return this;
-        }
-
-
-        /**
-         * Sets the response format of the audio, using the AudioResponseFormat enum. This is an optional parameter.
+         * Sets the response format of the audio, using the AudioTranscriptionFormat enum. This is an optional parameter.
          *
          * @param audioTranscriptionFormat The response format of the audio.
          * @return builder

@@ -2,10 +2,10 @@ package dev.langchain4j.model.azure;
 
 public enum AzureOpenAiAudioModelName {
 
-    WHISPER("whisper-1", "whisper-1"); // alias for the latest whisper-2large model
+    WHISPER_1("-1", "whisper-1"); // whisper model
 
     private final String modelName;
-    // Model type follows the com.knuddels.jtokkit.api.ModelType naming convention
+    // Used for model identification
     private final String modelType;
     private final String modelVersion;
 
