@@ -1,5 +1,6 @@
 package dev.langchain4j.data.audio;
 
+import java.io.File;
 import java.net.URI;
 import java.util.Objects;
 
@@ -171,16 +172,21 @@ public class Audio {
     }
 
     /**
-     * Get the filename of the audio using a regex to retrieve the last segment after the last slash,
-     * or the full path if no slashes are found.
-     * @return the filename of the audio, or null if not set.
+     * Get the filename of the audio by extracting the last segment of the path from the URL.
+     * @return the filename of the audio, or null if the URL is not set or has no path.
      */
     public String getFilename() {
         if (url != null) {
             String path = url.getPath();
             if (path != null) {
-                String[] segments = path.split("/");
-                return segments.length > 0 ? segments[segments.length - 1] : path;
+                int lastSeparatorIndex = Math.max(
+                    path.lastIndexOf('/'),
+                    path.lastIndexOf(File.separator)
+                );
+                
+                return lastSeparatorIndex >= 0 ? 
+                    path.substring(lastSeparatorIndex + 1) : 
+                    path;
             }
         }
         return null;

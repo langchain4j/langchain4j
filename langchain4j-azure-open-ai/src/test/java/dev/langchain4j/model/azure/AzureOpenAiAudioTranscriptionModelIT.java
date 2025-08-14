@@ -2,36 +2,105 @@ package dev.langchain4j.model.azure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import dev.langchain4j.model.output.Response;
 import java.io.File;
 import java.io.IOException;
-import java.util.Base64;
 import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for the Azure OpenAI audio model.
+ * Integration test for the Azure OpenAI audio transcription model.
  */
 public class AzureOpenAiAudioTranscriptionModelIT {
 
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiAudioTranscriptionModelIT.class);
+
     @Test
-    void should_transcribe_audio() throws IOException {
+    void should_transcribe_audio_with_new_api() throws IOException {
+        String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
+        String apiKey = System.getenv("AZURE_OPENAI_KEY");
+        String deploymentName = System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME");
+        
+        // Skip test if environment variables aren't configured
+        Assumptions.assumeTrue(endpoint != null && !endpoint.isBlank(), 
+            "AZURE_OPENAI_ENDPOINT environment variable not set");
+        Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), 
+            "AZURE_OPENAI_KEY environment variable not set");
+        Assumptions.assumeTrue(deploymentName != null && !deploymentName.isBlank(), 
+            "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+            
         AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("whisper")
+                .endpoint(endpoint)
+                .apiKey(apiKey)
+                .deploymentName(deploymentName)
+                .responseFormat(AudioTranscriptionFormat.JSON)
                 .logRequestsAndResponses(true)
                 .build();
 
         File audioFile = new File("src/test/resources/hello.mp3");
-        String audioData = Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(audioFile));
+        Assumptions.assumeTrue(audioFile.exists(), 
+                "Test audio file not found: src/test/resources/hello.mp3");
+        
+        byte[] audioData = FileUtils.readFileToByteArray(audioFile);
+        Audio audio = Audio.builder().audioData(audioData).mimeType("audio/mpeg").build();
 
-        Audio audio = Audio.builder().base64Data(audioData).mimeType("audio/mpeg").build();
+        // Test with new request/response objects
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+                .audio(audio)
+                .language("en")
+                .temperature(0.0)
+                .build();
+                
+        AudioTranscriptionResponse response = model.transcribe(request);
+        String text = response.text();
+        assertThat(text).isNotNull();
+        assertThat(text).containsAnyOf("Hello");
+        
+        logger.info("Successfully transcribed audio with new API: {}", text);
+    }
+    
+    @Test
+    void should_transcribe_audio_with_legacy_api() throws IOException {
+        String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
+        String apiKey = System.getenv("AZURE_OPENAI_KEY");
+        String deploymentName = System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME");
+        
+        // Skip test if environment variables aren't configured
+        Assumptions.assumeTrue(endpoint != null && !endpoint.isBlank(), 
+            "AZURE_OPENAI_ENDPOINT environment variable not set");
+        Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), 
+            "AZURE_OPENAI_KEY environment variable not set");
+        Assumptions.assumeTrue(deploymentName != null && !deploymentName.isBlank(), 
+            "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+            
+        AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
+                .endpoint(endpoint)
+                .apiKey(apiKey)
+                .deploymentName(deploymentName)
+                .responseFormat(AudioTranscriptionFormat.JSON)
+                .logRequestsAndResponses(true)
+                .build();
 
+        File audioFile = new File("src/test/resources/hello.mp3");
+        Assumptions.assumeTrue(audioFile.exists(), 
+                "Test audio file not found: src/test/resources/hello.mp3");
+                
+        byte[] audioData = FileUtils.readFileToByteArray(audioFile);
+        Audio audio = Audio.builder().audioData(audioData).mimeType("audio/mpeg").build();
+
+        // Test the deprecated API for backward compatibility
         Response<String> response = model.transcribe(audio);
-        String message = response.content().toString();
+        String message = response.content();
         assertThat(message).isNotNull();
         assertThat(message).containsAnyOf("Hello");
+        
+        logger.info("Successfully transcribed audio with legacy API: {}", message);
     }
 }
