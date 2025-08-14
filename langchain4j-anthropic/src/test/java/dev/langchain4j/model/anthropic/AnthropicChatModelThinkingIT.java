@@ -19,14 +19,14 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+@Disabled("Run manually before release. Expensive to run very often.")
 class AnthropicChatModelThinkingIT {
 
     private static final int THINKING_BUDGET_TOKENS = 1024;

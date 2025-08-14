@@ -539,14 +539,14 @@ class MistralAiStreamingChatModelIT {
     void should_return_valid_json_object_using_model_large() {
 
         // given
-        String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+        String userMessage = "Return JSON with two fields: name = Klaus, age = 42";
 
-        String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
+        String expectedJson = "{\"name\":\"Klaus\",\"age\":42}";
 
         StreamingChatModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MISTRAL_LARGE_LATEST)
-                .temperature(0.1)
+                .modelName("mistral-medium-2508")
+                .temperature(0.0)
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
                 .logResponses(true)
