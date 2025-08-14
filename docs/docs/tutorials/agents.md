@@ -20,7 +20,7 @@ The `langchain4j-agentic` module, discussed in this tutorial, provides a set of 
 
 ## Agents in LangChain4j
 
-A single agent in LangChain4j is a single instance of an LLM intended to perform a specific task or set of tasks. An agent can be defined with an interface with a single method, in a similar way to a normal AI service, just adding the `@Agent` annotation to it.
+An agent in LangChain4j performs a specific task or set of tasks using an LLM. An agent can be defined with an interface with a single method, in a similar way to a normal AI service, just adding the `@Agent` annotation to it.
 
 ```java
 public interface CreativeWriter {
@@ -37,7 +37,7 @@ public interface CreativeWriter {
 }
 ```
 
-It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when using it.
+It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when to use it.
 
 It is now possible to build an instance of this agent using the `AgenticServices.agentBuilder()` method, specifying the interface and the chat model to use. 
 
@@ -57,7 +57,7 @@ The other main difference with an AI service is the presence of the `outputName`
 @Agent(outputName = "story", description = "Generates a story based on the given topic")
 ```
 
-The `AgenticServices` class provides a set of static factory methods to create and define all kind of agents made available by the `langchain4j-agentic` framework.
+The `AgenticServices` class provides a set of static factory methods to create and define all kinds of agents made available by the `langchain4j-agentic` framework.
 
 ## Introducing the AgenticScope
 
@@ -139,7 +139,7 @@ public interface UntypedAgent {
 }
 ```
 
-The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by other all other agents during the novel creation and editing workflow execution.
+The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by all other agents during the novel creation and editing workflow execution.
 
 Optionally, the workflow agent can also be provided with typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
 
@@ -167,7 +167,7 @@ String story = novelCreator.createNovel("dragons and wizards", "young adults", "
 
 A common way to better leverage the capabilities of LLMs is to use them to iteratively refine a piece of text, like a story, by repeatedly invoking an agent that can edit or improve it. This can be achieved by using a loop workflow pattern, where an agent is invoked multiple times until a certain condition is met.
 
-To this purpose it can be used a `StyleScorer` agent that gives a score to a story based on how well it aligns with the required style. 
+A `StyleScorer` agent can be used to generate a score based on how well the style aligns with what's required.
 
 ```java
 public interface StyleScorer {
@@ -242,7 +242,7 @@ String story = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy")
 
 Sometimes it is useful to invoke multiple agents in parallel, especially when they can work independently on the same input. This can be achieved by using a parallel workflow pattern, where multiple agents are invoked simultaneously, and their outputs are combined into a single result.
 
-For example, let's use a movie and food experts to generate a few plans for a lovely evening with a specific mood, combining a movie and a meal that matches that mood. 
+For example, let's use movie and food experts to generate a few plans for a lovely evening with a specific mood, combining a movie and a meal that matches that mood.
 
 ```java
 public interface FoodExpert {
@@ -271,7 +271,7 @@ public interface MovieExpert {
 }
 ```
 
-Since the work of the two experts is independent, it is possible to invoke them in parallel using the `AgenticServices.parallelBuilder()` method, as it follows:
+Since the work of the two experts is independent, it is possible to invoke them in parallel using the `AgenticServices.parallelBuilder()` method, as follows:
 
 ```java
 FoodExpert foodExpert = AgenticServices
@@ -440,7 +440,7 @@ the execution will fail with an exception like
 dev.langchain4j.agentic.agent.MissingArgumentException: Missing argument: topic
 ```
 
-To solve this problem, in this case it is possible to handle this error and recover from it configuring the agent with an appropriate `errorHandler` that provides the agenticScope with the missing argument as it follows.
+To solve this problem, in this case it is possible to handle this error and recover from it configuring the agent with an appropriate `errorHandler` that provides the agenticScope with the missing argument as follows.
 
 ```java
 UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
@@ -499,7 +499,7 @@ Once this interface is defined, it is possible to create an instance of the `Eve
 ```java
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL);
-List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
+List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
 Note that one limitation of this approach is that the same `ChatModel` will be implicitly used to create all subagents, so it is not possible to mix agents using different chat models in the same workflow. This is a limitation of the current implementation, but it can be overcome in future releases.
@@ -661,7 +661,7 @@ or using the standard Java Service Provider interface creating a file named `MET
 
 Up to this point all agents have been wired and combined to create agentic systems using deterministic workflows. However, there are cases where the agentic system needs to be more flexible and adaptive, allowing agents to make decisions on how to proceed based on the context and the results of previous interactions. This is often referred to as "pure agentic AI".
 
-To this purpose, the `langchain4j-agentic` module provides out-of-the-box a supervisor agent that can be provided with a set of subagents and can autonomously generate a plan, deciding which one to invoke agent to invoke next or if the assigned task has been completed.
+To this purpose, the `langchain4j-agentic` module provides out-of-the-box a supervisor agent that can be provided with a set of subagents and can autonomously generate a plan, deciding which agent to invoke next or if the assigned task has been completed.
 
 To provide an example of how this works let's define a few agents that can credit or withdraw money from a bank account or exchange a given amount from one currency to another.
 
@@ -792,7 +792,7 @@ SupervisorAgent bankSupervisor = AgenticServices
 
 Note that the subagents can also be complex agents implementing a workflow, that will be seen as a single agent by the supervisor.
 
-The resulting `SupervisorAgent` typically takes in input a user request and produces a response so its signature is simply as follows:
+The resulting `SupervisorAgent` typically takes a user request as input and produces a response, so its signature is simply as follows:
 
 ```java
 public interface SupervisorAgent {
@@ -827,7 +827,7 @@ AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR fr
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
 
-In many cases, like this one, this summary is the final response that should be returned to the user, but not always. Suppose that you use the `SupervisorAgent` instead of a plain sequence workflow to create a story and edit it according to a given style and audience as in the very first example. In this case the user will be interested only in the final story, and not in a resume of the intermediate steps taken to create it.
+In many cases, like this one, this summary is the final response that should be returned to the user, but not always. Suppose that you use the `SupervisorAgent` instead of a plain sequence workflow to create a story and edit it according to a given style and audience as in the very first example. In this case the user will be interested only in the final story, and not in a summary of the intermediate steps taken to create it.
 
 Returning the response generated by the last invoked agent, instead of the summary, is actually the most common scenario so this is also the default behavior of the supervisor agent. For this situation however returning the summary of all the performed transactions is more appropriate, so that the `SupervisorAgent` has been configured accordingly through that `responseStrategy` method.
 
@@ -1003,7 +1003,7 @@ public interface AstrologyAgent {
 }
 ```
 
-it is possible to create a `SupervisorAgent` that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as it follows:
+it is possible to create a `SupervisorAgent` that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as follows:
 
 ```java
 AstrologyAgent astrologyAgent = AgenticServices
