@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import dev.langchain4j.service.tool.ToolArgumentParsingException;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -220,7 +222,7 @@ public class DefaultMcpClient implements McpClient {
             }
             arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new ToolArgumentParsingException(e);
         }
         long operationId = idGenerator.getAndIncrement();
         McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);
@@ -233,8 +235,11 @@ public class DefaultMcpClient implements McpClient {
         } catch (TimeoutException timeout) {
             transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
-        } catch (ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new ToolExecutionException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e); // TODO
         } finally {
             pendingOperations.remove(operationId);
         }

@@ -14,7 +14,7 @@ import java.util.Optional;
  * Default executor for the 'get_resource' synthetic tool that can retrieve a resource from an MCP server.
  * It expects two arguments: mcpServer and uri.
  */
-class GetResourceToolExecutor implements ToolExecutor {
+class GetResourceToolExecutor implements ToolExecutor { // TODO
 
     private final List<McpClient> mcpClients;
 
@@ -26,7 +26,7 @@ class GetResourceToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         ObjectNode arguments = Json.fromJson(toolExecutionRequest.arguments(), ObjectNode.class);
         if (!arguments.has("mcpServer")) {
-            return "ERROR: missing argument 'mcpServer'";
+            return "ERROR: missing argument 'mcpServer'";  // TODO
         }
         String mcpServerKey = arguments.get("mcpServer").asText();
         if (!arguments.has("uri")) {

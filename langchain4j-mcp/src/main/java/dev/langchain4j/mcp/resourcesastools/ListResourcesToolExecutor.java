@@ -13,7 +13,7 @@ import java.util.List;
  * Default Executor for the 'list_resources' synthetic tool that can retrieve a list of resources from one or more MCP servers
  * and returns a JSON representation of the available resources.
  */
-class ListResourcesToolExecutor implements ToolExecutor {
+class ListResourcesToolExecutor implements ToolExecutor { // TODO
 
     private final List<McpClient> mcpClients;
 

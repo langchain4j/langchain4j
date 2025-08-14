@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.integration;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -86,23 +88,25 @@ public abstract class McpToolsTestBase {
                 .name("echoString")
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString)
-                .isEqualTo("There was an error executing the tool. Message: Internal error. Code: -32603");
+        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+                .isExactlyInstanceOf(ToolExecutionException.class) // TODO should be ToolArgumentParsingException
+                .hasMessage("Internal error")
+                .hasFieldOrPropertyWithValue("errorCode", -32603); // TODO should be -32602
     }
 
     @Test
     public void executeNonExistentTool() {
+        // this should never happen when used through AI Service, as it will be handled by hallucinatedToolNameStrategy
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .name("THIS-TOOL-DOES-NOT-EXIST")
                 .arguments("{\"input\": 1}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString)
-                .isEqualTo("There was an error executing the tool. "
-                        + "Message: Invalid tool name: THIS-TOOL-DOES-NOT-EXIST. Code: -32602");
+        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+                .isExactlyInstanceOf(ToolExecutionException.class)
+                .hasMessage("Invalid tool name: THIS-TOOL-DOES-NOT-EXIST")
+                .hasFieldOrPropertyWithValue("errorCode", -32602);
     }
 
     @Test
@@ -111,9 +115,10 @@ public abstract class McpToolsTestBase {
         ToolExecutor executor = toolProviderResult.toolExecutorByName("error");
         ToolExecutionRequest toolExecutionRequest =
                 ToolExecutionRequest.builder().name("error").arguments("{}").build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString)
-                .isEqualTo("There was an error executing the tool. Message: Internal error. Code: -32603");
+        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+                .isExactlyInstanceOf(ToolExecutionException.class)
+                .hasMessage("Internal error")
+                .hasFieldOrPropertyWithValue("errorCode", -32603);
     }
 
     @Test
@@ -124,9 +129,9 @@ public abstract class McpToolsTestBase {
                 .name("errorResponse")
                 .arguments("{}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString)
-                .isEqualTo("There was an error executing the tool. The tool returned: This is an actual error");
+        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+                .isExactlyInstanceOf(ToolExecutionException.class)
+                .hasMessage("This is an actual error");
     }
 
     @Test

@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.resourcesastools.McpResourcesAsToolsPresenter;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -20,6 +19,8 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 /**
  * A tool provider backed by one or more MCP clients.
  */
@@ -31,14 +32,16 @@ public class McpToolProvider implements ToolProvider {
     private final Function<ToolExecutor, ToolExecutor> toolWrapper;
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
     private final McpResourcesAsToolsPresenter resourcesAsToolsPresenter;
+    private final boolean propagateToolExecutionException;
 
     private McpToolProvider(Builder builder) {
         this(
                 builder.mcpClients,
-                Utils.getOrDefault(builder.failIfOneServerFails, false),
+                getOrDefault(builder.failIfOneServerFails, false),
                 builder.mcpToolsFilter,
                 builder.toolWrapper,
-                builder.resourcesAsToolsPresenter);
+                builder.resourcesAsToolsPresenter,
+                builder.propagateToolExecutionException);
     }
 
     protected McpToolProvider(
@@ -46,12 +49,14 @@ public class McpToolProvider implements ToolProvider {
             boolean failIfOneServerFails,
             BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
             Function<ToolExecutor, ToolExecutor> toolWrapper,
-            McpResourcesAsToolsPresenter resourcesAsToolsPresenter) {
+            McpResourcesAsToolsPresenter resourcesAsToolsPresenter,
+            Boolean propagateToolExecutionException) {
         this.mcpClients = new CopyOnWriteArrayList<>(mcpClients);
         this.failIfOneServerFails = failIfOneServerFails;
         this.mcpToolsFilter = new AtomicReference<>(mcpToolsFilter);
         this.toolWrapper = toolWrapper;
         this.resourcesAsToolsPresenter = resourcesAsToolsPresenter;
+        this.propagateToolExecutionException = getOrDefault(propagateToolExecutionException, false);
     }
 
     /**
@@ -115,12 +120,15 @@ public class McpToolProvider implements ToolProvider {
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
-            var defaultToolExecutor = new McpToolExecutor(mcpClient);
+            ToolExecutor toolExecutor =  McpToolExecutor.builder()
+                    .mcpClient(mcpClient)
+                    .propagateToolExecutionException(propagateToolExecutionException)
+                    .build();
             try {
                 mcpClient.listTools().stream()
                         .filter(tool -> mcpToolsFilter.test(mcpClient, tool))
                         .forEach(toolSpecification -> {
-                            builder.add(toolSpecification, toolWrapper.apply(defaultToolExecutor));
+                            builder.add(toolSpecification, toolWrapper.apply(toolExecutor));
                         });
             } catch (IllegalConfigurationException e) {
                 throw e;
@@ -157,11 +165,12 @@ public class McpToolProvider implements ToolProvider {
         private Boolean failIfOneServerFails;
         private BiPredicate<McpClient, ToolSpecification> mcpToolsFilter = (mcp, tool) -> true;
         private Function<ToolExecutor, ToolExecutor> toolWrapper = Function.identity();
+        private Boolean propagateToolExecutionException;
 
         /**
          * The list of MCP clients to use for retrieving tools.
          */
-        public McpToolProvider.Builder mcpClients(List<McpClient> mcpClients) {
+        public Builder mcpClients(List<McpClient> mcpClients) {
             this.mcpClients = mcpClients;
             return this;
         }
@@ -169,14 +178,14 @@ public class McpToolProvider implements ToolProvider {
         /**
          * The list of MCP clients to use for retrieving tools.
          */
-        public McpToolProvider.Builder mcpClients(McpClient... mcpClients) {
+        public Builder mcpClients(McpClient... mcpClients) {
             return mcpClients(Arrays.asList(mcpClients));
         }
 
         /**
          * The predicate to filter MCP provided tools.
          */
-        public McpToolProvider.Builder filter(BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+        public Builder filter(BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
             this.mcpToolsFilter = this.mcpToolsFilter.and(mcpToolsFilter);
             return this;
         }
@@ -184,7 +193,7 @@ public class McpToolProvider implements ToolProvider {
         /**
          * Filter MCP provided tools with a specific name.
          */
-        public McpToolProvider.Builder filterToolNames(String... toolNames) {
+        public Builder filterToolNames(String... toolNames) {
             return filter(new ToolsNameFilter(toolNames));
         }
 
@@ -192,7 +201,7 @@ public class McpToolProvider implements ToolProvider {
          * If this is true, then the tool provider will throw an exception if it fails to list tools from any of the servers.
          * If this is false (default), then the tool provider will ignore the error and continue with the next server.
          */
-        public McpToolProvider.Builder failIfOneServerFails(boolean failIfOneServerFails) {
+        public Builder failIfOneServerFails(boolean failIfOneServerFails) {
             this.failIfOneServerFails = failIfOneServerFails;
             return this;
         }
@@ -200,7 +209,7 @@ public class McpToolProvider implements ToolProvider {
         /**
          * Provide a wrapper around the {@link ToolExecutor} that can be used to implement tracing for example.
          */
-        public McpToolProvider.Builder toolWrapper(Function<ToolExecutor, ToolExecutor> toolWrapper) {
+        public Builder toolWrapper(Function<ToolExecutor, ToolExecutor> toolWrapper) {
             this.toolWrapper = toolWrapper;
             return this;
         }
@@ -209,9 +218,14 @@ public class McpToolProvider implements ToolProvider {
          * Provides a presenter for presenting resources via synthetic tools. If none is provided, then
          * resources won't automatically be exposed via tools.
          */
-        public McpToolProvider.Builder resourcesAsToolsPresenter(
+        public Builder resourcesAsToolsPresenter(
                 McpResourcesAsToolsPresenter resourcesAsToolsPresenter) {
             this.resourcesAsToolsPresenter = resourcesAsToolsPresenter;
+            return this;
+        }
+
+        public Builder propagateToolExecutionException(Boolean propagateToolExecutionException) {
+            this.propagateToolExecutionException = propagateToolExecutionException;
             return this;
         }
 
