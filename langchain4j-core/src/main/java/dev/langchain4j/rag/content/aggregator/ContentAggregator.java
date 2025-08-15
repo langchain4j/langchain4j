@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.aggregator;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;

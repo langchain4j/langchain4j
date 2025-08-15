@@ -56,7 +56,7 @@
             <artifactId>azure-identity</artifactId>
             <optional>true</optional>
         </dependency>
-        
+
         <!-- Removed duplicate commons-io dependency -->
 
         <dependency>
@@ -127,8 +127,6 @@
             <version>1.4.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
-
-
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

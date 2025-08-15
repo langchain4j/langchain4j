@@ -1,10 +1,10 @@
 package dev.langchain4j.model.input.structured;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Utility class for structured prompts.
@@ -12,8 +12,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  */
 @Internal
 public class StructuredPromptProcessor {
-    private StructuredPromptProcessor() {
-    }
+    private StructuredPromptProcessor() {}
 
     private static final StructuredPromptFactory FACTORY = factory();
 

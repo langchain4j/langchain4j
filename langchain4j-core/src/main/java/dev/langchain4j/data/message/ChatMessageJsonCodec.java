@@ -1,7 +1,6 @@
 package dev.langchain4j.data.message;
 
 import dev.langchain4j.Internal;
-
 import java.util.List;
 
 /**

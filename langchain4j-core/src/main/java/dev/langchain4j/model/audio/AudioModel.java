@@ -24,7 +24,8 @@ public interface AudioModel {
      * @return The generated transcription as a plain string
      */
     default String transcribeToText(Audio audio) {
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio).build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder(audio).build();
         AudioTranscriptionResponse response = transcribe(request);
         return response.text();
     }
@@ -34,21 +35,8 @@ public interface AudioModel {
      * Given an audio file, generates a transcription.
      *
      * @param audio The audio file to generate a transcription from
-     * @return The generated transcription as a plain string
-     */
-    default String transcribeToText(Audio audio) {
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio).build();
-        AudioTranscriptionResponse response = transcribe(request);
-        return response.text();
-    }
-    
-    /**
-     * Convenience method for simple transcription needs.
-     * Given an audio file, generates a transcription.
-     *
-     * @param audio The audio file to generate a transcription from
      * @return The generated transcription response
-     * @deprecated This method will be removed in a future release. Use {@link #transcribe(AudioTranscriptionRequest)} 
+     * @deprecated This method will be removed in a future release. Use {@link #transcribe(AudioTranscriptionRequest)}
      * for full control or {@link #transcribeToText(Audio)} for a simpler API that returns just the text.
      */
     @Deprecated

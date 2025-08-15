@@ -1,10 +1,9 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.Internal;
-
-import java.util.UUID;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+
+import dev.langchain4j.Internal;
+import java.util.UUID;
 
 @Internal
 class TypeChecker {
@@ -20,14 +19,13 @@ class TypeChecker {
 
         if (actualValue.getClass() != comparisonValue.getClass()) {
             throw illegalArgument(
-                    "Type mismatch: actual value of metadata key \"%s\" (%s) has type %s, " +
-                            "while comparison value (%s) has type %s",
+                    "Type mismatch: actual value of metadata key \"%s\" (%s) has type %s, "
+                            + "while comparison value (%s) has type %s",
                     key,
                     actualValue,
                     actualValue.getClass().getName(),
                     comparisonValue,
-                    comparisonValue.getClass().getName()
-            );
+                    comparisonValue.getClass().getName());
         }
     }
 }

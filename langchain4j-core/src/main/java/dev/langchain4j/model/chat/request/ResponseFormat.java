@@ -1,15 +1,16 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.Objects;
 
 public class ResponseFormat {
 
-    public static final ResponseFormat TEXT = ResponseFormat.builder().type(ResponseFormatType.TEXT).build();
-    public static final ResponseFormat JSON = ResponseFormat.builder().type(ResponseFormatType.JSON).build();
+    public static final ResponseFormat TEXT =
+            ResponseFormat.builder().type(ResponseFormatType.TEXT).build();
+    public static final ResponseFormat JSON =
+            ResponseFormat.builder().type(ResponseFormatType.JSON).build();
 
     private final ResponseFormatType type;
     private final JsonSchema jsonSchema;
@@ -35,8 +36,7 @@ public class ResponseFormat {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ResponseFormat that = (ResponseFormat) o;
-        return Objects.equals(this.type, that.type)
-                && Objects.equals(this.jsonSchema, that.jsonSchema);
+        return Objects.equals(this.type, that.type) && Objects.equals(this.jsonSchema, that.jsonSchema);
     }
 
     @Override
@@ -46,10 +46,7 @@ public class ResponseFormat {
 
     @Override
     public String toString() {
-        return "ResponseFormat {" +
-                " type = " + type +
-                ", jsonSchema = " + jsonSchema +
-                " }";
+        return "ResponseFormat {" + " type = " + type + ", jsonSchema = " + jsonSchema + " }";
     }
 
     public static Builder builder() {

@@ -1,13 +1,12 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.WebSearchEngine;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public abstract class WebSearchContentRetrieverIT {
 
@@ -30,12 +29,11 @@ public abstract class WebSearchContentRetrieverIT {
         assertThat(contents)
                 .as("At least one content should be contains 'weather' and 'New York' ignoring case")
                 .anySatisfy(content -> {
-                            assertThat(content.textSegment().text())
-                                    .containsIgnoringCase("weather")
-                                    .containsIgnoringCase("New York");
-                            assertThat(content.textSegment().metadata().getString("url"))
-                                    .startsWith("https://");
-                        }
-                );
+                    assertThat(content.textSegment().text())
+                            .containsIgnoringCase("weather")
+                            .containsIgnoringCase("New York");
+                    assertThat(content.textSegment().metadata().getString("url"))
+                            .startsWith("https://");
+                });
     }
 }

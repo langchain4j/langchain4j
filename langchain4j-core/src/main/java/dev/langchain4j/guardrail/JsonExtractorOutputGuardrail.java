@@ -6,8 +6,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
-import java.util.Optional;
 import dev.langchain4j.internal.JsonParsingUtils;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,9 +107,9 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      */
     protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {
         try {
-            return this.outputClass != null ?
-                    extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass)) :
-                    extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType));
+            return this.outputClass != null
+                    ? extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass))
+                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType));
         } catch (Exception e) {
             return Optional.empty();
         }

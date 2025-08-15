@@ -1,13 +1,12 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.data.pdf.PdfFile;
-
-import java.net.URI;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ContentType.PDF;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.pdf.PdfFile;
+import java.net.URI;
+import java.util.Objects;
 
 public class PdfFileContent implements Content {
 
@@ -24,9 +23,7 @@ public class PdfFileContent implements Content {
      * @param url the url of the PDF.
      */
     public PdfFileContent(URI url) {
-        this.pdfFile = PdfFile.builder()
-                .url(ensureNotNull(url, "url"))
-                .build();
+        this.pdfFile = PdfFile.builder().url(ensureNotNull(url, "url")).build();
     }
 
     /**
@@ -84,9 +81,7 @@ public class PdfFileContent implements Content {
 
     @Override
     public String toString() {
-        return "PdfFileContent {" +
-                " pdfFile = " + pdfFile +
-                " }";
+        return "PdfFileContent {" + " pdfFile = " + pdfFile + " }";
     }
 
     /**

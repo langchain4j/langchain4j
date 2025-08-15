@@ -1,7 +1,6 @@
 package dev.langchain4j.rag.query.transformer;
 
 import dev.langchain4j.rag.query.Query;
-
 import java.util.Collection;
 
 /**
@@ -33,4 +32,3 @@ public interface QueryTransformer {
      */
     Collection<Query> transform(Query query);
 }
-

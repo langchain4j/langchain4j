@@ -1,17 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.MapEntry.entry;
@@ -20,6 +8,17 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class ChatModelListenerTest {
 
@@ -38,25 +37,20 @@ class ChatModelListenerTest {
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from("hi"))
-                    .build();
+            return ChatResponse.builder().aiMessage(AiMessage.from("hi")).build();
         }
     }
 
     static class SuccessfulListener implements ChatModelListener {
 
         @Override
-        public void onRequest(ChatModelRequestContext requestContext) {
-        }
+        public void onRequest(ChatModelRequestContext requestContext) {}
 
         @Override
-        public void onResponse(ChatModelResponseContext responseContext) {
-        }
+        public void onResponse(ChatModelResponseContext responseContext) {}
 
         @Override
-        public void onError(ChatModelErrorContext errorContext) {
-        }
+        public void onError(ChatModelErrorContext errorContext) {}
     }
 
     static class FailingListener implements ChatModelListener {

@@ -1,12 +1,11 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.model.chat.ChatModel;
-
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.CUSTOM;
 import static dev.langchain4j.internal.Utils.copy;
+
+import dev.langchain4j.model.chat.ChatModel;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents a custom message.

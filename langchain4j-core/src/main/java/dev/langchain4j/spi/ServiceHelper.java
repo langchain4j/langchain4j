@@ -1,7 +1,6 @@
 package dev.langchain4j.spi;
 
 import dev.langchain4j.Internal;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -16,8 +15,7 @@ public class ServiceHelper {
     /**
      * Utility class, no public constructor.
      */
-    private ServiceHelper() {
-    }
+    private ServiceHelper() {}
 
     /**
      * Load all the services of a given type.

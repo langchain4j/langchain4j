@@ -1,8 +1,8 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.util.Objects;
 
 /**
  * Can reference {@link JsonObjectSchema} when recursion is required.
@@ -59,8 +59,6 @@ public class JsonReferenceSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonReferenceSchema {" +
-                "reference = " + quoted(reference) +
-                " }";
+        return "JsonReferenceSchema {" + "reference = " + quoted(reference) + " }";
     }
 }

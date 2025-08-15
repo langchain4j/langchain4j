@@ -1,12 +1,11 @@
 package dev.langchain4j.rag;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.rag.content.Content;
-
-import java.util.List;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.rag.content.Content;
+import java.util.List;
 
 /**
  * Represents the result of a {@link ChatMessage} augmentation.
@@ -45,8 +44,7 @@ public class AugmentationResult {
         private ChatMessage chatMessage;
         private List<Content> contents;
 
-        AugmentationResultBuilder() {
-        }
+        AugmentationResultBuilder() {}
 
         public AugmentationResultBuilder chatMessage(ChatMessage chatMessage) {
             this.chatMessage = chatMessage;

@@ -1,13 +1,12 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.data.video.Video;
-
-import java.net.URI;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ContentType.VIDEO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.video.Video;
+import java.net.URI;
+import java.util.Objects;
 
 public class VideoContent implements Content {
 
@@ -24,9 +23,7 @@ public class VideoContent implements Content {
      * @param url the url of the Video.
      */
     public VideoContent(URI url) {
-        this.video = Video.builder()
-                .url(ensureNotNull(url, "url"))
-                .build();
+        this.video = Video.builder().url(ensureNotNull(url, "url")).build();
     }
 
     /**
@@ -47,7 +44,8 @@ public class VideoContent implements Content {
     public VideoContent(String base64Data, String mimeType) {
         this.video = Video.builder()
                 .base64Data(ensureNotBlank(base64Data, "base64data"))
-                .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
+                .mimeType(ensureNotBlank(mimeType, "mimeType"))
+                .build();
     }
 
     /**
@@ -83,9 +81,7 @@ public class VideoContent implements Content {
 
     @Override
     public String toString() {
-        return "VideoContent {" +
-                " video = " + video +
-                " }";
+        return "VideoContent {" + " video = " + video + " }";
     }
 
     /**

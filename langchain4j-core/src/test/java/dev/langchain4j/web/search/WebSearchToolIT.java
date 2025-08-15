@@ -1,16 +1,15 @@
 package dev.langchain4j.web.search;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public abstract class WebSearchToolIT {
 
@@ -36,14 +35,10 @@ public abstract class WebSearchToolIT {
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
-        assertThat(aiMessage.toolExecutionRequests())
-                .anySatisfy(toolSpec -> {
-                            assertThat(toolSpec.name())
-                                    .containsIgnoringCase("searchWeb");
-                            assertThat(toolSpec.arguments())
-                                    .isNotBlank();
-                        }
-                );
+        assertThat(aiMessage.toolExecutionRequests()).anySatisfy(toolSpec -> {
+            assertThat(toolSpec.name()).containsIgnoringCase("searchWeb");
+            assertThat(toolSpec.arguments()).isNotBlank();
+        });
     }
 
     @Test

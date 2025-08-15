@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import dev.langchain4j.Internal;
-
 import java.math.BigDecimal;
 import java.util.Collection;
 
@@ -31,6 +30,7 @@ class NumberComparator {
             return BigDecimal.valueOf(double1);
         }
 
-        throw new IllegalArgumentException("Unsupported type: " + actualNumber.getClass().getName());
+        throw new IllegalArgumentException(
+                "Unsupported type: " + actualNumber.getClass().getName());
     }
 }
