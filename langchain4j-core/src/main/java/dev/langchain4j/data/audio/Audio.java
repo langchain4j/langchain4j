@@ -1,6 +1,5 @@
 package dev.langchain4j.data.audio;
 
-import java.io.File;
 import java.net.URI;
 import java.util.Objects;
 
@@ -198,23 +197,41 @@ public class Audio {
     }
 
     /**
-     * Get the filename of the audio by extracting the last segment of the path from the URL.
-     * @return the filename of the audio, or null if the URL is not set or has no path.
+     * If the audio data is a URL, return the name of the URL file.
+     * @return the file name.
      */
     public String getFilename() {
-        if (url != null) {
-            String path = url.getPath();
-            if (path != null) {
-                int lastSeparatorIndex = Math.max(
-                    path.lastIndexOf('/'),
-                    path.lastIndexOf(File.separator)
-                );
-                
-                return lastSeparatorIndex >= 0 ? 
-                    path.substring(lastSeparatorIndex + 1) : 
-                    path;
+        if (url == null) {
+            return null;
+        }
+        
+        String urlString = url.toString();
+        
+        // Remove query parameters if present
+        int queryIndex = urlString.indexOf('?');
+        if (queryIndex != -1) {
+            urlString = urlString.substring(0, queryIndex);
+        }
+        
+        // Remove fragment if present
+        int fragmentIndex = urlString.indexOf('#');
+        if (fragmentIndex != -1) {
+            urlString = urlString.substring(0, fragmentIndex);
+        }
+        
+        // URLs always use forward slashes, not OS-dependent separators
+        int lastSlashIndex = urlString.lastIndexOf('/');
+        if (lastSlashIndex != -1) {
+            if (lastSlashIndex == urlString.length() - 1) {
+                // URL ends with slash, return empty string
+                return "";
+            } else {
+                // Extract filename after the last slash
+                return urlString.substring(lastSlashIndex + 1);
             }
         }
-        return null;
+        
+        // If no slash found, might be just a filename or malformed URL
+        return urlString;
     }
 }

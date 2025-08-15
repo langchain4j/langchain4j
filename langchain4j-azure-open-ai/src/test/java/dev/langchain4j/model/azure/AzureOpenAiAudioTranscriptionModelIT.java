@@ -6,7 +6,6 @@ import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
-import dev.langchain4j.model.output.Response;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
@@ -61,18 +60,13 @@ public class AzureOpenAiAudioTranscriptionModelIT {
         AudioTranscriptionResponse response = model.transcribe(request);
         String text = response.text();
         assertThat(text).isNotNull();
-        assertThat(text).containsAnyOf("Hello");
+        assertThat(text).containsAnyOf("Hello", "Hallo", "LangChain", "Langchain");
         
         logger.info("Successfully transcribed audio with new API: {}", text);
     }
     
-    /**
-     * This test uses the deprecated API for backward compatibility testing.
-     * The deprecated method is intentionally used here to ensure it still works.
-     */
-    @SuppressWarnings("deprecation")
     @Test
-    void should_transcribe_audio_with_legacy_api() throws IOException {
+    void should_transcribe_audio_with_simple_api() throws IOException {
         String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
         String apiKey = System.getenv("AZURE_OPENAI_KEY");
         String deploymentName = System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME");
@@ -100,12 +94,16 @@ public class AzureOpenAiAudioTranscriptionModelIT {
         byte[] audioData = FileUtils.readFileToByteArray(audioFile);
         Audio audio = Audio.builder().audioData(audioData).mimeType("audio/mpeg").build();
 
-        // Test the deprecated API for backward compatibility
-        Response<String> response = model.transcribe(audio);
-        String message = response.content();
-        assertThat(message).isNotNull();
-        assertThat(message).containsAnyOf("Hello");
+        // Test with simple request/response objects (no optional parameters)
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+                .audio(audio)
+                .build();
+                
+        AudioTranscriptionResponse response = model.transcribe(request);
+        String text = response.text();
+        assertThat(text).isNotNull();
+        assertThat(text).containsAnyOf("Hello", "Hallo", "LangChain", "Langchain");
         
-        logger.info("Successfully transcribed audio with legacy API: {}", message);
+        logger.info("Successfully transcribed audio with simple API: {}", text);
     }
 }

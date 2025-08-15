@@ -18,7 +18,6 @@ import dev.langchain4j.model.audio.AudioModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioTranscriptionModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.Map;
@@ -251,14 +250,6 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
         AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
         
         return AudioTranscriptionResponse.from(audioTranscription.getText());
-    }
-    
-    @Override
-    @Deprecated
-    public Response<String> transcribe(Audio audio) {
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio).build();
-        AudioTranscriptionResponse response = transcribe(request);
-        return Response.from(response.text());
     }
 
     /**
