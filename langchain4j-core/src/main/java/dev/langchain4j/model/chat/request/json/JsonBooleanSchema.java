@@ -1,8 +1,8 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.util.Objects;
 
 public class JsonBooleanSchema implements JsonSchemaElement {
 
@@ -54,8 +54,6 @@ public class JsonBooleanSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonBooleanSchema {" +
-                "description = " + quoted(description) +
-                " }";
+        return "JsonBooleanSchema {" + "description = " + quoted(description) + " }";
     }
 }

@@ -1,12 +1,11 @@
 package dev.langchain4j.rag.content;
 
-import dev.langchain4j.data.segment.TextSegment;
-
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.segment.TextSegment;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * A default implementation of a {@link Content}.
@@ -71,9 +70,6 @@ public class DefaultContent implements Content {
 
     @Override
     public String toString() {
-        return "DefaultContent {" +
-                " textSegment = " + textSegment +
-                ", metadata = " + metadata +
-                " }";
+        return "DefaultContent {" + " textSegment = " + textSegment + ", metadata = " + metadata + " }";
     }
 }

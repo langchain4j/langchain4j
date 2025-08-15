@@ -1,10 +1,10 @@
 package dev.langchain4j.data.pdf;
 
-import java.net.URI;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.net.URI;
+import java.util.Objects;
 
 public class PdfFile {
 
@@ -76,11 +76,10 @@ public class PdfFile {
 
     @Override
     public String toString() {
-        return "PdfFile {" +
-                " url = " + quoted(url) +
-                ", base64Data = " + quoted(base64Data) +
-                ", mimeType = " + quoted(mimeType) +
-                " }";
+        return "PdfFile {" + " url = "
+                + quoted(url) + ", base64Data = "
+                + quoted(base64Data) + ", mimeType = "
+                + quoted(mimeType) + " }";
     }
 
     /**
@@ -95,8 +94,7 @@ public class PdfFile {
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Set the url of the PDF document.

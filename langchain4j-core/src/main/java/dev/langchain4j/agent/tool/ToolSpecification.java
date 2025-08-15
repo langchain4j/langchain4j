@@ -1,10 +1,9 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.Objects;
 
 /**
  * Describes a tool that language model can execute.
@@ -56,8 +55,7 @@ public class ToolSpecification {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification ts
-                && equalTo(ts);
+        return another instanceof ToolSpecification ts && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
@@ -105,8 +103,7 @@ public class ToolSpecification {
         /**
          * Creates a {@link Builder}.
          */
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * Sets the {@code name}.

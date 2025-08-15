@@ -1,13 +1,12 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.data.audio.Audio;
-
-import java.net.URI;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ContentType.AUDIO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.audio.Audio;
+import java.net.URI;
+import java.util.Objects;
 
 public class AudioContent implements Content {
 
@@ -24,9 +23,7 @@ public class AudioContent implements Content {
      * @param url the url of the Audio.
      */
     public AudioContent(URI url) {
-        this.audio = Audio.builder()
-                .url(ensureNotNull(url, "url"))
-                .build();
+        this.audio = Audio.builder().url(ensureNotNull(url, "url")).build();
     }
 
     /**
@@ -47,7 +44,8 @@ public class AudioContent implements Content {
     public AudioContent(String base64Data, String mimeType) {
         this.audio = Audio.builder()
                 .base64Data(ensureNotBlank(base64Data, "base64data"))
-                .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
+                .mimeType(ensureNotBlank(mimeType, "mimeType"))
+                .build();
     }
 
     /**
@@ -83,9 +81,7 @@ public class AudioContent implements Content {
 
     @Override
     public String toString() {
-        return "AudioContent {" +
-                " audio = " + audio +
-                " }";
+        return "AudioContent {" + " audio = " + audio + " }";
     }
 
     /**

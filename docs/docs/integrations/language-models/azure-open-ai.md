@@ -342,6 +342,67 @@ langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
 ```
 
+
+## Audio Transcription
+
+Azure OpenAI now supports audio transcription, enabling you to convert spoken language from audio files into text using state-of-the-art models hosted on Azure.
+
+### Maven Dependency
+
+The audio transcription feature is included in the main `langchain4j-azure-open-ai` package:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-azure-open-ai</artifactId>
+    <version>1.0.1-beta6</version>
+</dependency>
+```
+
+### Plain Java Usage
+
+You can transcribe audio files with the `AzureOpenAiAudioTranscriptionModel`:
+
+```java
+AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
+    .endpoint(System.getenv("AZURE_OPENAI_URL"))
+    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    .deploymentName("your-audio-model-deployment-name") // e.g., "whisper"
+    .build();
+
+String transcript = model.transcribe(new File("path/to/audio-file.wav"));
+System.out.println(transcript);
+```
+
+### Spring Boot Usage
+
+Add the following to your `application.properties`:
+
+```properties
+langchain4j.azure-open-ai.audio-transcription-model.endpoint=${AZURE_OPENAI_URL}
+langchain4j.azure-open-ai.audio-transcription-model.api-key=${AZURE_OPENAI_KEY}
+langchain4j.azure-open-ai.audio-transcription-model.deployment-name=your-audio-model-deployment-name
+```
+
+Then, you can inject and use the bean:
+
+```java
+@Autowired
+AzureOpenAiAudioTranscriptionModel audioTranscriptionModel;
+
+public String transcribeAudio(MultipartFile audioFile) throws IOException {
+    return audioTranscriptionModel.transcribe(audioFile.getInputStream());
+}
+```
+
+
+### Notes
+
+- **Deployment**: You must deploy an audio transcription model (such as Whisper) in your Azure OpenAI resource. See the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/) for details.
+- **Supported Formats**: Common audio formats such as WAV, MP3, and FLAC are supported.
+- **Quotas and Pricing**: Audio transcription consumes resources from your Azure subscription. Review the applicable quotas and pricing in your Azure portal.
+
+
 ## Examples
 
 - [Azure OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/azure-open-ai-examples/src/main/java)

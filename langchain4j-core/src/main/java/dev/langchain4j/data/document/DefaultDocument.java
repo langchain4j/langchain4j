@@ -1,10 +1,10 @@
 package dev.langchain4j.data.document;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Objects;
 
 /**
  * A default implementation of a {@link Document}.
@@ -38,8 +38,7 @@ public class DefaultDocument implements Document {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (DefaultDocument) obj;
-        return Objects.equals(this.text, that.text) &&
-                Objects.equals(this.metadata, that.metadata);
+        return Objects.equals(this.text, that.text) && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
@@ -49,9 +48,6 @@ public class DefaultDocument implements Document {
 
     @Override
     public String toString() {
-        return "DefaultDocument {" +
-                " text = " + quoted(text) +
-                ", metadata = " + metadata +
-                " }";
+        return "DefaultDocument {" + " text = " + quoted(text) + ", metadata = " + metadata + " }";
     }
 }

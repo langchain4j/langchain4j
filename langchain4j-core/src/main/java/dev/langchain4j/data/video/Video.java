@@ -1,9 +1,9 @@
 package dev.langchain4j.data.video;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 import java.net.URI;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.quoted;
 
 public class Video {
 
@@ -75,11 +75,10 @@ public class Video {
 
     @Override
     public String toString() {
-        return "Video {" +
-                " url = " + quoted(url) +
-                ", base64Data = " + quoted(base64Data) +
-                ", mimeType = " + quoted(mimeType) +
-                " }";
+        return "Video {" + " url = "
+                + quoted(url) + ", base64Data = "
+                + quoted(base64Data) + ", mimeType = "
+                + quoted(mimeType) + " }";
     }
 
     /**
@@ -94,8 +93,7 @@ public class Video {
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Set the url of the video.

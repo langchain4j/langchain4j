@@ -1,18 +1,16 @@
 package dev.langchain4j.model.chat.mock;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
-import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static java.util.Arrays.asList;
 
 /**
  * An implementation of a {@link StreamingChatModel} useful for unit testing.
@@ -31,9 +29,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         tokens.forEach(handler::onPartialResponse);
         AiMessage aiMessage = AiMessage.from(String.join("", tokens));
-        ChatResponse chatResponse = ChatResponse.builder()
-                .aiMessage(aiMessage)
-                .build();
+        ChatResponse chatResponse = ChatResponse.builder().aiMessage(aiMessage).build();
         handler.onCompleteResponse(chatResponse);
     }
 

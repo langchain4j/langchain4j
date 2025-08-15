@@ -68,13 +68,10 @@ class RetryUtilsTest {
     void retryThenSuccess() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
-        when(mockAction.call())
-                .thenThrow(new RuntimeException())
-                .thenReturn("Success");
+        when(mockAction.call()).thenThrow(new RuntimeException()).thenReturn("Success");
 
-        RetryUtils.RetryPolicy retryPolicy = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build();
+        RetryUtils.RetryPolicy retryPolicy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).build();
 
         long startTime = System.currentTimeMillis();
 

@@ -30,8 +30,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinking(PartialThinking partialThinking) {
-    }
+    default void onPartialThinking(PartialThinking partialThinking) {}
 
     /**
      * This callback is invoked each time the model generates a partial tool call,
@@ -63,8 +62,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialToolCall(PartialToolCall partialToolCall) {
-    }
+    default void onPartialToolCall(PartialToolCall partialToolCall) {}
 
     /**
      * Invoked when the model has finished streaming a single tool call.
@@ -74,8 +72,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.2.0
      */
     @Experimental
-    default void onCompleteToolCall(CompleteToolCall completeToolCall) {
-    }
+    default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
     /**
      * Invoked when the model has finished streaming a response.

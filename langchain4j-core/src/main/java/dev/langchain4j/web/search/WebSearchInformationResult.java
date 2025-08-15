@@ -1,10 +1,10 @@
 package dev.langchain4j.web.search;
 
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents general information about the web search performed.
@@ -87,11 +87,10 @@ public class WebSearchInformationResult {
 
     @Override
     public String toString() {
-        return "WebSearchInformationResult{" +
-                "totalResults=" + totalResults +
-                ", pageNumber=" + pageNumber +
-                ", metadata=" + metadata +
-                '}';
+        return "WebSearchInformationResult{" + "totalResults="
+                + totalResults + ", pageNumber="
+                + pageNumber + ", metadata="
+                + metadata + '}';
     }
 
     /**

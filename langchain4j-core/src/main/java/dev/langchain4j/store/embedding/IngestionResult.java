@@ -12,7 +12,6 @@ public class IngestionResult {
      */
     private final TokenUsage tokenUsage;
 
-
     public IngestionResult(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
     }

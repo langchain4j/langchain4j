@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Objects;
 
 /**
@@ -44,11 +43,7 @@ public class ChatResponseMetadata {
     }
 
     protected Builder<?> toBuilder(Builder<?> builder) {
-        return builder
-                .id(id)
-                .modelName(modelName)
-                .tokenUsage(tokenUsage)
-                .finishReason(finishReason);
+        return builder.id(id).modelName(modelName).tokenUsage(tokenUsage).finishReason(finishReason);
     }
 
     @Override
@@ -69,12 +64,11 @@ public class ChatResponseMetadata {
 
     @Override
     public String toString() {
-        return "ChatResponseMetadata{" +
-                "id='" + id + '\'' +
-                ", modelName='" + modelName + '\'' +
-                ", tokenUsage=" + tokenUsage +
-                ", finishReason=" + finishReason +
-                '}';
+        return "ChatResponseMetadata{" + "id='"
+                + id + '\'' + ", modelName='"
+                + modelName + '\'' + ", tokenUsage="
+                + tokenUsage + ", finishReason="
+                + finishReason + '}';
     }
 
     public static Builder<?> builder() {

@@ -2,7 +2,6 @@ package dev.langchain4j.rag.content.retriever;
 
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
-
 import java.util.List;
 
 /**

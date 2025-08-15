@@ -1,5 +1,9 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -10,13 +14,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
-
 import java.util.List;
 import java.util.Locale;
-
-import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 
 @Internal
 public class ChatRequestValidationUtils {
@@ -72,7 +71,8 @@ public class ChatRequestValidationUtils {
 
     public static void validate(ToolChoice toolChoice) {
         if (toolChoice == REQUIRED) {
-            throw new UnsupportedFeatureException(String.format("%s.%s is not supported yet by this model provider",
+            throw new UnsupportedFeatureException(String.format(
+                    "%s.%s is not supported yet by this model provider",
                     ToolChoice.class.getSimpleName(), REQUIRED.name()));
         }
     }

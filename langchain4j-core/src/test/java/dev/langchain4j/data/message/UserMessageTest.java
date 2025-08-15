@@ -66,8 +66,8 @@ class UserMessageTest implements WithAssertions {
         assertThat(new UserMessage("text").singleText()).isEqualTo("text");
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(
-                        () -> new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
+                .isThrownBy(() ->
+                        new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
                 .withMessageContaining("Expecting single text content, but got:");
     }
 

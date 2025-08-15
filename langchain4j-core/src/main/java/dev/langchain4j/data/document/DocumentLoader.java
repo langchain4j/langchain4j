@@ -7,8 +7,7 @@ import java.io.InputStream;
  */
 public class DocumentLoader {
 
-    private DocumentLoader() {
-    }
+    private DocumentLoader() {}
 
     /**
      * Loads a document from the given source using the given parser.

@@ -1,10 +1,10 @@
 package dev.langchain4j.data.embedding;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents a dense vector embedding of a text.
@@ -85,9 +85,7 @@ public class Embedding {
 
     @Override
     public String toString() {
-        return "Embedding {" +
-                " vector = " + Arrays.toString(vector) +
-                " }";
+        return "Embedding {" + " vector = " + Arrays.toString(vector) + " }";
     }
 
     /**

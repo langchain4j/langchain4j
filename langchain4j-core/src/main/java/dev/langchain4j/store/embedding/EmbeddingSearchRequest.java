@@ -1,16 +1,15 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
@@ -78,7 +77,8 @@ public class EmbeddingSearchRequest {
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
+        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults
+                + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
@@ -87,8 +87,7 @@ public class EmbeddingSearchRequest {
         private Double minScore;
         private Filter filter;
 
-        EmbeddingSearchRequestBuilder() {
-        }
+        EmbeddingSearchRequestBuilder() {}
 
         public EmbeddingSearchRequestBuilder queryEmbedding(Embedding queryEmbedding) {
             this.queryEmbedding = queryEmbedding;

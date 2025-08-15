@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import dev.langchain4j.Internal;
-
 import java.util.Collection;
 import java.util.UUID;
 
@@ -12,8 +11,7 @@ class UUIDComparator {
         UUID uuid = toUUID(actualUUID);
         return comparisonUUIDs.stream()
                 .map(UUIDComparator::toUUID)
-                .anyMatch(comparisonUUID ->
-                        comparisonUUID.compareTo(uuid) == 0);
+                .anyMatch(comparisonUUID -> comparisonUUID.compareTo(uuid) == 0);
     }
 
     private static UUID toUUID(Object actualUUID) {
@@ -23,6 +21,7 @@ class UUIDComparator {
             return iD;
         }
 
-        throw new IllegalArgumentException("Unsupported type: " + actualUUID.getClass().getName());
+        throw new IllegalArgumentException(
+                "Unsupported type: " + actualUUID.getClass().getName());
     }
 }

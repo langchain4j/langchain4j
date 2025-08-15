@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-
 import java.util.List;
 
 /**

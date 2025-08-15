@@ -1,10 +1,10 @@
 package dev.langchain4j.rag;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.query.Metadata;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents a request for {@link ChatMessage} augmentation.

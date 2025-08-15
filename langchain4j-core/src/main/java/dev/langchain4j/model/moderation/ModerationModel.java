@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
-
 import java.util.List;
 
 /**
@@ -27,7 +26,7 @@ public interface ModerationModel {
     default Response<Moderation> moderate(Prompt prompt) {
         return moderate(prompt.text());
     }
-  
+
     /**
      * Moderates the given chat message.
      * @param message the chat message to moderate.

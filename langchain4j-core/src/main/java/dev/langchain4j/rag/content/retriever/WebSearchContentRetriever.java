@@ -1,16 +1,15 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link ContentRetriever} that retrieves relevant {@link Content} from the web using a {@link WebSearchEngine}.
@@ -44,17 +43,14 @@ public class WebSearchContentRetriever implements ContentRetriever {
 
         WebSearchResults webSearchResults = webSearchEngine.search(webSearchRequest);
 
-        return webSearchResults.toTextSegments().stream()
-                .map(Content::from)
-                .collect(toList());
+        return webSearchResults.toTextSegments().stream().map(Content::from).collect(toList());
     }
 
     public static class WebSearchContentRetrieverBuilder {
         private WebSearchEngine webSearchEngine;
         private Integer maxResults;
 
-        WebSearchContentRetrieverBuilder() {
-        }
+        WebSearchContentRetrieverBuilder() {}
 
         public WebSearchContentRetrieverBuilder webSearchEngine(WebSearchEngine webSearchEngine) {
             this.webSearchEngine = webSearchEngine;

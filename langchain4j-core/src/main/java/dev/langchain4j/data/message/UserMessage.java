@@ -1,15 +1,15 @@
 package dev.langchain4j.data.message;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a message from a user, typically an end user of the application.
@@ -144,8 +144,7 @@ public class UserMessage implements ChatMessage {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         UserMessage that = (UserMessage) o;
-        return Objects.equals(this.name, that.name)
-                && Objects.equals(this.contents, that.contents);
+        return Objects.equals(this.name, that.name) && Objects.equals(this.contents, that.contents);
     }
 
     @Override
@@ -155,10 +154,7 @@ public class UserMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "UserMessage {" +
-                " name = " + quoted(name) +
-                " contents = " + contents +
-                " }";
+        return "UserMessage {" + " name = " + quoted(name) + " contents = " + contents + " }";
     }
 
     public static Builder builder() {

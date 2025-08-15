@@ -10,7 +10,6 @@ import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.exception.UnresolvedModelServerException;
-
 import java.nio.channels.UnresolvedAddressException;
 import java.util.concurrent.Callable;
 

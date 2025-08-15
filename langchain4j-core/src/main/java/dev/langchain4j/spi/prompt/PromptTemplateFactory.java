@@ -1,7 +1,6 @@
 package dev.langchain4j.spi.prompt;
 
 import dev.langchain4j.Internal;
-
 import java.util.Map;
 
 /**
@@ -26,7 +25,9 @@ public interface PromptTemplateFactory {
          * Get the name of the template.
          * @return the name of the template.
          */
-        default String getName() { return "template"; }
+        default String getName() {
+            return "template";
+        }
     }
 
     /**

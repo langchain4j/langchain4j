@@ -1,8 +1,8 @@
 package dev.langchain4j.model.output;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import java.util.Objects;
 
 /**
  * Represents the token usage of a response.
@@ -122,8 +122,7 @@ public class TokenUsage {
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
                 sum(this.outputTokenCount, that.outputTokenCount),
-                sum(this.totalTokenCount, that.totalTokenCount)
-        );
+                sum(this.totalTokenCount, that.totalTokenCount));
     }
 
     /**
@@ -158,10 +157,9 @@ public class TokenUsage {
 
     @Override
     public String toString() {
-        return "TokenUsage {" +
-                " inputTokenCount = " + inputTokenCount +
-                ", outputTokenCount = " + outputTokenCount +
-                ", totalTokenCount = " + totalTokenCount +
-                " }";
+        return "TokenUsage {" + " inputTokenCount = "
+                + inputTokenCount + ", outputTokenCount = "
+                + outputTokenCount + ", totalTokenCount = "
+                + totalTokenCount + " }";
     }
 }

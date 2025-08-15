@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.injector;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
-
 import java.util.List;
 
 /**

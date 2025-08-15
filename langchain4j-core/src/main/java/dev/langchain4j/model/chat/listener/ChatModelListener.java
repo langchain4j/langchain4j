@@ -16,9 +16,7 @@ public interface ChatModelListener {
      *                       The attributes can be used to pass data between methods of this listener
      *                       or between multiple listeners.
      */
-    default void onRequest(ChatModelRequestContext requestContext) {
-
-    }
+    default void onRequest(ChatModelRequestContext requestContext) {}
 
     /**
      * This method is called after the response is received from the model.
@@ -28,9 +26,7 @@ public interface ChatModelListener {
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.
      */
-    default void onResponse(ChatModelResponseContext responseContext) {
-
-    }
+    default void onResponse(ChatModelResponseContext responseContext) {}
 
     /**
      * This method is called when an error occurs during interaction with the model.
@@ -41,7 +37,5 @@ public interface ChatModelListener {
      *                     The attributes can be used to pass data between methods of this listener
      *                     or between multiple listeners.
      */
-    default void onError(ChatModelErrorContext errorContext) {
-
-    }
+    default void onError(ChatModelErrorContext errorContext) {}
 }
