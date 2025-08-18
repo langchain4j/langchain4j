@@ -13,7 +13,7 @@ package dev.langchain4j.service.tool;
  * @since 1.4.0
  */
 @FunctionalInterface
-public interface ToolExecutionErrorHandler {
+public interface ToolExecutionErrorHandler { // TODO name
 
     /**
      * TODO
@@ -22,6 +22,5 @@ public interface ToolExecutionErrorHandler {
      * @param context TODO
      * @return TODO
      */
-    ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context); // TODO name
-    // TODO error: Throwable or RuntimeException?
+    ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context);
 }

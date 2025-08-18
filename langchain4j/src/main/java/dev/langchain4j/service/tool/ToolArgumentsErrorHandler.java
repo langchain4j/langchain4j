@@ -22,5 +22,5 @@ public interface ToolArgumentsErrorHandler { // TODO name
      * @param context TODO
      * @return TODO
      */
-    ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context); // TODO name
+    ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context);
 }

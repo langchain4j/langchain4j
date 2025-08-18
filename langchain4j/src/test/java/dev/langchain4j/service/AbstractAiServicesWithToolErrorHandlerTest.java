@@ -23,7 +23,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public abstract class AbstractAiServicesWithToolErrorHandlerTest {
-    // TODO merge with streaming?
 
     protected abstract void configureGetWeatherThrowingExceptionTool(RuntimeException e, AiServices<?> aiServiceBuilder);
 
@@ -78,7 +77,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // given
         String toolErrorMessage = "Weather service is unavailable";
-        String customizedErrorMessage = "sunny"; // TODO name
+        String customizedErrorMessage = "Can't get weather information";
 
         ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
             assertThat(error).hasMessage(toolErrorMessage);

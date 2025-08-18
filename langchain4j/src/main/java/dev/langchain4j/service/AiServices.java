@@ -449,7 +449,8 @@ public abstract class AiServices<T> {
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
      *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
-     * TODO see
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
@@ -465,7 +466,8 @@ public abstract class AiServices<T> {
      *
      * @param handler TODO
      * @return TODO
-     * TODO see
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
     public AiServices<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler handler) {
         context.toolService.argumentsErrorHandler(handler);
@@ -480,7 +482,8 @@ public abstract class AiServices<T> {
      *
      * @param handler TODO
      * @return TODO
-     * TODO see
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */
     public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
         context.toolService.executionErrorHandler(handler);
