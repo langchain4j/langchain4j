@@ -9,19 +9,14 @@ public class ToolExecutionException extends LangChain4jException { // TODO name,
 
     private final Integer errorCode;
 
-    public ToolExecutionException(String message) {
-        super(message);
-        this.errorCode = null;
-    }
-
-    public ToolExecutionException(String message, Integer errorCode) {
-        super(message);
-        this.errorCode = errorCode;
-    }
-
     public ToolExecutionException(Throwable cause) {
         super(cause);
         this.errorCode = null;
+    }
+
+    public ToolExecutionException(Throwable cause, Integer errorCode) {
+        super(cause);
+        this.errorCode = errorCode;
     }
 
     public Integer errorCode() {

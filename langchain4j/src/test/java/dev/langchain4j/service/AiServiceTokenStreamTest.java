@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.tool.ToolService.DEFAULT_ERROR_HANDLER;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -17,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -180,7 +180,10 @@ class AiServiceTokenStreamTest {
                         .userMessageTemplate("")
                         .variables(Map.of())
                         .build())
-                .toolErrorHandler(DEFAULT_ERROR_HANDLER)
+                .toolArgumentsErrorHandler((e, c) -> {
+                    throw new RuntimeException(e);
+                })
+                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.from(e.getMessage()))
                 .build());
     }
 }

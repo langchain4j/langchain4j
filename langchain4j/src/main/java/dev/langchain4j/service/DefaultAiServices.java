@@ -226,7 +226,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .messages(messages)
                                     .toolSpecifications(toolServiceContext.toolSpecifications())
                                     .toolExecutors(toolServiceContext.toolExecutors())
-                                    .toolErrorHandler(context.toolService.errorHandler())
+                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)

@@ -28,18 +28,18 @@ class GetResourceToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         ObjectNode arguments = parseArguments(toolExecutionRequest);
         if (!arguments.has("mcpServer")) {
-            throw new ToolArgumentParsingException("ERROR: missing argument 'mcpServer'");
+            throw new ToolArgumentParsingException(new RuntimeException("ERROR: missing argument 'mcpServer'"));
         }
         String mcpServerKey = arguments.get("mcpServer").asText();
         if (!arguments.has("uri")) {
-            throw new ToolArgumentParsingException("ERROR: missing argument 'uri'");
+            throw new ToolArgumentParsingException(new RuntimeException("ERROR: missing argument 'uri'"));
         }
         String uri = arguments.get("uri").asText();
         Optional<McpClient> client = mcpClients.stream()
                 .filter(mcpClient -> mcpClient.key().equals(mcpServerKey))
                 .findFirst();
         if (client.isEmpty()) {
-            throw new ToolArgumentParsingException("ERROR: unknown MCP server: " + mcpServerKey);
+            throw new ToolArgumentParsingException(new RuntimeException("ERROR: unknown MCP server: " + mcpServerKey));
         } else {
             StringBuilder result = new StringBuilder();
             List<McpResourceContents> contents = client.get().readResource(uri).contents();
@@ -47,7 +47,7 @@ class GetResourceToolExecutor implements ToolExecutor {
                 if (content instanceof McpTextResourceContents) {
                     result.append(((McpTextResourceContents) content).text());
                 } else {
-                    throw new ToolExecutionException("ERROR: binary content was requested, this is not supported yet");
+                    throw new ToolExecutionException(new RuntimeException("ERROR: binary content was requested, this is not supported yet"));
                 }
             }
             return result.toString();

@@ -39,7 +39,14 @@ import java.util.function.Function;
 @Internal
 public class ToolService {
 
-    public static final ToolErrorHandler DEFAULT_ERROR_HANDLER = (error, context) ->
+    private static final ToolArgumentsErrorHandler DEFAULT_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
+        if (error instanceof RuntimeException re) {
+            throw re;
+        } else {
+            throw new RuntimeException(error);
+        }
+    };
+    private static final ToolExecutionErrorHandler DEFAULT_EXECUTION_ERROR_HANDLER = (error, context) ->
             ToolErrorHandlerResult.from(error.getMessage());
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
@@ -47,7 +54,8 @@ public class ToolService {
     private ToolProvider toolProvider;
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
-    private ToolErrorHandler errorHandler;
+    private ToolArgumentsErrorHandler argumentsErrorHandler;
+    private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
@@ -137,15 +145,29 @@ public class ToolService {
     /**
      * @since 1.4.0
      */
-    public void errorHandler(ToolErrorHandler errorHandler) {
-        this.errorHandler = errorHandler;
+    public void argumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        this.argumentsErrorHandler = handler;
     }
 
     /**
      * @since 1.4.0
      */
-    public ToolErrorHandler errorHandler() {
-        return getOrDefault(errorHandler, DEFAULT_ERROR_HANDLER);
+    public void executionErrorHandler(ToolExecutionErrorHandler handler) {
+        this.executionErrorHandler = handler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolArgumentsErrorHandler argumentsErrorHandler() {
+        return getOrDefault(argumentsErrorHandler, DEFAULT_ARGUMENTS_ERROR_HANDLER);
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolExecutionErrorHandler executionErrorHandler() {
+        return getOrDefault(executionErrorHandler, DEFAULT_EXECUTION_ERROR_HANDLER);
     }
 
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
@@ -274,7 +296,8 @@ public class ToolService {
                 if (toolExecutor == null) {
                     return applyToolHallucinationStrategy(toolExecutionRequest);
                 } else {
-                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId);
+                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId,
+                            argumentsErrorHandler(), executionErrorHandler());
                 }
             }, executor);
             futures.put(toolExecutionRequest, future);
@@ -304,51 +327,59 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             Object memoryId) {
         Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+        for (ToolExecutionRequest request : toolExecutionRequests) {
+            ToolExecutor executor = toolExecutors.get(request.name());
             ToolExecutionResultMessage toolExecutionResultMessage;
-            if (toolExecutor == null) {
-                toolExecutionResultMessage = applyToolHallucinationStrategy(toolExecutionRequest);
+            if (executor == null) {
+                toolExecutionResultMessage = applyToolHallucinationStrategy(request);
             } else {
-                toolExecutionResultMessage = executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId);
+                toolExecutionResultMessage = executeWithErrorHandling(request, executor, memoryId,
+                        argumentsErrorHandler(), executionErrorHandler());
             }
-            toolResults.put(toolExecutionRequest, toolExecutionResultMessage);
+            toolResults.put(request, toolExecutionResultMessage);
         }
         return toolResults;
     }
 
-    private ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolExecutionRequest,
-                                                                ToolExecutor toolExecutor,
-                                                                Object memoryId) {
+    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest request,
+                                                                      ToolExecutor executor,
+                                                                      Object memoryId,
+                                                                      ToolArgumentsErrorHandler argumentsErrorHandler,
+                                                                      ToolExecutionErrorHandler executionErrorHandler) {
         String toolResult;
         try {
-            toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+            toolResult = executor.execute(request, memoryId);
         } catch (Exception e) {
-            if (e instanceof ToolExecutionException) {
-                toolResult = handle(e, toolExecutionRequest, memoryId);
+            if (e instanceof ToolArgumentParsingException) {
+                toolResult = handleToolArgumentError(e.getCause(), argumentsErrorHandler, request, memoryId);
             } else {
-                if (errorHandler() == DEFAULT_ERROR_HANDLER) {
-                    // for backward compatibility, custom ToolErrorHandler is not configured
-                    if (e.getCause() instanceof RuntimeException re) {
-                        throw re;
-                    } else {
-                        throw new RuntimeException(e.getCause());
-                    }
-                } else {
-                    toolResult = handle(e, toolExecutionRequest, memoryId);
-                }
+                toolResult = handleToolExecutionError(e.getCause(), executionErrorHandler, request, memoryId);
             }
-            // TODO check other types of exceptions, also MCP
         }
-        return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+        return ToolExecutionResultMessage.from(request, toolResult);
     }
 
-    private String handle(Exception e, ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    private static String handleToolArgumentError(Throwable e,
+                                                  ToolArgumentsErrorHandler handler,
+                                                  ToolExecutionRequest request,
+                                                  Object memoryId) {
         ToolErrorContext errorContext = ToolErrorContext.builder()
-                .toolExecutionRequest(toolExecutionRequest)
+                .toolExecutionRequest(request)
                 .memoryId(memoryId)
                 .build();
-        ToolErrorHandlerResult errorHandlerResult = errorHandler().handle(e, errorContext);
+        ToolErrorHandlerResult errorHandlerResult = handler.handle(e, errorContext);
+        return errorHandlerResult.text();
+    }
+
+    private static String handleToolExecutionError(Throwable e,
+                                                   ToolExecutionErrorHandler handler,
+                                                   ToolExecutionRequest request,
+                                                   Object memoryId) {
+        ToolErrorContext errorContext = ToolErrorContext.builder()
+                .toolExecutionRequest(request)
+                .memoryId(memoryId)
+                .build();
+        ToolErrorHandlerResult errorHandlerResult = handler.handle(e, errorContext);
         return errorHandlerResult.text();
     }
 

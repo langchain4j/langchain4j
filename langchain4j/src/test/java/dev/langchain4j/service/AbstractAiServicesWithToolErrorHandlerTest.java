@@ -1,19 +1,5 @@
 package dev.langchain4j.service;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
-import dev.langchain4j.service.tool.ToolErrorHandler;
-import dev.langchain4j.service.tool.ToolErrorHandlerResult;
-import dev.langchain4j.service.tool.ToolExecutionException;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -23,10 +9,24 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     // TODO merge with streaming?
 
     protected abstract void configureGetWeatherThrowingExceptionTool(RuntimeException e, AiServices<?> aiServiceBuilder);
+
     protected abstract void configureGetWeatherTool(AiServices<?> aiServiceBuilder);
 
     interface Assistant {
@@ -72,8 +72,6 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verifyNoMoreInteractions(spyModel);
     }
 
-
-
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void should_customize_error_returned_from_tool_before_sending_to_LLM(boolean executeToolsConcurrently) {
@@ -82,10 +80,9 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         String toolErrorMessage = "Weather service is unavailable";
         String customizedErrorMessage = "sunny"; // TODO name
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(ToolExecutionException.class)
-                    .hasMessage(toolErrorMessage);
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).hasMessage(toolErrorMessage);
+
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeatherThrowingException");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -105,9 +102,9 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .toolErrorHandler(toolErrorHandler);
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
 
-        configureGetWeatherThrowingExceptionTool(new RuntimeException(toolErrorMessage), assistantBuilder);
+        configureGetWeatherThrowingExceptionTool(new CustomToolException(toolErrorMessage), assistantBuilder);
 
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
@@ -132,12 +129,11 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // given
         String toolErrorMessage = "Weather service is unavailable";
-        RuntimeException toolError = new RuntimeException(toolErrorMessage);
+        CustomToolException toolError = new CustomToolException(toolErrorMessage);
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(ToolExecutionException.class)
-                    .hasMessage(toolErrorMessage);
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).hasMessage(toolErrorMessage);
+
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeatherThrowingException");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -159,7 +155,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .toolErrorHandler(toolErrorHandler);
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
 
         configureGetWeatherThrowingExceptionTool(toolError, assistantBuilder);
 
@@ -238,11 +234,11 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         String customizedErrorMessage = "Invalid JSON, try again";
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
-                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
+
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
 
@@ -251,7 +247,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .toolErrorHandler(toolErrorHandler);
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
 
         configureGetWeatherTool(assistantBuilder);
 
@@ -285,13 +281,13 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
 
-        RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
+        CustomToolException customException = new CustomToolException("Can't parse JSON arguments");
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
-                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
+
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
             assertThat(context.memoryId()).isEqualTo("default");
 
@@ -300,7 +296,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
-                .toolErrorHandler(toolErrorHandler);
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
 
         configureGetWeatherTool(assistantBuilder);
 
@@ -325,5 +321,12 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verify(model, atLeast(0)).listeners();
         verify(model, atLeast(0)).provider();
         verify(model, atLeast(0)).supportedCapabilities();
+    }
+
+    static class CustomToolException extends RuntimeException {
+
+        public CustomToolException(String message) {
+            super(message);
+        }
     }
 }

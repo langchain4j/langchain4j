@@ -34,7 +34,8 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
-import dev.langchain4j.service.tool.ToolErrorHandler;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -448,6 +449,7 @@ public abstract class AiServices<T> {
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
      *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
+     * TODO see
      */
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
@@ -461,11 +463,27 @@ public abstract class AiServices<T> {
      * // - when creating {@link DefaultToolExecutor} explicitly,
      * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} and {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)}
      *
-     * @param toolErrorHandler TODO
+     * @param handler TODO
      * @return TODO
+     * TODO see
      */
-    public AiServices<T> toolErrorHandler(ToolErrorHandler toolErrorHandler) {
-        context.toolService.errorHandler(toolErrorHandler);
+    public AiServices<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        context.toolService.argumentsErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * TODO
+     * // - make sure {@link ToolExecutor} throws an exception in case or any issues.
+     * // - when creating {@link DefaultToolExecutor} explicitly,
+     * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} and {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)}
+     *
+     * @param handler TODO
+     * @return TODO
+     * TODO see
+     */
+    public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
+        context.toolService.executionErrorHandler(handler);
         return this;
     }
 

@@ -11,7 +11,9 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,11 +37,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
-import dev.langchain4j.service.tool.ToolErrorHandler;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -654,19 +655,25 @@ class StreamingAiServicesWithToolsIT {
         }
         Assistant assistant = assistantBuilder.build();
 
-        Queue<ToolExecution> toolExecutions = new ConcurrentLinkedQueue<>();
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
         assistant.chat("What is the weather in Munich?")
-                .onPartialResponse(ignored -> {
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
                 })
-                .onToolExecuted(toolExecutions::add)
-                .onCompleteResponse(future::complete)
-                .onError(future::completeExceptionally)
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
                 .start();
 
-        future.get(30, SECONDS);
+        futureResponse.get(30, SECONDS);
 
         // then
         verify(spyTool).getWeather("Munich");
@@ -678,8 +685,8 @@ class StreamingAiServicesWithToolsIT {
                 && toolResult.text().equals(errorMessage)), any());
         verifyNoMoreInteractionsFor(spyModel);
 
-        assertThat(toolExecutions).hasSize(1);
-        assertThat(toolExecutions.poll().result()).isEqualTo(errorMessage);
+        verify(handler).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(errorMessage)));
     }
 
     @ParameterizedTest
@@ -699,10 +706,9 @@ class StreamingAiServicesWithToolsIT {
 
         String customizedErrorMessage = "Weather service is unavailable";
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(ToolExecutionException.class)
-                    .hasCause(toolError);
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -717,25 +723,31 @@ class StreamingAiServicesWithToolsIT {
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
                 .tools(spyTool)
-                .toolErrorHandler(toolErrorHandler);
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
         Assistant assistant = assistantBuilder.build();
 
-        Queue<ToolExecution> toolExecutions = new ConcurrentLinkedQueue<>();
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
         assistant.chat("What is the weather in Munich?")
-                .onPartialResponse(ignored -> {
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
                 })
-                .onToolExecuted(toolExecutions::add)
-                .onCompleteResponse(future::complete)
-                .onError(future::completeExceptionally)
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
                 .start();
 
-        future.get(30, SECONDS);
+        futureResponse.get(30, SECONDS);
 
         // then
         verify(spyTool).getWeather("Munich");
@@ -747,8 +759,8 @@ class StreamingAiServicesWithToolsIT {
                 && toolResult.text().equals(customizedErrorMessage)), any());
         verifyNoMoreInteractionsFor(spyModel);
 
-        assertThat(toolExecutions).hasSize(1);
-        assertThat(toolExecutions.poll().result()).isEqualTo(customizedErrorMessage);
+        verify(handler).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(customizedErrorMessage)));
     }
 
     @ParameterizedTest
@@ -766,10 +778,9 @@ class StreamingAiServicesWithToolsIT {
             }
         }
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(ToolExecutionException.class)
-                    .hasCause(toolError);
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+
             assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
@@ -784,26 +795,32 @@ class StreamingAiServicesWithToolsIT {
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
                 .tools(spyTool)
-                .toolErrorHandler(toolErrorHandler);
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
         Assistant assistant = assistantBuilder.build();
 
-        Queue<ToolExecution> toolExecutions = new ConcurrentLinkedQueue<>();
-        CompletableFuture<Throwable> future = new CompletableFuture<>();
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
 
         // when
         assistant.chat("What is the weather in Munich?")
-                .onPartialResponse(ignored -> {
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
                 })
-                .onToolExecuted(toolExecutions::add)
-                .onCompleteResponse(response -> future.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called")))
-                .onError(future::complete)
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
                 .start();
 
         // then
-        assertThat(future.get(30, SECONDS))
+        assertThat(futureError.get(30, SECONDS))
                 .isSameAs(toolError);
 
         verify(spyTool).getWeather("Munich");
@@ -812,7 +829,8 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
         verifyNoMoreInteractionsFor(spyModel);
 
-        assertThat(toolExecutions).isEmpty();
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
     }
 
     // Error Handling: Argument Error
@@ -854,7 +872,7 @@ class StreamingAiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?")
                 .onPartialResponse(handler::onPartialResponse)
                 .beforeToolExecution(handler::beforeToolExecution)
-                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onToolExecuted(handler::onToolExecuted)
                 .onCompleteResponse(completeResponse -> {
                     handler.onCompleteResponse(completeResponse);
                     futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
@@ -878,7 +896,8 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel).chat(any(ChatRequest.class), any());
         verifyNoMoreInteractionsFor(spyModel);
 
-        // TODO verify tool execution handler, also in tests below
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
     }
 
     @ParameterizedTest
@@ -914,11 +933,11 @@ class StreamingAiServicesWithToolsIT {
 
         String customizedErrorMessage = "Invalid JSON, try again";
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
-                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
+
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
 
@@ -928,7 +947,7 @@ class StreamingAiServicesWithToolsIT {
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
                 .tools(spyTool)
-                .toolErrorHandler(toolErrorHandler);
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
@@ -941,7 +960,7 @@ class StreamingAiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?")
                 .onPartialResponse(handler::onPartialResponse)
                 .beforeToolExecution(handler::beforeToolExecution)
-                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onToolExecuted(handler::onToolExecuted)
                 .onCompleteResponse(completeResponse -> {
                     handler.onCompleteResponse(completeResponse);
                     futureResponse.complete(completeResponse);
@@ -965,6 +984,9 @@ class StreamingAiServicesWithToolsIT {
                 && toolResult.text().equals(customizedErrorMessage)), any());
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5), any());
         verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler, times(2)).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(customizedErrorMessage)));
     }
 
     @ParameterizedTest
@@ -991,11 +1013,11 @@ class StreamingAiServicesWithToolsIT {
 
         RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
 
-        ToolErrorHandler toolErrorHandler = (error, context) -> {
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(ToolArgumentParsingException.class)
-                    .hasCauseExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonParseException.class)
                     .hasMessageContaining("Unexpected character");
+
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
             assertThat(context.memoryId()).isEqualTo("default");
 
@@ -1005,7 +1027,7 @@ class StreamingAiServicesWithToolsIT {
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
                 .tools(spyTool)
-                .toolErrorHandler(toolErrorHandler);
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
         if (executeToolsConcurrently) {
             assistantBuilder.executeToolsConcurrently();
         }
@@ -1018,7 +1040,7 @@ class StreamingAiServicesWithToolsIT {
         assistant.chat("What is the weather in Munich?")
                 .onPartialResponse(handler::onPartialResponse)
                 .beforeToolExecution(handler::beforeToolExecution)
-                .onToolExecuted(handler::onToolExecuted) // TODO should this be called with error? also above
+                .onToolExecuted(handler::onToolExecuted)
                 .onCompleteResponse(completeResponse -> {
                     handler.onCompleteResponse(completeResponse);
                     futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
@@ -1038,6 +1060,9 @@ class StreamingAiServicesWithToolsIT {
 
         verify(spyModel).chat(any(ChatRequest.class), any());
         verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
     }
 
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
