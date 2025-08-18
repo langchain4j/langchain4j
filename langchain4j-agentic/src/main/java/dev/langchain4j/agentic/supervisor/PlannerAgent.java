@@ -37,5 +37,5 @@ public interface PlannerAgent {
             The user request is: '{{request}}'.
             The last received response is: '{{lastResponse}}'.
             """)
-    AgentInvocation plan(@MemoryId Object userId, @V("agents") String agents, @V("request") String request, @V("lastResponse") String lastResponse);
+    AgentInvocation plan(@MemoryId Object userId, @V("agents") String agents, @V("request") String request, @V("lastResponse") String lastResponse, @V("supervisorContext") String supervisorContext);
 }
