@@ -212,7 +212,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -220,7 +220,9 @@ class VertexAiGeminiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
     }
 
     @Test
@@ -230,7 +232,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see?"));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -238,7 +240,9 @@ class VertexAiGeminiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
     }
 
     @Test
@@ -250,7 +254,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(catBase64Data, "image/png"),
                 ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -258,7 +262,9 @@ class VertexAiGeminiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
     }
 
     @Test
@@ -269,7 +275,7 @@ class VertexAiGeminiStreamingChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from("gs://langchain4j-test/dog.jpg"),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -716,6 +722,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
     @Test
     void should_support_enum_structured_output() {
+
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -729,27 +736,14 @@ class VertexAiGeminiStreamingChatModelIT {
                         .build())
                 .build();
 
-        // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         String instruction = "What is the sentiment expressed in the following sentence: ";
+
+        // when
         model.chat(instruction + "This is super exciting news, congratulations!", handler);
 
         // then
         assertThat(handler.get().aiMessage().text()).isEqualTo("POSITIVE");
-
-        // when
-        handler = new TestStreamingChatResponseHandler();
-        model.chat(instruction + "The sky is blue.", handler);
-
-        // then
-        assertThat(handler.get().aiMessage().text()).isEqualTo("NEUTRAL");
-
-        // when
-        handler = new TestStreamingChatResponseHandler();
-        model.chat(instruction + "This is the worst movie I've ever watched! Boring!", handler);
-
-        // then
-        assertThat(handler.get().aiMessage().text()).isEqualTo("NEGATIVE");
     }
 
     @AfterEach

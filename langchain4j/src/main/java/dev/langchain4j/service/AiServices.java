@@ -22,6 +22,8 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -39,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -378,6 +381,57 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
         context.toolService.tools(tools);
+        return this;
+    }
+
+    /**
+     * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
+     * If you enable this option, tools will be executed concurrently (with one exception - see below),
+     * using the default {@link Executor}.
+     * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
+     * <ul>
+     *     <li>When using {@link ChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.</li>
+     *             <li>When the LLM calls a single tool, it is executed in the same (caller) thread,
+     *                 the {@link Executor} is not used to avoid wasting resources.</li>
+     *         </ul>
+     *     </li>
+     *     <li>When using {@link StreamingChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.
+     *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
+     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
+     *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
+     *                 We cannot execute it in the same thread because, at that point,
+     *                 we do not yet know how many tools the LLM will call.</li>
+     *         </ul>
+     *     </li>
+     * </ul>
+     *
+     * @return builder
+     * @see #executeToolsConcurrently(Executor)
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently() {
+        context.toolService.executeToolsConcurrently();
+        return this;
+    }
+
+    /**
+     * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
+     * <p>
+     * If {@code null} is specified, the default {@link Executor} will be used.
+     *
+     * @param executor The {@link Executor} to be used to execute tools.
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently(Executor executor) {
+        context.toolService.executeToolsConcurrently(executor);
         return this;
     }
 
