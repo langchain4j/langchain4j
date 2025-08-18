@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
@@ -37,6 +38,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -182,6 +184,15 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         client.batch().objectsBatchDeleter()
                 .withClassName(objectClass)
+                .run();
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+        client.batch().objectsBatchDeleter()
+                .withClassName(objectClass)
+                .withWhere(WeaviateMetadataFilterMapper.map(filter))
                 .run();
     }
 
