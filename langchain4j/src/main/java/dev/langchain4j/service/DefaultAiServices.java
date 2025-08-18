@@ -54,7 +54,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Stream;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -78,11 +77,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            ContentMessage contentMessage = parameter.getAnnotation(ContentMessage.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null && contentMessage == null) {
+            if (v == null && userMessage == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
                         "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId or @ContentMessage",
+                                + "or @UserName or @MemoryId",
                         parameter.getName(), method.getName());
             }
         }
@@ -478,7 +476,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+            // check if the parameter is annotated and the type is String
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class) && args[i] instanceof String) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
@@ -503,12 +502,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     /**
      * find all content message from annotated parameter
-     * <br>
-     * - annotated with {@link dev.langchain4j.service.ContentMessage}
-     * <br>
+     * <p>
      * - annotated with {@link dev.langchain4j.service.UserMessage}
-     *
-     * if there have UserMessage, result will add null for UserMessage, but only one UserMessage
+     * <p>
+     * if there have UserMessage with @Content result will add, if there have UserMessage with String result will add null for UserMessage, but only one UserMessage
      */
     private static Optional<List<Content>> findContentMessageTemplateFromAnnotatedParameter(
             Method method, Object[] args) {
@@ -521,17 +518,16 @@ class DefaultAiServices<T> extends AiServices<T> {
             result.add(null);
         }
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.ContentMessage.class)) {
-                if (args[i] != null && args[i] instanceof Content content) {
-                    result.add(content);
-                }
-                if (args[i] != null && args[i] instanceof List<?> list && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
-                    result.addAll((List<Content>) list);
-                }
-            }
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                // add for userMessage
-                result.add(null);
+                if (args[i] instanceof String) {
+                    // add for userMessage with String
+                    result.add(null);
+                } else if (args[i] instanceof Content) {
+                    result.add((Content) args[i]);
+                }
+                if (args[i] instanceof List && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
+                    result.addAll((List<Content>) args[i]);
+                }
             }
         }
         long countForUserMessage = result.stream()

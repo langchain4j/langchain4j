@@ -61,12 +61,12 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the capital of {{arg0}}?")
         String chat8(String country);
 
-        String chat9(@UserMessage String userMessage, @ContentMessage ImageContent images);
+        String chat9(@UserMessage String userMessage, @UserMessage ImageContent images);
 
         @UserMessage("How many lamas are there in this image?")
-        String chat10(@ContentMessage List<ImageContent> images);
+        String chat10(@UserMessage List<ImageContent> images);
 
-        String chat11(@ContentMessage ImageContent image1, @UserMessage String text, @ContentMessage ImageContent image2);
+        String chat11(@UserMessage ImageContent image1, @UserMessage String text, @UserMessage ImageContent image2);
 
         // illegal configuration
 
