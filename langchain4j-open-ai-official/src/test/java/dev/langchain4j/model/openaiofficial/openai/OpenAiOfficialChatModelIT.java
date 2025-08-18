@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
@@ -13,6 +14,7 @@ import java.util.List;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -55,5 +57,21 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return OpenAiOfficialTokenUsage.class;
+    }
+
+    @Test
+    void should_work_with_o_models() {
+
+        // given
+        ChatModel model = OpenAiOfficialChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("o4-mini")
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
     }
 }

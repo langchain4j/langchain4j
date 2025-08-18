@@ -6,12 +6,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Arrays;
-
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = "\\w{32,36}")
 class GoogleAiGeminiTokenCountEstimatorIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 

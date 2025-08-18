@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.mcp.client.McpBlobResourceContents;
 import dev.langchain4j.mcp.client.McpClient;
@@ -11,7 +12,6 @@ import dev.langchain4j.mcp.client.McpResourceContents;
 import dev.langchain4j.mcp.client.McpResourceTemplate;
 import dev.langchain4j.mcp.client.McpTextResourceContents;
 import java.util.List;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public abstract class McpResourcesTestBase {
@@ -45,7 +45,7 @@ public abstract class McpResourcesTestBase {
 
         McpResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(McpResourceContents.Type.TEXT));
-        assertThat(((McpTextResourceContents) contents).uri().toString()).isEqualTo("file:///text");
+        assertThat(((McpTextResourceContents) contents).uri()).hasToString("file:///text");
         assertThat(((McpTextResourceContents) contents).text()).isEqualTo("text");
     }
 
@@ -56,7 +56,7 @@ public abstract class McpResourcesTestBase {
 
         McpResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(McpResourceContents.Type.BLOB));
-        assertThat(((McpBlobResourceContents) contents).uri().toString()).isEqualTo("file:///blob");
+        assertThat(((McpBlobResourceContents) contents).uri()).hasToString("file:///blob");
         assertThat(((McpBlobResourceContents) contents).blob()).isEqualTo("blob");
     }
 
@@ -83,7 +83,7 @@ public abstract class McpResourcesTestBase {
 
         McpResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(McpResourceContents.Type.TEXT));
-        assertThat(((McpTextResourceContents) contents).uri().toString()).isEqualTo("file:///text-template/hello");
+        assertThat(((McpTextResourceContents) contents).uri()).hasToString("file:///text-template/hello");
         assertThat(((McpTextResourceContents) contents).text()).isEqualTo("text hello");
     }
 
@@ -94,13 +94,13 @@ public abstract class McpResourcesTestBase {
 
         McpResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(McpResourceContents.Type.BLOB));
-        assertThat(((McpBlobResourceContents) contents).uri().toString()).isEqualTo("file:///blob-template/hello");
+        assertThat(((McpBlobResourceContents) contents).uri()).hasToString("file:///blob-template/hello");
         assertThat(((McpBlobResourceContents) contents).blob()).isEqualTo("blob hello");
     }
 
     @Test
     public void readNonExistentResource() {
-        Assertions.assertThatThrownBy(() -> mcpClient.readResource("file:///i-do-not-exist"))
+        assertThatThrownBy(() -> mcpClient.readResource("file:///i-do-not-exist"))
                 .isInstanceOf(McpException.class);
     }
 

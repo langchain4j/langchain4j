@@ -2,6 +2,8 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
+import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -17,11 +19,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -30,29 +30,27 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiStreamingChatModelIT {
 
     public long STREAMING_TIMEOUT = 120;
 
-    @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
-    @CsvSource({"gpt-4o, gpt-4o"})
-    void should_stream_answer(String deploymentName, String gptVersion) throws Exception {
+    @ParameterizedTest(name = "Deployment name {0}")
+    @ValueSource(strings = {"gpt-4o"})
+    void should_stream_answer(String deploymentName) throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .deploymentName(deploymentName)
-                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -102,7 +100,7 @@ class AzureOpenAiStreamingChatModelIT {
             asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(
                     System.getenv("AZURE_OPENAI_ENDPOINT"),
                     gptVersion,
-                    System.getenv("AZURE_OPENAI_KEY"),
+                    AzureModelBuilders.getAzureOpenaiKey(),
                     Duration.ofSeconds(30),
                     5,
                     null,
@@ -112,12 +110,9 @@ class AzureOpenAiStreamingChatModelIT {
                     null);
         }
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .openAIAsyncClient(asyncClient)
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -142,13 +137,11 @@ class AzureOpenAiStreamingChatModelIT {
     @ValueSource(strings = {"gpt-4o"})
     void should_use_json_format(String deploymentName) {
 
-        ResponseFormat responseFormat = JSON;
-
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .responseFormat(responseFormat)
+                .responseFormat(JSON)
                 .temperature(0.0)
                 .maxTokens(50)
                 .logRequestsAndResponses(true)
@@ -165,9 +158,9 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response.aiMessage().text()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
-    @CsvSource({"gpt-4o,        gpt-4o"})
-    void should_execute_tool_forcefully_then_stream_answer(String deploymentName, String gptVersion) throws Exception {
+    @ParameterizedTest(name = "Deployment name {0}")
+    @ValueSource(strings = {"gpt-4o"})
+    void should_execute_tool_forcefully_then_stream_answer(String deploymentName) throws Exception {
 
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -175,7 +168,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -203,7 +195,8 @@ class AzureOpenAiStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                futureResponse.completeExceptionally(new IllegalStateException("onPartialResponse() should never be called when tool is executed"));
+                futureResponse.completeExceptionally(
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed"));
             }
 
             @Override
@@ -274,9 +267,9 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
-    @CsvSource({"gpt-4o,        gpt-4o"})
-    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) throws Exception {
+    @ParameterizedTest(name = "Deployment name {0}")
+    @ValueSource(strings = {"gpt-4o"})
+    void should_call_three_functions_in_parallel(String deploymentName) throws Exception {
 
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -284,7 +277,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -403,47 +395,6 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
-    @Test
-    void tools_should_work_without_tokenCountEstimator() {
-
-        // given
-        TokenCountEstimator tokenCountEstimator = null;
-
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("gpt-4o")
-                .logRequestsAndResponses(true)
-                .tokenCountEstimator(tokenCountEstimator)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is 2+2?");
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("calculator")
-                .description("returns a sum of two numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("first")
-                        .addIntegerProperty("second")
-                        .required("first", "second")
-                        .build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .toolSpecifications(toolSpecification)
-                .toolChoice(REQUIRED)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(chatRequest, handler);
-
-        ChatResponse response = handler.get();
-
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.tokenUsage()).isNull();
-    }
-
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 100})
     void should_handle_timeout(int millis) throws Exception {
@@ -484,6 +435,25 @@ class AzureOpenAiStreamingChatModelIT {
         Throwable error = futureError.get(5, SECONDS);
 
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_work_with_o_models() {
+
+        // given
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is the capital of Germany?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).contains("Berlin");
     }
 
     @AfterEach

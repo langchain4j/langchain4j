@@ -31,7 +31,6 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -39,6 +38,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT {
@@ -50,7 +50,7 @@ class AnthropicChatModelIT {
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded PDFs are huge
             .logResponses(true)
             .build();
 
@@ -358,7 +358,9 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+    })
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -380,7 +382,9 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+    })
     void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -643,29 +647,6 @@ class AnthropicChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_answer_with_thinking() {
-
-        // given
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(1024)
-                .maxTokens(1024 + 100)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        ChatResponse chatResponse = model.chat(userMessage);
-
-        // then
-        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
     }
 
     @Test

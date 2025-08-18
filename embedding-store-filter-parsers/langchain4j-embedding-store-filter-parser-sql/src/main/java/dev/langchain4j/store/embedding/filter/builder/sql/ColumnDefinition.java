@@ -1,8 +1,9 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
-import dev.langchain4j.Experimental;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import dev.langchain4j.Experimental;
+import java.util.Objects;
 
 @Experimental
 public class ColumnDefinition {
@@ -38,17 +39,10 @@ public class ColumnDefinition {
         if (!(o instanceof ColumnDefinition)) return false;
         final ColumnDefinition other = (ColumnDefinition) o;
         if (!other.canEqual((Object) this)) return false;
-        final Object this$name = this.name;
-        final Object other$name = other.name;
-        if (this$name == null ? other$name != null : !this$name.equals(other$name)) return false;
-        final Object this$type = this.type;
-        final Object other$type = other.type;
-        if (this$type == null ? other$type != null : !this$type.equals(other$type)) return false;
-        final Object this$description = this.description;
-        final Object other$description = other.description;
-        if (this$description == null ? other$description != null : !this$description.equals(other$description))
-            return false;
-        return true;
+
+        return Objects.equals(name, other.name)
+                && Objects.equals(type, other.type)
+                && Objects.equals(description, other.description);
     }
 
     protected boolean canEqual(final Object other) {

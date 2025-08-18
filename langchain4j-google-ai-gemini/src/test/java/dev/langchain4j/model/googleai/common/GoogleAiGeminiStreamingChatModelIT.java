@@ -4,7 +4,9 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import org.mockito.InOrder;
 
 import java.util.List;
 
@@ -55,6 +57,11 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
+    }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
@@ -64,5 +71,27 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+    }
+
+    @Override
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
+    }
+
+    @Override
+    protected boolean assertToolId(StreamingChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 }

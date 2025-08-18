@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.2.0-beta8-SNAPSHOT</version>
+    <version>1.4.0-beta10-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -74,6 +74,7 @@
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
+        <module>document-loaders/langchain4j-document-loader-playwright</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
         <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
@@ -99,6 +100,8 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-agentic</module>
+        <module>langchain4j-agentic-a2a</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
@@ -158,9 +161,9 @@
         </plugins>
         <extensions>
             <extension>
-                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <groupId>io.github.gitflow-incremental-builder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.16.0</version>
+                <version>4.0.0</version>
             </extension>
         </extensions>
     </build>
@@ -213,7 +216,7 @@
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.43.4</version>
+                        <version>5.47.3</version>
                         <configuration>
                             <activeRecipes>
                                 <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>

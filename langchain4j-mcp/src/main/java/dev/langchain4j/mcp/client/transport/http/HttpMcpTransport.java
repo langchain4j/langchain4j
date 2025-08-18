@@ -6,8 +6,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.InitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpClientMessage;
+import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -27,6 +27,11 @@ import okhttp3.sse.EventSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The legacy HTTP/SSE transport (see <a href="https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse">specification</a>).
+ * Whenever possible, it is recommended to use {@link StreamableHttpMcpTransport} instead.
+ */
+@Deprecated(forRemoval = true, since = "1.4.0-beta10")
 public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
@@ -70,7 +75,7 @@ public class HttpMcpTransport implements McpTransport {
         Request initializationNotification = null;
         try {
             httpRequest = createRequest(operation);
-            initializationNotification = createRequest(new InitializationNotification());
+            initializationNotification = createRequest(new McpInitializationNotification());
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }

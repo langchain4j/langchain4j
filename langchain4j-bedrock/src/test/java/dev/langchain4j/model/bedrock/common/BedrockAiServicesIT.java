@@ -29,10 +29,14 @@ public class BedrockAiServicesIT extends AbstractAiServiceIT {
     }
 
     public static void sleepIfNeeded() {
+        sleepIfNeeded(1);
+    }
+
+    public static void sleepIfNeeded(int multiplier) {
         try {
             String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
             if (ciDelaySeconds != null) {
-                Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+                Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L * multiplier);
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

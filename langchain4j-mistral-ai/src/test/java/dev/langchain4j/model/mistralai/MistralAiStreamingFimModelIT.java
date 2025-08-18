@@ -104,14 +104,13 @@ class MistralAiStreamingFimModelIT {
     }
 
     @Test
-    void should_stream_generate_code_completion_with_suffix_and_max_min_tokens() {
+    void should_stream_generate_code_completion_with_suffix_and_max_tokens() {
 
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
                 .maxTokens(1024)
-                .minTokens(0)
                 .logRequests(true)
                 .build();
 

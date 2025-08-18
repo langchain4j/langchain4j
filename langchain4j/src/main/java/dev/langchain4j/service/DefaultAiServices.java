@@ -12,11 +12,11 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -84,15 +84,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
     }
 
-    public T build() {
-
-        performBasicValidation();
-
+    private void validateContextMemory() {
         if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
             throw illegalConfiguration(
                     "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
                     context.aiServiceClass.getName());
         }
+    }
+
+    private void validateMethods() {
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
@@ -120,6 +120,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                 }
             }
         }
+    }
+
+    protected void validate() {
+        performBasicValidation();
+        validateContextMemory();
+        validateMethods();
+    }
+
+    private Object handleChatMemoryAccess(Method method, Object[] args) {
+        return switch (method.getName()) {
+            case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
+            case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
+            default ->
+                throw new UnsupportedOperationException(
+                        "Unknown method on ChatMemoryAccess class : " + method.getName());
+        };
+    }
+
+    public T build() {
+        validate();
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
@@ -137,13 +157,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
-                            return switch (method.getName()) {
-                                case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
-                                case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default ->
-                                    throw new UnsupportedOperationException(
-                                            "Unknown method on ChatMemoryAccess class : " + method.getName());
-                            };
+                            return handleChatMemoryAccess(method, args);
                         }
 
                         validateParameters(method);
@@ -178,12 +192,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 
-                        // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
-                        boolean supportsJsonSchema = supportsJsonSchema(); // TODO should it be called for
-                        // returnType==String?
+                        // TODO should it be called when returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema();
 
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
@@ -214,6 +227,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .messages(messages)
                                     .toolSpecifications(toolServiceContext.toolSpecifications())
                                     .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolExecutor(context.toolService.executor())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
@@ -244,10 +258,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = ChatRequest.builder()
-                                .messages(messages)
-                                .parameters(parameters)
-                                .build();
+                        ChatRequest chatRequest = context.chatRequestTransformer
+                                .apply(ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(), memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
@@ -266,11 +281,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 memoryId,
                                 toolServiceContext.toolExecutors());
 
-                        chatResponse = toolServiceResult.chatResponse();
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        FinishReason finishReason = chatResponse.metadata().finishReason();
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, chatResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             return response;
@@ -281,10 +295,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(chatResponse.tokenUsage())
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(finishReason)
+                                    .finishReason(toolServiceResult.finalResponse().finishReason())
                                     .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
                                     .build();
                         } else {
                             return parsedResponse;

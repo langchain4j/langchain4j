@@ -1,16 +1,14 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-import com.azure.identity.AuthenticationUtil;
-import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.OpenAIClient;
@@ -18,7 +16,6 @@ import com.openai.client.OpenAIClientAsync;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.core.JsonValue;
-import com.openai.credential.BearerTokenCredential;
 import com.openai.credential.Credential;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
@@ -59,6 +56,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -266,9 +264,7 @@ class InternalOpenAiOfficialHelper {
             return credential;
         } else if (modelHost == ModelHost.AZURE_OPENAI) {
             try {
-                return BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
-                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default"));
-
+                return AzureInternalOpenAiOfficialHelper.getAzureCredential();
             } catch (NoClassDefFoundError e) {
                 throw new IllegalArgumentException(
                         "Azure OpenAI was detected, but no credential was provided. "
@@ -504,7 +500,8 @@ class InternalOpenAiOfficialHelper {
         if (completionTokensDetails.isPresent()
                 && completionTokensDetails.get().reasoningTokens().isPresent()) {
             outputTokensDetails = OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
-                    .reasoningTokens(completionTokensDetails.get().reasoningTokens().get())
+                    .reasoningTokens(
+                            completionTokensDetails.get().reasoningTokens().get())
                     .build();
         }
 
@@ -566,7 +563,8 @@ class InternalOpenAiOfficialHelper {
                     .type(JsonValue.from("json_object"))
                     .build();
         } else {
-            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
                         "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
