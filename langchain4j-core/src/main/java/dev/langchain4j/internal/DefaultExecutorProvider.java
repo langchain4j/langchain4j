@@ -4,6 +4,9 @@ import dev.langchain4j.Internal;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Internal
 public class DefaultExecutorProvider {
@@ -54,7 +57,11 @@ public class DefaultExecutorProvider {
         }
 
         private static ExecutorService createPlatformThreadExecutorService() {
-            return Executors.newCachedThreadPool();
+            return new ThreadPoolExecutor(
+                    0, Integer.MAX_VALUE,
+                    1, TimeUnit.SECONDS,
+                    new SynchronousQueue<>()
+            );
         }
     }
 }
