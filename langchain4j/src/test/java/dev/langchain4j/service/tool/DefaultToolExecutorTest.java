@@ -4,6 +4,7 @@ import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -519,5 +520,60 @@ class DefaultToolExecutorTest implements WithAssertions {
                     "age": 43
                   }
                 ]""");
+    }
+
+    @Test
+    void should_return_exception_message_when_tool_method_throws_exception() throws NoSuchMethodException {
+
+        // given
+        String errorMessage = "something went wrong...";
+
+        class Tools {
+
+            @Tool
+            void tool() {
+                throw new RuntimeException(errorMessage);
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool"));
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .name("tool")
+                .arguments("{}")
+                .build();
+
+        // when
+        String toolResult = toolExecutor.execute(toolRequest, "default");
+
+        // then
+        assertThat(toolResult).isEqualTo(errorMessage);
+    }
+
+    @Test
+    void should_throw_exception_when_arguments_cannot_be_parsed() throws NoSuchMethodException {
+
+        // given
+        String arguments = "{ invalid JSON }";
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .name("tool")
+                .arguments(arguments)
+                .build();
+
+        class Tools {
+
+            @Tool
+            void tool(String s) {
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+
+        // when-then
+        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("was expecting double-quote");
     }
 }

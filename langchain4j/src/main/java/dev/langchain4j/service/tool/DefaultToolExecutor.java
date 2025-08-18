@@ -19,7 +19,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
-public class DefaultToolExecutor implements ToolExecutor { // TODO test no breaking changes
+public class DefaultToolExecutor implements ToolExecutor {
 
     private final Object object;
     private final Method originalMethod;
@@ -116,14 +116,18 @@ public class DefaultToolExecutor implements ToolExecutor { // TODO test no break
             return prepareArguments(originalMethod, argumentsMap, memoryId);
         } catch (Exception e) {
             if (wrapToolArgumentException) {
-                if (e.getClass() == RuntimeException.class && e.getCause() != null) {
-                    throw new ToolArgumentParsingException(e.getCause());
-                } else {
-                    throw new ToolArgumentParsingException(e);
-                }
+                throw new ToolArgumentParsingException(getActualCause(e));
             } else {
                 throw e;
             }
+        }
+    }
+
+    private static Throwable getActualCause(Exception e) {
+        if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+            return e.getCause();
+        } else {
+            return e;
         }
     }
 
