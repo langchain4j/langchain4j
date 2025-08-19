@@ -89,8 +89,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String databaseName,
             String idFieldName,
             String textFieldName,
-            String metadataFiledName,
-            String vectorFiledName,
+            String metadataFieldName,
+            String vectorFieldName,
             Map<String, Object> extraParams) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
@@ -103,8 +103,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 autoFlushOnInsert,
                 idFieldName,
                 textFieldName,
-                metadataFiledName,
-                vectorFiledName,
+                metadataFieldName,
+                vectorFieldName,
                 extraParams);
     }
 
@@ -119,8 +119,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean autoFlushOnInsert,
             String idFieldName,
             String textFieldName,
-            String metadataFiledName,
-            String vectorFiledName,
+            String metadataFieldName,
+            String vectorFieldName,
             Map<String, Object> extraParams) {
         this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
         this.collectionName = getOrDefault(collectionName, "default");
@@ -131,8 +131,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.fieldDefinition = new FieldDefinition(
                 getOrDefault(idFieldName, DEFAULT_ID_FIELD_NAME),
                 getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
-                getOrDefault(metadataFiledName, DEFAULT_METADATA_FIELD_NAME),
-                getOrDefault(vectorFiledName, DEFAULT_VECTOR_FIELD_NAME));
+                getOrDefault(metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
+                getOrDefault(vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(

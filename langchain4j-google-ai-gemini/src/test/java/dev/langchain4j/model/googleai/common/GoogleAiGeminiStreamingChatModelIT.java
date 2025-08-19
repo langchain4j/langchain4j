@@ -11,6 +11,8 @@ import org.mockito.InOrder;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
 class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -75,6 +77,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
@@ -82,6 +85,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
+        io.verify(handler, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
