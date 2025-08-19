@@ -713,7 +713,7 @@ class StreamingAiServicesWithToolsIT {
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
 
-            return ToolErrorHandlerResult.from(customizedErrorMessage);
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
         };
 
         StreamingChatModel spyModel = spy(models().findFirst().get());
@@ -941,7 +941,7 @@ class StreamingAiServicesWithToolsIT {
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
 
-            return ToolErrorHandlerResult.from(customizedErrorMessage);
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
         };
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)

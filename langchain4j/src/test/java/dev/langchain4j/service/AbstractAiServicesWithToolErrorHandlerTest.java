@@ -86,7 +86,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
             assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
             assertThat(context.memoryId()).isEqualTo("default");
 
-            return ToolErrorHandlerResult.from(customizedErrorMessage);
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
         };
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -241,7 +241,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
 
-            return ToolErrorHandlerResult.from(customizedErrorMessage);
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
         };
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)

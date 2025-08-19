@@ -6,8 +6,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.Objects;
 
 /**
- * TODO
- *
  * @since 1.4.0
  */
 public class ToolErrorHandlerResult {
@@ -22,13 +20,7 @@ public class ToolErrorHandlerResult {
         return text;
     }
 
-    /**
-     * TODO
-     *
-     * @param text
-     * @return
-     */
-    public static ToolErrorHandlerResult from(String text) { // TODO name
+    public static ToolErrorHandlerResult text(String text) {
         return new ToolErrorHandlerResult(text);
     }
 

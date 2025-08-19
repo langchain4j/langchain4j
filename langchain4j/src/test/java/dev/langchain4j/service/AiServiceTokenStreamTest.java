@@ -183,7 +183,7 @@ class AiServiceTokenStreamTest {
                 .toolArgumentsErrorHandler((e, c) -> {
                     throw new RuntimeException(e);
                 })
-                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.from(e.getMessage()))
+                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
     }
 }
