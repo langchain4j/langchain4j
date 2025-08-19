@@ -18,4 +18,17 @@ class ParsingUtilsTest {
         // then
         assertThat(e).hasMessageContaining("aW52YWxpZCBqc29u");
     }
+
+    @Test
+    void should_dump_problematic_text_in_base64_null() {
+
+        // given
+        String text = null;
+
+        // when
+        OutputParsingException e = ParsingUtils.outputParsingException(text, Object.class);
+
+        // then
+        assertThat(e).hasMessageContaining("null");
+    }
 }
