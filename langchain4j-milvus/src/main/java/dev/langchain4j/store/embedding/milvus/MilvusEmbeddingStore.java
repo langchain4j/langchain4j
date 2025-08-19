@@ -340,7 +340,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
-        private Map<String,Object> extraParams;
+        private final Map<String,Object> extraParams = new HashMap<>();
 
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
@@ -532,12 +532,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public Builder extraParam(String key, Object value) {
-            if (this.extraParams == null) {
-                this.extraParams = new HashMap<>();
-            }
             this.extraParams.put(key, value);
             return this;
-        };
+        }
 
         public MilvusEmbeddingStore build() {
             if (milvusClient == null) {
