@@ -28,6 +28,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
 
 class GeminiService {
 
@@ -45,6 +46,7 @@ class GeminiService {
             final String apiKey,
             final String baseUrl,
             final boolean logRequestsAndResponses,
+            final Logger logger,
             final Duration timeout) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
@@ -55,7 +57,7 @@ class GeminiService {
                 .build();
 
         if (logRequestsAndResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, true, true);
+            this.httpClient = new LoggingHttpClient(httpClient, true, true, logger);
         } else {
             this.httpClient = httpClient;
         }
