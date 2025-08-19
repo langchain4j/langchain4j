@@ -7,13 +7,14 @@ import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 
 public abstract class WatsonxChat {
 
     protected final ChatProvider chatProvider;
     protected final List<ChatModelListener> listeners;
-    protected final WatsonxChatRequestParameters defaultRequestParameters;
+    protected final ChatRequestParameters defaultRequestParameters;
     protected final boolean enableJsonSchema;
     protected final ExtractionTags tags;
 
@@ -31,7 +32,7 @@ public abstract class WatsonxChat {
     public abstract static class Builder<T extends Builder<T>> {
         private ChatProvider chatProvider;
         private List<ChatModelListener> listeners;
-        private WatsonxChatRequestParameters defaultRequestParameters;
+        private ChatRequestParameters defaultRequestParameters;
         private Boolean enableJsonSchema;
         private ExtractionTags tags;
 
@@ -45,7 +46,7 @@ public abstract class WatsonxChat {
             return (T) this;
         }
 
-        public T defaultRequestParameters(WatsonxChatRequestParameters defaultRequestParameters) {
+        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return (T) this;
         }
