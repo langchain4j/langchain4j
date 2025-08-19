@@ -34,8 +34,10 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -459,13 +461,23 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * TODO
-     * // - make sure {@link ToolExecutor} throws an exception in case or any issues.
-     * // - when creating {@link DefaultToolExecutor} explicitly,
-     * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} and {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)}
+     * Configures the handler to be invoked when errors related to tool arguments occur,
+     * such as JSON parsing failures or mismatched argument types.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow. This is the default behavior if no handler is configured.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)} to {@code true}.
      *
-     * @param handler TODO
-     * @return TODO
+     * @param handler The handler responsible for processing tool argument errors
+     * @return The builder
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
@@ -475,13 +487,24 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * TODO
-     * // - make sure {@link ToolExecutor} throws an exception in case or any issues.
-     * // - when creating {@link DefaultToolExecutor} explicitly,
-     * // enable {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} and {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)}
+     * Configures the handler to be invoked when errors related to tool execution occur, such as business errors.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * This is the default behavior if no handler is configured.
+     * The {@link Exception#getMessage()} is sent to the LLM by default.
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} to {@code true}.
      *
-     * @param handler TODO
-     * @return TODO
+     * @param handler The handler responsible for processing tool execution errors
+     * @return The builder
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */

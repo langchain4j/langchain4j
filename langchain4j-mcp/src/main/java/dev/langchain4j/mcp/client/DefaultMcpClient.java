@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
+import dev.langchain4j.service.tool.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,7 +222,7 @@ public class DefaultMcpClient implements McpClient {
             }
             arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
-            throw new ToolArgumentParsingException(e);
+            throw new ToolArgumentsException(e);
         }
         long operationId = idGenerator.getAndIncrement();
         McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);

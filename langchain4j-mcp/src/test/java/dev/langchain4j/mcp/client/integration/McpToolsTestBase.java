@@ -15,7 +15,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.AbstractAiServicesWithToolErrorHandlerTest;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
+import dev.langchain4j.service.tool.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -86,7 +86,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolExecutionException.class) // TODO should be ToolArgumentParsingException
+                .isExactlyInstanceOf(ToolExecutionException.class) // TODO should be ToolArgumentsException
                 .hasMessage("Internal error")
                 .hasFieldOrPropertyWithValue("errorCode", -32603); // TODO should be -32602
     }
@@ -101,7 +101,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .arguments("{\"input\": 1}")
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolArgumentParsingException.class)
+                .isExactlyInstanceOf(ToolArgumentsException.class)
                 .hasMessage("Invalid tool name: THIS-TOOL-DOES-NOT-EXIST")
                 .hasFieldOrPropertyWithValue("errorCode", -32602);
     }

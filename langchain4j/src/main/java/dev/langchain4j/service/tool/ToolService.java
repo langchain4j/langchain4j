@@ -350,7 +350,7 @@ public class ToolService {
         try {
             toolResult = executor.execute(request, memoryId);
         } catch (Exception e) {
-            if (e instanceof ToolArgumentParsingException) {
+            if (e instanceof ToolArgumentsException) {
                 toolResult = handleToolArgumentError(e.getCause(), argumentsErrorHandler, request, memoryId);
             } else {
                 toolResult = handleToolExecutionError(e.getCause(), executionErrorHandler, request, memoryId);

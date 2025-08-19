@@ -24,8 +24,8 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Object object;
     private final Method originalMethod;
     private final Method methodToInvoke;
-    private final boolean wrapToolArgumentException; // TODO name
-    private final boolean propagateToolExecutionException; // TODO name
+    private final boolean wrapToolArgumentException;
+    private final boolean propagateToolExecutionException;
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
@@ -116,7 +116,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             return prepareArguments(originalMethod, argumentsMap, memoryId);
         } catch (Exception e) {
             if (wrapToolArgumentException) {
-                throw new ToolArgumentParsingException(getActualCause(e));
+                throw new ToolArgumentsException(getActualCause(e));
             } else {
                 throw e;
             }
@@ -332,11 +332,24 @@ public class DefaultToolExecutor implements ToolExecutor {
             return this;
         }
 
+        /**
+         * If set to {@code true}, exceptions that occur during tool argument parsing or preparation
+         * will be wrapped in a {@link ToolArgumentsException}.
+         * <p>
+         * The default value is {@code false}.
+         */
         public Builder wrapToolArgumentException(Boolean wrapToolArgumentException) {
             this.wrapToolArgumentException = wrapToolArgumentException;
             return this;
         }
 
+        /**
+         * If set to {@code true}, exceptions that occur during tool execution will be thrown
+         * instead of being returned as an exception message string.
+         * These exceptions will be wrapped in a {@link ToolExecutionException}.
+         * <p>
+         * The default value is {@code false}.
+         */
         public Builder propagateToolExecutionException(Boolean propagateToolExecutionException) {
             this.propagateToolExecutionException = propagateToolExecutionException;
             return this;

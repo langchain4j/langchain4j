@@ -5,7 +5,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
+import dev.langchain4j.service.tool.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolExecutionException;
 
 class ToolExecutionHelper {
@@ -32,7 +32,7 @@ class ToolExecutionHelper {
                 String errorMessage = extractErrorMessage(result.get("error"));
                 Integer errorCode = extractErrorCode(result.get("error"));
                 if (errorCode != null && errorCode == ERROR_CODE_INVALID_PARAMETERS) {
-                    throw new ToolArgumentParsingException(new RuntimeException(errorMessage), errorCode);
+                    throw new ToolArgumentsException(new RuntimeException(errorMessage), errorCode);
                 } else {
                     throw new ToolExecutionException(new RuntimeException(errorMessage), errorCode);
                 }

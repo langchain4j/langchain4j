@@ -1,26 +1,31 @@
 package dev.langchain4j.service.tool;
 
 /**
- * TODO
- * TODO it is handling exceptions thrown from a {@link ToolExecutor}
+ * Handler for tool argument errors thrown by a {@link ToolExecutor}.
  * <p>
- * Currently, there are 2 options how tool error can be handled:
- * - return ToolErrorHandlerResult with text that will be sent to the LLM. LLM will have an option to react to it and possibly retry
- * - re-throw an exception (in this case the AI Service invocation fails with this exception)
+ * Currently, there are two ways to handle errors:
+ * <p>
+ * 1. Throw an exception: this will stop the AI service flow.
+ * <p>
+ * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+ * allowing it to respond appropriately (for example, by correcting the error and retrying).
  *
- * @see ToolExecutionErrorHandler
  * @see HallucinatedToolNameStrategy
+ * @see ToolExecutionErrorHandler
  * @since 1.4.0
  */
 @FunctionalInterface
 public interface ToolArgumentsErrorHandler { // TODO name
 
     /**
-     * TODO
+     * Handles a tool arguments error.
+     * <p>
+     * This method should either throw an exception or return a {@link ToolErrorHandlerResult},
+     * which will be sent to the LLM as the result of the tool execution.
      *
-     * @param error   TODO
-     * @param context TODO
-     * @return TODO
+     * @param error   The error that occurred.
+     * @param context The context in which the error occurred.
+     * @return The result of error handling.
      */
     ToolErrorHandlerResult handle(Throwable error, ToolErrorContext context);
 }

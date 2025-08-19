@@ -5,16 +5,16 @@ import dev.langchain4j.exception.LangChain4jException;
 /**
  * @since 1.4.0
  */
-public class ToolArgumentParsingException extends LangChain4jException { // TODO name, location (package, module)
+public class ToolArgumentsException extends LangChain4jException { // TODO name, location (package, module)
 
     private final Integer errorCode;
 
-    public ToolArgumentParsingException(Throwable cause) {
+    public ToolArgumentsException(Throwable cause) {
         super(cause);
         this.errorCode = null;
     }
 
-    public ToolArgumentParsingException(Throwable cause, Integer errorCode) {
+    public ToolArgumentsException(Throwable cause, Integer errorCode) {
         super(cause);
         this.errorCode = errorCode;
     }

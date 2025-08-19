@@ -8,7 +8,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpResourceContents;
 import dev.langchain4j.mcp.client.McpTextResourceContents;
-import dev.langchain4j.service.tool.ToolArgumentParsingException;
+import dev.langchain4j.service.tool.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 
@@ -28,18 +28,18 @@ class GetResourceToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         ObjectNode arguments = parseArguments(toolExecutionRequest);
         if (!arguments.has("mcpServer")) {
-            throw new ToolArgumentParsingException(new RuntimeException("ERROR: missing argument 'mcpServer'"));
+            throw new ToolArgumentsException(new RuntimeException("ERROR: missing argument 'mcpServer'"));
         }
         String mcpServerKey = arguments.get("mcpServer").asText();
         if (!arguments.has("uri")) {
-            throw new ToolArgumentParsingException(new RuntimeException("ERROR: missing argument 'uri'"));
+            throw new ToolArgumentsException(new RuntimeException("ERROR: missing argument 'uri'"));
         }
         String uri = arguments.get("uri").asText();
         Optional<McpClient> client = mcpClients.stream()
                 .filter(mcpClient -> mcpClient.key().equals(mcpServerKey))
                 .findFirst();
         if (client.isEmpty()) {
-            throw new ToolArgumentParsingException(new RuntimeException("ERROR: unknown MCP server: " + mcpServerKey));
+            throw new ToolArgumentsException(new RuntimeException("ERROR: unknown MCP server: " + mcpServerKey));
         } else {
             StringBuilder result = new StringBuilder();
             List<McpResourceContents> contents = client.get().readResource(uri).contents();
@@ -58,7 +58,7 @@ class GetResourceToolExecutor implements ToolExecutor {
         try {
             return Json.fromJson(toolExecutionRequest.arguments(), ObjectNode.class);
         } catch (Exception e) {
-            throw new ToolArgumentParsingException(e.getCause());
+            throw new ToolArgumentsException(e.getCause());
         }
     }
 }
