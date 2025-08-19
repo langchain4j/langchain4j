@@ -22,12 +22,12 @@ import dev.langchain4j.service.AiServices;
 public interface ToolExecutionErrorHandler {
 
     /**
-     * Handles a tool execution error.
+     * Handles an error that occurred during tool execution.
      * <p>
      * This method should either throw an exception or return a {@link ToolErrorHandlerResult#text(String)},
      * which will be sent to the LLM as the result of the tool execution.
      *
-     * @param error   The error that occurred.
+     * @param error   The actual error that occurred.
      * @param context The context in which the error occurred.
      * @return The result of error handling.
      */

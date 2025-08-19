@@ -1,6 +1,9 @@
 package dev.langchain4j.exception;
 
 /**
+ * Indicates that something is wrong with the tool arguments.
+ * For example, the JSON cannot be parsed, or an argument is of the wrong type.
+ *
  * @since 1.4.0
  */
 public class ToolArgumentsException extends LangChain4jException {

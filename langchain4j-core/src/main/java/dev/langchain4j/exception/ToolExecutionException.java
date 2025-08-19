@@ -1,6 +1,8 @@
 package dev.langchain4j.exception;
 
 /**
+ * Indicates that something went wrong while executing the tool.
+ *
  * @since 1.4.0
  */
 public class ToolExecutionException extends LangChain4jException {
