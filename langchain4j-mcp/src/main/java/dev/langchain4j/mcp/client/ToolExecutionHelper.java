@@ -5,8 +5,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import dev.langchain4j.service.tool.ToolArgumentsException;
-import dev.langchain4j.service.tool.ToolExecutionException;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 
 class ToolExecutionHelper {
 

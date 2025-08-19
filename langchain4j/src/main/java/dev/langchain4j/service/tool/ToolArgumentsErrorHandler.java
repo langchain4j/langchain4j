@@ -1,7 +1,11 @@
 package dev.langchain4j.service.tool;
 
+import java.util.function.Function;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.service.AiServices;
+
 /**
- * Handler for tool argument errors thrown by a {@link ToolExecutor}.
+ * Handler for {@link ToolArgumentsException}s thrown by a {@link ToolExecutor}.
  * <p>
  * Currently, there are two ways to handle errors:
  * <p>
@@ -10,17 +14,17 @@ package dev.langchain4j.service.tool;
  * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
  * allowing it to respond appropriately (for example, by correcting the error and retrying).
  *
- * @see HallucinatedToolNameStrategy
  * @see ToolExecutionErrorHandler
+ * @see AiServices#hallucinatedToolNameStrategy(Function)
  * @since 1.4.0
  */
 @FunctionalInterface
-public interface ToolArgumentsErrorHandler { // TODO name
+public interface ToolArgumentsErrorHandler {
 
     /**
      * Handles a tool arguments error.
      * <p>
-     * This method should either throw an exception or return a {@link ToolErrorHandlerResult},
+     * This method should either throw an exception or return a {@link ToolErrorHandlerResult#text(String)},
      * which will be sent to the LLM as the result of the tool execution.
      *
      * @param error   The error that occurred.

@@ -1,11 +1,9 @@
-package dev.langchain4j.service.tool;
-
-import dev.langchain4j.exception.LangChain4jException;
+package dev.langchain4j.exception;
 
 /**
  * @since 1.4.0
  */
-public class ToolExecutionException extends LangChain4jException { // TODO name, location (package, module)
+public class ToolExecutionException extends LangChain4jException {
 
     private final Integer errorCode;
 

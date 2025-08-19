@@ -44,8 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import dev.langchain4j.service.tool.ToolArgumentsException;
-import dev.langchain4j.service.tool.ToolExecutionException;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
