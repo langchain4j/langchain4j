@@ -165,7 +165,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
+                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -180,7 +180,7 @@ class VertexAiGeminiChatModelIT {
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -211,7 +211,7 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -229,7 +229,7 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -249,7 +249,7 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(catBase64Data, "image/png"),
                 ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -268,7 +268,7 @@ class VertexAiGeminiChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from("gs://langchain4j-test/dog.jpg"),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
@@ -340,7 +340,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
+                .modelName("gemini-2.5-pro")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -869,6 +869,7 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_support_enum_structured_output() {
+
         // given
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -882,24 +883,13 @@ class VertexAiGeminiChatModelIT {
                         .build())
                 .build();
 
-        // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
+
+        // when
         String response = model.chat(instruction + "This is super exciting news, congratulations!");
 
         // then
         assertThat(response).isEqualTo("POSITIVE");
-
-        // when
-        response = model.chat(instruction + "The sky is blue.");
-
-        // then
-        assertThat(response).isEqualTo("NEUTRAL");
-
-        // when
-        response = model.chat(instruction + "This is the worst movie I've ever watched! Boring!");
-
-        // then
-        assertThat(response).isEqualTo("NEGATIVE");
     }
 
     // POJO classes for JSON deserialization

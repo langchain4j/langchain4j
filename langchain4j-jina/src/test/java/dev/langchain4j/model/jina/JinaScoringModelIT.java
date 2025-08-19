@@ -11,7 +11,9 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "JINA_API_KEY", matches = ".+")
 class JinaScoringModelIT {
 
     @Test

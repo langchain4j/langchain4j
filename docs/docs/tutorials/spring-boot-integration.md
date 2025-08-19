@@ -27,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
@@ -78,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
