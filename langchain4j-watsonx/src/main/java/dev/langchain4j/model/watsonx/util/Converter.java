@@ -25,7 +25,6 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -100,19 +99,18 @@ public class Converter {
                 .build();
     }
 
-    public static ChatParameters toChatParameters(ChatRequest chatRequest) {
-        ChatRequestParameters parameters = chatRequest.parameters();
+    public static ChatParameters toChatParameters(ChatRequestParameters parameters) {
         ChatParameters.Builder builder = ChatParameters.builder()
-                .modelId(getOrDefault(parameters.modelName(), chatRequest.modelName()))
-                .frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), chatRequest.frequencyPenalty()))
-                .maxCompletionTokens(getOrDefault(parameters.maxOutputTokens(), chatRequest.maxOutputTokens()))
-                .presencePenalty(getOrDefault(parameters.presencePenalty(), chatRequest.presencePenalty()))
-                .stop(getOrDefault(parameters.stopSequences(), chatRequest.stopSequences()))
-                .temperature(getOrDefault(parameters.temperature(), chatRequest.temperature()))
-                .topP(getOrDefault(parameters.topP(), chatRequest.topP()));
+                .modelId(getOrDefault(parameters.modelName(), parameters.modelName()))
+                .frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), parameters.frequencyPenalty()))
+                .maxCompletionTokens(getOrDefault(parameters.maxOutputTokens(), parameters.maxOutputTokens()))
+                .presencePenalty(getOrDefault(parameters.presencePenalty(), parameters.presencePenalty()))
+                .stop(getOrDefault(parameters.stopSequences(), parameters.stopSequences()))
+                .temperature(getOrDefault(parameters.temperature(), parameters.temperature()))
+                .topP(getOrDefault(parameters.topP(), parameters.topP()));
 
-        if (nonNull(parameters.responseFormat()) || nonNull(chatRequest.responseFormat())) {
-            var responseFormat = getOrDefault(parameters.responseFormat(), chatRequest.responseFormat());
+        if (nonNull(parameters.responseFormat()) || nonNull(parameters.responseFormat())) {
+            var responseFormat = getOrDefault(parameters.responseFormat(), parameters.responseFormat());
             switch (responseFormat.type()) {
                 case JSON -> {
                     if (nonNull(responseFormat.jsonSchema())) {

@@ -74,7 +74,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest);
+        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
         com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
                 chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
@@ -85,7 +85,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
         ResultChoice choice = chatResponse.getChoices().get(0);
         ChatUsage usage = chatResponse.getUsage();
-        ResultMessage message = choice.message();
+        ResultMessage message = choice.getMessage();
 
         AiMessage.Builder aiMessage = AiMessage.builder();
 
@@ -101,7 +101,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
             aiMessage.text(message.content());
         }
 
-        FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
+        FinishReason finishReason = Converter.toFinishReason(choice.getFinishReason());
         TokenUsage tokenUsage =
                 new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
 

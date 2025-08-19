@@ -77,7 +77,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest);
+        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
         chatProvider.chatStreaming(
                 com.ibm.watsonx.ai.chat.ChatRequest.builder()
                         .messages(messages)
@@ -90,7 +90,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                     public void onCompleteResponse(com.ibm.watsonx.ai.chat.ChatResponse completeResponse) {
 
                         ResultChoice choice = completeResponse.getChoices().get(0);
-                        FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
+                        FinishReason finishReason = Converter.toFinishReason(choice.getFinishReason());
                         TokenUsage tokenUsage = new TokenUsage(
                                 completeResponse.getUsage().getPromptTokens(),
                                 completeResponse.getUsage().getCompletionTokens(),
