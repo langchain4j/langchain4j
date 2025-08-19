@@ -474,10 +474,10 @@ public abstract class AiServices<T> {
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
      * For {@link DefaultToolExecutor}, you can enable this by setting
-     * {@link DefaultToolExecutor.Builder#wrapToolArgumentException(Boolean)} to {@code true}.
+     * {@link DefaultToolExecutor.Builder#wrapToolArgumentsExceptions(Boolean)} to {@code true}.
      *
      * @param handler The handler responsible for processing tool argument errors
-     * @return The builder
+     * @return builder
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
@@ -487,7 +487,7 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the handler to be invoked when errors related to tool execution occur, such as business errors.
+     * Configures the handler to be invoked when errors occur during tool execution.
      * <p>
      * Within this handler, you can either:
      * <p>
@@ -496,15 +496,15 @@ public abstract class AiServices<T> {
      * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
      * This is the default behavior if no handler is configured.
-     * The {@link Exception#getMessage()} is sent to the LLM by default.
+     * The {@link Throwable#getMessage()} is sent to the LLM by default.
      * <p>
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
      * For {@link DefaultToolExecutor}, you can enable this by setting
-     * {@link DefaultToolExecutor.Builder#propagateToolExecutionException(Boolean)} to {@code true}.
+     * {@link DefaultToolExecutor.Builder#propagateToolExecutionExceptions(Boolean)} to {@code true}.
      *
      * @param handler The handler responsible for processing tool execution errors
-     * @return The builder
+     * @return builder
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */

@@ -523,6 +523,33 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
+    void should_throw_exception_when_arguments_cannot_be_parsed() throws NoSuchMethodException {
+
+        // given
+        String arguments = "{ invalid JSON }";
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .name("tool")
+                .arguments(arguments)
+                .build();
+
+        class Tools {
+
+            @Tool
+            void tool(String s) {
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+
+        // when-then
+        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("was expecting double-quote");
+    }
+
+    @Test
     void should_return_exception_message_when_tool_method_throws_exception() throws NoSuchMethodException {
 
         // given
@@ -548,32 +575,5 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         // then
         assertThat(toolResult).isEqualTo(errorMessage);
-    }
-
-    @Test
-    void should_throw_exception_when_arguments_cannot_be_parsed() throws NoSuchMethodException {
-
-        // given
-        String arguments = "{ invalid JSON }";
-
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("tool")
-                .arguments(arguments)
-                .build();
-
-        class Tools {
-
-            @Tool
-            void tool(String s) {
-            }
-        }
-
-        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
-
-        // when-then
-        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasCauseExactlyInstanceOf(JsonParseException.class)
-                .hasMessageContaining("was expecting double-quote");
     }
 }

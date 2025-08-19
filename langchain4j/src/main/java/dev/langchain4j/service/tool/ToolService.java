@@ -104,8 +104,8 @@ public class ToolService {
                 .object(object)
                 .originalMethod(method)
                 .methodToInvoke(method)
-                .wrapToolArgumentException(true)
-                .propagateToolExecutionException(true)
+                .wrapToolArgumentsExceptions(true)
+                .propagateToolExecutionExceptions(true)
                 .build();
     }
 
