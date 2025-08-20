@@ -22,7 +22,7 @@ class ListResourcesToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    public String execute(ToolExecutionRequest request, Object memoryId) {
         List<ResourceDescription> descriptions = new ArrayList<>();
         for (McpClient client : mcpClients) {
             for (McpResource resource : client.listResources()) {

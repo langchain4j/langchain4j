@@ -485,9 +485,9 @@ class StreamingAiServicesWithToolsIT {
         private final TransactionService transactionService = new TransactionService();
 
         @Override
-        public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        public String execute(ToolExecutionRequest request, Object memoryId) {
 
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            Map<String, Object> arguments = toMap(request.arguments());
             String transactionId = arguments.get("arg0").toString();
 
             Double transactionAmount = transactionService.getTransactionAmount(transactionId);

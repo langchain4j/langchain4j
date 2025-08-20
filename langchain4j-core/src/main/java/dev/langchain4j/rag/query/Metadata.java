@@ -1,16 +1,15 @@
 package dev.langchain4j.rag.query;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.RetrievalAugmentor;
-
-import java.util.List;
-import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents metadata that may be useful or necessary for retrieval or augmentation purposes.
@@ -20,11 +19,20 @@ public class Metadata {
     private final ChatMessage chatMessage;
     private final Object chatMemoryId;
     private final List<ChatMessage> chatMemory;
+    private final Map<String, Object> invocationContext;
+
+    public Metadata(Builder builder) {
+        this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
+        this.chatMemoryId = builder.chatMemoryId;
+        this.chatMemory = copy(builder.chatMemory);
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext"); // TODO?
+    }
 
     public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.chatMemoryId = chatMemoryId;
         this.chatMemory = copy(chatMemory);
+        this.invocationContext = null; // TODO?
     }
 
     /**
@@ -50,6 +58,10 @@ public class Metadata {
         return chatMemory;
     }
 
+    public Map<String, Object> invocationContext() {
+        return invocationContext;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -57,12 +69,13 @@ public class Metadata {
         Metadata that = (Metadata) o;
         return Objects.equals(this.chatMessage, that.chatMessage)
                 && Objects.equals(this.chatMemoryId, that.chatMemoryId)
-                && Objects.equals(this.chatMemory, that.chatMemory);
+                && Objects.equals(this.chatMemory, that.chatMemory)
+                && Objects.equals(this.invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(chatMessage, chatMemoryId, chatMemory);
+        return Objects.hash(chatMessage, chatMemoryId, chatMemory, invocationContext);
     }
 
     @Override
@@ -71,10 +84,47 @@ public class Metadata {
                 " chatMessage = " + chatMessage +
                 ", chatMemoryId = " + chatMemoryId +
                 ", chatMemory = " + chatMemory +
+                ", invocationContext = " + invocationContext +
                 " }";
     }
 
     public static Metadata from(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         return new Metadata(chatMessage, chatMemoryId, chatMemory);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private ChatMessage chatMessage;
+        private Object chatMemoryId;
+        private List<ChatMessage> chatMemory;
+        private Map<String, Object> invocationContext;
+
+        public Builder chatMessage(ChatMessage chatMessage) {
+            this.chatMessage = chatMessage;
+            return this;
+        }
+
+        public Builder chatMemoryId(Object chatMemoryId) {
+            this.chatMemoryId = chatMemoryId;
+            return this;
+        }
+
+        public Builder chatMemory(List<ChatMessage> chatMemory) {
+            this.chatMemory = chatMemory;
+            return this;
+        }
+
+        public Builder invocationContext(Map<String, Object> invocationContext) {
+            this.invocationContext = invocationContext;
+            return this;
+        }
+
+        public Metadata build() {
+            return new Metadata(this);
+        }
     }
 }

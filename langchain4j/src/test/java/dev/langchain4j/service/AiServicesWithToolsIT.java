@@ -21,6 +21,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -32,6 +33,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -660,8 +662,8 @@ class AiServicesWithToolsIT {
     static class BookingToolExecutor implements ToolExecutor {
 
         @Override
-        public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+        public String execute(ToolExecutionRequest request, Object memoryId) {
+            Map<String, Object> arguments = toMap(request.arguments());
             assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
             return "Booking period: from 1 July 2027 to 10 July 2027";
         }
@@ -781,9 +783,122 @@ class AiServicesWithToolsIT {
         ).hasMessageContaining("xyz");
     }
 
+    // TODO test propagating from toolprovider to tool to etc
+
+    @Test
+    void should_propagate_invocation_context_into_tool() { // TODO name
+
+        // given
+        class Tools {
+
+            @Tool
+            String getWeather(InvocationContext invocationContext) {
+                String city = invocationContext.get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationContext invocationContext);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        InvocationContext invocationContext1 = InvocationContext.from("city", "Munich");
+
+        // when
+        String answer1 = assistant.chat("What is the weather?", invocationContext1);
+
+        // then
+        assertThat(answer1).contains("rain");
+        verify(spyTools).getWeather(invocationContext1);
+
+        // given
+        InvocationContext invocationContext2 = InvocationContext.from("city", "Paris");
+
+        // when
+        String answer2 = assistant.chat("What is the weather?", invocationContext2);
+
+        // then
+        assertThat(answer2).contains("sun");
+        verify(spyTools).getWeather(invocationContext2);
+    }
+
+    @Test
+    void should_propagate_invocation_context_into_tool_provider() { // TODO name
+
+        // given
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationContext invocationContext);
+        }
+
+        String includeToolsKey = "includeTools";
+
+        ToolProvider toolProvider = request -> {
+
+            if (request.invocationContext().get(includeToolsKey)) {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("xyz")
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
+                        .build();
+
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
+                            // TODO test context provided here
+                            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+                            assertThat(arguments).containsExactly(entry("number", 2027));
+                            return "3000";
+                        })
+                        .build();
+            }
+
+            return ToolProviderResult.builder().build();
+        };
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds("does not matter"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .toolProvider(toolProvider)
+                .build();
+
+        InvocationContext invocationContext1 = new InvocationContext();
+        invocationContext1.put(includeToolsKey, false);
+
+        // when
+        assistant.chat("does not matter", invocationContext1);
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().isEmpty()));
+
+        // given
+        InvocationContext invocationContext2 = new InvocationContext();
+        invocationContext2.put(includeToolsKey, true);
+
+        // when
+        assistant.chat("does not matter", invocationContext2);
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().size() == 1));
+    }
+
+    // TODO search for invocationContext everywhere
+
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {});
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

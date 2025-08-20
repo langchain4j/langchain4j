@@ -23,8 +23,8 @@ class GetResourceToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        ObjectNode arguments = Json.fromJson(toolExecutionRequest.arguments(), ObjectNode.class);
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        ObjectNode arguments = Json.fromJson(request.arguments(), ObjectNode.class);
         if (!arguments.has("mcpServer")) {
             return "ERROR: missing argument 'mcpServer'";
         }

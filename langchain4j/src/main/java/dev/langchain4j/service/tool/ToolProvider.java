@@ -14,7 +14,7 @@ public interface ToolProvider {
     /**
      * Provides tools for the request to the LLM.
      *
-     * @param request {@link ToolProviderRequest} contains {@link UserMessage} and chat memory id (see {@link MemoryId}).
+     * @param request {@link ToolProviderRequest} contains {@link UserMessage} and chat memory id (see {@link MemoryId}). // TODO
      * @return {@link ToolProviderResult} contains tools that should be included in the request to the LLM.
      */
     ToolProviderResult provideTools(ToolProviderRequest request);

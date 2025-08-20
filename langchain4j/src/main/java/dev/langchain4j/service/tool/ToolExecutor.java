@@ -9,11 +9,24 @@ import dev.langchain4j.service.MemoryId;
 public interface ToolExecutor {
 
     /**
+     * TODO
+     *
+     * @param request TODO
+     * @param context TODO
+     * @return TODO
+     */
+    default ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+        String result = execute(request, context.chatMemoryId());
+        return new ToolExecutionResult(result);
+    }
+
+    /**
      * Executes a tool requests.
      *
-     * @param toolExecutionRequest The tool execution request. Contains tool name and arguments.
-     * @param memoryId             The ID of the chat memory. See {@link MemoryId} for more details.
+     * @param request  The tool execution request. Contains tool name and arguments.
+     * @param memoryId The ID of the chat memory. See {@link MemoryId} for more details.
      * @return The result of the tool execution.
      */
-    String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId);
+    // TODO deprecate?
+    String execute(ToolExecutionRequest request, Object memoryId);
 }

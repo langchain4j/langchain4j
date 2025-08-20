@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.InvocationContext;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -65,10 +66,10 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = Objects.requireNonNull(methodToInvoke, "methodToInvoke");
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-
-        Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
+    @Override
+    public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+        Map<String, Object> argumentsMap = argumentsAsMap(request.arguments());
+        Object[] arguments = prepareArguments(originalMethod, argumentsMap, context);
         try {
             return execute(arguments);
         } catch (IllegalAccessException e) {
@@ -78,15 +79,27 @@ public class DefaultToolExecutor implements ToolExecutor {
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                return e2.getCause().getMessage();
+                return ToolExecutionResult.from(e2.getCause().getMessage());
             }
         } catch (InvocationTargetException e) {
-            return  e.getCause().getMessage();
+            return ToolExecutionResult.from(e.getCause().getMessage());
         }
+        // TODO return error indicator or exceptions?
     }
 
-    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        ToolExecutionResult result = execute(request, new ToolExecutionContext(memoryId, null)); // TODO
+        return result.text();
+    }
+
+    private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+        String resultText = toText(result);
+        return ToolExecutionResult.from(resultText);
+    }
+
+    private String toText(Object result) {
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
@@ -97,7 +110,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, ToolExecutionContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -106,7 +119,13 @@ public class DefaultToolExecutor implements ToolExecutor {
             Parameter parameter = parameters[i];
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
-                arguments[i] = memoryId;
+                arguments[i] = context.chatMemoryId();
+                continue;
+            }
+
+            if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
+                // TODO test extending from AiServiceInvocationContext
+                arguments[i] = context.invocationContext();
                 continue;
             }
 

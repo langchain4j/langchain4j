@@ -113,7 +113,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, new ToolExecutionContext(memoryId, null));
 
         assertThat(args)
                 .containsExactly(
@@ -144,7 +144,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, memoryId))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, new ToolExecutionContext(memoryId, null)))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
