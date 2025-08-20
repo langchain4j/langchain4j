@@ -18,7 +18,8 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -33,7 +34,8 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .apiKey("banana")
                 .maxRetries(0)
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
