@@ -38,7 +38,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingService embeddingService;
 
-    protected WatsonxEmbeddingModel(Builder builder) {
+    private WatsonxEmbeddingModel(Builder builder) {
         requireNonNull(builder, "builder is required");
         this.embeddingService = builder.embeddingService;
     }

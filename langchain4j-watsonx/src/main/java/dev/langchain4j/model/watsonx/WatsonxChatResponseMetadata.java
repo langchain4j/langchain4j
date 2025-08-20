@@ -10,7 +10,7 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
     private final String modelVersion;
     private final String createdAt;
 
-    protected WatsonxChatResponseMetadata(Builder builder) {
+    private WatsonxChatResponseMetadata(Builder builder) {
         super(builder);
         object = builder.object;
         model = builder.model;

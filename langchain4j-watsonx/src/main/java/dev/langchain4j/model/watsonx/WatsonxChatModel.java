@@ -22,7 +22,6 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.watsonx.util.Converter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,7 +57,7 @@ import java.util.Set;
  */
 public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
-    protected WatsonxChatModel(Builder builder) {
+    private WatsonxChatModel(Builder builder) {
         super(builder);
     }
 

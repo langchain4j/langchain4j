@@ -1,16 +1,19 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
 
 import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 
-public abstract class WatsonxChat {
+@Internal
+abstract class WatsonxChat {
 
     protected final ChatProvider chatProvider;
     protected final List<ChatModelListener> listeners;
@@ -20,7 +23,7 @@ public abstract class WatsonxChat {
 
     protected WatsonxChat(Builder<?> builder) {
         this.chatProvider = requireNonNull(builder.chatProvider);
-        this.listeners = requireNonNullElse(builder.listeners, List.of());
+        this.listeners = copy(builder.listeners);
         this.defaultRequestParameters = requireNonNullElse(
                 builder.defaultRequestParameters,
                 WatsonxChatRequestParameters.builder().build());
@@ -29,7 +32,7 @@ public abstract class WatsonxChat {
     }
 
     @SuppressWarnings("unchecked")
-    public abstract static class Builder<T extends Builder<T>> {
+    protected abstract static class Builder<T extends Builder<T>> {
         private ChatProvider chatProvider;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;

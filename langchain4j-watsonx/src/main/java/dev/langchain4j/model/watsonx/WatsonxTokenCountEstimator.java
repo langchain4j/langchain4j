@@ -31,7 +31,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
     private final TokenizationService tokenizationService;
 
-    protected WatsonxTokenCountEstimator(Builder builder) {
+    private WatsonxTokenCountEstimator(Builder builder) {
         requireNonNull(builder, "builder is required");
         this.tokenizationService = builder.tokenizationService;
     }

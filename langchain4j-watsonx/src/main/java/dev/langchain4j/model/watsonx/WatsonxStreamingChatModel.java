@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.watsonx.util.Converter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,7 +60,7 @@ import java.util.Set;
  */
 public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingChatModel {
 
-    protected WatsonxStreamingChatModel(Builder builder) {
+    private WatsonxStreamingChatModel(Builder builder) {
         super(builder);
     }
 

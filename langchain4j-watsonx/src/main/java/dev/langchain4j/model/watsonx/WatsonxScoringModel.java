@@ -38,7 +38,7 @@ public class WatsonxScoringModel implements ScoringModel {
 
     private final RerankService rerankService;
 
-    protected WatsonxScoringModel(Builder builder) {
+    private WatsonxScoringModel(Builder builder) {
         requireNonNull(builder, "builder is required");
         this.rerankService = builder.rerankService;
     }

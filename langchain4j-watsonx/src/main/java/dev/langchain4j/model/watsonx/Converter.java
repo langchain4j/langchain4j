@@ -1,4 +1,4 @@
-package dev.langchain4j.model.watsonx.util;
+package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.isNull;
@@ -32,11 +32,10 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
 import java.util.List;
 
 @Internal
-public class Converter {
+class Converter {
 
     public static com.ibm.watsonx.ai.chat.model.ChatMessage toChatMessage(ChatMessage chatMessage) {
         return switch (chatMessage.type()) {
