@@ -170,9 +170,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        // collect user content message and add reserve empty item for userMessage
-                        Optional<List<Content>> userContentMessageOptional = findContentMessageTemplateFromAnnotatedParameter(method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
+                        Optional<List<Content>> userContentMessageOptional = findContentMessageTemplateFromAnnotatedParameter(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
@@ -218,8 +217,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             List<Content> contents = userContentMessageOptional.get();
                             for (final Content content : contents) {
                                 if (content  == null) {
-                                    // if content is null, then add single text
-                                    allContents.add(TextContent.from(userMessage.singleText()));
+                                    allContents.addAll(userMessage.contents());
                                 } else {
                                     allContents.add(content);
                                 }
@@ -476,8 +474,9 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
-            // check if the parameter is annotated and the type is String
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class) && args[i] instanceof String) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
+                    && !(args[i] instanceof Content)
+                    && !(args[i] instanceof List<?> && ((List<?>) args[i]).stream().allMatch(Content.class::isInstance))) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
@@ -525,7 +524,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 } else if (args[i] instanceof Content) {
                     result.add((Content) args[i]);
                 }
-                if (args[i] instanceof List && ((List) args[i]).stream().allMatch(Content.class::isInstance)) {
+                if (args[i] instanceof List<?> && ((List<?>) args[i]).stream().allMatch(Content.class::isInstance)) {
                     result.addAll((List<Content>) args[i]);
                 }
             }
@@ -535,10 +534,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                 .count();
         if (countForUserMessage > 1) {
             throw illegalConfiguration(
-                    "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                    "Error: The method '%s' has multiple @UserMessage for UserMessage. Please use only one.",
                     method.getName());
         }
-        return Optional.of(result);
+        return result.isEmpty() ? Optional.empty() : Optional.of(result);
     }
 
     private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
