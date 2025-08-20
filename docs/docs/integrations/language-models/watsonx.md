@@ -187,7 +187,7 @@ System.out.println(answer);
 
 ## Enabling Thinking / Reasoning Output
 
-Some IBM foundation models can include "thinking" or "reasoning" steps in their responses.  
+Some foundation models can include "thinking" or "reasoning" steps in their responses.  
 You can capture and separate this reasoning content from the final answer by using the `thinking(...)` builder method with `ExtractionTags`.
 
 `ExtractionTags` defines the XML-like tags used to extract different parts of the model output:
@@ -196,6 +196,9 @@ You can capture and separate this reasoning content from the final answer by usi
 - **Response tag**: typically `<response>` — contains the user-facing answer.
 
 If no `response` tag is provided, it defaults to `"root"`, meaning that text directly under the root element is treated as the final response.
+
+To enable reasoning mode, a `CustomMessage` must be included in the request.  
+The content of the `CustomMessage` may vary depending on the model used, refer to the documentation for the correct format.   
 
 #### Example ChatModel
 
