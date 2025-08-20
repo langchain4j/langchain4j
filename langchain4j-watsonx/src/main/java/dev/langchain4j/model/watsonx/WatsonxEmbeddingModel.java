@@ -61,7 +61,8 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
 
-        EmbeddingResponse response = embeddingService.embedding(inputs, parameters);
+        EmbeddingResponse response = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> embeddingService.embedding(inputs, parameters));
         return Response.from(response.results().stream()
                 .map(Result::embedding)
                 .map(Embedding::from)

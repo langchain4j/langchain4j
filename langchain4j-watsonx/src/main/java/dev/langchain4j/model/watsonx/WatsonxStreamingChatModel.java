@@ -115,7 +115,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
 
                     @Override
                     public void onError(Throwable error) {
-                        handler.onError(error);
+                        handler.onError(WatsonxExceptionMapper.INSTANCE.mapException(error));
                     }
 
                     @Override

@@ -64,7 +64,8 @@ public class WatsonxScoringModel implements ScoringModel {
 
         List<String> inputs = segments.stream().map(TextSegment::text).toList();
 
-        RerankResponse response = rerankService.rerank(query, inputs, parameters);
+        RerankResponse response = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> rerankService.rerank(query, inputs, parameters));
 
         var content = new Double[response.results().size()];
         for (RerankResult rerankResult : response.results()) content[rerankResult.index()] = rerankResult.score();
