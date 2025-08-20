@@ -1,6 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
@@ -25,9 +26,11 @@ import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
@@ -84,6 +87,9 @@ class Converter {
                     .toList();
         }
 
+        if (isNotNullOrBlank(assistantMessage.refusal()))
+            throw new ContentFilteredException(assistantMessage.refusal());
+
         return AiMessage.from(assistantMessage.content(), toolExecutionRequests);
     }
 
@@ -101,18 +107,21 @@ class Converter {
                 .build();
     }
 
-    public static ChatParameters toChatParameters(ChatRequestParameters parameters) {
-        ChatParameters.Builder builder = ChatParameters.builder()
-                .modelId(getOrDefault(parameters.modelName(), parameters.modelName()))
-                .frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), parameters.frequencyPenalty()))
-                .maxCompletionTokens(getOrDefault(parameters.maxOutputTokens(), parameters.maxOutputTokens()))
-                .presencePenalty(getOrDefault(parameters.presencePenalty(), parameters.presencePenalty()))
-                .stop(getOrDefault(parameters.stopSequences(), parameters.stopSequences()))
-                .temperature(getOrDefault(parameters.temperature(), parameters.temperature()))
-                .topP(getOrDefault(parameters.topP(), parameters.topP()));
+    public static ChatParameters toChatParameters(
+            ChatRequestParameters defaultParameters, ChatRequestParameters parameters) {
 
-        if (nonNull(parameters.responseFormat()) || nonNull(parameters.responseFormat())) {
-            var responseFormat = getOrDefault(parameters.responseFormat(), parameters.responseFormat());
+        ChatParameters.Builder builder = ChatParameters.builder()
+                .modelId(getOrDefault(parameters.modelName(), defaultParameters.modelName()))
+                .frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), defaultParameters.frequencyPenalty()))
+                .maxCompletionTokens(getOrDefault(parameters.maxOutputTokens(), defaultParameters.maxOutputTokens()))
+                .presencePenalty(getOrDefault(parameters.presencePenalty(), defaultParameters.presencePenalty()))
+                .stop(getOrDefault(parameters.stopSequences(), defaultParameters.stopSequences()))
+                .temperature(getOrDefault(parameters.temperature(), defaultParameters.temperature()))
+                .topP(getOrDefault(parameters.topP(), defaultParameters.topP()));
+
+        ResponseFormat responseFormat = getOrDefault(parameters.responseFormat(), defaultParameters.responseFormat());
+
+        if (nonNull(responseFormat)) {
             switch (responseFormat.type()) {
                 case JSON -> {
                     if (nonNull(responseFormat.jsonSchema())) {
@@ -135,14 +144,14 @@ class Converter {
             builder.spaceId(watsonxParameters.spaceId());
             builder.logitBias(watsonxParameters.logitBias());
             builder.logprobs(watsonxParameters.logprobs());
-            builder.n(watsonxParameters.n());
             builder.seed(watsonxParameters.seed());
-            builder.timeLimit(nonNull(watsonxParameters.timeLimit()) ? watsonxParameters.timeLimit() : null);
+            builder.timeLimit(watsonxParameters.timeLimit());
             builder.topLogprobs(watsonxParameters.topLogprobs());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+            ToolChoice toolChoice = getOrDefault(parameters.toolChoice(), defaultParameters.toolChoice());
 
-            if ((isNull(parameters.toolChoice()) || parameters.toolChoice().equals(ToolChoice.REQUIRED))
+            if ((isNull(toolChoice) || toolChoice.equals(ToolChoice.REQUIRED))
                     && nonNull(watsonxParameters.toolChoiceName())) {
 
                 if (toolSpecifications.isEmpty())
@@ -159,8 +168,8 @@ class Converter {
                                 "The tool with name '%s' is not available in the list of tools sent to the model."
                                         .formatted(watsonxParameters.toolChoiceName()))));
 
-            } else if (nonNull(parameters.toolChoice())) {
-                switch (parameters.toolChoice()) {
+            } else if (nonNull(toolChoice)) {
+                switch (toolChoice) {
                     case AUTO -> builder.toolChoiceOption(com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoice.AUTO);
                     case REQUIRED -> {
                         if (toolSpecifications.isEmpty())

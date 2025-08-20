@@ -1,5 +1,6 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.nonNull;
 
@@ -67,7 +68,8 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        List<ToolSpecification> toolSpecifications = chatRequest.parameters().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = getOrDefault(
+                chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
 
         List<ChatMessage> messages =
                 chatRequest.messages().stream().map(Converter::toChatMessage).toList();
@@ -76,7 +78,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
+        ChatParameters parameters = Converter.toChatParameters(defaultRequestParameters, chatRequest.parameters());
         chatProvider.chatStreaming(
                 com.ibm.watsonx.ai.chat.ChatRequest.builder()
                         .messages(messages)
