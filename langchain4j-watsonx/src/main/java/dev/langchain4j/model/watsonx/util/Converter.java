@@ -15,6 +15,7 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.ToolMessage;
 import com.ibm.watsonx.ai.chat.model.UserContent;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -24,6 +25,7 @@ import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -33,6 +35,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
 import java.util.List;
 
+@Internal
 public class Converter {
 
     public static com.ibm.watsonx.ai.chat.model.ChatMessage toChatMessage(ChatMessage chatMessage) {
@@ -203,6 +206,10 @@ public class Converter {
             case AUDIO, VIDEO, PDF -> throw new RuntimeException("Not implemented");
             case IMAGE -> {
                 var imageContent = (dev.langchain4j.data.message.ImageContent) content;
+
+                if (nonNull(imageContent.image().url()))
+                    throw new UnsupportedFeatureException("image URL is not supported");
+
                 var mimeType = imageContent.image().mimeType();
                 var base64Data = requireNonNull(imageContent.image().base64Data(), "The base64Data can not be null");
                 Detail detailLevel =

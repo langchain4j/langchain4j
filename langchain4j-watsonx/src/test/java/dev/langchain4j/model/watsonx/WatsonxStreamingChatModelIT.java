@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -67,10 +66,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Watsonx does not support images as URLs, only as Base64-encoded strings
         return false;
     }
-
-    @Override
-    @Disabled("It seems that supportsSingleImageInputAsPublicURL doesn't work with this method")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {}
 
     @Override
     protected void should_respect_user_message(StreamingChatModel model) {

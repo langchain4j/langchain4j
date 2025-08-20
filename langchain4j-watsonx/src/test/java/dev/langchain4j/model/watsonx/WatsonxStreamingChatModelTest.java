@@ -158,13 +158,13 @@ public class WatsonxStreamingChatModelTest {
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
-                    handler.onCompleteResponse(chatResponse);
+                    handler.onPartialThinking("test", null);
                     handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
                             0, null, "name", "{"));
                     handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
                             0, "id", "name", "}"));
                     handler.onCompleteToolCall(toolCall);
-                    handler.onPartialThinking("test", null);
+                    handler.onCompleteResponse(chatResponse);
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
