@@ -49,7 +49,8 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
      * @return the estimated count of tokens.
      */
     public int estimateTokenCountInText(String text, TokenizationParameters parameters) {
-        return tokenizationService.tokenize(text, parameters).result().tokenCount();
+        return WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> tokenizationService.tokenize(text, parameters).result().tokenCount());
     }
 
     @Override

@@ -75,12 +75,12 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
-        com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
-                chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
+        com.ibm.watsonx.ai.chat.ChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
                         .messages(messages)
                         .tools(tools)
                         .parameters(parameters)
-                        .build());
+                        .build()));
 
         ResultChoice choice = chatResponse.getChoices().get(0);
         ChatUsage usage = chatResponse.getUsage();
