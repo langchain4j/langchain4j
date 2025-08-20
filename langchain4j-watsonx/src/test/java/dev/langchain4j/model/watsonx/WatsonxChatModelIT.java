@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
@@ -56,10 +55,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
         // Watsonx does not support images as URLs, only as Base64-encoded strings
         return false;
     }
-
-    @Override
-    @Disabled("It seems that supportsSingleImageInputAsPublicURL doesn't work with this method")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatModel model) {}
 
     @Override
     protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {

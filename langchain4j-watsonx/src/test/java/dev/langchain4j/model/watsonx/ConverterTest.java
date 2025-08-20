@@ -22,6 +22,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -33,6 +34,7 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.watsonx.util.Converter;
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -182,6 +184,13 @@ public class ConverterTest {
         assertEquals(com.ibm.watsonx.ai.chat.model.ImageContent.TYPE, imageContent.type());
         assertEquals("data:image/gif;base64,data", imageContent.imageUrl().url());
         assertEquals("low", imageContent.imageUrl().detail());
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> Converter.toChatMessage(UserMessage.builder()
+                        .name("name")
+                        .addContent(ImageContent.from(URI.create("http://test.com")))
+                        .build()));
     }
 
     @Test
