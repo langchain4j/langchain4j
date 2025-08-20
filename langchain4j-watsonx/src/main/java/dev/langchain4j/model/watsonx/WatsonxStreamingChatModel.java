@@ -2,6 +2,8 @@ package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.chat.ChatHandler;
@@ -20,13 +22,13 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -154,14 +156,15 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        var capatibilities = new HashSet<Capability>();
-        if (enableJsonSchema
-                || (nonNull(defaultRequestParameters.responseFormat())
-                        && defaultRequestParameters.responseFormat().type().equals(ResponseFormatType.JSON)
-                        && nonNull(defaultRequestParameters.responseFormat().jsonSchema())))
-            capatibilities.add(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
 
-        return capatibilities;
+        ResponseFormat responseFormat = defaultRequestParameters.responseFormat();
+
+        if (isNull(responseFormat)) return Set.of();
+
+        if (responseFormat.type().equals(ResponseFormatType.JSON) && nonNull(responseFormat.jsonSchema()))
+            return Set.of(RESPONSE_FORMAT_JSON_SCHEMA);
+
+        return Set.of();
     }
 
     @Override
