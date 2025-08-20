@@ -46,6 +46,8 @@ class GeminiService {
             final String apiKey,
             final String baseUrl,
             final boolean logRequestsAndResponses,
+            final boolean logRequests,
+            final boolean logResponses,
             final Logger logger,
             final Duration timeout) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
@@ -56,8 +58,8 @@ class GeminiService {
                 .readTimeout(firstNotNull("readTimeout", timeout, builder.readTimeout(), DEFAULT_READ_TIMEOUT))
                 .build();
 
-        if (logRequestsAndResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, true, true, logger);
+        if (logRequestsAndResponses || logResponses || logRequests) {
+            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
         } else {
             this.httpClient = httpClient;
         }
