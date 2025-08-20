@@ -1,8 +1,24 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.in;
 
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.cosmos.implementation.guava25.collect.ImmutableList;
+import com.azure.cosmos.models.CosmosFullTextIndex;
+import com.azure.cosmos.models.CosmosFullTextPath;
+import com.azure.cosmos.models.CosmosFullTextPolicy;
+import com.azure.cosmos.models.CosmosVectorDataType;
+import com.azure.cosmos.models.CosmosVectorDistanceFunction;
+import com.azure.cosmos.models.CosmosVectorEmbedding;
+import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
+import com.azure.cosmos.models.CosmosVectorIndexSpec;
+import com.azure.cosmos.models.CosmosVectorIndexType;
+import com.azure.cosmos.models.ExcludedPath;
+import com.azure.cosmos.models.IncludedPath;
+import com.azure.cosmos.models.IndexingMode;
+import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -55,6 +71,10 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
 
     private AzureCosmosDBNoSqlContentRetriever createContentRetriever(
             AzureCosmosDBSearchQueryType queryType, String containerName, Integer dimensions) {
+        IndexingPolicy indexingPolicy = getIndexingPolicy(queryType);
+        CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
+        CosmosFullTextPolicy cosmosFullTextPolicy = new CosmosFullTextPolicy();
+
         return new AzureCosmosDBNoSqlContentRetriever(
                 System.getenv("AZURE_COSMOS_HOST"),
                 new AzureKeyCredential(System.getenv("AZURE_COSMOS_MASTER_KEY")),
@@ -63,24 +83,20 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
                 DATABASE_NAME,
                 containerName,
                 "/id",
-                null, // vectorStoreThroughput
-                "quantizedFlat",
-                "/embedding",
-                "float32",
-                dimensions,
-                "cosine",
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
+                null,
                 queryType,
-                3, // maxResults
-                0.0, // minScore
-                null, // vectorQuantizationSizeInBytes
-                null, // vectorIndexingSearchListSize
-                null, // vectorIndexShardKeys
-                "/text",
-                "en-US",
+                3,
+                0.0,
                 null);
     }
 
     private AzureCosmosDBNoSqlContentRetriever createFullTextSearchContentRetriever() {
+        IndexingPolicy indexingPolicy = getIndexingPolicy(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH);
+        CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
+        CosmosFullTextPolicy cosmosFullTextPolicy = new CosmosFullTextPolicy();
         return new AzureCosmosDBNoSqlContentRetriever(
                 System.getenv("AZURE_COSMOS_HOST"),
                 new AzureKeyCredential(System.getenv("AZURE_COSMOS_MASTER_KEY")),
@@ -89,20 +105,13 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
                 DATABASE_NAME,
                 TEXT_SEARCH_CONTAINER,
                 "/id",
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
                 null,
-                "quantizedFlat",
-                "/embedding",
-                "float32",
-                0, // zero dimensions for full-text
-                "cosine",
                 AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH,
                 3,
                 0.0,
-                null,
-                null,
-                null,
-                "/text",
-                "en-US",
                 new FullTextContains("text", "bicycle"));
     }
 
@@ -228,5 +237,55 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         assertThat(relevant).isNotEmpty();
         // Should find bicycle-related content with hybrid search
         assertThat(relevant.get(0).textSegment().text()).containsIgnoringCase("bicycle");
+    }
+
+    private IndexingPolicy getIndexingPolicy(AzureCosmosDBSearchQueryType searchQueryType) {
+        IndexingPolicy indexingPolicy = new IndexingPolicy();
+        indexingPolicy.setIndexingMode(IndexingMode.CONSISTENT);
+        ExcludedPath excludedPath = new ExcludedPath("/*");
+        indexingPolicy.setExcludedPaths(singletonList(excludedPath));
+        IncludedPath includedPath1 = new IncludedPath("/metadata/?");
+        IncludedPath includedPath2 = new IncludedPath("/content/?");
+        indexingPolicy.setIncludedPaths(ImmutableList.of(includedPath1, includedPath2));
+
+        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.VECTOR)
+                || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
+            CosmosVectorIndexSpec cosmosVectorIndexSpec = new CosmosVectorIndexSpec();
+            cosmosVectorIndexSpec.setPath("/embedding");
+            cosmosVectorIndexSpec.setType(CosmosVectorIndexType.DISK_ANN.toString());
+            indexingPolicy.setVectorIndexes(List.of(cosmosVectorIndexSpec));
+        }
+
+        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
+                || searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
+            CosmosFullTextIndex cosmosFullTextIndex = new CosmosFullTextIndex();
+            cosmosFullTextIndex.setPath("/text");
+            indexingPolicy.setCosmosFullTextIndexes(List.of(cosmosFullTextIndex));
+        }
+
+        return indexingPolicy;
+    }
+
+    private CosmosVectorEmbeddingPolicy getCosmosVectorEmbeddingPolicy() {
+        // Set vector embedding policy
+        CosmosVectorEmbeddingPolicy embeddingPolicy = new CosmosVectorEmbeddingPolicy();
+        CosmosVectorEmbedding embedding = new CosmosVectorEmbedding();
+        embedding.setPath("/embedding");
+        embedding.setDataType(CosmosVectorDataType.FLOAT32);
+        embedding.setEmbeddingDimensions(1536);
+        embedding.setDistanceFunction(CosmosVectorDistanceFunction.COSINE);
+        embeddingPolicy.setCosmosVectorEmbeddings(singletonList(embedding));
+        return embeddingPolicy;
+    }
+
+    private CosmosFullTextPolicy getCosmosFullTextPolicy() {
+        // Set full text policy
+        CosmosFullTextPolicy fullTextPolicy = new CosmosFullTextPolicy();
+        CosmosFullTextPath fullTextPath = new CosmosFullTextPath();
+        fullTextPath.setPath("/text");
+        fullTextPath.setLanguage("en-US");
+        fullTextPolicy.setPaths(singletonList(fullTextPath));
+        fullTextPolicy.setDefaultLanguage("en-US");
+        return fullTextPolicy;
     }
 }

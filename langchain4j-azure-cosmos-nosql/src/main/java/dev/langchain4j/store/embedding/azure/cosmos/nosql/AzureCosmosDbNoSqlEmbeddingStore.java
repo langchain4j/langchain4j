@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.cosmos.models.CosmosFullTextPolicy;
+import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
+import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.cosmos.nosql.AzureCosmosDBNoSqlFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -26,16 +29,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             String databaseName,
             String containerName,
             String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
             Integer vectorStoreThroughput,
-            AzureCosmosDBSearchQueryType searchQueryType,
-            String vectorIndexType,
-            String vectorIndexPath,
-            String vectorDataType,
-            Integer vectorDimensions,
-            String vectorDistanceFunction,
-            Integer vectorQuantizationSizeInBytes,
-            Integer vectorIndexingSearchListSize,
-            List<String> vectorIndexShardKeys,
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
             AzureCosmosDBNoSqlFilterMapper filterMapper) {
         this.initialize(
                 endpoint,
@@ -44,18 +42,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
                 databaseName,
                 containerName,
                 partitionKeyPath,
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
                 vectorStoreThroughput,
-                searchQueryType,
-                vectorIndexType,
-                vectorIndexPath,
-                vectorDataType,
-                vectorDimensions,
-                vectorDistanceFunction,
-                vectorQuantizationSizeInBytes,
-                vectorIndexingSearchListSize,
-                vectorIndexShardKeys,
-                null,
-                null,
+                azureCosmosDBSearchQueryType,
                 filterMapper);
     }
 
@@ -65,17 +56,12 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             String databaseName,
             String containerName,
             String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
             Integer vectorStoreThroughput,
-            AzureCosmosDBSearchQueryType searchQueryType,
-            String vectorIndexType,
-            String vectorIndexPath,
-            String vectorDataType,
-            Integer vectorDimensions,
-            String vectorDistanceFunction,
-            Integer vectorQuantizationSizeInBytes,
-            Integer vectorIndexingSearchListSize,
-            List<String> vectorIndexShardKeys,
-            AzureCosmosDBNoSqlFilterMapper filterMapper) {
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
+            AzureCosmosDBNoSqlFilterMapper filterMappe) {
         this.initialize(
                 endpoint,
                 null,
@@ -83,18 +69,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
                 databaseName,
                 containerName,
                 partitionKeyPath,
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
                 vectorStoreThroughput,
-                searchQueryType,
-                vectorIndexType,
-                vectorIndexPath,
-                vectorDataType,
-                vectorDimensions,
-                vectorDistanceFunction,
-                vectorQuantizationSizeInBytes,
-                vectorIndexingSearchListSize,
-                vectorIndexShardKeys,
-                null,
-                null,
+                azureCosmosDBSearchQueryType,
                 filterMapper);
     }
 
@@ -109,16 +88,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
         private String databaseName;
         private String containerName;
         private String partitionKeyPath;
+        private IndexingPolicy indexingPolicy;
+        private CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
+        private CosmosFullTextPolicy cosmosFullTextPolicy;
         private Integer vectorStoreThroughput;
         private AzureCosmosDBSearchQueryType searchQueryType;
-        private String vectorIndexType;
-        private String vectorIndexPath;
-        private String vectorDataType;
-        private Integer vectorDimensions;
-        private String vectorDistanceFunction;
-        private Integer vectorQuantizationSizeInBytes;
-        private Integer vectorIndexingSearchListSize;
-        private List<String> vectorIndexShardKeys;
         private AzureCosmosDBNoSqlFilterMapper filterMapper;
 
         /**
@@ -181,6 +155,21 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             return this;
         }
 
+        public Builder indexingPolicy(IndexingPolicy indexingPolicy) {
+            this.indexingPolicy = indexingPolicy;
+            return this;
+        }
+
+        public Builder cosmosVectorEmbeddingPolicy(CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy) {
+            this.cosmosVectorEmbeddingPolicy = cosmosVectorEmbeddingPolicy;
+            return this;
+        }
+
+        public Builder cosmosFullTextPolicy(String cosmosFullTextPolicy) {
+            this.cosmosFullTextPolicy = new CosmosFullTextPolicy();
+            return this;
+        }
+
         public Builder vectorStoreThroughput(int vectorStoreThroughput) {
             this.vectorStoreThroughput = vectorStoreThroughput;
             return this;
@@ -188,46 +177,6 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
 
         public Builder searchQueryType(AzureCosmosDBSearchQueryType searchQueryType) {
             this.searchQueryType = searchQueryType;
-            return this;
-        }
-
-        public Builder vectorIndexType(String vectorIndexType) {
-            this.vectorIndexType = vectorIndexType;
-            return this;
-        }
-
-        public Builder vectorIndexPath(String vectorIndexPath) {
-            this.vectorIndexPath = vectorIndexPath;
-            return this;
-        }
-
-        public Builder vectorDataType(String vectorDataType) {
-            this.vectorDataType = vectorDataType;
-            return this;
-        }
-
-        public Builder vectorDimensions(int vectorDimensions) {
-            this.vectorDimensions = vectorDimensions;
-            return this;
-        }
-
-        public Builder vectorDistanceFunction(String vectorDistanceFunction) {
-            this.vectorDistanceFunction = vectorDistanceFunction;
-            return this;
-        }
-
-        public Builder vectorQuantizationSizeInBytes(int vectorQuantizationSizeInBytes) {
-            this.vectorQuantizationSizeInBytes = vectorQuantizationSizeInBytes;
-            return this;
-        }
-
-        public Builder vectorIndexingSearchListSize(int vectorIndexingSearchListSize) {
-            this.vectorIndexingSearchListSize = vectorIndexingSearchListSize;
-            return this;
-        }
-
-        public Builder vectorIndexShardKeys(List<String> vectorIndexShardKeys) {
-            this.vectorIndexShardKeys = vectorIndexShardKeys;
             return this;
         }
 
@@ -253,16 +202,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
                         this.databaseName,
                         this.containerName,
                         this.partitionKeyPath,
+                        this.indexingPolicy,
+                        this.cosmosVectorEmbeddingPolicy,
+                        this.cosmosFullTextPolicy,
                         this.vectorStoreThroughput,
                         this.searchQueryType,
-                        this.vectorIndexType,
-                        this.vectorIndexPath,
-                        this.vectorDataType,
-                        this.vectorDimensions,
-                        this.vectorDistanceFunction,
-                        this.vectorQuantizationSizeInBytes,
-                        this.vectorIndexingSearchListSize,
-                        this.vectorIndexShardKeys,
                         this.filterMapper);
             } else {
                 return new AzureCosmosDbNoSqlEmbeddingStore(
@@ -271,16 +215,11 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
                         this.databaseName,
                         this.containerName,
                         this.partitionKeyPath,
+                        this.indexingPolicy,
+                        this.cosmosVectorEmbeddingPolicy,
+                        this.cosmosFullTextPolicy,
                         this.vectorStoreThroughput,
                         this.searchQueryType,
-                        this.vectorIndexType,
-                        this.vectorIndexPath,
-                        this.vectorDataType,
-                        this.vectorDimensions,
-                        this.vectorDistanceFunction,
-                        this.vectorQuantizationSizeInBytes,
-                        this.vectorIndexingSearchListSize,
-                        this.vectorIndexShardKeys,
                         this.filterMapper);
             }
         }

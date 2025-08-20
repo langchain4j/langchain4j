@@ -38,43 +38,6 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
     }
 
     @Test
-    void should_validate_vector_configuration() {
-        // Test invalid vector distance function
-        try {
-            AzureCosmosDbNoSqlEmbeddingStore.builder()
-                    .endpoint(System.getenv("AZURE_COSMOS_HOST"))
-                    .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
-                    .databaseName(DATABASE_NAME)
-                    .containerName(CONTAINER_NAME)
-                    .searchQueryType(AzureCosmosDBSearchQueryType.VECTOR)
-                    .vectorDimensions(384)
-                    .vectorDistanceFunction("invalid") // invalid function
-                    .build();
-            fail("Expected IllegalArgumentException to be thrown");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage())
-                    .contains("Invalid distance function with value {invalid} for the vector embedding policy.");
-        }
-
-        // Test invalid vector data type
-        try {
-            AzureCosmosDbNoSqlEmbeddingStore.builder()
-                    .endpoint(System.getenv("AZURE_COSMOS_HOST"))
-                    .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
-                    .databaseName(DATABASE_NAME)
-                    .containerName(CONTAINER_NAME)
-                    .searchQueryType(AzureCosmosDBSearchQueryType.VECTOR)
-                    .vectorDimensions(384)
-                    .vectorDataType("invalid") // invalid data type
-                    .build();
-            fail("Expected IllegalArgumentException to be thrown");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage())
-                    .contains("Invalid vector data type with value {invalid} for the vector embedding policy.");
-        }
-    }
-
-    @Test
     void should_build_successfully_with_valid_parameters() {
         AzureCosmosDbNoSqlEmbeddingStore store = AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .endpoint(System.getenv("AZURE_COSMOS_HOST"))

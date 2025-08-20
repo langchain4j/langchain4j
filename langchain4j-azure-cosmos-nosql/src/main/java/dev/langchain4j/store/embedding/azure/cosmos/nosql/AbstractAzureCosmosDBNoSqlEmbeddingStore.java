@@ -82,23 +82,15 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractAzureCosmosDBNoSqlEmbeddingStore.class);
     protected AzureCosmosDBNoSqlFilterMapper filterMapper;
-    Integer vectorQuantizationSizeInBytes;
-    Integer vectorIndexingSearchListSize;
-    List<String> vectorIndexShardKeys;
-    String fullTextIndexPath;
-    String fullTextIndexLanguage;
-    Boolean hybridOrFullTextSearchEnabled;
     private CosmosAsyncClient cosmosClient;
     private String databaseName;
     private String containerName;
     private String partitionKeyPath;
     private Integer vectorStoreThroughput;
+    private IndexingPolicy indexingPolicy;
+    private CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
+    private CosmosFullTextPolicy cosmosFullTextPolicy;
     private AzureCosmosDBSearchQueryType searchQueryType;
-    private Integer vectorDimensions;
-    private String vectorIndexPath;
-    private String vectorIndexType;
-    private String vectorDataType;
-    private String vectorDistanceFunction;
     private CosmosAsyncContainer container;
 
     protected void initialize(
@@ -108,18 +100,11 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             String databaseName,
             String containerName,
             String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
             Integer vectorStoreThroughput,
             AzureCosmosDBSearchQueryType searchQueryType,
-            String vectorIndexType,
-            String vectorIndexPath,
-            String vectorDataType,
-            Integer vectorDimensions,
-            String vectorDistanceFunction,
-            Integer vectorQuantizationSizeInBytes,
-            Integer vectorIndexingSearchListSize,
-            List<String> vectorIndexShardKeys,
-            String fullTextIndexPath,
-            String fullTextIndexLanguage,
             AzureCosmosDBNoSqlFilterMapper filterMapper) {
         ensureNotNull(endpoint, "%s", "cosmosClient cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
 
@@ -172,51 +157,41 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
 
         this.searchQueryType = getOrDefault(searchQueryType, DEFAULT_SEARCH_QUERY_TYPE);
-        this.vectorIndexPath = getOrDefault(vectorIndexPath, DEFAULT_VECTOR_INDEX_PATH);
-        this.vectorIndexType = getOrDefault(vectorIndexType, DEFAULT_VECTOR_INDEX_TYPE);
-        this.vectorDataType = getOrDefault(vectorDataType, DEFAULT_VECTOR_DATA_TYPE);
-        this.vectorDistanceFunction = getOrDefault(vectorDistanceFunction, DEFAULT_VECTOR_DISTANCE_FUNCTION);
 
-        if (vectorQuantizationSizeInBytes != null) {
-            this.vectorQuantizationSizeInBytes = vectorQuantizationSizeInBytes;
+        if (indexingPolicy == null) {
+            throw new AzureCosmosDBNoSqlRuntimeException("indexingPolicy is required");
         }
-
-        if (vectorIndexingSearchListSize != null) {
-            this.vectorIndexingSearchListSize = vectorIndexingSearchListSize;
+        switch (searchQueryType) {
+            case VECTOR -> {
+                if (cosmosVectorEmbeddingPolicy == null || indexingPolicy.getVectorIndexes().isEmpty())
+                    throw new AzureCosmosDBNoSqlRuntimeException("cosmosVectorEmbeddingPolicy is required for VECTOR search");
+            }
+            case FULL_TEXT_SEARCH, FULL_TEXT_RANKING -> {
+                if (cosmosFullTextPolicy == null || indexingPolicy.getCosmosFullTextIndexes().isEmpty())
+                    throw new AzureCosmosDBNoSqlRuntimeException("cosmosFullTextPolicy is required for FULL_TEXT_* search");
+            }
+            case HYBRID -> {
+                List<String> missing = new ArrayList<>();
+                if (cosmosVectorEmbeddingPolicy == null) missing.add("cosmosVectorEmbeddingPolicy");
+                if (cosmosFullTextPolicy == null) missing.add("cosmosFullTextPolicy");
+                if (indexingPolicy.getVectorIndexes().isEmpty()) missing.add("vectorIndexes");
+                if (indexingPolicy.getCosmosFullTextIndexes().isEmpty()) missing.add("fullTextIndexes");
+                if (!missing.isEmpty())
+                    throw new AzureCosmosDBNoSqlRuntimeException("Missing for HYBRID: " + String.join(", ", missing));
+            }
         }
-
-        if (!isNullOrEmpty(vectorIndexShardKeys)) {
-            this.vectorIndexShardKeys = vectorIndexShardKeys;
-        }
-
         CosmosContainerProperties collectionDefinition =
                 new CosmosContainerProperties(this.containerName, subPartitionKeyDefinition);
-        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.VECTOR)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
-            if (this.vectorDimensions == null) {
-                this.vectorDimensions = getOrDefault(vectorDimensions, DEFAULT_VECTOR_DIMENSIONS);
-            }
-            CosmosVectorEmbeddingPolicy embeddingPolicy = getCosmosVectorEmbeddingPolicy();
-            collectionDefinition.setVectorEmbeddingPolicy(embeddingPolicy);
-        }
-
-        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
-            if (this.fullTextIndexPath == null) {
-                this.fullTextIndexPath = getOrDefault(fullTextIndexPath, DEFAULT_FULL_TEXT_INDEX_PATH);
-            }
-
-            if (this.fullTextIndexLanguage == null) {
-                this.fullTextIndexLanguage = getOrDefault(fullTextIndexLanguage, DEFAULT_FULL_TEXT_INDEX_LANGUAGE);
-            }
-
-            CosmosFullTextPolicy fullTextPolicy = getCosmosFullTextPolicy();
-            collectionDefinition.setFullTextPolicy(fullTextPolicy);
-        }
-
-        IndexingPolicy indexingPolicy = getIndexingPolicy(this.searchQueryType);
         collectionDefinition.setIndexingPolicy(indexingPolicy);
+
+        switch (this.searchQueryType) {
+            case VECTOR -> collectionDefinition.setVectorEmbeddingPolicy(cosmosVectorEmbeddingPolicy);
+            case FULL_TEXT_SEARCH, FULL_TEXT_RANKING -> collectionDefinition.setFullTextPolicy(cosmosFullTextPolicy);
+            case HYBRID -> {
+                collectionDefinition.setVectorEmbeddingPolicy(cosmosVectorEmbeddingPolicy);
+                collectionDefinition.setFullTextPolicy(cosmosFullTextPolicy);
+            }
+        }
 
         ThroughputProperties throughputProperties =
                 ThroughputProperties.createManualThroughput(this.vectorStoreThroughput);
@@ -225,59 +200,6 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                 .createContainerIfNotExists(collectionDefinition, throughputProperties)
                 .block();
         this.container = cosmosAsyncDatabase.getContainer(this.containerName);
-    }
-
-    private IndexingPolicy getIndexingPolicy(AzureCosmosDBSearchQueryType searchQueryType) {
-        IndexingPolicy indexingPolicy = new IndexingPolicy();
-        indexingPolicy.setIndexingMode(IndexingMode.CONSISTENT);
-        ExcludedPath excludedPath = new ExcludedPath("/*");
-        indexingPolicy.setExcludedPaths(singletonList(excludedPath));
-        IncludedPath includedPath1 = new IncludedPath("/metadata/?");
-        IncludedPath includedPath2 = new IncludedPath("/content/?");
-        indexingPolicy.setIncludedPaths(ImmutableList.of(includedPath1, includedPath2));
-
-        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.VECTOR)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
-            CosmosVectorIndexSpec cosmosVectorIndexSpec = new CosmosVectorIndexSpec();
-            cosmosVectorIndexSpec.setPath(this.vectorIndexPath);
-            cosmosVectorIndexSpec.setType(this.vectorIndexType);
-            cosmosVectorIndexSpec.setQuantizationSizeInBytes(this.vectorQuantizationSizeInBytes);
-            cosmosVectorIndexSpec.setIndexingSearchListSize(this.vectorIndexingSearchListSize);
-            cosmosVectorIndexSpec.setVectorIndexShardKeys(this.vectorIndexShardKeys);
-            indexingPolicy.setVectorIndexes(List.of(cosmosVectorIndexSpec));
-        }
-
-        if (searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
-            CosmosFullTextIndex cosmosFullTextIndex = new CosmosFullTextIndex();
-            cosmosFullTextIndex.setPath(this.fullTextIndexPath);
-            indexingPolicy.setCosmosFullTextIndexes(List.of(cosmosFullTextIndex));
-        }
-
-        return indexingPolicy;
-    }
-
-    private CosmosVectorEmbeddingPolicy getCosmosVectorEmbeddingPolicy() {
-        // Set vector embedding policy
-        CosmosVectorEmbeddingPolicy embeddingPolicy = new CosmosVectorEmbeddingPolicy();
-        CosmosVectorEmbedding embedding = new CosmosVectorEmbedding();
-        embedding.setPath(this.vectorIndexPath);
-        embedding.setDataType(CosmosVectorDataType.fromString(this.vectorDataType));
-        embedding.setEmbeddingDimensions(this.vectorDimensions);
-        embedding.setDistanceFunction(CosmosVectorDistanceFunction.fromString(this.vectorDistanceFunction));
-        embeddingPolicy.setCosmosVectorEmbeddings(singletonList(embedding));
-        return embeddingPolicy;
-    }
-
-    private CosmosFullTextPolicy getCosmosFullTextPolicy() {
-        // Set full text policy
-        CosmosFullTextPolicy fullTextPolicy = new CosmosFullTextPolicy();
-        CosmosFullTextPath fullTextPath = new CosmosFullTextPath();
-        fullTextPath.setPath(this.fullTextIndexPath);
-        fullTextPath.setLanguage(this.fullTextIndexLanguage);
-        fullTextPolicy.setPaths(singletonList(fullTextPath));
-        fullTextPolicy.setDefaultLanguage(this.fullTextIndexLanguage);
-        return fullTextPolicy;
     }
 
     @Override
@@ -495,7 +417,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         if (request.maxResults() > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
         }
-        String embeddingField = this.vectorIndexPath.substring(this.vectorIndexPath.lastIndexOf("/") + 1);
+        String embeddingField = this.indexingPolicy.getVectorIndexes().get(0).getPath().substring(this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
 
         List<Float> referenceEmbeddingString = request.queryEmbedding().vectorAsList();
 
@@ -575,8 +497,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         if (maxResults > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
         }
-        String embeddingField = this.vectorIndexPath.substring(this.vectorIndexPath.lastIndexOf("/") + 1);
-        String textField = this.fullTextIndexPath.substring(this.fullTextIndexPath.lastIndexOf("/") + 1);
+        String embeddingField = this.indexingPolicy.getVectorIndexes().get(0).getPath().substring(this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
+        String textField = this.indexingPolicy.getCosmosFullTextIndexes().get(0).getPath().substring(this.indexingPolicy.getCosmosFullTextIndexes().get(0).getPath().lastIndexOf("/") + 1);
 
         String searchWords =
                 Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'").collect(Collectors.joining(", "));

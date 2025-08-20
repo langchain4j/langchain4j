@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.cosmos.models.CosmosFullTextPolicy;
+import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
+import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -42,39 +45,19 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
             String databaseName,
             String containerName,
             String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
             Integer vectorStoreThroughput,
-            String vectorIndexType,
-            String vectorIndexPath,
-            String vectorDataType,
-            Integer vectorDimensions,
-            String vectorDistanceFunction,
             AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
             Integer maxResults,
             Double minScore,
-            Integer vectorQuantizationSizeInBytes,
-            Integer vectorIndexingSearchListSize,
-            List<String> vectorIndexShardKeys,
-            String fullTextIndexPath,
-            String fullTextIndexLanguage,
             Filter filter) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue(
                 (keyCredential != null && tokenCredential == null)
                         || (keyCredential == null && tokenCredential != null),
                 "either keyCredential or tokenCredential must be set");
-
-        if (azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
-                || azureCosmosDBSearchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
-            // Full-text search doesn't use embeddings, so dimensions must be 0
-            ensureTrue(vectorDimensions == 0, "for full-text search, dimensions must be 0");
-            ensureNotNull(fullTextIndexPath, "fullTextIndexPath");
-            ensureNotNull(fullTextIndexLanguage, "fullTextIndexLanguage");
-        } else {
-            ensureNotNull(embeddingModel, "embeddingModel");
-            ensureTrue(
-                    vectorDimensions >= 2 && vectorDimensions <= 3072,
-                    "dimensions must be set to a positive, non-zero integer between 2 and 3072");
-        }
 
         if (keyCredential != null) {
             this.initialize(
@@ -84,18 +67,11 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     databaseName,
                     containerName,
                     partitionKeyPath,
+                    indexingPolicy,
+                    cosmosVectorEmbeddingPolicy,
+                    cosmosFullTextPolicy,
                     vectorStoreThroughput,
                     azureCosmosDBSearchQueryType,
-                    vectorIndexType,
-                    vectorIndexPath,
-                    vectorDataType,
-                    vectorDimensions,
-                    vectorDistanceFunction,
-                    vectorQuantizationSizeInBytes,
-                    vectorIndexingSearchListSize,
-                    vectorIndexShardKeys,
-                    fullTextIndexPath,
-                    fullTextIndexLanguage,
                     null);
         } else {
             this.initialize(
@@ -105,18 +81,11 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     databaseName,
                     containerName,
                     partitionKeyPath,
+                    indexingPolicy,
+                    cosmosVectorEmbeddingPolicy,
+                    cosmosFullTextPolicy,
                     vectorStoreThroughput,
                     azureCosmosDBSearchQueryType,
-                    vectorIndexType,
-                    vectorIndexPath,
-                    vectorDataType,
-                    vectorDimensions,
-                    vectorDistanceFunction,
-                    vectorQuantizationSizeInBytes,
-                    vectorIndexingSearchListSize,
-                    vectorIndexShardKeys,
-                    fullTextIndexPath,
-                    fullTextIndexLanguage,
                     null);
         }
 
