@@ -1,5 +1,6 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.nonNull;
 
@@ -64,7 +65,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
 
-        List<ToolSpecification> toolSpecifications = chatRequest.parameters().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = getOrDefault(
+                chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
 
         List<ChatMessage> messages =
                 chatRequest.messages().stream().map(Converter::toChatMessage).toList();
@@ -73,7 +75,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
+        ChatParameters parameters = Converter.toChatParameters(defaultRequestParameters, chatRequest.parameters());
 
         com.ibm.watsonx.ai.chat.ChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()

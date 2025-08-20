@@ -83,7 +83,7 @@ public class WatsonxStreamingChatModelTest {
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", "refusal", null);
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
                     chatResponse.setChoices(List.of(resultChoice));
                     handler.onCompleteResponse(chatResponse);
@@ -152,7 +152,7 @@ public class WatsonxStreamingChatModelTest {
     public void testDoChatWithTool() throws Exception {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, "refusal", List.of(toolCall));
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "tool_calls");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -271,7 +271,7 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void testJsonSchema() throws Exception {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", "refusal", null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 

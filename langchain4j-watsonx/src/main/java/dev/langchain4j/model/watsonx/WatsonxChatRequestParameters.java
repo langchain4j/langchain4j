@@ -14,7 +14,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, Integer> logitBias;
     private final Boolean logprobs;
     private final Integer topLogprobs;
-    private final Integer n;
     private final Integer seed;
     private final String toolChoiceName;
     private final Duration timeLimit;
@@ -26,7 +25,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         this.logitBias = builder.logitBias;
         this.logprobs = builder.logprobs;
         this.topLogprobs = builder.topLogprobs;
-        this.n = builder.n;
         this.seed = builder.seed;
         this.toolChoiceName = builder.toolChoiceName;
         this.timeLimit = builder.timeLimit;
@@ -50,10 +48,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
     public Integer topLogprobs() {
         return topLogprobs;
-    }
-
-    public Integer n() {
-        return n;
     }
 
     public Integer seed() {
@@ -86,7 +80,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, Integer> logitBias;
         private Boolean logprobs;
         private Integer topLogprobs;
-        private Integer n;
         private Integer seed;
         private String toolChoiceName;
         private Duration timeLimit;
@@ -100,7 +93,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 logitBias(getOrDefault(watsonxParameters.logitBias(), logitBias));
                 logprobs(getOrDefault(watsonxParameters.logprobs(), logprobs));
                 topLogprobs(getOrDefault(watsonxParameters.topLogprobs(), topLogprobs));
-                n(getOrDefault(watsonxParameters.n(), n));
                 seed(getOrDefault(watsonxParameters.seed(), seed));
                 toolChoiceName(getOrDefault(watsonxParameters.toolChoiceName(), toolChoiceName));
                 timeLimit(getOrDefault(watsonxParameters.timeLimit(), timeLimit));
@@ -130,11 +122,6 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder topLogprobs(Integer topLogprobs) {
             this.topLogprobs = topLogprobs;
-            return this;
-        }
-
-        public Builder n(Integer n) {
-            this.n = n;
             return this;
         }
 
