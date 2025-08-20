@@ -14,10 +14,12 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -36,7 +38,7 @@ public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
-    private final Map<String, String> headers;
+    private final Map<String, String> userHeaders;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
@@ -63,7 +65,7 @@ public class HttpMcpTransport implements McpTransport {
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
-        headers = getOrDefault(builder.headers, Map.of());
+        userHeaders = getOrDefault(builder.headers, Map.of());
         client = httpClientBuilder.build();
     }
 
@@ -183,15 +185,15 @@ public class HttpMcpTransport implements McpTransport {
 
     private Headers buildCommonHeaders() {
         Headers.Builder headerBuilder = new Headers.Builder();
-        headers.forEach(headerBuilder::add);
+        userHeaders.forEach(headerBuilder::add);
         return headerBuilder.build();
     }
 
     private Request createRequest(McpClientMessage message) throws JsonProcessingException {
-       Headers.Builder headerBuilder = new Headers.Builder()
+        Headers.Builder headerBuilder = new Headers.Builder()
                 .add(CONTENT_TYPE, CONTENT_TYPE_JSON);
-        headers.forEach(headerBuilder::add);
-        
+        userHeaders.forEach(headerBuilder::add);
+
         return new Request.Builder()
                 .url(postUrl)
                 .headers(headerBuilder.build())
@@ -225,7 +227,7 @@ public class HttpMcpTransport implements McpTransport {
             this.sseUrl = sseUrl;
             return this;
         }
-        
+
         public Builder headers(Map<String, String> headers) {
             this.headers = headers;
             return this;
