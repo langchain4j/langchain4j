@@ -1,4 +1,4 @@
-package dev.langchain4j.model.watsonx;
+package dev.langchain4j.model.watsonx.it;
 
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
