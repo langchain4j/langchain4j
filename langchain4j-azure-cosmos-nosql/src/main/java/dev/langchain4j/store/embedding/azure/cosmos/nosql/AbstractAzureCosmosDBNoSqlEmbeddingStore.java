@@ -144,32 +144,18 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
 
         } catch (Exception e) {
-            logger.error("Error creating cosmosClient: {}", e.getMessage());
+            throw new RuntimeException("Error creating cosmosClient: {}", e);
         }
 
-        if (this.databaseName == null || this.databaseName.isEmpty()) {
-            this.databaseName = getOrDefault(databaseName, DEFAULT_DATABASE_NAME);
-        }
+        this.databaseName = getOrDefault(databaseName, DEFAULT_DATABASE_NAME);
+        this.containerName = getOrDefault(containerName, DEFAULT_CONTAINER_NAME);
 
-        if (this.containerName == null || this.containerName.isEmpty()) {
-            this.containerName = getOrDefault(containerName, DEFAULT_CONTAINER_NAME);
-        }
+        this.cosmosClient.createDatabaseIfNotExists(this.databaseName).block();
 
-        try {
-            this.cosmosClient.createDatabaseIfNotExists(this.databaseName).block();
-        } catch (Exception e) {
-            // likely failed due to RBAC, so database is assumed to be already created
-            // (and if not, it will fail later)
-            logger.error("Error creating database: {}", e.getMessage());
-        }
+        this.partitionKeyPath = getOrDefault(partitionKeyPath, DEFAULT_PARTITION_KEY_PATH);
 
-        if (this.partitionKeyPath == null) {
-            this.partitionKeyPath = getOrDefault(partitionKeyPath, DEFAULT_PARTITION_KEY_PATH);
-        }
 
-        if (this.vectorStoreThroughput == null) {
-            this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
-        }
+        this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
 
         // handle hierarchical partition key
         PartitionKeyDefinition subPartitionKeyDefinition = new PartitionKeyDefinition();
@@ -184,25 +170,12 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             subPartitionKeyDefinition.setKind(PartitionKind.HASH);
         }
 
-        if (this.searchQueryType == null) {
-            this.searchQueryType = getOrDefault(searchQueryType, DEFAULT_SEARCH_QUERY_TYPE);
-        }
 
-        if (isNullOrEmpty(this.vectorIndexPath)) {
-            this.vectorIndexPath = getOrDefault(vectorIndexPath, DEFAULT_VECTOR_INDEX_PATH);
-        }
-
-        if (isNullOrEmpty(this.vectorIndexType)) {
-            this.vectorIndexType = getOrDefault(vectorIndexType, DEFAULT_VECTOR_INDEX_TYPE);
-        }
-
-        if (isNullOrEmpty(this.vectorDataType)) {
-            this.vectorDataType = getOrDefault(vectorDataType, DEFAULT_VECTOR_DATA_TYPE);
-        }
-
-        if (isNullOrEmpty(this.vectorDistanceFunction)) {
-            this.vectorDistanceFunction = getOrDefault(vectorDistanceFunction, DEFAULT_VECTOR_DISTANCE_FUNCTION);
-        }
+        this.searchQueryType = getOrDefault(searchQueryType, DEFAULT_SEARCH_QUERY_TYPE);
+        this.vectorIndexPath = getOrDefault(vectorIndexPath, DEFAULT_VECTOR_INDEX_PATH);
+        this.vectorIndexType = getOrDefault(vectorIndexType, DEFAULT_VECTOR_INDEX_TYPE);
+        this.vectorDataType = getOrDefault(vectorDataType, DEFAULT_VECTOR_DATA_TYPE);
+        this.vectorDistanceFunction = getOrDefault(vectorDistanceFunction, DEFAULT_VECTOR_DISTANCE_FUNCTION);
 
         if (vectorQuantizationSizeInBytes != null) {
             this.vectorQuantizationSizeInBytes = vectorQuantizationSizeInBytes;
@@ -212,7 +185,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             this.vectorIndexingSearchListSize = vectorIndexingSearchListSize;
         }
 
-        if (isNullOrEmpty(vectorIndexShardKeys)) {
+        if (!isNullOrEmpty(vectorIndexShardKeys)) {
             this.vectorIndexShardKeys = vectorIndexShardKeys;
         }
 

@@ -23,6 +23,7 @@ import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
 import com.azure.cosmos.models.ThroughputProperties;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBNoSqlRuntimeException;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.List;
@@ -143,8 +144,7 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
                             .blockFirst())
                     .getResults();
         } catch (Exception e) {
-            logger.error("Exception while deleting documents: {}", e.getMessage(), e);
-            throw e;
+            throw new AzureCosmosDBNoSqlRuntimeException("Exception while fetching documents: {}", e);
         }
     }
 
@@ -156,8 +156,7 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
                     .upsertItem(messages.get(0), new PartitionKey(memoryId), new CosmosItemRequestOptions())
                     .block();
         } catch (Exception e) {
-            logger.error("Exception while updating documents: {}", e.getMessage(), e);
-            throw e;
+            throw new AzureCosmosDBNoSqlRuntimeException("Exception while updating documents: {}", e);
         }
     }
 
@@ -168,8 +167,7 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
                     .deleteItem(memoryId.toString(), new PartitionKey(memoryId))
                     .block();
         } catch (Exception e) {
-            logger.error("Exception while deleting documents: {}", e.getMessage(), e);
-            throw e;
+            throw new AzureCosmosDBNoSqlRuntimeException("Exception while deleting documents: {}", e);
         }
     }
 

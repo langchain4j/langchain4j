@@ -1,48 +1,7 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
-import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsIn;
-import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
-import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
-import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Not;
-import dev.langchain4j.store.embedding.filter.logical.Or;
 
-/**
- * This class represents a filter that can be applied during search in an {@link EmbeddingStore}.
- * <br>
- * Many {@link EmbeddingStore}s support a feature called metadata filtering. A {@code Filter} can be used for this.
- * <br>
- * A {@code Filter} object can represent simple (e.g. {@code type = 'documentation'})
- * and composite (e.g. {@code type = 'documentation' AND year > 2020}) filter expressions in
- * an {@link EmbeddingStore}-agnostic way.
- * <br>
- * Each {@link EmbeddingStore} implementation that supports metadata filtering is mapping {@link Filter}
- * into it's native filter expression.
- *
- * @see IsEqualTo
- * @see IsNotEqualTo
- * @see IsGreaterThan
- * @see IsGreaterThanOrEqualTo
- * @see IsLessThan
- * @see IsLessThanOrEqualTo
- * @see IsIn
- * @see IsNotIn
- * @see ContainsString
- * @see FullTextContains
- * @see FullTextContainsAll
- * @see FullTextContainsAny
- * @see And
- * @see Not
- * @see Or
- */
 public interface AzureCosmosDBNoSqlFilterMapper {
     String map(Filter filter);
 }
