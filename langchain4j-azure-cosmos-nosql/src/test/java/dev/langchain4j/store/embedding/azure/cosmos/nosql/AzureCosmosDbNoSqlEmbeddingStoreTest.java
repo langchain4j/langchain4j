@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import org.junit.jupiter.api.Test;

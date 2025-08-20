@@ -1,7 +1,6 @@
 package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import com.azure.core.credential.AzureKeyCredential;
@@ -25,13 +24,21 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
     void shouldFailIfEndpointNull() {
         AzureKeyCredential key = new AzureKeyCredential("dummy");
         assertThatThrownBy(() -> new AzureCosmosDBNoSqlContentRetriever(
-                null, key, null,
-                new TestEmbeddingModel(),
-                DB, CONTAINER, "/id",
-                null, null, null,
-                null,
-                AzureCosmosDBSearchQueryType.VECTOR,
-                10, 0.0, null))
+                        null,
+                        key,
+                        null,
+                        new TestEmbeddingModel(),
+                        DB,
+                        CONTAINER,
+                        "/id",
+                        null,
+                        null,
+                        null,
+                        null,
+                        AzureCosmosDBSearchQueryType.VECTOR,
+                        10,
+                        0.0,
+                        null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("endpoint cannot be null");
     }
@@ -41,13 +48,21 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
         AzureKeyCredential key = new AzureKeyCredential("dummy");
         TokenCredential token = new BasicAuthenticationCredential("u", "p");
         assertThatThrownBy(() -> new AzureCosmosDBNoSqlContentRetriever(
-                ENDPOINT, key, token,
-                new TestEmbeddingModel(),
-                DB, CONTAINER, "/id",
-                null, null, null,
-                null,
-                AzureCosmosDBSearchQueryType.VECTOR,
-                10, 0.0, null))
+                        ENDPOINT,
+                        key,
+                        token,
+                        new TestEmbeddingModel(),
+                        DB,
+                        CONTAINER,
+                        "/id",
+                        null,
+                        null,
+                        null,
+                        null,
+                        AzureCosmosDBSearchQueryType.VECTOR,
+                        10,
+                        0.0,
+                        null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("either keyCredential or tokenCredential must be set");
     }
@@ -55,13 +70,21 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
     @Test
     void shouldFailIfNoCredential() {
         assertThatThrownBy(() -> new AzureCosmosDBNoSqlContentRetriever(
-                ENDPOINT, null, null,
-                new TestEmbeddingModel(),
-                DB, CONTAINER, "/id",
-                null, null, null,
-                null,
-                AzureCosmosDBSearchQueryType.VECTOR,
-                10, 0.0, null))
+                        ENDPOINT,
+                        null,
+                        null,
+                        new TestEmbeddingModel(),
+                        DB,
+                        CONTAINER,
+                        "/id",
+                        null,
+                        null,
+                        null,
+                        null,
+                        AzureCosmosDBSearchQueryType.VECTOR,
+                        10,
+                        0.0,
+                        null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("either keyCredential or tokenCredential must be set");
     }
@@ -72,13 +95,21 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
         EmbeddingModel model = new TestEmbeddingModel();
 
         AzureCosmosDBNoSqlContentRetriever retriever = new AzureCosmosDBNoSqlContentRetriever(
-                ENDPOINT, key, null,
+                ENDPOINT,
+                key,
+                null,
                 model,
-                DB, CONTAINER, "/id",
-                null, null, null,
+                DB,
+                CONTAINER,
+                "/id",
+                null,
+                null,
+                null,
                 null,
                 AzureCosmosDBSearchQueryType.VECTOR,
-                5, 0.0, null);
+                5,
+                0.0,
+                null);
 
         assertThat(retriever).isNotNull();
     }
@@ -89,13 +120,21 @@ class AzureCosmosDBNoSqlContentRetrieverTest {
         EmbeddingModel model = new TestEmbeddingModel();
 
         AzureCosmosDBNoSqlContentRetriever retriever = new AzureCosmosDBNoSqlContentRetriever(
-                ENDPOINT, null, token,
+                ENDPOINT,
+                null,
+                token,
                 model,
-                DB, CONTAINER, "/id",
-                null, null, null,
+                DB,
+                CONTAINER,
+                "/id",
+                null,
+                null,
+                null,
                 null,
                 AzureCosmosDBSearchQueryType.VECTOR,
-                5, 0.0, null);
+                5,
+                0.0,
+                null);
 
         assertThat(retriever).isNotNull();
     }

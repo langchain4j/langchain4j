@@ -18,22 +18,12 @@ import com.azure.cosmos.CosmosAsyncDatabase;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosException;
 import com.azure.cosmos.implementation.apachecommons.lang.tuple.ImmutablePair;
-import com.azure.cosmos.implementation.guava25.collect.ImmutableList;
 import com.azure.cosmos.models.CosmosBulkOperations;
 import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosFullTextIndex;
-import com.azure.cosmos.models.CosmosFullTextPath;
 import com.azure.cosmos.models.CosmosFullTextPolicy;
 import com.azure.cosmos.models.CosmosItemOperation;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
-import com.azure.cosmos.models.CosmosVectorDataType;
-import com.azure.cosmos.models.CosmosVectorDistanceFunction;
-import com.azure.cosmos.models.CosmosVectorEmbedding;
 import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
-import com.azure.cosmos.models.CosmosVectorIndexSpec;
-import com.azure.cosmos.models.ExcludedPath;
-import com.azure.cosmos.models.IncludedPath;
-import com.azure.cosmos.models.IndexingMode;
 import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.PartitionKey;
 import com.azure.cosmos.models.PartitionKeyDefinition;
@@ -139,7 +129,6 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
         this.partitionKeyPath = getOrDefault(partitionKeyPath, DEFAULT_PARTITION_KEY_PATH);
 
-
         this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
 
         // handle hierarchical partition key
@@ -155,7 +144,6 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             subPartitionKeyDefinition.setKind(PartitionKind.HASH);
         }
 
-
         this.searchQueryType = getOrDefault(searchQueryType, DEFAULT_SEARCH_QUERY_TYPE);
 
         if (indexingPolicy == null) {
@@ -163,12 +151,16 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         }
         switch (searchQueryType) {
             case VECTOR -> {
-                if (cosmosVectorEmbeddingPolicy == null || indexingPolicy.getVectorIndexes().isEmpty())
-                    throw new AzureCosmosDBNoSqlRuntimeException("cosmosVectorEmbeddingPolicy is required for VECTOR search");
+                if (cosmosVectorEmbeddingPolicy == null
+                        || indexingPolicy.getVectorIndexes().isEmpty())
+                    throw new AzureCosmosDBNoSqlRuntimeException(
+                            "cosmosVectorEmbeddingPolicy is required for VECTOR search");
             }
             case FULL_TEXT_SEARCH, FULL_TEXT_RANKING -> {
-                if (cosmosFullTextPolicy == null || indexingPolicy.getCosmosFullTextIndexes().isEmpty())
-                    throw new AzureCosmosDBNoSqlRuntimeException("cosmosFullTextPolicy is required for FULL_TEXT_* search");
+                if (cosmosFullTextPolicy == null
+                        || indexingPolicy.getCosmosFullTextIndexes().isEmpty())
+                    throw new AzureCosmosDBNoSqlRuntimeException(
+                            "cosmosFullTextPolicy is required for FULL_TEXT_* search");
             }
             case HYBRID -> {
                 List<String> missing = new ArrayList<>();
@@ -417,7 +409,12 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         if (request.maxResults() > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
         }
-        String embeddingField = this.indexingPolicy.getVectorIndexes().get(0).getPath().substring(this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
+        String embeddingField = this.indexingPolicy
+                .getVectorIndexes()
+                .get(0)
+                .getPath()
+                .substring(
+                        this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
 
         List<Float> referenceEmbeddingString = request.queryEmbedding().vectorAsList();
 
@@ -497,8 +494,22 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         if (maxResults > 1000) {
             throw new IllegalArgumentException("Top K must be 1000 or less.");
         }
-        String embeddingField = this.indexingPolicy.getVectorIndexes().get(0).getPath().substring(this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
-        String textField = this.indexingPolicy.getCosmosFullTextIndexes().get(0).getPath().substring(this.indexingPolicy.getCosmosFullTextIndexes().get(0).getPath().lastIndexOf("/") + 1);
+        String embeddingField = this.indexingPolicy
+                .getVectorIndexes()
+                .get(0)
+                .getPath()
+                .substring(
+                        this.indexingPolicy.getVectorIndexes().get(0).getPath().lastIndexOf("/") + 1);
+        String textField = this.indexingPolicy
+                .getCosmosFullTextIndexes()
+                .get(0)
+                .getPath()
+                .substring(this.indexingPolicy
+                                .getCosmosFullTextIndexes()
+                                .get(0)
+                                .getPath()
+                                .lastIndexOf("/")
+                        + 1);
 
         String searchWords =
                 Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'").collect(Collectors.joining(", "));

@@ -11,7 +11,6 @@ import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.cosmos.nosql.AzureCosmosDBNoSqlFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import java.util.List;
 
 /**
  * Implementation of {@link EmbeddingStore} that uses Azure Cosmos DB NoSQL API for storing and retrieving embeddings.

@@ -2,7 +2,6 @@ package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.cosmos.implementation.guava25.collect.ImmutableList;
