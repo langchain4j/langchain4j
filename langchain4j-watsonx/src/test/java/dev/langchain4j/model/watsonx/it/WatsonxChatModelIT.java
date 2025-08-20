@@ -28,7 +28,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     protected List<ChatModel> models() {
         return List.of(WatsonxChatModel.builder()
                 .service(createChatService("meta-llama/llama-4-maverick-17b-128e-instruct-fp8"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -63,7 +62,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(WatsonxChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -72,7 +70,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(WatsonxChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -81,7 +78,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format(WatsonxChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -90,7 +86,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format_with_schema(WatsonxChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 

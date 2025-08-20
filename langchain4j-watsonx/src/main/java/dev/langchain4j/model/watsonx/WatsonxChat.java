@@ -1,6 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
 
@@ -8,9 +9,12 @@ import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Internal
 abstract class WatsonxChat {
@@ -18,17 +22,17 @@ abstract class WatsonxChat {
     protected final ChatProvider chatProvider;
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
-    protected final boolean enableJsonSchema;
+    protected final Set<Capability> supportedCapabilities;
     protected final ExtractionTags tags;
 
     protected WatsonxChat(Builder<?> builder) {
-        this.chatProvider = requireNonNull(builder.chatProvider);
-        this.listeners = copy(builder.listeners);
-        this.defaultRequestParameters = requireNonNullElse(
+        chatProvider = requireNonNull(builder.chatProvider);
+        listeners = copy(builder.listeners);
+        defaultRequestParameters = requireNonNullElse(
                 builder.defaultRequestParameters,
                 WatsonxChatRequestParameters.builder().build());
-        this.enableJsonSchema = requireNonNullElse(builder.enableJsonSchema, false);
-        this.tags = builder.tags;
+        supportedCapabilities = copy(builder.supportedCapabilities);
+        tags = builder.tags;
     }
 
     @SuppressWarnings("unchecked")
@@ -36,7 +40,7 @@ abstract class WatsonxChat {
         private ChatProvider chatProvider;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
-        private Boolean enableJsonSchema;
+        private Set<Capability> supportedCapabilities;
         private ExtractionTags tags;
 
         public T service(ChatProvider chatProvider) {
@@ -54,9 +58,13 @@ abstract class WatsonxChat {
             return (T) this;
         }
 
-        public T enableJsonSchema(boolean enableJsonSchema) {
-            this.enableJsonSchema = enableJsonSchema;
+        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
             return (T) this;
+        }
+
+        public T supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         /**

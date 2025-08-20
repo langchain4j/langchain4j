@@ -284,17 +284,11 @@ public class WatsonxStreamingChatModelTest {
                 .when(mockChatService)
                 .chatStreaming(chatRequestCaptor.capture(), any());
 
-        StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                .enableJsonSchema(true)
-                .service(mockChatService)
-                .build();
-
-        assertEquals(1, streamingChatModel.supportedCapabilities().size());
-        assertTrue(streamingChatModel.supportedCapabilities().contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA));
+        StreamingChatModel streamingChatModel =
+                WatsonxStreamingChatModel.builder().service(mockChatService).build();
 
         streamingChatModel = WatsonxStreamingChatModel.builder()
                 .service(mockChatService)
-                .enableJsonSchema(false)
                 .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                         .modelName("modelName")
                         .toolChoice(ToolChoice.REQUIRED)

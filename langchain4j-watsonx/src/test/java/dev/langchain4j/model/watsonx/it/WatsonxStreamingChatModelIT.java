@@ -31,7 +31,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected List<StreamingChatModel> models() {
         return List.of(WatsonxStreamingChatModel.builder()
                 .service(createChatService("meta-llama/llama-4-maverick-17b-128e-instruct-fp8"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -74,7 +73,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(WatsonxStreamingChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -83,7 +81,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format(WatsonxStreamingChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 
@@ -94,7 +91,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
                 WatsonxStreamingChatModel.builder()
                         .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                        .enableJsonSchema(true)
                         .build());
     }
 
@@ -103,7 +99,6 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format_with_schema(WatsonxStreamingChatModel.builder()
                 .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .enableJsonSchema(true)
                 .build());
     }
 

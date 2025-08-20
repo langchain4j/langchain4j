@@ -301,6 +301,7 @@ public class WatsonxChatModelTest {
                                 ToolSpecification.builder().name("test").build())
                         .topLogprobs(10)
                         .build())
+                .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                 .build();
 
         when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
@@ -367,7 +368,6 @@ public class WatsonxChatModelTest {
         // TEST 2: Override parameters
         chatModel = WatsonxChatModel.builder()
                 .service(mockChatService)
-                .enableJsonSchema(true)
                 .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                         .frequencyPenalty(0.1)
                         .maxOutputTokens(0)
@@ -446,8 +446,6 @@ public class WatsonxChatModelTest {
         assertNotNull(parameters.getToolChoice());
         assertEquals(11, parameters.getTopLogprobs());
         assertNull(parameters.getToolChoiceOption());
-        assertEquals(1, chatModel.supportedCapabilities().size());
-        assertTrue(chatModel.supportedCapabilities().contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA));
         // ----------------
     }
 
@@ -462,7 +460,6 @@ public class WatsonxChatModelTest {
 
         var chatModel = WatsonxChatModel.builder()
                 .service(mockChatService)
-                .enableJsonSchema(false)
                 .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                         .modelName("modelName")
                         .toolChoice(ToolChoice.REQUIRED)
