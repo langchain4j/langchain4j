@@ -25,7 +25,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -33,7 +32,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.watsonx.util.Converter;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -334,10 +332,7 @@ public class ConverterTest {
                 .topLogprobs(10)
                 .build();
 
-        var p = Converter.toChatParameters(ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(parameters)
-                .build());
+        var p = Converter.toChatParameters(parameters);
         assertEquals(0.1, p.getFrequencyPenalty());
         assertEquals(0, p.getMaxCompletionTokens());
         assertEquals("modelName", p.getModelId());
@@ -363,10 +358,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toChatParameters(ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(parameters)
-                .build());
+        p = Converter.toChatParameters(parameters);
         assertEquals("required", p.getToolChoiceOption());
 
         parameters = WatsonxChatRequestParameters.builder()
@@ -376,10 +368,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toChatParameters(ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(parameters)
-                .build());
+        p = Converter.toChatParameters(parameters);
         assertNull(p.getToolChoiceOption());
         assertEquals("function", p.getToolChoice().get("type"));
         assertEquals("toolChoiceName", ((Map) p.getToolChoice().get("function")).get("name"));
@@ -388,45 +377,32 @@ public class ConverterTest {
         // --- TEST 3 ---
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(ChatRequest.builder()
-                        .messages(UserMessage.from("Hello"))
-                        .parameters(WatsonxChatRequestParameters.builder()
-                                .toolChoice(ToolChoice.REQUIRED)
-                                .build())
+                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
                         .build()));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(ChatRequest.builder()
-                        .messages(UserMessage.from("Hello"))
-                        .parameters(WatsonxChatRequestParameters.builder()
-                                .toolChoice(ToolChoice.REQUIRED)
-                                .toolChoiceName("toolChoiceName")
-                                .build())
+                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .toolChoiceName("toolChoiceName")
                         .build()));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(ChatRequest.builder()
-                        .messages(UserMessage.from("Hello"))
-                        .parameters(WatsonxChatRequestParameters.builder()
-                                .toolChoice(ToolChoice.REQUIRED)
-                                .toolChoiceName("toolChoiceName")
-                                .toolSpecifications(List.of())
-                                .build())
+                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .toolChoiceName("toolChoiceName")
+                        .toolSpecifications(List.of())
                         .build()));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(ChatRequest.builder()
-                        .messages(UserMessage.from("Hello"))
-                        .parameters(WatsonxChatRequestParameters.builder()
-                                .toolChoice(ToolChoice.REQUIRED)
-                                .toolChoiceName("toolChoiceName")
-                                .toolSpecifications(ToolSpecification.builder()
-                                        .name("notMatch")
-                                        .build())
-                                .build())
+                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .toolChoiceName("toolChoiceName")
+                        .toolSpecifications(
+                                ToolSpecification.builder().name("notMatch").build())
                         .build()));
         // --------------
 
@@ -435,10 +411,7 @@ public class ConverterTest {
                 .responseFormat(ResponseFormat.JSON)
                 .build();
 
-        p = Converter.toChatParameters(ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(parameters)
-                .build());
+        p = Converter.toChatParameters(parameters);
         assertEquals("json_object", p.getResponseFormat());
 
         parameters = WatsonxChatRequestParameters.builder()
@@ -450,10 +423,7 @@ public class ConverterTest {
                         .build())
                 .build();
 
-        p = Converter.toChatParameters(ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(parameters)
-                .build());
+        p = Converter.toChatParameters(parameters);
         assertEquals("json_schema", p.getResponseFormat());
         assertEquals("test", p.getJsonSchema().name());
         assertEquals(true, p.getJsonSchema().strict());
