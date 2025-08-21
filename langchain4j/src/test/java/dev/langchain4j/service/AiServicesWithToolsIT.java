@@ -44,6 +44,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -859,11 +860,22 @@ class AiServicesWithToolsIT {
                         .build();
 
                 return ToolProviderResult.builder()
-                        .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
-                            // TODO test context provided here
-                            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
-                            assertThat(arguments).containsExactly(entry("number", 2027));
-                            return "3000";
+                        .add(toolSpecification, new ToolExecutor() {
+
+                            @Override
+                            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+                                assertThat((boolean) context.invocationContext().get(includeToolsKey)).isEqualTo(true);
+                                Map<String, Object> arguments = toMap(request.arguments());
+                                assertThat(arguments).containsExactly(entry("number", 2027));
+                                return ToolExecutionResult.builder()
+                                        .resultText("3000")
+                                        .build();
+                            }
+
+                            @Override
+                            public String execute(ToolExecutionRequest request, Object memoryId) {
+                                throw new RuntimeException("should not be called");
+                            }
                         })
                         .build();
             }

@@ -9,7 +9,7 @@ import java.util.Objects;
 public class ToolExecutionContext { // TODO name, location
 
     private final Object chatMemoryId; // TODO name?
-    private final InvocationContext invocationContext;
+    private final InvocationContext invocationContext; // TODO name: context.invocationContext()
 
     public ToolExecutionContext(Object chatMemoryId, InvocationContext invocationContext) {
         this.chatMemoryId = chatMemoryId; // TODO

@@ -11,60 +11,65 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class InvocationContext { // TODO name, module, package
 
-    // TODO test for mutability
-
-    private final Map<String, Object> context; // mutable on purpose
-    // TODO concurrent
+    private final ConcurrentHashMap<String, Object> map; // mutable on purpose
 
     public InvocationContext() {
-        this.context = new ConcurrentHashMap<>();
+        this(new ConcurrentHashMap<>());
     }
 
-    public InvocationContext(Map<String, Object> context) {
-        this.context = context; // TODO ensure it is concurrent
+    public InvocationContext(Map<String, Object> map) {
+        if (map instanceof ConcurrentHashMap<String, Object> concurrentHashMap) {
+            this.map = concurrentHashMap;
+        } else {
+            this.map = new ConcurrentHashMap<>(map);
+        }
     }
 
     public Map<String, Object> asMap() { // TODO name
-        return context;
+        return map;
     }
 
     public <T> T get(String key) {
-        return (T) context.get(key);
+        return (T) map.get(key);
     }
 
     public <T> T getOrDefault(String key, T defaultValue) {
-        return (T) context.getOrDefault(key, defaultValue);
+        return (T) map.getOrDefault(key, defaultValue);
     }
 
     public <T> void put(String key, T value) {
-        context.put(key, value);
+        map.put(key, value);
     }
 
     public boolean containsKey(String key) {
-        return context.containsKey(key);
+        return map.containsKey(key);
     }
 
     @Override
-    public boolean equals(final Object object) {
+    public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         InvocationContext that = (InvocationContext) object;
-        return Objects.equals(context, that.context);
+        return Objects.equals(map, that.map);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(context);
+        return Objects.hashCode(map);
     }
 
     @Override
     public String toString() {
         return "InvocationContext{" + // TODO names
-                "context=" + context +
+                "map=" + map +
                 '}';
     }
 
     public static InvocationContext from(String key, Object value) {
         return new InvocationContext(Map.of(key, value));
+    }
+
+    public static InvocationContext from(Map<String, Object> map) {
+        return new InvocationContext(map);
     }
 }

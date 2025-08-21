@@ -6,6 +6,7 @@ import dev.langchain4j.service.MemoryId;
 /**
  * A low-level executor/handler of a {@link ToolExecutionRequest}.
  */
+@FunctionalInterface
 public interface ToolExecutor {
 
     /**
