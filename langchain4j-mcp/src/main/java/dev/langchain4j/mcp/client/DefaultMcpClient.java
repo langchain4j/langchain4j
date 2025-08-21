@@ -209,6 +209,15 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    /**
+     * Evicts the tool list cache, forcing the next call to
+     * {@link #listTools()} to retrieve a fresh list of tools
+     * from the MCP server.
+     */
+    public void evictToolListCache() {
+        toolListOutOfDate.set(true);
+    }
+
     @Override
     public String executeTool(ToolExecutionRequest executionRequest) {
         assertNotClosed();
