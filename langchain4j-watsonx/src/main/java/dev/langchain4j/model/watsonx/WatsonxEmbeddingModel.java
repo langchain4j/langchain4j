@@ -26,9 +26,7 @@ import java.util.List;
  *     .modelId("ibm/granite-embedding-278m-multilingual")
  *     .build();
  *
- * EmbeddingModel embeddingModel = WatsonxEmbedding.builder()
- *     .service(embeddingService)
- *     .build();
+ * EmbeddingModel embeddingModel = new WatsonxEmbeddingModel(embeddingService);
  * }</pre>
  *
  *
@@ -38,9 +36,9 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingService embeddingService;
 
-    private WatsonxEmbeddingModel(Builder builder) {
-        requireNonNull(builder, "builder is required");
-        this.embeddingService = builder.embeddingService;
+    public WatsonxEmbeddingModel(EmbeddingService embeddingService) {
+        requireNonNull(embeddingService, "embeddingService is required");
+        this.embeddingService = embeddingService;
     }
 
     @Override
@@ -67,49 +65,5 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .map(Result::embedding)
                 .map(Embedding::from)
                 .toList());
-    }
-
-    /**
-     * Returns a new {@link Builder} instance.
-     * <p>
-     * <b>Example usage:</b>
-     *
-     * <pre>{@code
-     * EmbeddingService embeddingService = EmbeddingService.builder()
-     *     .url("https://...") // or use CloudRegion
-     *     .authenticationProvider(authProvider)
-     *     .projectId("my-project-id")
-     *     .modelId("ibm/granite-embedding-278m-multilingual")
-     *     .build();
-     *
-     *
-     * EmbeddingModel embeddingModel = WatsonxEmbedding.builder()
-     *     .service(embeddingService)
-     *     .build();
-     * }</pre>
-     *
-     *
-     * @see EmbeddingService
-     * @return {@link Builder} instance.
-     *
-     */
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    /**
-     * Builder class for constructing {@link WatsonxEmbeddingModel} instances with configurable parameters.
-     */
-    public static class Builder {
-        private EmbeddingService embeddingService;
-
-        public Builder service(EmbeddingService embeddingService) {
-            this.embeddingService = embeddingService;
-            return this;
-        }
-
-        public WatsonxEmbeddingModel build() {
-            return new WatsonxEmbeddingModel(this);
-        }
     }
 }

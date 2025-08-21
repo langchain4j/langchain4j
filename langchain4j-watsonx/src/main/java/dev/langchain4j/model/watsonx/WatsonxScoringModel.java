@@ -27,9 +27,7 @@ import java.util.List;
  *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
  *     .build();
  *
- * WatsonxScoringModel scoringModel = WatsonxScoringModel.builder()
- *     .service(rerankService)
- *     .build();
+ * ScoringModel scoringModel = new WatsonxScoringModel(rerankService);
  * }</pre>
  *
  * @see RerankService
@@ -38,9 +36,9 @@ public class WatsonxScoringModel implements ScoringModel {
 
     private final RerankService rerankService;
 
-    private WatsonxScoringModel(Builder builder) {
-        requireNonNull(builder, "builder is required");
-        this.rerankService = builder.rerankService;
+    public WatsonxScoringModel(RerankService rerankService) {
+        requireNonNull(rerankService, "rerankService is required");
+        this.rerankService = rerankService;
     }
 
     @Override
@@ -71,46 +69,5 @@ public class WatsonxScoringModel implements ScoringModel {
         for (RerankResult rerankResult : response.results()) content[rerankResult.index()] = rerankResult.score();
 
         return Response.from(Arrays.asList(content), new TokenUsage(response.inputTokenCount()));
-    }
-
-    /**
-     * Returns a new {@link Builder} instance.
-     * <p>
-     * <b>Example usage:</b>
-     *
-     * <pre>{@code
-     * RerankService rerankService = RerankService.builder()
-     *     .url("https://...") // or use CloudRegion
-     *     .authenticationProvider(authProvider)
-     *     .projectId("my-project-id")
-     *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
-     *     .build();
-     *
-     * WatsonxScoringModel scoringModel = WatsonxScoringModel.builder()
-     *     .service(rerankService)
-     *     .build();
-     * }</pre>
-     *
-     * @see RerankService
-     * @return {@link Builder} instance.
-     */
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    /**
-     * Builder class for constructing {@link WatsonxScoringModel} instances with configurable parameters.
-     */
-    public static class Builder {
-        private RerankService rerankService;
-
-        public Builder service(RerankService rerankService) {
-            this.rerankService = rerankService;
-            return this;
-        }
-
-        public WatsonxScoringModel build() {
-            return new WatsonxScoringModel(this);
-        }
     }
 }

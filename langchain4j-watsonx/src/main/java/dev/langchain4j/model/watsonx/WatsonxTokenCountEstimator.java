@@ -20,9 +20,7 @@ import dev.langchain4j.model.TokenCountEstimator;
  *     .modelId("ibm/granite-3-8b-instruct")
  *     .build();
  *
- * TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
- *     .service(tokenizationService)
- *     .build();
+ * TokenCountEstimator tokenCountEstimator = new WatsonxTokenCountEstimator(tokenizationService);
  * }</pre>
  *
  * @see TokenizationService
@@ -31,9 +29,9 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
     private final TokenizationService tokenizationService;
 
-    private WatsonxTokenCountEstimator(Builder builder) {
-        requireNonNull(builder, "builder is required");
-        this.tokenizationService = builder.tokenizationService;
+    public WatsonxTokenCountEstimator(TokenizationService tokenizationService) {
+        requireNonNull(tokenizationService, "tokenizationService is required");
+        this.tokenizationService = tokenizationService;
     }
 
     @Override
@@ -61,48 +59,5 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
     @Override
     public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
         throw new UnsupportedOperationException("Unimplemented method 'estimateTokenCountInMessages'");
-    }
-
-    /**
-     * Returns a new {@link Builder} instance.
-     * <p>
-     * <b>Example usage:</b>
-     *
-     * <pre>{@code
-     * TokenizationService tokenizationService = TokenizationService.builder()
-     *     .url("https://...") // or use CloudRegion
-     *     .authenticationProvider(authProvider)
-     *     .projectId("my-project-id")
-     *     .modelId("ibm/granite-3-8b-instruct")
-     *     .build();
-     *
-     * TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-     *     .service(tokenizationService)
-     *     .build();
-     * }</pre>
-     *
-     *
-     * @see TokenizationService
-     * @return {@link Builder} instance.
-     *
-     */
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    /**
-     * Builder class for constructing {@link WatsonxTokenCountEstimator} instances with configurable parameters.
-     */
-    public static class Builder {
-        private TokenizationService tokenizationService;
-
-        public Builder service(TokenizationService tokenizationService) {
-            this.tokenizationService = tokenizationService;
-            return this;
-        }
-
-        public WatsonxTokenCountEstimator build() {
-            return new WatsonxTokenCountEstimator(this);
-        }
     }
 }

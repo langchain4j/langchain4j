@@ -303,10 +303,7 @@ EmbeddingService embeddingService = EmbeddingService.builder()
     .modelId("ibm/granite-embedding-278m-multilingual")
     .build();
 
-EmbeddingModel model = WatsonxEmbeddingModel.builder()
-    .service(embeddingService)
-    .build();
-
+EmbeddingModel model = new WatsonxEmbeddingModel(embeddingService);
 System.out.println(model.embed("Hello from watsonx.ai"));
 ```
 
@@ -350,9 +347,7 @@ RerankService rerankService = RerankService.builder()
     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
     .build();
 
-ScoringModel model = WatsonxScoringModel.builder()
-    .service(rerankService)
-    .build();
+ScoringModel model = new WatsonxScoringModel(rerankService);
 
 var scores = model.scoreAll(
     List.of(

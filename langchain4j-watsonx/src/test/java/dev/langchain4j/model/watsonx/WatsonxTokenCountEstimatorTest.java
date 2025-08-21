@@ -28,9 +28,7 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationService.tokenize("tokenize", null))
                 .thenReturn(new TokenizationResponse("my-model", new Result(10, List.of())));
 
-        TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                .service(mockTokenizationService)
-                .build();
+        TokenCountEstimator tokenCountEstimator = new WatsonxTokenCountEstimator(mockTokenizationService);
 
         var response = tokenCountEstimator.estimateTokenCountInText("tokenize");
         assertEquals(10, response);
@@ -49,9 +47,7 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationService.tokenize("tokenize", parameters))
                 .thenReturn(new TokenizationResponse("model-id", new Result(10, List.of())));
 
-        WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                .service(mockTokenizationService)
-                .build();
+        WatsonxTokenCountEstimator tokenCountEstimator = new WatsonxTokenCountEstimator(mockTokenizationService);
 
         var response = tokenCountEstimator.estimateTokenCountInText("tokenize", parameters);
         assertEquals(10, response);
@@ -60,9 +56,7 @@ public class WatsonxTokenCountEstimatorTest {
     @Test
     void testEstimateTokenCountInMessage() {
 
-        WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                .service(mockTokenizationService)
-                .build();
+        WatsonxTokenCountEstimator tokenCountEstimator = new WatsonxTokenCountEstimator(mockTokenizationService);
 
         assertThrows(
                 UnsupportedOperationException.class,
@@ -72,9 +66,7 @@ public class WatsonxTokenCountEstimatorTest {
     @Test
     void testEstimateTokenCountInMessages() {
 
-        WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                .service(mockTokenizationService)
-                .build();
+        WatsonxTokenCountEstimator tokenCountEstimator = new WatsonxTokenCountEstimator(mockTokenizationService);
 
         assertThrows(
                 UnsupportedOperationException.class,

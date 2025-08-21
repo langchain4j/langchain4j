@@ -33,8 +33,7 @@ public class WatsonxScoringModelTest {
 
         when(mockRerankService.rerank("query", List.of("test1", "test2"), null)).thenReturn(rerankResponse);
 
-        ScoringModel scoringModel =
-                WatsonxScoringModel.builder().service(mockRerankService).build();
+        ScoringModel scoringModel = new WatsonxScoringModel(mockRerankService);
 
         var result = scoringModel.scoreAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")), "query");
         assertEquals(2, result.content().size());
@@ -59,8 +58,7 @@ public class WatsonxScoringModelTest {
                 .inputs(true)
                 .build();
 
-        WatsonxScoringModel scoringModel =
-                WatsonxScoringModel.builder().service(mockRerankService).build();
+        WatsonxScoringModel scoringModel = new WatsonxScoringModel(mockRerankService);
 
         when(mockRerankService.rerank("query", List.of("test1", "test2"), parameters))
                 .thenReturn(rerankResponse);
