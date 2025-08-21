@@ -1,7 +1,16 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
@@ -11,12 +20,8 @@ import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,12 +29,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
-import static java.util.stream.Collectors.toList;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
@@ -45,7 +44,8 @@ public class OpenAiStreamingResponseBuilder {
     private final StringBuffer toolNameBuilder = new StringBuffer(); // legacy
     private final StringBuffer toolArgumentsBuilder = new StringBuffer(); // legacy
 
-    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
+    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder =
+            new ConcurrentHashMap<>();
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<Long> created = new AtomicReference<>();
@@ -72,8 +72,13 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
-        rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
-        append(parsedAndRawResponse.parsedResponse());
+        if (parsedAndRawResponse != null) {
+            if (parsedAndRawResponse.rawServerSentEvent() != null) {
+                rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
+            }
+
+            append(parsedAndRawResponse.parsedResponse());
+        }
     }
 
     public void append(ChatCompletionResponse partialResponse) {
@@ -148,9 +153,7 @@ public class OpenAiStreamingResponseBuilder {
             ToolCall toolCall = delta.toolCalls().get(0);
 
             ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(),
-                    idx -> new ToolExecutionRequestBuilder()
-            );
+                    toolCall.index(), idx -> new ToolExecutionRequestBuilder());
 
             if (toolCall.id() != null) {
                 builder.idBuilder.append(toolCall.id());
