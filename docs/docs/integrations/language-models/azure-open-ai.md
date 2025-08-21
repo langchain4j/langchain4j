@@ -355,7 +355,7 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.1-beta6</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 

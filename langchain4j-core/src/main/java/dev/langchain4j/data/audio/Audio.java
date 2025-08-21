@@ -11,7 +11,7 @@ import static dev.langchain4j.internal.Utils.quoted;
  * 
  * <ul>
  *   <li><b>URL:</b> A reference to audio data located at a specific URI</li>
- *   <li><b>Audio Data:</b> Raw binary audio data as a byte array, primarily used by
+ *   <li><b>Binary Data:</b> Raw binary audio data as a byte array, primarily used by
  *       implementations like Azure OpenAI</li>
  *   <li><b>Base64 Data:</b> Base64 encoded string representation of audio data, primarily
  *       used by implementations like OpenAI</li>
@@ -23,7 +23,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 public class Audio {
 
     private final URI url;
-    private final byte[] audioData;
+    private final byte[] binaryData;
     private final String base64Data;
     private final String mimeType;
 
@@ -34,7 +34,7 @@ public class Audio {
      */
     private Audio(Builder builder) {
         this.url = builder.url;
-        this.audioData = builder.audioData;
+        this.binaryData = builder.binaryData;
         this.base64Data = builder.base64Data;
         this.mimeType = builder.mimeType;
     }
@@ -64,8 +64,8 @@ public class Audio {
      * 
      * @return the raw binary data of the audio as a byte array, or null if not set.
      */
-    public byte[] audioData() {
-        return audioData;
+    public byte[] binaryData() {
+        return binaryData;
     }
 
         /**
@@ -94,14 +94,14 @@ public class Audio {
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
     return Objects.equals(this.url, that.url)
-        && Objects.equals(this.audioData, that.audioData)
+        && Objects.equals(this.binaryData, that.binaryData)
         && Objects.equals(this.base64Data, that.base64Data)
         && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, audioData, base64Data, mimeType);
+        return Objects.hash(url, binaryData, base64Data, mimeType);
     }
 
     @Override
@@ -119,7 +119,7 @@ public class Audio {
     public static class Builder {
 
         URI url;
-        private byte[] audioData;
+        private byte[] binaryData;
         private String base64Data;
         private String mimeType;
 
@@ -154,11 +154,11 @@ public class Audio {
          * This is the preferred format for implementations like Azure OpenAI that require
          * raw binary audio data for processing.
          *
-         * @param audioData the raw binary data of the audio as a byte array.
+         * @param binaryData the raw binary data of the audio as a byte array.
          * @return {@code this}
          */
-        public Builder audioData(byte[] audioData) {
-            this.audioData = audioData;
+        public Builder binaryData(byte[] binaryData) {
+            this.binaryData = binaryData;
             return this;
         }
 

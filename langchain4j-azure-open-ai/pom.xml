@@ -43,13 +43,10 @@
         </dependency>
 
         <dependency>
-
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-openai</artifactId>
             <version>${azure-ai-openai.version}</version>
         </dependency>
-
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR AZURE-AI-OPENAI (END) -->
 
         <dependency>
             <groupId>com.azure</groupId>
@@ -57,42 +54,10 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Removed duplicate commons-io dependency -->
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>1.4.0-SNAPSHOT</version>
-            <classifier>tests</classifier>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <dependency>
             <groupId>com.knuddels</groupId>
             <artifactId>jtokkit</artifactId>
             <version>${jtokkit.version}</version>
-        </dependency>
-
-        <!-- Removed duplicate azure-identity dependency -->
-
-        <!-- Using the latest commons-io version -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.19.0</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -105,12 +70,14 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-
         <!-- test dependencies -->
+
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.19.0</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -146,11 +113,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

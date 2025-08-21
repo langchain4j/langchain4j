@@ -48,7 +48,7 @@ public class AzureOpenAiAudioTranscriptionModelIT {
 
         byte[] audioData = FileUtils.readFileToByteArray(audioFile);
         Audio audio =
-                Audio.builder().audioData(audioData).mimeType("audio/mpeg").build();
+                Audio.builder().binaryData(audioData).mimeType("audio/mpeg").build();
 
         // Test with new request/response objects
         AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
@@ -92,7 +92,7 @@ public class AzureOpenAiAudioTranscriptionModelIT {
 
         byte[] audioData = FileUtils.readFileToByteArray(audioFile);
         Audio audio =
-                Audio.builder().audioData(audioData).mimeType("audio/mpeg").build();
+                Audio.builder().binaryData(audioData).mimeType("audio/mpeg").build();
 
         // Test with simple request/response objects (no optional parameters)
         AudioTranscriptionRequest request =

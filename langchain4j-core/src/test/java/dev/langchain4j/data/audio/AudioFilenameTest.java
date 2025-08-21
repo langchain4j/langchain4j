@@ -104,7 +104,7 @@ public class AudioFilenameTest {
         
         // Non-URL based Audio objects should return null
         Audio audio4 = Audio.builder()
-            .audioData(new byte[]{1, 2, 3})
+            .binaryData(new byte[]{1, 2, 3})
             .mimeType("audio/mpeg")
             .build();
         assertEqual(null, audio4.getFilename(), "Binary data (should be null)");
