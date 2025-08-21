@@ -12,13 +12,11 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
-
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioTranscriptionModelBuilderFactory;
-
 import java.time.Duration;
 import java.util.Map;
 
@@ -46,173 +44,29 @@ import java.util.Map;
  * </ol>
  */
 public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
-    
+
     private final OpenAIClient client;
     private final String deploymentName;
     private final AudioTranscriptionFormat responseFormat;
 
     /**
      * Creates a new AzureOpenAiAudioTranscriptionModel with the provided client and parameters.
+     * Use the builder for more convenient construction.
      *
      * @param client The Azure OpenAI client
      * @param deploymentName The deployment name of the audio model
      * @param responseFormat The response format (can be null for default JSON format)
      */
-    public AzureOpenAiAudioTranscriptionModel(OpenAIClient client, 
-                                             String deploymentName, 
-                                             AudioTranscriptionFormat responseFormat) {
+    public AzureOpenAiAudioTranscriptionModel(
+            OpenAIClient client, String deploymentName, AudioTranscriptionFormat responseFormat) {
         if (client == null) {
             throw new IllegalArgumentException("client is required");
         }
         if (deploymentName == null || deploymentName.isBlank()) {
             throw new IllegalArgumentException("deploymentName is required");
         }
-        
+
         this.client = client;
-        this.deploymentName = deploymentName;
-        this.responseFormat = responseFormat != null ? responseFormat : AudioTranscriptionFormat.JSON;
-    }
-    
-    /**
-     * Creates a new AzureOpenAiAudioTranscriptionModel with a newly created client using API key authentication.
-     *
-     * @param endpoint The Azure OpenAI endpoint
-     * @param serviceVersion The Azure OpenAI service version
-     * @param apiKey The API key for authentication
-     * @param deploymentName The deployment name of the audio model
-     * @param responseFormat The response format
-     * @param timeout The request timeout duration
-     * @param maxRetries The maximum number of retries
-     * @param httpClientProvider The HTTP client provider
-     * @param proxyOptions The proxy options
-     * @param logRequestsAndResponses Whether to log requests and responses
-     * @param userAgentSuffix The user agent suffix
-     * @param customHeaders Custom HTTP headers
-     */
-    public AzureOpenAiAudioTranscriptionModel(String endpoint,
-                                             String serviceVersion,
-                                             String apiKey,
-                                             String deploymentName,
-                                             AudioTranscriptionFormat responseFormat,
-                                             Duration timeout,
-                                             Integer maxRetries,
-                                             HttpClientProvider httpClientProvider,
-                                             ProxyOptions proxyOptions,
-                                             boolean logRequestsAndResponses,
-                                             String userAgentSuffix,
-                                             Map<String, String> customHeaders) {
-        if (deploymentName == null || deploymentName.isBlank()) {
-            throw new IllegalArgumentException("deploymentName is required");
-        }
-        
-        this.client = setupSyncClient(
-                endpoint, 
-                serviceVersion, 
-                apiKey, 
-                timeout, 
-                maxRetries, 
-                httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(), 
-                proxyOptions, 
-                logRequestsAndResponses, 
-                userAgentSuffix, 
-                customHeaders
-        );
-        this.deploymentName = deploymentName;
-        this.responseFormat = responseFormat != null ? responseFormat : AudioTranscriptionFormat.JSON;
-    }
-
-    /**
-     * Creates a new AzureOpenAiAudioTranscriptionModel with a newly created client using KeyCredential authentication.
-     *
-     * @param endpoint The Azure OpenAI endpoint
-     * @param serviceVersion The Azure OpenAI service version
-     * @param keyCredential The key credential for authentication
-     * @param deploymentName The deployment name of the audio model
-     * @param responseFormat The response format
-     * @param timeout The request timeout duration
-     * @param maxRetries The maximum number of retries
-     * @param httpClientProvider The HTTP client provider
-     * @param proxyOptions The proxy options
-     * @param logRequestsAndResponses Whether to log requests and responses
-     * @param userAgentSuffix The user agent suffix
-     * @param customHeaders Custom HTTP headers
-     */
-    public AzureOpenAiAudioTranscriptionModel(String endpoint,
-                                             String serviceVersion,
-                                             KeyCredential keyCredential,
-                                             String deploymentName,
-                                             AudioTranscriptionFormat responseFormat,
-                                             Duration timeout,
-                                             Integer maxRetries,
-                                             HttpClientProvider httpClientProvider,
-                                             ProxyOptions proxyOptions,
-                                             boolean logRequestsAndResponses,
-                                             String userAgentSuffix,
-                                             Map<String, String> customHeaders) {
-        if (deploymentName == null || deploymentName.isBlank()) {
-            throw new IllegalArgumentException("deploymentName is required");
-        }
-        
-        this.client = setupSyncClient(
-                endpoint, 
-                serviceVersion, 
-                keyCredential, 
-                timeout, 
-                maxRetries, 
-                httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(), 
-                proxyOptions, 
-                logRequestsAndResponses, 
-                userAgentSuffix, 
-                customHeaders
-        );
-        this.deploymentName = deploymentName;
-        this.responseFormat = responseFormat != null ? responseFormat : AudioTranscriptionFormat.JSON;
-    }
-
-    /**
-     * Creates a new AzureOpenAiAudioTranscriptionModel with a newly created client using TokenCredential authentication.
-     *
-     * @param endpoint The Azure OpenAI endpoint
-     * @param serviceVersion The Azure OpenAI service version
-     * @param tokenCredential The token credential for authentication
-     * @param deploymentName The deployment name of the audio model
-     * @param responseFormat The response format
-     * @param timeout The request timeout duration
-     * @param maxRetries The maximum number of retries
-     * @param httpClientProvider The HTTP client provider
-     * @param proxyOptions The proxy options
-     * @param logRequestsAndResponses Whether to log requests and responses
-     * @param userAgentSuffix The user agent suffix
-     * @param customHeaders Custom HTTP headers
-     */
-    public AzureOpenAiAudioTranscriptionModel(String endpoint,
-                                             String serviceVersion,
-                                             TokenCredential tokenCredential,
-                                             String deploymentName,
-                                             AudioTranscriptionFormat responseFormat,
-                                             Duration timeout,
-                                             Integer maxRetries,
-                                             HttpClientProvider httpClientProvider,
-                                             ProxyOptions proxyOptions,
-                                             boolean logRequestsAndResponses,
-                                             String userAgentSuffix,
-                                             Map<String, String> customHeaders) {
-        if (deploymentName == null || deploymentName.isBlank()) {
-            throw new IllegalArgumentException("deploymentName is required");
-        }
-        
-        this.client = setupSyncClient(
-                endpoint, 
-                serviceVersion, 
-                tokenCredential, 
-                timeout, 
-                maxRetries, 
-                httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(), 
-                proxyOptions, 
-                logRequestsAndResponses, 
-                userAgentSuffix, 
-                customHeaders
-        );
         this.deploymentName = deploymentName;
         this.responseFormat = responseFormat != null ? responseFormat : AudioTranscriptionFormat.JSON;
     }
@@ -222,43 +76,46 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
         if (request == null || request.audio() == null) {
             throw new IllegalArgumentException("Request and audio data are required");
         }
-        
+
         Audio audio = request.audio();
         String filename = audio.getFilename();
-        if (filename == null) {
-            filename = "audio.mp3"; // Default filename if not provided
+        if (filename == null || filename.isEmpty()) {
+            // Use a generic filename since the API requires it but it's not critical for functionality
+            filename = "audio.mp3";
         }
-        
+
         // Create transcription options with all the provided parameters
         AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.audioData())
                 .setPrompt(request.prompt())
                 .setModel(deploymentName)
                 .setFilename(filename)
                 .setResponseFormat(responseFormat);
-        
+
         // Only set language if provided
         if (request.language() != null) {
             options.setLanguage(request.language());
         }
-        
+
         // Only set temperature if provided
         if (request.temperature() != null) {
             options.setTemperature(request.temperature());
         }
-        
+
         // Execute the transcription request
-        AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
-        
+        AudioTranscription audioTranscription =
+                client.getAudioTranscription(deploymentName, options.getFilename(), options);
+
         return AudioTranscriptionResponse.from(audioTranscription.getText());
     }
 
     /**
      * Creates a new builder for AzureOpenAiAudioTranscriptionModel.
-     * 
+     *
      * @return A new builder instance
      */
     public static Builder builder() {
-        for (AzureOpenAiAudioTranscriptionModelBuilderFactory factory : loadFactories(AzureOpenAiAudioTranscriptionModelBuilderFactory.class)) {
+        for (AzureOpenAiAudioTranscriptionModelBuilderFactory factory :
+                loadFactories(AzureOpenAiAudioTranscriptionModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -418,59 +275,56 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
             if (openAIClient != null) {
                 return new AzureOpenAiAudioTranscriptionModel(openAIClient, deploymentName, responseFormat);
             }
-            
+
             // Validate mandatory parameters
             if (deploymentName == null || deploymentName.isBlank()) {
                 throw new IllegalArgumentException("deploymentName is required");
             }
 
+            // Create the client based on the authentication method
+            OpenAIClient client;
             if (tokenCredential != null) {
-                return new AzureOpenAiAudioTranscriptionModel(
+                client = setupSyncClient(
                         endpoint,
                         serviceVersion,
                         tokenCredential,
-                        deploymentName,
-                        responseFormat,
                         timeout,
                         maxRetries,
-                        httpClientProvider,
+                        httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(),
                         proxyOptions,
                         logRequestsAndResponses,
                         userAgentSuffix,
                         customHeaders);
             } else if (keyCredential != null) {
-                return new AzureOpenAiAudioTranscriptionModel(
+                client = setupSyncClient(
                         endpoint,
                         serviceVersion,
                         keyCredential,
-                        deploymentName,
-                        responseFormat,
                         timeout,
                         maxRetries,
-                        httpClientProvider,
+                        httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(),
                         proxyOptions,
                         logRequestsAndResponses,
                         userAgentSuffix,
                         customHeaders);
+            } else if (apiKey != null && !apiKey.isBlank()) {
+                client = setupSyncClient(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        timeout,
+                        maxRetries,
+                        httpClientProvider != null ? httpClientProvider : new NettyAsyncHttpClientProvider(),
+                        proxyOptions,
+                        logRequestsAndResponses,
+                        userAgentSuffix,
+                        customHeaders);
+            } else {
+                throw new IllegalArgumentException(
+                        "Authentication is required: provide either apiKey, tokenCredential, keyCredential, or openAIClient");
             }
-            
-            if (apiKey == null || apiKey.isBlank()) {
-                throw new IllegalArgumentException("Authentication is required: provide either apiKey, tokenCredential, keyCredential, or openAIClient");
-            }
-            
-            return new AzureOpenAiAudioTranscriptionModel(
-                    endpoint,
-                    serviceVersion,
-                    apiKey,
-                    deploymentName,
-                    responseFormat,
-                    timeout,
-                    maxRetries,
-                    httpClientProvider,
-                    proxyOptions,
-                    logRequestsAndResponses,
-                    userAgentSuffix,
-                    customHeaders);
+
+            return new AzureOpenAiAudioTranscriptionModel(client, deploymentName, responseFormat);
         }
     }
 }
