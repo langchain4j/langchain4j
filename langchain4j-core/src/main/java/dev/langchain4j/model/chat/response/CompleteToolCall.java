@@ -3,9 +3,9 @@ package dev.langchain4j.model.chat.response;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Objects;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.Objects;
 
 /**
  * Represents a complete tool call.
@@ -46,8 +46,7 @@ public class CompleteToolCall {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         CompleteToolCall that = (CompleteToolCall) object;
-        return index == that.index
-                && Objects.equals(toolExecutionRequest, that.toolExecutionRequest);
+        return index == that.index && Objects.equals(toolExecutionRequest, that.toolExecutionRequest);
     }
 
     @Override
@@ -57,9 +56,6 @@ public class CompleteToolCall {
 
     @Override
     public String toString() {
-        return "CompleteToolCall{" +
-                "index=" + index +
-                ", toolExecutionRequest=" + toolExecutionRequest +
-                '}';
+        return "CompleteToolCall{" + "index=" + index + ", toolExecutionRequest=" + toolExecutionRequest + '}';
     }
 }
