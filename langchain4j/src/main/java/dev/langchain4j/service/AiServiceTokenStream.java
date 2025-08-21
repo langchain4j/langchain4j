@@ -75,7 +75,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
-        this.invocationContext = parameters.invocationContext(); // TODO
+        this.invocationContext = parameters.invocationContext();
     }
 
     @Override

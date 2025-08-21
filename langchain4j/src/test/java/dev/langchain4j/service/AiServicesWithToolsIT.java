@@ -30,6 +30,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -49,6 +50,8 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -836,6 +839,52 @@ class AiServicesWithToolsIT {
         // then
         assertThat(answer2).contains("sun");
         verify(spyTools).getWeather(invocationContext2);
+    }
+
+    @Test
+    void should_propagate_invocation_context_between_tools() { // TODO name
+
+        // given
+        class Tools {
+
+            static final LocalTime CURRENT_TIME = LocalTime.of(12, 34, 56);
+
+            @Tool
+            String getWeather(InvocationContext invocationContext) {
+                assertThat(invocationContext.asMap()).isEmpty();
+                invocationContext.put("calledGetWeather", true);
+
+                return "sunny";
+            }
+
+            @Tool
+            LocalTime getTime(InvocationContext invocationContext) {
+                assertThat(invocationContext.asMap()).containsOnly(Map.entry("calledGetWeather", true));
+                return CURRENT_TIME;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("What is the weather and time?");
+
+        // then
+        assertThat(result.content()).contains("sun", "12", "34");
+        assertThat(result.toolExecutions()).hasSize(2);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("sunny");
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo("sunny");
+        assertThat(result.toolExecutions().get(1).result()).isEqualTo(Json.toJson(Tools.CURRENT_TIME));
+        assertThat(result.toolExecutions().get(1).resultObject()).isEqualTo(Tools.CURRENT_TIME);
+
+        verify(spyTools).getWeather(any());
+        verify(spyTools).getTime(any());
+        verifyNoMoreInteractions(spyTools);
     }
 
     @Test

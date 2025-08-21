@@ -116,7 +116,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.invocationContext = invocationContext;
+        this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
     }
 
     @Override

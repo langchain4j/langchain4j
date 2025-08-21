@@ -4,8 +4,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;
@@ -19,20 +19,20 @@ public class Metadata {
     private final ChatMessage chatMessage;
     private final Object chatMemoryId;
     private final List<ChatMessage> chatMemory;
-    private final Map<String, Object> invocationContext;
+    private final InvocationContext invocationContext;
 
     public Metadata(Builder builder) {
         this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
         this.chatMemoryId = builder.chatMemoryId;
         this.chatMemory = copy(builder.chatMemory);
-        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext"); // TODO?
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.chatMemoryId = chatMemoryId;
         this.chatMemory = copy(chatMemory);
-        this.invocationContext = null; // TODO?
+        this.invocationContext = null;
     }
 
     /**
@@ -58,7 +58,7 @@ public class Metadata {
         return chatMemory;
     }
 
-    public Map<String, Object> invocationContext() {
+    public InvocationContext invocationContext() { // TODO test
         return invocationContext;
     }
 
@@ -101,7 +101,7 @@ public class Metadata {
         private ChatMessage chatMessage;
         private Object chatMemoryId;
         private List<ChatMessage> chatMemory;
-        private Map<String, Object> invocationContext;
+        private InvocationContext invocationContext;
 
         public Builder chatMessage(ChatMessage chatMessage) {
             this.chatMessage = chatMessage;
@@ -118,7 +118,7 @@ public class Metadata {
             return this;
         }
 
-        public Builder invocationContext(Map<String, Object> invocationContext) {
+        public Builder invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
             return this;
         }

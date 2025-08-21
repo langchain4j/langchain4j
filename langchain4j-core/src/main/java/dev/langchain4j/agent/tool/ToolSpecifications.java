@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
@@ -79,19 +78,6 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}.
      */
     public static ToolSpecification toolSpecificationFrom(Method method) {
-        return toolSpecificationFrom(method, parameter -> !parameter.isAnnotationPresent(Tool.class)
-                && !parameter.getType().isAssignableFrom(InvocationContext.class));
-    }
-
-    /**
-     * Returns the {@link ToolSpecification} for the given method annotated with @{@link Tool}. TODO
-     *
-     * @param method the method.
-     * @param parameterFilter TODO
-     * @return the {@link ToolSpecification}.
-     */
-    // TODO needed?
-    private static ToolSpecification toolSpecificationFrom(Method method, Predicate<Parameter> parameterFilter) {
 
         Tool annotation = method.getAnnotation(Tool.class);
 
@@ -102,7 +88,7 @@ public class ToolSpecifications {
             description = null;
         }
 
-        JsonObjectSchema parameters = parametersFrom(method.getParameters(), parameterFilter);
+        JsonObjectSchema parameters = parametersFrom(method.getParameters());
 
         return ToolSpecification.builder()
                 .name(name)
@@ -111,7 +97,7 @@ public class ToolSpecifications {
                 .build();
     }
 
-    private static JsonObjectSchema parametersFrom(Parameter[] parameters, Predicate<Parameter> parameterFilter) {
+    private static JsonObjectSchema parametersFrom(Parameter[] parameters) {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
@@ -119,7 +105,8 @@ public class ToolSpecifications {
         Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
 
         for (Parameter parameter : parameters) {
-            if (!parameterFilter.test(parameter)) {
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)
+                    || parameter.getType().isAssignableFrom(InvocationContext.class)) {
                 continue;
             }
 

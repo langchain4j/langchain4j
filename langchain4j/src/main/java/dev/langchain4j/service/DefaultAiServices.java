@@ -193,7 +193,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .chatMessage(userMessage)
                                     .chatMemoryId(memoryId)
                                     .chatMemory(chatMemoryMessages)
-                                    .invocationContext(invocationContext.asMap())
+                                    .invocationContext(invocationContext)
                                     .build();
                             AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
