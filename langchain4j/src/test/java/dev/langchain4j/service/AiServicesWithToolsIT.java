@@ -43,6 +43,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -192,6 +193,7 @@ class AiServicesWithToolsIT {
         assertThat(result.toolExecutions()).hasSize(1);
         assertThat(result.toolExecutions().get(0).request()).isEqualTo(toolExecutionRequest);
         assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo(11.1);
 
         assertThat(result.intermediateResponses()).hasSize(1);
         ChatResponse intermediateResponse = result.intermediateResponses().get(0);
@@ -701,7 +703,8 @@ class AiServicesWithToolsIT {
 
         Result<String> result = assistant.chat("When does my booking 123-456 starts?");
         assertThat(result.content()).contains("2027");
-        verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 
@@ -746,7 +749,8 @@ class AiServicesWithToolsIT {
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
 
-        verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 

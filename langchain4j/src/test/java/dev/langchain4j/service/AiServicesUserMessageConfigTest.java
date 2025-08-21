@@ -317,7 +317,7 @@ class AiServicesUserMessageConfigTest {
                         "must be annotated with either dev.langchain4j.service.UserMessage, " +
                         "dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, " +
                         "or dev.langchain4j.service.UserName, or it should be of type " +
-                        "dev.langchain4j.service.AiServiceInvocationContext");
+                        "dev.langchain4j.InvocationContext");
     }
 
     interface AssistantHallucinatedTool {

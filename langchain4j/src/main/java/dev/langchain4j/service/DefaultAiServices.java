@@ -253,6 +253,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .memoryId(memoryId)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
+                                    .invocationContext(invocationContext)
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
@@ -328,6 +329,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Optional<InvocationContext> findInvocationContext(Object[] args) { // TODO name
+                        if (args == null) {
+                            return Optional.empty();
+                        }
                         return Arrays.stream(args)
                                 .filter(arg -> arg instanceof InvocationContext)
                                 .map(it -> (InvocationContext) it)

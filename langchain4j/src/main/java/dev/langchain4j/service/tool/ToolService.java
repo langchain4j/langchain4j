@@ -191,23 +191,24 @@ public class ToolService {
 
             ToolExecutionContext executionContext = new ToolExecutionContext(memoryId, invocationContext);
 
-            Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults =
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, executionContext);
 
-            for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
-                ToolExecutionRequest toolExecutionRequest = entry.getKey();
-                ToolExecutionResultMessage toolExecutionResultMessage = entry.getValue();
+            for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
+                ToolExecutionRequest toolRequest = entry.getKey();
+                ToolExecutionResult toolResult = entry.getValue();
+                ToolExecutionResultMessage toolResultMessage = ToolExecutionResultMessage.from(toolRequest, toolResult.resultText());
 
                 ToolExecution toolExecution = ToolExecution.builder()
-                        .request(toolExecutionRequest)
-                        .result(toolExecutionResultMessage.text())
+                        .request(toolRequest)
+                        .result(toolResult)
                         .build();
                 toolExecutions.add(toolExecution);
 
                 if (chatMemory != null) {
-                    chatMemory.add(toolExecutionResultMessage);
+                    chatMemory.add(toolResultMessage);
                 } else {
-                    messages.add(toolExecutionResultMessage);
+                    messages.add(toolResultMessage);
                 }
             }
 
@@ -232,7 +233,7 @@ public class ToolService {
                 .build();
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResultMessage> execute(
+    private Map<ToolExecutionRequest, ToolExecutionResult> execute(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionContext executionContext) {
@@ -244,26 +245,25 @@ public class ToolService {
         }
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeConcurrently(
+    private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionContext executionContext) {
-        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> futures = new LinkedHashMap<>();
+        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
 
         for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
+            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(() -> {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                 if (toolExecutor == null) {
                     return applyToolHallucinationStrategy(toolExecutionRequest);
                 }
-                ToolExecutionResult toolResult = toolExecutor.execute(toolExecutionRequest, executionContext);
-                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult.text());
+                return toolExecutor.execute(toolExecutionRequest, executionContext);
             }, executor);
             futures.put(toolExecutionRequest, future);
         }
 
-        Map<ToolExecutionRequest, ToolExecutionResultMessage> results = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> entry : futures.entrySet()) {
+        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
+        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry : futures.entrySet()) {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
             } catch (InterruptedException | ExecutionException e) {
@@ -274,27 +274,29 @@ public class ToolService {
         return results;
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResultMessage> executeSequentially(
-            List<ToolExecutionRequest> toolExecutionRequests,
+    private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
+            List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionContext executionContext) {
-        Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-            ToolExecutionResultMessage toolExecutionResultMessage;
+        Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
+        for (ToolExecutionRequest toolRequest : toolRequests) {
+            ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
+            ToolExecutionResult toolResult;
             if (toolExecutor == null) {
-                toolExecutionResultMessage = applyToolHallucinationStrategy(toolExecutionRequest);
+                toolResult = applyToolHallucinationStrategy(toolRequest);
             } else {
-                ToolExecutionResult toolResult = toolExecutor.execute(toolExecutionRequest, executionContext);
-                toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, toolResult.text());
+                toolResult = toolExecutor.execute(toolRequest, executionContext);
             }
-            toolResults.put(toolExecutionRequest, toolExecutionResultMessage);
+            toolResults.put(toolRequest, toolResult);
         }
         return toolResults;
     }
 
-    public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
-        return toolHallucinationStrategy.apply(toolExecutionRequest);
+    public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
+        ToolExecutionResultMessage toolExecutionResultMessage = toolHallucinationStrategy.apply(toolExecutionRequest);
+        return ToolExecutionResult.builder()
+                .resultText(toolExecutionResultMessage.text())
+                .build();
     }
 
     public List<ToolSpecification> toolSpecifications() {

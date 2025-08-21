@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -25,6 +26,7 @@ public class AiServiceTokenStreamParameters {
     private final Object memoryId;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final InvocationContext invocationContext;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -36,6 +38,7 @@ public class AiServiceTokenStreamParameters {
         this.memoryId = builder.memoryId;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
+        this.invocationContext = builder.invocationContext;
     }
 
     /**
@@ -108,6 +111,13 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * @since 1.4.0
+     */
+    public InvocationContext invocationContext() {
+        return invocationContext;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -130,6 +140,7 @@ public class AiServiceTokenStreamParameters {
         private Object memoryId;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
+        private InvocationContext invocationContext;
 
         protected Builder() {}
 
@@ -228,6 +239,11 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
+            return this;
+        }
+
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 

@@ -17,7 +17,9 @@ public interface ToolExecutor {
      */
     default ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
         String result = execute(request, context.chatMemoryId());
-        return new ToolExecutionResult(result);
+        return ToolExecutionResult.builder()
+                .resultText(result)
+                .build();
     }
 
     /**

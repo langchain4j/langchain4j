@@ -31,6 +31,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -458,7 +459,8 @@ class StreamingAiServicesWithToolsIT {
         assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
-        verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
 
         // then
@@ -608,6 +610,7 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions.get(0).request().arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
         assertThat(toolExecutions.get(0).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
+        assertThat(toolExecutions.get(0).resultObject()).isEqualTo(WeatherService.TEMPERATURE);
 
         assertThat(toolExecutions.get(1).request().name()).isEqualTo("currentTemperature");
         assertThat(toolExecutions.get(1).request().arguments())

@@ -79,27 +79,35 @@ public class DefaultToolExecutor implements ToolExecutor {
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                return ToolExecutionResult.from(e2.getCause().getMessage());
+                return ToolExecutionResult.builder()
+                        .isError(true)
+                        .resultText(e2.getCause().getMessage())
+                        .build();
             }
         } catch (InvocationTargetException e) {
-            return ToolExecutionResult.from(e.getCause().getMessage());
+            return ToolExecutionResult.builder()
+                    .isError(true)
+                    .resultText(e.getCause().getMessage())
+                    .build();
         }
-        // TODO return error indicator or exceptions?
     }
 
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
-        ToolExecutionResult result = execute(request, new ToolExecutionContext(memoryId, null)); // TODO
-        return result.text();
+        ToolExecutionResult result = execute(request, new ToolExecutionContext(memoryId, null));
+        return result.resultText();
     }
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
         String resultText = toText(result);
-        return ToolExecutionResult.from(resultText);
+        return ToolExecutionResult.builder()
+                .result(result)
+                .resultText(resultText)
+                .build();
     }
 
-    private String toText(Object result) {
+    private String toText(Object result) { // TODO should this be here?
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";

@@ -59,7 +59,7 @@ public class InvocationContext { // TODO name, module, package
 
     @Override
     public String toString() {
-        return "AiServiceInvocationContext{" + // TODO names
+        return "InvocationContext{" + // TODO names
                 "context=" + context +
                 '}';
     }

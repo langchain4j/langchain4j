@@ -1,45 +1,75 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
-import java.util.Objects;
-
 /**
  * @since 1.4.0
  */
 public class ToolExecutionResult { // TODO name, location
 
-    private final String text;
+    private final boolean isError;
+    private final Object result; // TODO name
+    private final String resultText; // TODO name
 
-    public ToolExecutionResult(String text) {
-        this.text = text; // TODO
+    public ToolExecutionResult(Builder builder) {
+        this.isError = builder.isError; // TODO
+        this.result = builder.result; // TODO
+        this.resultText = builder.resultText; // TODO
     }
 
-    public String text() {
-        return text;
+    /**
+     * TODO
+     */
+    public boolean isError() {
+        return isError;
     }
 
-    @Override
-    public boolean equals(final Object object) {
-        if (this == object) return true;
-        if (object == null || getClass() != object.getClass()) return false;
-        ToolExecutionResult that = (ToolExecutionResult) object;
-        return Objects.equals(text, that.text);
+    /**
+     * Returns the result of the tool execution. It is an original object returned from tool. TODO
+     *
+     * @see #resultText()
+     */
+    public Object result() {
+        return result;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(text);
+    /**
+     * Returns the result of the tool execution in the text form.
+     * It is an original object returned from tool that is serialized into JSON.
+     *
+     * @see #resultText()
+     */
+    public String resultText() {
+        return resultText;
     }
 
-    @Override
-    public String toString() {
-        return "ToolExecutionResult {" + // TODO names
-                " text = " + quoted(text) +
-                " }";
+    // TODO eq, hash, tostr
+
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static ToolExecutionResult from(String text) {
-        return new ToolExecutionResult(text);
+    public static class Builder {
+
+        private boolean isError;
+        private Object result;
+        private String resultText;
+
+        public Builder isError(boolean isError) {
+            this.isError = isError;
+            return this;
+        }
+
+        public Builder result(Object result) {
+            this.result = result;
+            return this;
+        }
+
+        public Builder resultText(String resultText) {
+            this.resultText = resultText;
+            return this;
+        }
+
+        public ToolExecutionResult build() {
+            return new ToolExecutionResult(this);
+        }
     }
 }
