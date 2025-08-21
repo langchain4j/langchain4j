@@ -288,6 +288,39 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
+    void should_execute_a_tool_with_blank_partial_arguments() {
+
+        // given
+        ToolSpecification appendToFile = ToolSpecification.builder()
+                .name("append_to_file")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("text")
+                        .required("text")
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("Append to file the following text: '          '");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .maxOutputTokens(30)
+                .toolSpecifications(appendToFile)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+
+        // then
+        AiMessage aiMessage = handler.get().aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
+    }
+
+    @Test
     void should_execute_tool_forcefully_then_stream_answer() throws Exception {
 
         // given
@@ -568,7 +601,7 @@ class OpenAiStreamingChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
+                TextContent.from("What do you see? Briefly describe each image."),
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL));
 
@@ -588,7 +621,7 @@ class OpenAiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

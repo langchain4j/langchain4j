@@ -109,8 +109,6 @@ class OpenAiChatModelIT {
                     "O3_2025_04_16", // don't have access
                     "O1_MINI", // does not support 'system' role with this model
                     "O1_MINI_2024_09_12", // does not support 'system' role with this model
-                    "O1_PREVIEW", // does not support 'system' role with this model
-                    "O1_PREVIEW_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -458,7 +456,7 @@ class OpenAiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
+                TextContent.from("What do you see? Briefly describe each image."),
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL));
 
@@ -476,7 +474,7 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = model.chat(userMessage);
