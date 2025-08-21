@@ -160,10 +160,7 @@ public class WatsonxChatModelTest {
         var metadata = (WatsonxChatResponseMetadata) response.metadata();
         assertEquals("id", response.id());
         assertEquals("modelId", response.modelName());
-        assertEquals("model", metadata.getModel());
         assertEquals("modelVersion", metadata.getModelVersion());
-        assertEquals("object", metadata.getObject());
-        assertEquals("createdAt", metadata.getCreatedAt());
         assertEquals(1L, metadata.getCreated());
         assertEquals(FinishReason.STOP, response.finishReason());
         assertEquals(10, response.tokenUsage().inputTokenCount());

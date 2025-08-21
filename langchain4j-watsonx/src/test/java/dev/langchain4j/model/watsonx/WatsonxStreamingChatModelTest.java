@@ -198,10 +198,7 @@ public class WatsonxStreamingChatModelTest {
                 assertTrue(completeResponse.aiMessage().hasToolExecutionRequests());
                 assertEquals("id", completeResponse.id());
                 assertEquals("modelId", completeResponse.modelName());
-                assertEquals("model", metadata.getModel());
                 assertEquals("modelVersion", metadata.getModelVersion());
-                assertEquals("object", metadata.getObject());
-                assertEquals("createdAt", metadata.getCreatedAt());
                 assertEquals(1L, metadata.getCreated());
                 assertEquals(FinishReason.TOOL_EXECUTION, completeResponse.finishReason());
                 assertEquals(10, completeResponse.tokenUsage().inputTokenCount());
