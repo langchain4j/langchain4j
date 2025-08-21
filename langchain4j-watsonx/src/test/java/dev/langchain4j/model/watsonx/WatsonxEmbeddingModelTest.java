@@ -31,8 +31,7 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingService.embedding(List.of("test1", "test2"), null))
                 .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
 
-        EmbeddingModel embeddingModel =
-                WatsonxEmbeddingModel.builder().service(mockEmbeddingService).build();
+        EmbeddingModel embeddingModel = new WatsonxEmbeddingModel(mockEmbeddingService);
 
         var response = embeddingModel.embedAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")));
         assertEquals(2, response.content().size());
@@ -55,8 +54,7 @@ public class WatsonxEmbeddingModelTest {
                 .truncateInputTokens(512)
                 .build();
 
-        WatsonxEmbeddingModel embeddingModel =
-                WatsonxEmbeddingModel.builder().service(mockEmbeddingService).build();
+        WatsonxEmbeddingModel embeddingModel = new WatsonxEmbeddingModel(mockEmbeddingService);
 
         when(mockEmbeddingService.embedding(List.of("test1", "test2"), parameters))
                 .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
