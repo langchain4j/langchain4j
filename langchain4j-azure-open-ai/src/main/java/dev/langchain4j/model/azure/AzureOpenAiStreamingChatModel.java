@@ -21,12 +21,6 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
@@ -59,6 +53,12 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import reactor.core.publisher.Flux;
 
 /**
@@ -263,9 +263,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 });
     }
 
-    private static void handle(ChatCompletions chatCompletions,
-                               ToolCallBuilder toolCallBuilder,
-                               StreamingChatResponseHandler handler) {
+    private static void handle(
+            ChatCompletions chatCompletions, ToolCallBuilder toolCallBuilder, StreamingChatResponseHandler handler) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -296,7 +295,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     }
 
                     String id = toolCallBuilder.updateId(toolCall.getId());
-                    String name = toolCallBuilder.updateName(functionToolCall.getFunction().getName());
+                    String name = toolCallBuilder.updateName(
+                            functionToolCall.getFunction().getName());
 
                     String partialArguments = functionToolCall.getFunction().getArguments();
                     if (isNotNullOrEmpty(partialArguments)) {

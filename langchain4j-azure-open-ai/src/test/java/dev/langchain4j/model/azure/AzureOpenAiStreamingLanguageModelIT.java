@@ -59,8 +59,8 @@ class AzureOpenAiStreamingLanguageModelIT {
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(
-                response.tokenUsage().inputTokenCount()
+        assertThat(response.tokenUsage().totalTokenCount())
+                .isEqualTo(response.tokenUsage().inputTokenCount()
                         + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
