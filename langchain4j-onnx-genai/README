@@ -1,0 +1,9 @@
+This is an initial / draft implementation of https://github.com/langchain4j/langchain4j/issues/2669, "[FEATURE] Add support for LLM inference via ONNX Runtime #2669".
+
+The module here provides a simple integration with https://github.com/microsoft/onnxruntime-genai, which is a library for running generative AI with ONNX Runtime and including an early access Java API (https://onnxruntime.ai/docs/genai/api/java.html).
+
+As of June 2025, the Java APIs for onnxruntime-genai are not deployed to Maven Central (but the feature is in the roadmap), so you need to manually build onnxruntime-genai from sources. Actually, Java Maven artifacts are built and added to local Maven repository only since https://github.com/microsoft/onnxruntime-genai/issues/1508 has been resolved (currently main branch / 0.9.0-dev version).
+The current documentation for building onnxruntime-genai is available at https://onnxruntime.ai/docs/genai/howto/build-from-source.html ; in any case, the suggested command is: 'python build.py --config Release --build_java --parallel --update --build --test --publish_java_maven_local' 
+The fix for https://github.com/microsoft/onnxruntime-genai/issues/1509 is also needed to run this integration.
+
+The testsuite relies on a ONNX version of Llama 3.2 1B, which has been obtained using src/python/py/models/builder.py script from the onnxruntime-genai sources; documentation on the tool available at https://github.com/microsoft/onnxruntime-genai/blob/main/src/python/py/models/README.md
