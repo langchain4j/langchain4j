@@ -1,8 +1,5 @@
 package dev.langchain4j.model.watsonx.it;
 
-import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
@@ -22,13 +19,9 @@ public class WatsonxChatModelListenerIT extends AbstractChatModelListenerIT {
     static final String PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     static final String URL = System.getenv("WATSONX_URL");
 
-    static final AuthenticationProvider authProvider =
-            IAMAuthenticator.builder().apiKey(API_KEY).build();
-
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
-        return WatsonxChatModel.builder()
-                .service(createChatService("meta-llama/llama-4-maverick-17b-128e-instruct-fp8"))
+        return createChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
                 .listeners(List.of(listener))
                 .defaultRequestParameters(ChatRequestParameters.builder()
                         .modelName(modelName())
@@ -46,10 +39,7 @@ public class WatsonxChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected ChatModel createFailingModel(ChatModelListener listener) {
-        return WatsonxChatModel.builder()
-                .service(createChatService("invalid-model"))
-                .listeners(List.of(listener))
-                .build();
+        return createChatModel("invalid-model").listeners(List.of(listener)).build();
     }
 
     @Override
@@ -57,15 +47,14 @@ public class WatsonxChatModelListenerIT extends AbstractChatModelListenerIT {
         return ModelNotFoundException.class;
     }
 
-    private ChatService createChatService(String model) {
-        return ChatService.builder()
+    private WatsonxChatModel.Builder createChatModel(String model) {
+        return WatsonxChatModel.builder()
                 .url(URL)
-                .authenticationProvider(authProvider)
+                .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
-                .modelId(model)
+                .modelName(model)
                 .logRequests(true)
                 .logResponses(true)
-                .timeout(Duration.ofSeconds(30))
-                .build();
+                .timeLimit(Duration.ofSeconds(30));
     }
 }
