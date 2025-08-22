@@ -1,13 +1,11 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
-import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
@@ -15,14 +13,13 @@ import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -35,28 +32,16 @@ import java.util.Set;
  * <b>Example usage:</b>
  *
  * <pre>{@code
- * ChatService chatService = ChatService.builder()
- *     .url("https://...") // or use CloudRegion
- *     .authenticationProvider(authProvider)
- *     .projectId("my-project-id")
- *     .modelId("ibm/granite-3-8b-instruct")
- *     .build();
- *
- * WatsonxChatRequestParameters defaultRequestParameters =
- *     WatsonxChatRequestParameters.builder()
- *         .maxOutputTokens(0)
- *         .temperature(0.7)
- *         .build();
- *
  * ChatModel chatModel = WatsonxChatModel.builder()
- *     .service(chatService)
- *     .defaultRequestParameters(defaultRequestParameters)
+ *     .url("https://...") // or use CloudRegion
+ *     .apiKey("...")
+ *     .projectId("...")
+ *     .modelName("ibm/granite-3-8b-instruct")
+ *     .maxOutputTokens(0)
+ *     .temperature(0.7)
  *     .build();
  * }</pre>
  *
- *
- * @see ChatService
- * @see WatsonxChatRequestParameters
  */
 public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
@@ -66,6 +51,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
+
+        validate(chatRequest.parameters());
 
         List<ToolSpecification> toolSpecifications = getOrDefault(
                 chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
@@ -77,10 +64,10 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        ChatParameters parameters = Converter.toChatParameters(defaultRequestParameters, chatRequest.parameters());
+        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
         com.ibm.watsonx.ai.chat.ChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> chatProvider.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
+                () -> chatService.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
                         .messages(messages)
                         .tools(tools)
                         .parameters(parameters)
@@ -89,6 +76,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
         ResultChoice choice = chatResponse.getChoices().get(0);
         ChatUsage usage = chatResponse.getUsage();
         ResultMessage message = choice.getMessage();
+
+        if (isNotNullOrBlank(message.refusal())) throw new ContentFilteredException(message.refusal());
 
         AiMessage.Builder aiMessage = AiMessage.builder();
 
@@ -128,7 +117,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return this.defaultRequestParameters;
+        return defaultRequestParameters;
     }
 
     @Override
@@ -138,15 +127,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
 
     @Override
     public Set<Capability> supportedCapabilities() {
-
-        ResponseFormat responseFormat = defaultRequestParameters.responseFormat();
-
-        if (isNull(responseFormat)) return Set.of();
-
-        if (responseFormat.type().equals(ResponseFormatType.JSON) && nonNull(responseFormat.jsonSchema()))
-            return Set.of(RESPONSE_FORMAT_JSON_SCHEMA);
-
-        return Set.of();
+        return supportedCapabilities;
     }
 
     /**
@@ -155,28 +136,16 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      * <b>Example usage:</b>
      *
      * <pre>{@code
-     * ChatService chatService = ChatService.builder()
-     *     .url("https://...") // or use CloudRegion
-     *     .authenticationProvider(authProvider)
-     *     .projectId("my-project-id")
-     *     .modelId("ibm/granite-3-8b-instruct")
-     *     .build();
-     *
-     * WatsonxChatRequestParameters defaultRequestParameters =
-     *     WatsonxChatRequestParameters.builder()
-     *         .maxOutputTokens(0)
-     *         .temperature(0.7)
-     *         .build();
-     *
      * ChatModel chatModel = WatsonxChatModel.builder()
-     *     .service(chatService)
-     *     .defaultRequestParameters(defaultRequestParameters)
+     *     .url("https://...") // or use CloudRegion
+     *     .apiKey("...")
+     *     .projectId("...")
+     *     .modelName("ibm/granite-3-8b-instruct")
+     *     .maxOutputTokens(0)
+     *     .temperature(0.7)
      *     .build();
      * }</pre>
      *
-     *
-     * @see ChatService
-     * @see WatsonxChatRequestParameters
      * @return {@link Builder} instance.
      */
     public static Builder builder() {

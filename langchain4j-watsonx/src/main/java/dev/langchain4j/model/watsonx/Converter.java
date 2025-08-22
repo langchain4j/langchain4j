@@ -1,7 +1,5 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
@@ -26,7 +24,6 @@ import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -87,9 +84,6 @@ class Converter {
                     .toList();
         }
 
-        if (isNotNullOrBlank(assistantMessage.refusal()))
-            throw new ContentFilteredException(assistantMessage.refusal());
-
         return AiMessage.from(assistantMessage.content(), toolExecutionRequests);
     }
 
@@ -107,19 +101,18 @@ class Converter {
                 .build();
     }
 
-    public static ChatParameters toChatParameters(
-            ChatRequestParameters defaultParameters, ChatRequestParameters parameters) {
+    public static ChatParameters toChatParameters(ChatRequestParameters parameters) {
 
         ChatParameters.Builder builder = ChatParameters.builder()
-                .modelId(getOrDefault(parameters.modelName(), defaultParameters.modelName()))
-                .frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), defaultParameters.frequencyPenalty()))
-                .maxCompletionTokens(getOrDefault(parameters.maxOutputTokens(), defaultParameters.maxOutputTokens()))
-                .presencePenalty(getOrDefault(parameters.presencePenalty(), defaultParameters.presencePenalty()))
-                .stop(getOrDefault(parameters.stopSequences(), defaultParameters.stopSequences()))
-                .temperature(getOrDefault(parameters.temperature(), defaultParameters.temperature()))
-                .topP(getOrDefault(parameters.topP(), defaultParameters.topP()));
+                .modelId(parameters.modelName())
+                .frequencyPenalty(parameters.frequencyPenalty())
+                .maxCompletionTokens(parameters.maxOutputTokens())
+                .presencePenalty(parameters.presencePenalty())
+                .stop(parameters.stopSequences())
+                .temperature(parameters.temperature())
+                .topP(parameters.topP());
 
-        ResponseFormat responseFormat = getOrDefault(parameters.responseFormat(), defaultParameters.responseFormat());
+        ResponseFormat responseFormat = parameters.responseFormat();
 
         if (nonNull(responseFormat)) {
             switch (responseFormat.type()) {
@@ -149,7 +142,7 @@ class Converter {
             builder.topLogprobs(watsonxParameters.topLogprobs());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-            ToolChoice toolChoice = getOrDefault(parameters.toolChoice(), defaultParameters.toolChoice());
+            ToolChoice toolChoice = parameters.toolChoice();
 
             if ((isNull(toolChoice) || toolChoice.equals(ToolChoice.REQUIRED))
                     && nonNull(watsonxParameters.toolChoiceName())) {

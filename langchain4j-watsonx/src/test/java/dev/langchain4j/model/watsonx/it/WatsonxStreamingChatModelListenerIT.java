@@ -1,6 +1,5 @@
 package dev.langchain4j.model.watsonx.it;
 
-import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.exception.ModelNotFoundException;
@@ -27,8 +26,7 @@ public class WatsonxStreamingChatModelListenerIT extends AbstractStreamingChatMo
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
-        return WatsonxStreamingChatModel.builder()
-                .service(createChatService("meta-llama/llama-4-maverick-17b-128e-instruct-fp8"))
+        return createStreamingChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
                 .listeners(List.of(listener))
                 .defaultRequestParameters(ChatRequestParameters.builder()
                         .modelName(modelName())
@@ -46,8 +44,7 @@ public class WatsonxStreamingChatModelListenerIT extends AbstractStreamingChatMo
 
     @Override
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
-        return WatsonxStreamingChatModel.builder()
-                .service(createChatService("invalid-model"))
+        return createStreamingChatModel("invalid-model")
                 .listeners(List.of(listener))
                 .build();
     }
@@ -57,15 +54,14 @@ public class WatsonxStreamingChatModelListenerIT extends AbstractStreamingChatMo
         return ModelNotFoundException.class;
     }
 
-    private ChatService createChatService(String model) {
-        return ChatService.builder()
+    private WatsonxStreamingChatModel.Builder createStreamingChatModel(String model) {
+        return WatsonxStreamingChatModel.builder()
                 .url(URL)
-                .authenticationProvider(authProvider)
+                .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
-                .modelId(model)
+                .modelName(model)
                 .logRequests(true)
                 .logResponses(true)
-                .timeout(Duration.ofSeconds(30))
-                .build();
+                .timeLimit(Duration.ofSeconds(30));
     }
 }

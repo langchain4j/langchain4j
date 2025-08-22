@@ -9,6 +9,9 @@ import java.util.Map;
 
 public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
+    public static final WatsonxChatRequestParameters EMPTY =
+            WatsonxChatRequestParameters.builder().build();
+
     private final String projectId;
     private final String spaceId;
     private final Map<String, Integer> logitBias;

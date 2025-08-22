@@ -19,131 +19,91 @@ sidebar_position: 22
 
 ## WatsonxChatModel
 
-To use the `WatsonxChatModel` in LangChain4j, you need to configure an instance of `ChatService` provided by the [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk). This service acts as a bridge between LangChain4j and IBM watsonx.ai APIs.
+The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.  
+To create an instance, you must specify the mandatory parameters:
 
-### Authentication
+- `url(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
+- `apiKey(...)` – IBM Cloud IAM API key;
+- `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
+- `modelName(...)` – Foundation model ID for inference;
 
-Authentication is handled via the `IAMAuthenticator`, which implements the `AuthenticationProvider` interface. You will need a valid IBM Cloud IAM API key to authenticate.
-
-You can create an API key by visiting [https://cloud.ibm.com/iam/apikeys](https://cloud.ibm.com/iam/apikeys) and clicking **Create +**.
-
-```java
-AuthenticationProvider authProvider = IAMAuthenticator.builder()
-        .apiKey("<api-key>")
-        .build();
-```
-
-Token acquisition and renewal are managed automatically by the SDK. You typically don’t need to manually retrieve or manage tokens.
-
-> 🔗 [Learn more about IAM authentication](https://cloud.ibm.com/docs/account?topic=account-iamtoken_from_apikey)
-
-### Configuring the ChatService
-
-Once the `AuthenticationProvider` is created, you can build a `ChatService` to configure the connection to the watsonx.ai chat API.
+### Example
 
 ```java
-ChatService chatService = ChatService.builder()
-        .url(CloudRegion.FRANKFURT) // Or specify a custom URL
-        .authenticationProvider(authProvider)
-        .projectId("<project_id>") // OR use .spaceId("<space_id>")
-        .modelId("llama-4-maverick-17b-128e-instruct-fp8")
-        .build();
-```
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
 
-> **NOTE:** You must provide either a `projectId` **or** a `spaceId`.
+ChatModel chatModel = WatsonxChatModel.builder()
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .temperature(0.7)
+    .maxOutputTokens(0)
+    .build();
 
-#### How to find your Project ID
-
-1. Visit [https://dataplatform.cloud.ibm.com/projects/?context=wx](https://dataplatform.cloud.ibm.com/projects/?context=wx)
-2. Open your project.
-3. Navigate to the **Manage** tab.
-4. Copy the **Project ID** from the **Details** section.
-
-#### Available builder options
-
-The `ChatService.Builder` supports several optional configuration methods:
-
-| Method                  | Description                                                                                      | Default Value                         |
-|------------------------|--------------------------------------------------------------------------------------------------|---------------------------------------|
-| `url(...)`             | Endpoint URL (as `String`, `URI`, or `CloudRegion`)                                              | _Required_                            |
-| `version(...)`         | API version date (`YYYY-MM-DD`)                                                                  | Latest supported version              |
-| `projectId(...)`       | IBM Cloud Project ID                                                                             | One of `projectId` or `spaceId` is required |
-| `spaceId(...)`         | Space ID used for organizing resources                                                            | See above                             |
-| `modelId(...)`         | Foundation model ID to be used for inference                                                     | _Required_                            |
-| `timeout(...)`         | Request timeout (`java.time.Duration`)                                                           | 10 seconds                            |
-| `logRequests(...)`     | Whether to log the request payload                                                               | false                                 |
-| `logResponses(...)`    | Whether to log the response payload                                                              | false                                 |
-| `httpClient(...)`      | Custom HTTP client instance                                                                      | Default Java `HttpClient`             |
-| `authenticationProvider(...)` | Auth mechanism to use (e.g. `IAMAuthenticator`)                                           | _Required_                            |
-
-> 🔗 [View available model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
-
-### Creating the LangChain4j ChatModel
-
-Once the `ChatService` is configured, you can integrate it into LangChain4j by using the `WatsonxChatModel`:
-
-```java
-ChatModel model = WatsonxChatModel.builder()
-        .service(chatService)
-        .build();
-
-String answer = model.chat("Hello");
+String answer = chatModel.chat("Hello from watsonx.ai");
 System.out.println(answer);
 ```
 
+### How to create an IBM Cloud API Key
+
+You can create an API key at [https://cloud.ibm.com/iam/apikeys](https://cloud.ibm.com/iam/apikeys) by clicking **Create +**.
+
+### How to find your Project ID
+
+1. Visit [https://dataplatform.cloud.ibm.com/projects/?context=wx](https://dataplatform.cloud.ibm.com/projects/?context=wx)  
+2. Open your project  
+3. Go to the **Manage** tab  
+4. Copy the **Project ID** from the **Details** section  
+
+### How to find the model name
+
+Available foundation models are listed [here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided).
+
+
 ## WatsonxStreamingChatModel
 
-The `WatsonxStreamingChatModel` offers streaming support when using IBM watsonx.ai within LangChain4j. It is ideal for applications where response tokens should be processed as they are generated.
+The `WatsonxStreamingChatModel` provides streaming support for IBM watsonx.ai within LangChain4j. It’s useful when you want to process tokens as they are generated, ideal for real-time applications such as chat UIs or long text generation.
 
-Streaming is supported using the same configuration structure and parameters as the non-streaming `WatsonxChatModel`.
+Streaming uses the same configuration structure and parameters as the non-streaming [`WatsonxChatModel`](#watsonxchatmodel). The main difference is that responses are delivered incrementally through a handler interface.
 
-### Configuration
-
-`WatsonxStreamingChatModel` uses the same `ChatService` configuration described in the [WatsonxChatModel](#watsonxchatmodel) section. You must build the `ChatService` with a model that supports streaming.
+### Example
 
 ```java
-AuthenticationProvider authProvider = IAMAuthenticator.builder()
-        .apiKey("<api-key>")
-        .build();
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.ChatResponse;
+import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
 
-ChatService chatService = ChatService.builder()
-        .url(CloudRegion.FRANKFURT)
-        .authenticationProvider(authProvider)
-        .projectId("<project-id>")
-        .modelId("mistralai/mistral-small-3-1-24b-instruct-2503")
-        .build();
-```
-
-> All builder options (e.g. `timeout`, `logRequests`, `foundationModelService`) are available and behave identically to `WatsonxChatModel`.
-
-### Usage Example
-
-You can call the streaming model using a `StreamingChatResponseHandler`, which exposes three callbacks: `onPartialResponse`, `onCompleteResponse`, and `onError`.
-
-```java
 StreamingChatModel model = WatsonxStreamingChatModel.builder()
-        .service(chatService)
-        .build();
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .maxOutputTokens(0)
+    .build();
 
 model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        ...
+        System.out.println("Partial: " + partialResponse);
     }
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
-        ...
+        System.out.println("Complete: " + completeResponse);
     }
 
     @Override
     public void onError(Throwable error) {
-        ...
+        error.printStackTrace();
     }
 });
 ```
----
 
 ## Tool Integration
 
@@ -169,9 +129,13 @@ interface AiService {
     String chat(String userMessage);
 }
 
-ChatModel model = WatsonxChatModel.builder()
-        .service(chatService)
-        .build();
+ChatModel chatModel = WatsonxChatModel.builder()
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .maxOutputTokens(0)
+    .build();
 
 AiService aiService = AiServices.builder(AiService.class)
         .chatModel(model)
@@ -203,16 +167,12 @@ The content of the `CustomMessage` may vary depending on the model used, refer t
 #### Example ChatModel
 
 ```java
-ChatService chatService = ChatService.builder()
+ChatModel chatModel = WatsonxChatModel.builder()
     .url(CloudRegion.FRANKFURT)
-    .authenticationProvider(authProvider)
-    .projectId("<project-id>")
-    .modelId("ibm/granite-3-3-8b-instruct")
-    .timeout(Duration.ofSeconds(30))
-    .build();
-
-ChatModel model = WatsonxChatModel.builder()
-    .service(chatService)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("ibm/granite-3-3-8b-instruct")
+    .maxOutputTokens(0)
     .thinking(ExtractionTags.of("think", "response"))
     .build();
 
@@ -230,16 +190,12 @@ System.out.println(aiMessage.text());
 #### Example StreamingChatModel
 
 ```java
-ChatService chatService = ChatService.builder()
-    .url(CloudRegion.FRANKFURT)
-    .authenticationProvider(authProvider)
-    .projectId("<project-id>")
-    .modelId("ibm/granite-3-3-8b-instruct")
-    .timeout(Duration.ofSeconds(30))
-    .build();
-
 StreamingChatModel model = WatsonxStreamingChatModel.builder()
-    .service(chatService)
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("ibm/granite-3-3-8b-instruct")
+    .maxOutputTokens(0)
     .thinking(ExtractionTags.of("think", "response"))
     .build();
 
@@ -272,14 +228,12 @@ You can also provide only the reasoning tag — in that case, the `response` tag
 
 ```java
 ChatModel model = WatsonxChatModel.builder()
-    .service(chatService)
+    ...
     .thinking(ExtractionTags.of("think"))
     .build();
 ```
 
-**Note**  
-- This feature works the same way for both `WatsonxChatModel` and `WatsonxStreamingChatModel`.
-- Ensure that the selected model is enabled for reasoning.
+> **Note:** Ensure that the selected model is enabled for reasoning.
 
 ## WatsonxEmbeddingModel
 
@@ -287,42 +241,17 @@ The `WatsonxEmbeddingModel` enables you to generate embeddings using IBM watsonx
 
 It implements the LangChain4j `EmbeddingModel` interface.
 
----
-
-### Example: LangChain4j Integration
-
 ```java
-AuthenticationProvider authProvider = IAMAuthenticator.builder()
-    .apiKey("<api-key>")
+EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
+    .url("https://test.com")
+    .apiKey("...")
+    .projectId("...")
+    .modelName("ibm/granite-embedding-278m-multilingual")
     .build();
 
-EmbeddingService embeddingService = EmbeddingService.builder()
-    .url(CloudRegion.FRANKFURT)
-    .authenticationProvider(authProvider)
-    .projectId(System.getenv("<project-id>"))
-    .modelId("ibm/granite-embedding-278m-multilingual")
-    .build();
-
-EmbeddingModel model = new WatsonxEmbeddingModel(embeddingService);
-System.out.println(model.embed("Hello from watsonx.ai"));
+System.out.println(embeddingModel.embed("Hello from watsonx.ai"));
 ```
-
----
-
-### EmbeddingService Configuration
-
-| Parameter                 | Required | Description                                                                 |
-|---------------------------|----------|-----------------------------------------------------------------------------|
-| `url`                     | ✅       | Endpoint URL or constant from `CloudRegion`.                               |
-| `authenticationProvider` | ✅       | IAM-based authentication provider.                                         |
-| `projectId` or `spaceId` | ✅       | Only one is required.                                                      |
-| `modelId`                 | ✅       | ID of the embedding model to use.                                          |
-| `timeout`                 | ❌       | Defaults to 10 seconds.                                                    |
-| `logRequests`/`logResponses` | ❌   | Enable debug logging.                                                      |
-
-> **NOTE:** You must provide either a `projectId` **or** a `spaceId`.
-
-> 🔗 [View available model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#ibm-provided)
+> 🔗 [View available embedding model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#embed)
 
 ## WatsonxScoringModel
 
@@ -335,21 +264,16 @@ It is particularly useful for ranking a list of documents (or text segments) bas
 ### Example: LangChain4j Integration
 
 ```java
-
-AuthenticationProvider authProvider = IAMAuthenticator.builder()
-    .apiKey("<api-key>"))
-    .build();
-
-RerankService rerankService = RerankService.builder()
-    .url(CloudRegion.FRANKFURT)
-    .authenticationProvider(authProvider)
-    .projectId("<project-d>")
-    .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
+ScoringModel scoringModel = WatsonxScoringModel.builder()
+    .url("https://test.com")
+    .apiKey("...")
+    .projectId("...")
+    .modelName("cross-encoder/ms-marco-minilm-l-12-v2")
     .build();
 
 ScoringModel model = new WatsonxScoringModel(rerankService);
 
-var scores = model.scoreAll(
+var scores = scoringModel.scoreAll(
     List.of(
         TextSegment.from("Example_1"),
         TextSegment.from("Example_2")
@@ -362,20 +286,7 @@ System.out.println(scores);
 
 ---
 
-### RerankService Configuration
-
-| Parameter                 | Required | Description                                                      |
-|---------------------------|----------|------------------------------------------------------------------|
-| `url`                     | ✅       | Endpoint URL or constant from `CloudRegion`.                     |
-| `authenticationProvider` | ✅       | IAM-based authentication provider.                               |
-| `projectId` or `spaceId` | ✅       | Only one is required.                                            |
-| `modelId`                 | ✅       | ID of the rerank model to use.                                   |
-| `timeout`                 | ❌       | Defaults to 10 seconds.                                          |
-| `logRequests`/`logResponses` | ❌   | Enable debug logging.                                            |
-
-> **NOTE:** You must provide either a `projectId` **or** a `spaceId`.
-
-> 🔗 [View available model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#rerank)
+> 🔗 [View available rerank model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#rerank)
 
 ---
 

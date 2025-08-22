@@ -1,8 +1,5 @@
 package dev.langchain4j.model.watsonx.it;
 
-import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -24,13 +21,9 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static final String PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     static final String URL = System.getenv("WATSONX_URL");
 
-    static final AuthenticationProvider authProvider =
-            IAMAuthenticator.builder().apiKey(API_KEY).build();
-
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(WatsonxStreamingChatModel.builder()
-                .service(createChatService("meta-llama/llama-4-maverick-17b-128e-instruct-fp8"))
+        return List.of(createStreamingChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
                 .build());
     }
 
@@ -48,16 +41,14 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        return WatsonxStreamingChatModel.builder()
-                .service(createChatService("ibm/granite-3-3-8b-instruct"))
+        return createStreamingChatModel("ibm/granite-3-3-8b-instruct")
                 .defaultRequestParameters(parameters)
                 .build();
     }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return WatsonxStreamingChatModel.builder()
-                .service(createChatService("ibm/granite-3-3-8b-instruct"))
+        return createStreamingChatModel("ibm/granite-3-3-8b-instruct")
                 .listeners(List.of(listener))
                 .build();
     }
@@ -71,17 +62,15 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void should_respect_user_message(StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
-        super.should_respect_user_message(WatsonxStreamingChatModel.builder()
-                .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .build());
+        super.should_respect_user_message(
+                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format(StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
-        super.should_respect_JSON_response_format(WatsonxStreamingChatModel.builder()
-                .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .build());
+        super.should_respect_JSON_response_format(
+                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
     }
 
     @Override
@@ -89,17 +78,14 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
             StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
-                WatsonxStreamingChatModel.builder()
-                        .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                        .build());
+                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
-        super.should_respect_JSON_response_format_with_schema(WatsonxStreamingChatModel.builder()
-                .service(createChatService("meta-llama/llama-3-3-70b-instruct"))
-                .build());
+        super.should_respect_JSON_response_format_with_schema(
+                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
     }
 
     @Override
@@ -118,15 +104,14 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
-    private ChatService createChatService(String model) {
-        return ChatService.builder()
+    private WatsonxStreamingChatModel.Builder createStreamingChatModel(String model) {
+        return WatsonxStreamingChatModel.builder()
                 .url(URL)
-                .authenticationProvider(authProvider)
+                .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
-                .modelId(model)
+                .modelName(model)
                 .logRequests(true)
                 .logResponses(true)
-                .timeout(Duration.ofSeconds(30))
-                .build();
+                .timeLimit(Duration.ofSeconds(30));
     }
 }

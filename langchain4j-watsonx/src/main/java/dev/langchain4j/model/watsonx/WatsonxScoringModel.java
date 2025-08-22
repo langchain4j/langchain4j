@@ -1,8 +1,10 @@
 package dev.langchain4j.model.watsonx;
 
 import static java.util.Objects.isNull;
-import static java.util.Objects.requireNonNull;
+import static java.util.Objects.nonNull;
 
+import com.ibm.watsonx.ai.CloudRegion;
+import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -11,6 +13,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,25 +23,39 @@ import java.util.List;
  * <b>Example usage:</b>
  *
  * <pre>{@code
- * RerankService rerankService = RerankService.builder()
+ * ScoringModel scoringModel = new WatsonxScoringModel.builder()
  *     .url("https://...") // or use CloudRegion
- *     .authenticationProvider(authProvider)
- *     .projectId("my-project-id")
+ *     .apiKey("...")
+ *     .projectId("...")
  *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
  *     .build();
- *
- * ScoringModel scoringModel = new WatsonxScoringModel(rerankService);
  * }</pre>
  *
- * @see RerankService
  */
 public class WatsonxScoringModel implements ScoringModel {
 
     private final RerankService rerankService;
 
-    public WatsonxScoringModel(RerankService rerankService) {
-        requireNonNull(rerankService, "rerankService is required");
-        this.rerankService = rerankService;
+    private WatsonxScoringModel(Builder builder) {
+        var rerankServiceBuilder = RerankService.builder();
+        if (nonNull(builder.authenticationProvider)) {
+            rerankServiceBuilder.authenticationProvider(builder.authenticationProvider);
+        } else {
+            rerankServiceBuilder.authenticationProvider(
+                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
+        }
+
+        rerankService = rerankServiceBuilder
+                .url(builder.url)
+                .modelId(builder.modelName)
+                .version(builder.version)
+                .projectId(builder.projectId)
+                .spaceId(builder.spaceId)
+                .timeout(builder.timeout)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
+                .build();
     }
 
     @Override
@@ -69,5 +86,62 @@ public class WatsonxScoringModel implements ScoringModel {
         for (RerankResult rerankResult : response.results()) content[rerankResult.index()] = rerankResult.score();
 
         return Response.from(Arrays.asList(content), new TokenUsage(response.inputTokenCount()));
+    }
+
+    /**
+     * Returns a new {@link Builder} instance.
+     * <p>
+     * <b>Example usage:</b>
+     *
+     * <pre>{@code
+     * ScoringModel scoringModel = new WatsonxScoringModel.builder()
+     *     .url("https://...") // or use CloudRegion
+     *     .apiKey("...")
+     *     .projectId("...")
+     *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
+     *     .build();
+     * }</pre>
+     *
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Builder class for constructing {@link WatsonxScoringModel} instances with configurable parameters.
+     */
+    public static class Builder extends WatsonxBuilder<Builder> {
+        private String modelName;
+        private String projectId;
+        private String spaceId;
+        private Duration timeout;
+
+        public Builder url(CloudRegion cloudRegion) {
+            return super.url(cloudRegion.getMlEndpoint());
+        }
+
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public Builder projectId(String projectId) {
+            this.projectId = projectId;
+            return this;
+        }
+
+        public Builder spaceId(String spaceId) {
+            this.spaceId = spaceId;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public WatsonxScoringModel build() {
+            return new WatsonxScoringModel(this);
+        }
     }
 }
