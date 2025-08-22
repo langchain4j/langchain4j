@@ -811,6 +811,7 @@ class AiServicesWithToolsIT {
 
         interface Assistant {
 
+            // TODO "Invocation Context" name assumes more than just parameters: it could contain intermediate responses, retrieved documents, etc
             String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationContext invocationContext);
         }
 
