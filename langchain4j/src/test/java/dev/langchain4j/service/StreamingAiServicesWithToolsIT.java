@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -180,15 +181,21 @@ class StreamingAiServicesWithToolsIT {
             final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
             final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
 
+            final CountDownLatch latch = new CountDownLatch(2);
+
             @Tool
-            String getCurrentTime(String city) {
+            String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                latch.await(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
             @Tool
-            String getCurrentTemperature(String city) {
+            String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                latch.await(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
