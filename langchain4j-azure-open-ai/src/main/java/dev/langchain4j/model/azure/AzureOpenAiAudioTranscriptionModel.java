@@ -61,11 +61,11 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
         } else {
             this.client = createClient(builder);
         }
-        
+
         if (builder.deploymentName == null || builder.deploymentName.isBlank()) {
             throw new IllegalArgumentException("deploymentName is required");
         }
-        
+
         this.deploymentName = builder.deploymentName;
         this.responseFormat = builder.responseFormat != null ? builder.responseFormat : AudioTranscriptionFormat.JSON;
     }
@@ -135,7 +135,9 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
                     builder.tokenCredential,
                     builder.timeout,
                     builder.maxRetries,
-                    builder.httpClientProvider != null ? builder.httpClientProvider : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider != null
+                            ? builder.httpClientProvider
+                            : new NettyAsyncHttpClientProvider(),
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,
@@ -147,7 +149,9 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
                     builder.keyCredential,
                     builder.timeout,
                     builder.maxRetries,
-                    builder.httpClientProvider != null ? builder.httpClientProvider : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider != null
+                            ? builder.httpClientProvider
+                            : new NettyAsyncHttpClientProvider(),
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,
@@ -159,7 +163,9 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
                     builder.apiKey,
                     builder.timeout,
                     builder.maxRetries,
-                    builder.httpClientProvider != null ? builder.httpClientProvider : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider != null
+                            ? builder.httpClientProvider
+                            : new NettyAsyncHttpClientProvider(),
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,

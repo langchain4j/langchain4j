@@ -1,14 +1,14 @@
 package dev.langchain4j.data.audio;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 import java.net.URI;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents audio data that can be used with various AI model implementations.
  * This class supports multiple formats for storing audio:
- * 
+ *
  * <ul>
  *   <li><b>URL:</b> A reference to audio data located at a specific URI</li>
  *   <li><b>Binary Data:</b> Raw binary audio data as a byte array, primarily used by
@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.Utils.quoted;
  *   <li><b>Base64 Data:</b> Base64 encoded string representation of audio data, primarily
  *       used by implementations like OpenAI</li>
  * </ul>
- * 
+ *
  * Different AI model implementations may require different audio data formats,
  * so this class provides flexibility to support various use cases.
  */
@@ -61,14 +61,14 @@ public class Audio {
      * Get the raw binary data of the audio as a byte array.
      * This format is primarily used by implementations like Azure OpenAI that require
      * raw binary audio data for processing.
-     * 
+     *
      * @return the raw binary data of the audio as a byte array, or null if not set.
      */
     public byte[] binaryData() {
         return binaryData;
     }
 
-        /**
+    /**
      * Get the Base64 encoded string representation of the audio data.
      * This format is primarily used by implementations like OpenAI that accept
      * Base64 encoded audio data in API requests.
@@ -93,10 +93,10 @@ public class Audio {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
-    return Objects.equals(this.url, that.url)
-        && Objects.equals(this.binaryData, that.binaryData)
-        && Objects.equals(this.base64Data, that.base64Data)
-        && Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.url, that.url)
+                && Objects.equals(this.binaryData, that.binaryData)
+                && Objects.equals(this.base64Data, that.base64Data)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -106,11 +106,10 @@ public class Audio {
 
     @Override
     public String toString() {
-    return "Audio {" +
-        " url = " + quoted(url) +
-        ", base64Data = " + quoted(base64Data) +
-        ", mimeType = " + quoted(mimeType) +
-        " }";
+        return "Audio {" + " url = "
+                + quoted(url) + ", base64Data = "
+                + quoted(base64Data) + ", mimeType = "
+                + quoted(mimeType) + " }";
     }
 
     /**
@@ -204,21 +203,21 @@ public class Audio {
         if (url == null) {
             return null;
         }
-        
+
         String urlString = url.toString();
-        
+
         // Remove query parameters if present
         int queryIndex = urlString.indexOf('?');
         if (queryIndex != -1) {
             urlString = urlString.substring(0, queryIndex);
         }
-        
+
         // Remove fragment if present
         int fragmentIndex = urlString.indexOf('#');
         if (fragmentIndex != -1) {
             urlString = urlString.substring(0, fragmentIndex);
         }
-        
+
         // URLs always use forward slashes, not OS-dependent separators
         int lastSlashIndex = urlString.lastIndexOf('/');
         if (lastSlashIndex != -1) {
@@ -230,7 +229,7 @@ public class Audio {
                 return urlString.substring(lastSlashIndex + 1);
             }
         }
-        
+
         // If no slash found, might be just a filename or malformed URL
         return urlString;
     }

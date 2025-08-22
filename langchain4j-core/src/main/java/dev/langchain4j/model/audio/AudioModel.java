@@ -23,7 +23,8 @@ public interface AudioModel {
      * @return The generated transcription as a plain string
      */
     default String transcribeToText(Audio audio) {
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio).build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder(audio).build();
         AudioTranscriptionResponse response = transcribe(request);
         return response.text();
     }
