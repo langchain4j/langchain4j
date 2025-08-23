@@ -109,8 +109,6 @@ class OpenAiChatModelIT {
                     "O3_2025_04_16", // don't have access
                     "O1_MINI", // does not support 'system' role with this model
                     "O1_MINI_2024_09_12", // does not support 'system' role with this model
-                    "O1_PREVIEW", // does not support 'system' role with this model
-                    "O1_PREVIEW_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -411,72 +409,13 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_accept_image_url() {
-
-        // given
-        ImageContent imageContent = ImageContent.from(CAT_IMAGE_URL);
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_base64_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_image() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL));
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
     void should_accept_text_and_multiple_images_from_different_sources() {
 
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = model.chat(userMessage);

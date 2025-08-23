@@ -52,63 +52,6 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.defaultRequestParameters);
     }
 
-    /**
-     * @deprecated please use {@link #GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiGeminiStreamingChatModel(
-            String apiKey,
-            String baseUrl,
-            String modelName,
-            Double temperature,
-            Integer topK,
-            Double topP,
-            Integer seed,
-            Integer maxOutputTokens,
-            Duration timeout,
-            ResponseFormat responseFormat,
-            List<String> stopSequences,
-            GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution,
-            Boolean includeCodeExecutionOutput,
-            Boolean logRequestsAndResponses,
-            Boolean responseLogprobs,
-            Boolean enableEnhancedCivicAnswers,
-            Integer logprobs,
-            List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners,
-            Integer maxRetries) {
-        super(
-                null,
-                apiKey,
-                baseUrl,
-                modelName,
-                temperature,
-                topK,
-                seed,
-                topP,
-                null,
-                null,
-                maxOutputTokens,
-                logprobs,
-                timeout,
-                responseFormat,
-                stopSequences,
-                toolConfig,
-                allowCodeExecution,
-                includeCodeExecutionOutput,
-                logRequestsAndResponses,
-                responseLogprobs,
-                enableEnhancedCivicAnswers,
-                safetySettings,
-                listeners,
-                maxRetries,
-                null,
-                null,
-                null,
-                null);
-    }
-
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
         return new GoogleAiGeminiStreamingChatModelBuilder();
     }
@@ -283,14 +226,6 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
-            return this;
-        }
-
-        /**
-         * @deprecated retries are not supported for streaming model
-         */
-        @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-        public GoogleAiGeminiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
             return this;
         }
 

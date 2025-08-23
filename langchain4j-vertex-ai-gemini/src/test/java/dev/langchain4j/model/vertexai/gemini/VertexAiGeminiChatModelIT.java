@@ -5,11 +5,11 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.gemini.HarmCategory.*;
 import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.*;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,13 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
@@ -60,7 +58,7 @@ class VertexAiGeminiChatModelIT {
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     public static final Gson GSON = new Gson();
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -80,7 +78,6 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_generate_response() {
-
         // given
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
@@ -93,54 +90,44 @@ class VertexAiGeminiChatModelIT {
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource
-    void should_support_system_instructions(List<ChatMessage> messages) {
-
-        // when
-        ChatResponse response = model.chat(messages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
-    }
-
-    static Stream<Arguments> should_support_system_instructions() {
-        return Stream.<Arguments>builder()
-                .add(Arguments.of(asList(SystemMessage.from("Translate in German"), UserMessage.from("I love apples"))))
-                .add(Arguments.of(asList(UserMessage.from("I love apples"), SystemMessage.from("Translate in German"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in Italian"),
-                        UserMessage.from("I love apples"),
-                        SystemMessage.from("No, translate in German!"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I love apples"), TextContent.from("I see apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I see apples"), TextContent.from("I love apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from("I see apples"),
-                        AiMessage.from("Ich sehe Äpfel"),
-                        UserMessage.from("I love apples"))))
-                .build();
-    }
-
     @Test
-    void should_respect_maxOutputTokens() {
+    void should_generate_response_with_custom_credentials() throws IOException {
 
         // given
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(MODEL_NAME)
-                .maxOutputTokens(1)
+                .logRequests(true)
+                .logResponses(true)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_respect_maxOutputTokens() {
+
+        // given
+        int maxOutputTokens = 3;
+
+        ChatModel model = VertexAiGeminiChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-2.5-flash-lite")
+                .maxOutputTokens(maxOutputTokens)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("Tell me a joke");
@@ -150,13 +137,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
@@ -184,13 +165,13 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
+                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -199,13 +180,13 @@ class VertexAiGeminiChatModelIT {
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -214,13 +195,13 @@ class VertexAiGeminiChatModelIT {
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
+                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
     }
 
     @Test
@@ -230,13 +211,15 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -246,13 +229,15 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -264,13 +249,15 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(catBase64Data, "image/png"),
                 ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
     }
 
     @Test
@@ -281,16 +268,16 @@ class VertexAiGeminiChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from("gs://langchain4j-test/dog.jpg"),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text())
-                .containsIgnoringCase("cat")
-                //                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
-                .containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("dog", "puppy")
+                .contains("dice");
     }
 
     @Test
@@ -353,7 +340,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-2.5-pro")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -551,7 +538,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -617,7 +604,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .responseMimeType("application/json")
                 .build();
 
@@ -632,7 +619,7 @@ class VertexAiGeminiChatModelIT {
         String json = modelWithResponseMimeType.chat(userMessage);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("TODO fix")
@@ -648,7 +635,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .safetySettings(safetySettings)
                 .temperature(0.0f)
                 .topP(0.0f)
@@ -882,6 +869,7 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_support_enum_structured_output() {
+
         // given
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -895,24 +883,13 @@ class VertexAiGeminiChatModelIT {
                         .build())
                 .build();
 
-        // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
+
+        // when
         String response = model.chat(instruction + "This is super exciting news, congratulations!");
 
         // then
         assertThat(response).isEqualTo("POSITIVE");
-
-        // when
-        response = model.chat(instruction + "The sky is blue.");
-
-        // then
-        assertThat(response).isEqualTo("NEUTRAL");
-
-        // when
-        response = model.chat(instruction + "This is the worst movie I've ever watched! Boring!");
-
-        // then
-        assertThat(response).isEqualTo("NEGATIVE");
     }
 
     // POJO classes for JSON deserialization

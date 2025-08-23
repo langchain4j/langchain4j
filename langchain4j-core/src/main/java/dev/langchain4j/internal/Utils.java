@@ -191,6 +191,16 @@ public class Utils {
     }
 
     /**
+     * Utility method to check if an array is null or has no elements.
+     *
+     * @param array the array to check
+     * @return {@code true} if the array is null or has no elements, otherwise {@code false}
+     */
+    public static boolean isNullOrEmpty(Object[] array) {
+        return array == null || array.length == 0;
+    }
+
+    /**
      * Is the map object {@code null} or empty?
      *
      * @param map The iterable object to check.

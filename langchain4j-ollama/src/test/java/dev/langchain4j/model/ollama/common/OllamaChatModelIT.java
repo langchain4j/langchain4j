@@ -221,7 +221,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // vision model only supports a single image per message
     }
-
+    
     @Override
     protected boolean assertResponseId() {
         return false; // Ollama does not return response ID

@@ -8,8 +8,8 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import java.util.List;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -79,11 +79,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // Azure OpenAI does not support base64-encoded images
-    }
-
-    @Override
-    protected boolean assertTokenUsage() {
-        return false; // testing AzureOpenAiStreamingChatModel without TokenCountEstimator
     }
 
     @Override

@@ -548,6 +548,29 @@ The value provided to the AI Service method will be automatically passed to the 
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
 
+### Executing Tools Concurrently
+
+By default, when the LLM calls **_multiple_** tools at once (also known as parallel tool calling),
+the AI Service executes them sequentially. If you want the tools to be executed concurrently,
+you can call `executeToolsConcurrently()` or `executeToolsConcurrently(Executor)` when building the AI Service.
+If you enable one of these options, the tools will be executed concurrently (with one exception - see below),
+using either the default or the specified `Executor`.
+
+#### When using `ChatModel`:
+- When the LLM calls multiple tools, they are executed concurrently in separate threads
+using the `Executor`.
+- When the LLM calls a single tool, it is executed in the same (caller) thread,
+the `Executor` is **_not_** used to avoid wasting resources.
+
+#### When using `StreamingChatModel`:
+- When the LLM calls multiple tools, they are executed concurrently in separate threads
+using the `Executor`.
+Each tool is executed as soon as `StreamingChatResponseHandler.onCompleteToolCall(CompleteToolCall)`
+is called, without waiting for other tools or for the response streaming to complete.
+- When the LLM calls a single tool, it is executed in a separate thread using the `Executor`.
+We cannot execute it in the same thread because, at that point,
+we do not yet know how many tools the LLM will call.
+
 ### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
 you can easily do so by wrapping the return type in the `Result` class:

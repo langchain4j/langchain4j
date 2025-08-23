@@ -2,7 +2,6 @@ package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
 import static dev.langchain4j.model.mistralai.InternalMistralAIHelper.createMistralAiRequest;
@@ -81,92 +80,6 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
-    }
-
-    /**
-     * @deprecated please use {@link MistralAiStreamingChatModel#builder()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiStreamingChatModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Double temperature,
-            Double topP,
-            Integer maxTokens,
-            Boolean safePrompt,
-            Integer randomSeed,
-            ResponseFormat responseFormat,
-            Boolean logRequests,
-            Boolean logResponses,
-            Duration timeout,
-            Set<Capability> supportedCapabilities) {
-        this.client = MistralAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-
-        this.safePrompt = safePrompt;
-        this.randomSeed = randomSeed;
-        this.listeners = List.of();
-        this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
-        this.defaultRequestParameters = initDefaultRequestParameters(ensureNotBlank(modelName, "modelName"), temperature, topP, maxTokens, responseFormat);
-    }
-
-    private ChatRequestParameters initDefaultRequestParameters(String modelName,
-                                                               Double temperature,
-                                                               Double topP,
-                                                               Integer maxTokens,
-                                                               ResponseFormat responseFormat) {
-        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
-
-        return DefaultChatRequestParameters.builder()
-                .modelName(getOrDefault(modelName, commonParameters.modelName()))
-                .temperature(getOrDefault(temperature, commonParameters.temperature()))
-                .topP(getOrDefault(topP, commonParameters.topP()))
-                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens()))
-                .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
-                .build();
-    }
-
-    /**
-     * @deprecated please use {@link #MistralAiStreamingChatModel(MistralAiStreamingChatModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiStreamingChatModel(
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Double temperature,
-            Double topP,
-            Integer maxTokens,
-            Boolean safePrompt,
-            Integer randomSeed,
-            ResponseFormat responseFormat,
-            Boolean logRequests,
-            Boolean logResponses,
-            Duration timeout,
-            Set<Capability> supportedCapabilities) {
-        this(
-                null,
-                baseUrl,
-                apiKey,
-                modelName,
-                temperature,
-                topP,
-                maxTokens,
-                safePrompt,
-                randomSeed,
-                responseFormat,
-                logRequests,
-                logResponses,
-                timeout,
-                supportedCapabilities);
     }
 
     @Override
