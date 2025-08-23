@@ -6,7 +6,6 @@ import static java.util.Objects.requireNonNull;
 
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
-import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.Image.Detail;
 import com.ibm.watsonx.ai.chat.model.ImageContent;
 import com.ibm.watsonx.ai.chat.model.TextContent;
@@ -20,7 +19,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -42,7 +40,7 @@ class Converter {
             case SYSTEM -> toSystemMessage(SystemMessage.class.cast(chatMessage));
             case AI -> toAssistantMessage(AiMessage.class.cast(chatMessage));
             case USER -> toUserMessage(UserMessage.class.cast(chatMessage));
-            case CUSTOM -> toControlMessage(CustomMessage.class.cast(chatMessage));
+            case CUSTOM -> throw new UnsupportedOperationException("The custom message type is not supported");
             case TOOL_EXECUTION_RESULT -> toToolMessage(ToolExecutionResultMessage.class.cast(chatMessage));
         };
     }
@@ -72,19 +70,6 @@ class Converter {
             case "time_limit", "cancelled", "error" -> FinishReason.OTHER;
             default -> throw new IllegalArgumentException("%s not supported".formatted(finishReason));
         };
-    }
-
-    public static AiMessage toAiMessage(AssistantMessage assistantMessage) {
-
-        List<ToolExecutionRequest> toolExecutionRequests = null;
-
-        if (nonNull(assistantMessage.toolCalls())) {
-            toolExecutionRequests = assistantMessage.toolCalls().stream()
-                    .map(Converter::toToolExecutionRequest)
-                    .toList();
-        }
-
-        return AiMessage.from(assistantMessage.content(), toolExecutionRequests);
     }
 
     public static CompleteToolCall toCompleteToolCall(ToolCall toolCall) {
@@ -226,19 +211,6 @@ class Converter {
                 yield TextContent.of(textContent.text());
             }
         };
-    }
-
-    private static ControlMessage toControlMessage(CustomMessage customMessage) {
-        var attributes = customMessage.attributes();
-        if (!attributes.containsKey("content"))
-            throw new IllegalArgumentException(
-                    "Watsonx only allows the use of CustomMessage with \"content\" attribute.");
-
-        try {
-            return ControlMessage.of((String) customMessage.attributes().get("content"));
-        } catch (RuntimeException e) {
-            throw new IllegalArgumentException("Only the String type is allowed.");
-        }
     }
 
     private static ToolMessage toToolMessage(ToolExecutionResultMessage toolExecutionResultMessage) {

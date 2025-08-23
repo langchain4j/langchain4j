@@ -12,8 +12,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
-import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.PdfFileContent;
@@ -105,26 +103,6 @@ public class ConverterTest {
         assertThrows(RuntimeException.class, () -> Converter.toChatMessage(audioContent));
         assertThrows(RuntimeException.class, () -> Converter.toChatMessage(pdfContent));
         assertThrows(RuntimeException.class, () -> Converter.toChatMessage(videoContent));
-    }
-
-    @Test
-    void testToControlMessage() {
-
-        var chatMessage = Converter.toChatMessage(CustomMessage.customMessage(Map.of("content", "thinking")));
-
-        if (!(chatMessage instanceof com.ibm.watsonx.ai.chat.model.ControlMessage))
-            fail("chatMessage is not an instance of ControlMessage");
-
-        var controlMessage = (com.ibm.watsonx.ai.chat.model.ControlMessage) chatMessage;
-        assertEquals(com.ibm.watsonx.ai.chat.model.ControlMessage.ROLE, controlMessage.role());
-        assertEquals("thinking", controlMessage.content());
-
-        assertThrows(
-                RuntimeException.class,
-                () -> Converter.toChatMessage(CustomMessage.customMessage(Map.of("test", "thinking"))));
-        assertThrows(
-                RuntimeException.class,
-                () -> Converter.toChatMessage(CustomMessage.customMessage(Map.of("content", 10))));
     }
 
     @Test
@@ -249,32 +227,6 @@ public class ConverterTest {
         assertEquals(FinishReason.OTHER, Converter.toFinishReason("error"));
         assertEquals(FinishReason.OTHER, Converter.toFinishReason(null));
         assertThrows(IllegalArgumentException.class, () -> Converter.toFinishReason("notExiust"));
-    }
-
-    @Test
-    void testToAiMessage() {
-
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id("id")
-                .name("name")
-                .arguments("{\"name\":\"Klaus\",\"address\":null}")
-                .build();
-
-        ToolCall toolCall = ToolCall.of("id", "name", "{\"name\":\"Klaus\",\"address\":null}");
-
-        var assistantMessage = AssistantMessage.text("content", "name", "");
-        var aiMessage = Converter.toAiMessage(assistantMessage);
-
-        assertEquals(ChatMessageType.AI, aiMessage.type());
-        assertEquals("content", aiMessage.text());
-        assertEquals(List.of(), aiMessage.toolExecutionRequests());
-
-        assistantMessage = AssistantMessage.tools(List.of(toolCall));
-        aiMessage = Converter.toAiMessage(assistantMessage);
-
-        assertEquals(ChatMessageType.AI, aiMessage.type());
-        assertNull(aiMessage.text());
-        assertEquals(List.of(toolExecutionRequest), aiMessage.toolExecutionRequests());
     }
 
     @Test

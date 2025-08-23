@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.toCollection;
 
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
@@ -23,6 +24,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -58,11 +60,13 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
 
         List<ChatMessage> messages =
-                chatRequest.messages().stream().map(Converter::toChatMessage).toList();
+                chatRequest.messages().stream().map(Converter::toChatMessage).collect(toCollection(ArrayList::new));
 
         List<Tool> tools = nonNull(toolSpecifications) && toolSpecifications.size() > 0
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
+
+        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) messages.add(THINKING);
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
