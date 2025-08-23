@@ -19,9 +19,11 @@ import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
+import com.ibm.watsonx.ai.chat.model.SystemMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.UserMessage;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
@@ -192,8 +194,9 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testDoChatWithTags() {
+    void testDoChatWithThinking() {
 
+        // --- TEST 1 ---
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -210,40 +213,68 @@ public class WatsonxChatModelTest {
                     .thinking(ExtractionTags.of("think", "response"))
                     .build();
 
-            assertEquals("Hello", chatModel.chat("hello"));
             var result = chatModel.chat(ChatRequest.builder()
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                     .build());
             assertEquals("Hello", result.aiMessage().text());
             assertEquals("I'm thinking", result.aiMessage().thinking());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
+            assertEquals(
+                    ControlMessage.of("thinking"),
+                    chatRequestCaptor.getValue().getMessages().get(1));
         });
+        // --------------
 
-        resultMessage = new ResultMessage(AssistantMessage.ROLE, "<think>I'm thinking</think>Hello", null, null);
-        resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
-
+        // --- TEST 2 ---
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
                     .url("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
-                    .thinking(new ExtractionTags("think"))
+                    .thinking(ExtractionTags.of("think"))
                     .build();
 
-            var result = chatModel.chat(ChatRequest.builder()
+            chatModel.chat(ChatRequest.builder()
+                    .messages(
+                            dev.langchain4j.data.message.SystemMessage.from("You are an helpful assistant"),
+                            dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+
+            assertEquals(2, chatRequestCaptor.getValue().getMessages().size());
+            assertEquals(
+                    SystemMessage.of("You are an helpful assistant"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
+
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(1));
+        });
+        // --------------
+
+        // --- TEST 3 ---
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .thinking(ExtractionTags.of("think"))
+                    .toolSpecifications(ToolSpecification.builder().name("test").build())
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                     .build());
 
-            assertEquals("Hello", result.aiMessage().text());
-            assertEquals("I'm thinking", result.aiMessage().thinking());
-
-            assertEquals("Hello", chatModel.chat("hello"));
+            assertEquals(1, chatRequestCaptor.getValue().getMessages().size());
             assertEquals(
-                    List.of(UserMessage.text("hello")),
-                    chatRequestCaptor.getValue().getMessages());
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
         });
+        // --------------
     }
 
     @Test

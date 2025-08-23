@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.toCollection;
 
 import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
@@ -14,6 +15,7 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -26,6 +28,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -62,11 +65,13 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
 
         List<ChatMessage> messages =
-                chatRequest.messages().stream().map(Converter::toChatMessage).toList();
+                chatRequest.messages().stream().map(Converter::toChatMessage).collect(toCollection(ArrayList::new));
 
         List<Tool> tools = nonNull(toolSpecifications) && toolSpecifications.size() > 0
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
+
+        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) messages.add(THINKING);
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
         chatService.chatStreaming(
@@ -87,13 +92,27 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                                 completeResponse.getUsage().getCompletionTokens(),
                                 completeResponse.getUsage().getTotalTokens());
 
-                        var aiMessage = completeResponse.toAssistantMessage();
+                        var assistantMessage = completeResponse.toAssistantMessage();
+                        var aiMessage = AiMessage.builder();
 
-                        if (isNotNullOrBlank(aiMessage.refusal()))
-                            handler.onError(new ContentFilteredException(aiMessage.refusal()));
+                        if (isNotNullOrBlank(assistantMessage.refusal()))
+                            handler.onError(new ContentFilteredException(assistantMessage.refusal()));
+
+                        if (nonNull(tags)) {
+                            aiMessage.thinking(completeResponse.toTextByTag(tags.think()));
+                            aiMessage.text(completeResponse.toTextByTag(tags.response()));
+                        } else {
+                            aiMessage.text(assistantMessage.content());
+                        }
+
+                        if (nonNull(assistantMessage.toolCalls())) {
+                            aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
+                                    .map(Converter::toToolExecutionRequest)
+                                    .toList());
+                        }
 
                         ChatResponse chatResponse = ChatResponse.builder()
-                                .aiMessage(Converter.toAiMessage(aiMessage))
+                                .aiMessage(aiMessage.build())
                                 .metadata(WatsonxChatResponseMetadata.builder()
                                         .created(completeResponse.getCreated())
                                         .modelVersion(completeResponse.getModelVersion())

@@ -159,10 +159,7 @@ You can capture and separate this reasoning content from the final answer by usi
 - **Reasoning tag**: typically `<think>` — contains the model's internal reasoning.
 - **Response tag**: typically `<response>` — contains the user-facing answer.
 
-If no `response` tag is provided, it defaults to `"root"`, meaning that text directly under the root element is treated as the final response.
-
-To enable reasoning mode, a `CustomMessage` must be included in the request.  
-The content of the `CustomMessage` may vary depending on the model used, refer to the documentation for the correct format.   
+If no `response` tag is provided, it defaults to `root`, meaning that text directly under the root element is treated as the final response.
 
 #### Example ChatModel
 
@@ -177,7 +174,6 @@ ChatModel chatModel = WatsonxChatModel.builder()
     .build();
 
 ChatResponse chatResponse = chatModel.chat(
-    CustomMessage.from(Map.of("content", "thinking")),
     UserMessage.userMessage("Why the sky is blue?")
 );
 
@@ -200,7 +196,6 @@ StreamingChatModel model = WatsonxStreamingChatModel.builder()
     .build();
 
 List<ChatMessage> messages = List.of(
-    CustomMessage.from(Map.of("content", "thinking")),
     UserMessage.userMessage("Why the sky is blue?")
 );
 

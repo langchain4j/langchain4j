@@ -1,17 +1,22 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatService;
+import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -24,9 +29,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 abstract class WatsonxChat {
+
+    private static final Logger logger = LoggerFactory.getLogger(WatsonxChatModel.class);
+    protected static final ControlMessage THINKING = ControlMessage.of("thinking");
 
     protected final ChatService chatService;
     protected final List<ChatModelListener> listeners;
@@ -101,9 +111,27 @@ abstract class WatsonxChat {
                 .build();
     }
 
-    protected void validate(ChatRequestParameters parameters) {
+    void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
+    }
+
+    boolean isThinkingActivable(List<ChatMessage> messages, List<ToolSpecification> tools) {
+        if (isNull(tags)) return false;
+
+        if (!isNullOrEmpty(tools)) {
+            logger.warn("The thinking/reasoning cannot be activated when tools are used");
+            return false;
+        }
+
+        var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
+
+        if (systemMessageIsPresent) {
+            logger.warn("The thinking/reasoning cannot be activated when a system message is present");
+            return false;
+        }
+
+        return true;
     }
 
     @SuppressWarnings("unchecked")
