@@ -679,7 +679,7 @@ It is possible for an AI service to use both programmatically and dynamically sp
 
 ### Error Handling
 
-#### Handling Errors with Tool Names
+#### Handling Tool Name Errors
 
 It may happen that an LLM hallucinates on tools invocation,
 or in other words that it asks to use a tool with a name that doesn't exist.
@@ -698,7 +698,7 @@ AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTo
         .build();
 ```
 
-#### Handling Errors with Tool Arguments
+#### Handling Tool Arguments Errors
 
 By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON),
 the AI Service will not be able to execute the tool, so it will fail with an exception.
@@ -745,7 +745,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-#### Handling Errors with Tool Execution
+#### Handling Tool Execution Errors
 
 By default, when a method annotated with `@Tool` throws an `Exception`,
 the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
