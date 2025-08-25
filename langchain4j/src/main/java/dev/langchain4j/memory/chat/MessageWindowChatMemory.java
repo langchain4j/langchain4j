@@ -1,5 +1,11 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -8,13 +14,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * This chat memory operates as a sliding window of {@link #maxMessages} messages.
@@ -54,7 +53,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
         if (message instanceof SystemMessage) {
-            Optional<SystemMessage> systemMessage = findSystemMessage(messages);
+            Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
             if (systemMessage.isPresent()) {
                 if (systemMessage.get().equals(message)) {
                     return; // do not add the same system message
@@ -66,13 +65,6 @@ public class MessageWindowChatMemory implements ChatMemory {
         messages.add(message);
         ensureCapacity(messages, maxMessages);
         store.updateMessages(id, messages);
-    }
-
-    private static Optional<SystemMessage> findSystemMessage(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
-                .findAny();
     }
 
     @Override

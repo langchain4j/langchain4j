@@ -1,6 +1,8 @@
 package dev.langchain4j.data.message;
 
 import java.util.Objects;
+import java.util.List;
+import java.util.Optional;
 
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -71,5 +73,26 @@ public class SystemMessage implements ChatMessage {
      */
     public static SystemMessage systemMessage(String text) {
         return from(text);
+    }
+
+    public static Optional<SystemMessage> findFirst(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .findFirst();
+    }
+
+    public static Optional<SystemMessage> findLast(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .reduce((first, second) -> second);
+    }
+
+    public static List<SystemMessage> findAll(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .toList();
     }
 }
