@@ -47,7 +47,7 @@ class GetResourceToolExecutor implements ToolExecutor {
                 if (content instanceof McpTextResourceContents) {
                     result.append(((McpTextResourceContents) content).text());
                 } else {
-                    throw new ToolExecutionException(new RuntimeException("ERROR: binary content was requested, this is not supported yet"));
+                    throw new ToolExecutionException("ERROR: binary content was requested, this is not supported yet");
                 }
             }
             return result.toString();

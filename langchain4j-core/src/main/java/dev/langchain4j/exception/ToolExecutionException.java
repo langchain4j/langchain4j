@@ -9,6 +9,10 @@ public class ToolExecutionException extends LangChain4jException {
 
     private final Integer errorCode;
 
+    public ToolExecutionException(String message) {
+        this(new RuntimeException(message));
+    }
+
     public ToolExecutionException(Throwable cause) {
         this(cause, null);
     }

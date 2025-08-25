@@ -21,7 +21,7 @@ class ToolExecutionHelper {
             if (resultNode.has("content")) {
                 String content = extractSuccessfulResult((ArrayNode) resultNode.get("content"));
                 if (isError(resultNode)) {
-                    throw new ToolExecutionException(new RuntimeException(content));
+                    throw new ToolExecutionException(content);
                 }
                 return content;
             } else {
