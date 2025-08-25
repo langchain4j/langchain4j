@@ -84,14 +84,14 @@ class CollectionOperationsExecutor {
             String vectorFieldName,
             IndexType indexType,
             MetricType metricType,
-            String extraParam) {
+            String extraParameters) {
 
         CreateIndexParam request = CreateIndexParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFieldName(vectorFieldName)
                 .withIndexType(indexType)
                 .withMetricType(metricType)
-                .withExtraParam(extraParam)
+                .withExtraParam(extraParameters)
                 .build();
 
         R<RpcStatus> response = milvusClient.createIndex(request);

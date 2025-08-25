@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -45,7 +46,6 @@ import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -71,6 +71,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final boolean retrieveEmbeddingsOnSearch;
     private final boolean autoFlushOnInsert;
     private final FieldDefinition fieldDefinition;
+    private final Map<String, Object> extraParameters;
 
     public MilvusEmbeddingStore(
             String host,
@@ -91,7 +92,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String textFieldName,
             String metadataFieldName,
             String vectorFieldName,
-            Map<String,Object> extraParams) {
+            Map<String,Object> extraParameters) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
                 collectionName,
@@ -105,7 +106,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 textFieldName,
                 metadataFieldName,
                 vectorFieldName,
-                extraParams);
+                extraParameters);
     }
 
 
@@ -122,7 +123,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         String textFieldName,
         String metadataFieldName,
         String vectorFieldName,
-        Map<String,Object> extraParams
+        Map<String,Object> extraParameters
     ) {
         this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
         this.collectionName = getOrDefault(collectionName, "default");
@@ -135,13 +136,14 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
                 getOrDefault(metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
                 getOrDefault(vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
+        this.extraParameters = copy(extraParameters);
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(this.milvusClient, this.collectionName, this.fieldDefinition, ensureNotNull(dimension, "dimension"));
-            if (extraParams.isEmpty()) {
+            if (this.extraParameters.isEmpty()) {
                 createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType);
             } else {
-                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType, extraParams.toString());
+                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType, extraParameters.toString());
             }
         }
 
@@ -340,7 +342,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
-        private final Map<String,Object> extraParams = new HashMap<>();
+        private Map<String,Object> extraParameters;
 
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
@@ -531,8 +533,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder extraParam(String key, Object value) {
-            this.extraParams.put(key, value);
+        public Builder extraParameters(Map<String,Object> extraParameters) {
+            this.extraParameters = extraParameters;
             return this;
         }
 
@@ -557,7 +559,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                     textFieldName,
                     metadataFieldName,
                     vectorFieldName,
-                    extraParams
+                    extraParameters
                 );
             }
             return new MilvusEmbeddingStore(
@@ -573,7 +575,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 textFieldName,
                 metadataFieldName,
                 vectorFieldName,
-                extraParams
+                extraParameters
             );
         }
     }

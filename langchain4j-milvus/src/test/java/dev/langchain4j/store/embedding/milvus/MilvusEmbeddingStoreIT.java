@@ -24,7 +24,6 @@ import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
 import io.milvus.param.R;
 import io.milvus.param.index.DescribeIndexParam;
-import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +40,9 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
-    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_EF_CONSTRUCTION_PARAM =
-            new AbstractMap.SimpleEntry<>("efConstruction", 200);
-    private static final AbstractMap.SimpleEntry<String, Integer> HNSW_M_PARAM = new AbstractMap.SimpleEntry<>("M", 16);
-    private static final AbstractMap.SimpleEntry<String, Integer> IVFPQ_M_PARAM = new AbstractMap.SimpleEntry<>("m", 8);
+    private static final Map<String, Object> HNSW_CONSTRUCTION_PARAMETERS =
+            Map.of("efConstruction", 200, "m", 16);
+    private static final  Map<String, Object> IVFPQ_PARAMETERS = Map.of("m", 8, "nlist", 1024);
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
@@ -172,8 +170,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field_hnsw")
                 .indexType(IndexType.HNSW)
-                .extraParam(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue())
-                .extraParam(HNSW_EF_CONSTRUCTION_PARAM.getKey(), HNSW_EF_CONSTRUCTION_PARAM.getValue())
+                .extraParameters(HNSW_CONSTRUCTION_PARAMETERS)
                 .metricType(MetricType.COSINE)
                 .build();
 
@@ -195,12 +192,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         for (KeyValuePair param : params) {
             paramMap.put(param.getKey(), param.getValue());
         }
-        assertThat(paramMap)
-                .containsEntry(HNSW_M_PARAM.getKey(), HNSW_M_PARAM.getValue().toString());
-        assertThat(paramMap)
-                .containsEntry(
-                        HNSW_EF_CONSTRUCTION_PARAM.getKey(),
-                        HNSW_EF_CONSTRUCTION_PARAM.getValue().toString());
+        String key = "efConstruction";
+        assertThat(paramMap).containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
+        key = "m";
+        assertThat(paramMap).containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
     }
 
     @Test
@@ -226,7 +221,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field_ivfpq")
                 .indexType(IndexType.IVF_PQ)
-                .extraParam(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue())
+                .extraParameters(IVFPQ_PARAMETERS)
                 .metricType(MetricType.COSINE)
                 .build();
 
@@ -248,8 +243,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         for (KeyValuePair param : params) {
             paramMap.put(param.getKey(), param.getValue());
         }
-        assertThat(paramMap)
-                .containsEntry(IVFPQ_M_PARAM.getKey(), IVFPQ_M_PARAM.getValue().toString());
+        String key = "nlist";
+        assertThat(paramMap).containsEntry(key, IVFPQ_PARAMETERS.get(key).toString());
+        key = "m";
+        assertThat(paramMap).containsEntry(key, IVFPQ_PARAMETERS.get(key).toString());
     }
 
     @Override
