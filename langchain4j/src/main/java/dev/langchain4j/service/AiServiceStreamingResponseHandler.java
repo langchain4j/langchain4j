@@ -168,7 +168,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
                         } else {
-                            throw new RuntimeException(e);
+                            throw new RuntimeException(e.getCause());
                         }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();

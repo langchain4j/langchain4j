@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
@@ -118,19 +119,10 @@ public class DefaultToolExecutor implements ToolExecutor {
             return prepareArguments(originalMethod, argumentsMap, memoryId);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
-                throw new ToolArgumentsException(getActualCause(e));
+                throw new ToolArgumentsException(unwrapRuntimeException(e));
             } else {
                 throw e;
             }
-        }
-    }
-
-    private static Throwable getActualCause(Exception e) {
-        if (e.getClass() == RuntimeException.class && e.getCause() != null) {
-            // when checked exception (e.g., JsonProcessingException) is wrapped into RuntimeException
-            return e.getCause();
-        } else {
-            return e;
         }
     }
 

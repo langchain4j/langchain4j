@@ -10,6 +10,8 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+
 /**
  * Default Executor for the 'list_resources' synthetic tool that can retrieve a list of resources from one or more MCP servers
  * and returns a JSON representation of the available resources.
@@ -27,7 +29,7 @@ class ListResourcesToolExecutor implements ToolExecutor {
         try {
             return doExecute();
         } catch (Exception e) {
-            throw new ToolExecutionException(e);
+            throw new ToolExecutionException(unwrapRuntimeException(e));
         }
     }
 
