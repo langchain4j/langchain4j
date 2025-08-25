@@ -289,7 +289,7 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executorService(Executors.newFixedThreadPool(2))
+        .executor(Executors.newFixedThreadPool(2))
         .outputName("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -309,7 +309,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Conditional workflow
 
@@ -473,8 +473,8 @@ public interface EveningPlannerAgent {
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
-    @ExecutorService
-    static ExecutorService executor() {
+    @ParallelExecutor
+    static Executor executor() {
         return Executors.newFixedThreadPool(2);
     }
 
@@ -882,6 +882,52 @@ AgenticServices.supervisorBuilder()
 ```
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
+
+### Providing context to the supervisor
+
+In many real-world scenarios, the supervisor benefits from an optional context: constraints, policies, or preferences that should guide planning (for example, "prefer internal tools", "do not call external services", "currency must be USD", etc.).
+
+This context is stored in the `AgenticScope`, variable named `supervisorContext`. You can provide it in two ways:
+
+- Build-time configuration:
+
+```java
+SupervisorAgent bankSupervisor = AgenticServices
+        .supervisorBuilder()
+        .chatModel(PLANNER_MODEL)
+        .supervisorContext("Policies: prefer internal tools; currency USD; no external APIs")
+        .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+        .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+        .build();
+```
+
+- Invocation (typed supervisor): add a parameter annotated with `@V("supervisorContext")`:
+
+```java
+public interface SupervisorAgent {
+    @Agent
+    String invoke(@V("request") String request, @V("supervisorContext") String supervisorContext);
+}
+
+// Example call (overrides the build-time value for this invocation)
+bankSupervisor.invoke(
+        "Transfer 100 EUR from Mario's account to Georgios' one",
+        "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+```
+
+- Invocation (untyped supervisor): set `supervisorContext` in the input map:
+
+```java
+Map<String, Object> input = Map.of(
+        "request", "Transfer 100 EUR from Mario's account to Georgios' one",
+        "supervisorContext", "Policies: convert to USD first; use bank tools only; no external APIs"
+);
+
+String result = (String) bankSupervisor.invoke(input);
+```
+
+If both are provided, the invocation value overrides the build-time `supervisorContext`.
 
 ## Non-AI agents
 

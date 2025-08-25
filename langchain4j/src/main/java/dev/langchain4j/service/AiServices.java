@@ -265,7 +265,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.initChatMemories(chatMemory);
+        if (chatMemory != null) {
+            context.initChatMemories(chatMemory);
+        }
         return this;
     }
 
@@ -290,7 +292,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.initChatMemories(chatMemoryProvider);
+       if (chatMemoryProvider != null) {
+           context.initChatMemories(chatMemoryProvider);
+       }
         return this;
     }
 

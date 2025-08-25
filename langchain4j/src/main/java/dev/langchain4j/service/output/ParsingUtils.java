@@ -109,6 +109,9 @@ class ParsingUtils {
     }
 
     private static String toBase64(String s) {
+        if (s == null) {
+            return null;
+        }
         return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
     }
 }
