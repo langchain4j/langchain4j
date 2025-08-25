@@ -15,6 +15,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -37,12 +38,23 @@ import java.util.function.Function;
 @Internal
 public class ToolService {
 
+    private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
+        if (error instanceof RuntimeException re) {
+            throw re;
+        } else {
+            throw new RuntimeException(error);
+        }
+    };
+    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) ->
+            ToolErrorHandlerResult.text(error.getMessage());
+
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private ToolProvider toolProvider;
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
-
+    private ToolArgumentsErrorHandler argumentsErrorHandler;
+    private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
@@ -74,14 +86,25 @@ public class ToolService {
         }
     }
 
-    private void processToolMethod(Object objectWithTool, Method method) {
+    private void processToolMethod(Object object, Method method) {
         ToolSpecification toolSpecification = toolSpecificationFrom(method);
         if (toolExecutors.containsKey(toolSpecification.name())) {
             throw new IllegalConfigurationException(
                     "Duplicated definition for tool: " + toolSpecification.name());
         }
-        toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+        ToolExecutor toolExecutor = createToolExecutor(object, method);
+        toolExecutors.put(toolSpecification.name(), toolExecutor);
         toolSpecifications.add(toolSpecificationFrom(method));
+    }
+
+    private static ToolExecutor createToolExecutor(Object object, Method method) {
+        return DefaultToolExecutor.builder()
+                .object(object)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .propagateToolExecutionExceptions(true)
+                .build();
     }
 
     /**
@@ -104,6 +127,34 @@ public class ToolService {
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public void argumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        this.argumentsErrorHandler = handler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolArgumentsErrorHandler argumentsErrorHandler() {
+        return getOrDefault(argumentsErrorHandler, DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER);
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public void executionErrorHandler(ToolExecutionErrorHandler handler) {
+        this.executionErrorHandler = handler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolExecutionErrorHandler executionErrorHandler() {
+        return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
@@ -231,9 +282,10 @@ public class ToolService {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                 if (toolExecutor == null) {
                     return applyToolHallucinationStrategy(toolExecutionRequest);
+                } else {
+                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId,
+                            argumentsErrorHandler(), executionErrorHandler());
                 }
-                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
             }, executor);
             futures.put(toolExecutionRequest, future);
         }
@@ -242,7 +294,14 @@ public class ToolService {
         for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> entry : futures.entrySet()) {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof RuntimeException re) {
+                    throw re;
+                } else {
+                    throw new RuntimeException(e.getCause());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
         }
@@ -255,18 +314,42 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             Object memoryId) {
         Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+        for (ToolExecutionRequest request : toolExecutionRequests) {
+            ToolExecutor executor = toolExecutors.get(request.name());
             ToolExecutionResultMessage toolExecutionResultMessage;
-            if (toolExecutor == null) {
-                toolExecutionResultMessage = applyToolHallucinationStrategy(toolExecutionRequest);
+            if (executor == null) {
+                toolExecutionResultMessage = applyToolHallucinationStrategy(request);
             } else {
-                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+                toolExecutionResultMessage = executeWithErrorHandling(request, executor, memoryId,
+                        argumentsErrorHandler(), executionErrorHandler());
             }
-            toolResults.put(toolExecutionRequest, toolExecutionResultMessage);
+            toolResults.put(request, toolExecutionResultMessage);
         }
         return toolResults;
+    }
+
+    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolRequest,
+                                                                      ToolExecutor executor,
+                                                                      Object memoryId,
+                                                                      ToolArgumentsErrorHandler argumentsErrorHandler,
+                                                                      ToolExecutionErrorHandler executionErrorHandler) {
+        String toolResult;
+        try {
+            toolResult = executor.execute(toolRequest, memoryId);
+        } catch (Exception e) {
+            ToolErrorContext errorContext = ToolErrorContext.builder()
+                    .toolExecutionRequest(toolRequest)
+                    .memoryId(memoryId)
+                    .build();
+            ToolErrorHandlerResult errorHandlerResult;
+            if (e instanceof ToolArgumentsException) {
+                errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
+            } else {
+                errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
+            }
+            toolResult = errorHandlerResult.text();
+        }
+        return ToolExecutionResultMessage.from(toolRequest, toolResult);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
