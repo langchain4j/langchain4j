@@ -23,6 +23,7 @@ import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -72,6 +73,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
@@ -272,6 +274,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
 
@@ -439,6 +442,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

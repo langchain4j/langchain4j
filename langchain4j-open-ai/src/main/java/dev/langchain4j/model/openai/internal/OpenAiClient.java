@@ -13,6 +13,7 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.Map;
@@ -51,6 +52,7 @@ public abstract class OpenAiClient {
         public String userAgent;
         public boolean logRequests;
         public boolean logResponses;
+        public Logger logger;
         public Map<String, String> customHeaders;
 
         public abstract T build();
@@ -119,6 +121,11 @@ public abstract class OpenAiClient {
                 logRequests = false;
             }
             this.logRequests = logRequests;
+            return (B) this;
+        }
+
+        public B logger(Logger logger) {
+            this.logger = logger;
             return (B) this;
         }
 

@@ -16,6 +16,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
@@ -39,6 +40,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -84,6 +86,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Integer maxRetries;
         private HttpClientBuilder httpClientBuilder;
 
@@ -143,6 +146,15 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public MistralAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public MistralAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

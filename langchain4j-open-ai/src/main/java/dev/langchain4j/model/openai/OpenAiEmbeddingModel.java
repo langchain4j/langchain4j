@@ -10,6 +10,7 @@ import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
@@ -152,6 +154,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer maxSegmentsPerBatch;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
 
         public OpenAiEmbeddingModelBuilder() {
@@ -220,6 +223,15 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public OpenAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
