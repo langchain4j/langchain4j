@@ -28,18 +28,18 @@ class GetResourceToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         ObjectNode arguments = parseArguments(toolExecutionRequest);
         if (!arguments.has("mcpServer")) {
-            throw new ToolArgumentsException(new RuntimeException("ERROR: missing argument 'mcpServer'"));
+            throw new ToolArgumentsException("ERROR: missing argument 'mcpServer'");
         }
         String mcpServerKey = arguments.get("mcpServer").asText();
         if (!arguments.has("uri")) {
-            throw new ToolArgumentsException(new RuntimeException("ERROR: missing argument 'uri'"));
+            throw new ToolArgumentsException("ERROR: missing argument 'uri'");
         }
         String uri = arguments.get("uri").asText();
         Optional<McpClient> client = mcpClients.stream()
                 .filter(mcpClient -> mcpClient.key().equals(mcpServerKey))
                 .findFirst();
         if (client.isEmpty()) {
-            throw new ToolArgumentsException(new RuntimeException("ERROR: unknown MCP server: " + mcpServerKey));
+            throw new ToolArgumentsException("ERROR: unknown MCP server: " + mcpServerKey);
         } else {
             StringBuilder result = new StringBuilder();
             List<McpResourceContents> contents = client.get().readResource(uri).contents();

@@ -10,8 +10,16 @@ public class ToolArgumentsException extends LangChain4jException {
 
     private final Integer errorCode;
 
+    public ToolArgumentsException(String message) {
+        this(message, null);
+    }
+
     public ToolArgumentsException(Throwable cause) {
         this(cause, null);
+    }
+
+    public ToolArgumentsException(String message, Integer errorCode) {
+        this(new RuntimeException(message), errorCode);
     }
 
     public ToolArgumentsException(Throwable cause, Integer errorCode) {

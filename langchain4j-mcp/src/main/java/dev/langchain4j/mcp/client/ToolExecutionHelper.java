@@ -32,9 +32,9 @@ class ToolExecutionHelper {
                 String errorMessage = extractErrorMessage(result.get("error"));
                 Integer errorCode = extractErrorCode(result.get("error"));
                 if (errorCode != null && errorCode == ERROR_CODE_INVALID_PARAMETERS) {
-                    throw new ToolArgumentsException(new RuntimeException(errorMessage), errorCode);
+                    throw new ToolArgumentsException(errorMessage, errorCode);
                 } else {
-                    throw new ToolExecutionException(new RuntimeException(errorMessage), errorCode);
+                    throw new ToolExecutionException(errorMessage, errorCode);
                 }
             }
             throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + result);
