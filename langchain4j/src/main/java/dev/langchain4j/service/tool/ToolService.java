@@ -286,8 +286,6 @@ public class ToolService {
                     return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId,
                             argumentsErrorHandler(), executionErrorHandler());
                 }
-                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
             }, executor);
             futures.put(toolExecutionRequest, future);
         }
