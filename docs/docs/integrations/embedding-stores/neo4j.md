@@ -302,6 +302,30 @@ final EmbeddingSearchResult<TextSegment> searchWithoutFilter = embeddingStore.se
 final List<EmbeddingMatch<TextSegment>> matchesWithoutFilter = searchWithoutFilter.matches();
 ```
 
+To execute a follow-up query for reading or writing data retrieved by the embedding search, we can leverage the nodes' `embeddingId`s.
+For example:
+```java
+// ... Neo4jEmbeddingStore instance creation ...
+// ... add embeddings.... 
+
+final List<EmbeddingMatch<TextSegment>> results = embeddingStore.search(/*dev.langchain4j.store.embedding.EmbeddingSearchRequest instance*/)
+        .matches();
+
+// retrieve the ids to execute the follow-up
+List<String> nodeIds = results.stream().map(dev.langchain4j.store.embedding.EmbeddingMatch:embeddingId).toList();
+
+String cypher = """
+        MATCH (d:Document)
+        WHERE d.id IN $ids
+        // -- here the follow-up query, for example
+        WITH (d)-[:CONNECTED_TO]->(o:OtherLabel) 
+        RETURN o.id
+    """;
+
+// run the follow-up query
+Map<String, Object> params = Map.of("ids", nodeIds);
+final List<Record> list = session.run(cypher, params).list();
+```
 
 #### Spring Boot starter
 
