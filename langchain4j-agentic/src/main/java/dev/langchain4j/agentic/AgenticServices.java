@@ -3,7 +3,13 @@ package dev.langchain4j.agentic;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
+import dev.langchain4j.agentic.declarative.ChatMemorySupplier;
+import dev.langchain4j.agentic.declarative.ContentRetrieverSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.RetrievalAugmentorSupplier;
+import dev.langchain4j.agentic.declarative.ToolProviderSupplier;
+import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -14,7 +20,7 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SubAgent;
-import dev.langchain4j.agentic.declarative.SupervisorChatModel;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
@@ -32,7 +38,11 @@ import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -222,6 +232,18 @@ public class AgenticServices {
 
     /**
      * Creates an instance of an agentic system defined through the declarative API.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> T createAgenticSystem(Class<T> agentServiceClass) {
+        return createAgenticSystem(agentServiceClass, null);
+    }
+
+    /**
+     * Creates an instance of an agentic system defined through the declarative API and using the provided ChatModel.
+     *
+     * @param agentServiceClass the class of the agent service
+     * @param chatModel the ChatModel used by default for all agents participating in this agentic system
      */
     public static <T> T createAgenticSystem(Class<T> agentServiceClass, ChatModel chatModel) {
         T agent = createComposedAgent(agentServiceClass, chatModel);
@@ -259,7 +281,7 @@ public class AgenticServices {
             return buildSupervisorAgent(agentServiceClass, supervisorMethod.get(), chatModel);
         }
 
-         return null;
+        return null;
     }
 
     private static <T> T buildSequentialAgent(Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel) {
@@ -348,16 +370,10 @@ public class AgenticServices {
                 .map(m -> AgenticServices.agenticScopeFunction(m, String.class))
                 .ifPresent(builder::requestGenerator);
 
-        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorChatModel.class) &&
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatModelSupplier.class) &&
                 method.getReturnType() == ChatModel.class &&
                 method.getParameterCount() == 0)
-                .map(method -> {
-                    try {
-                        return (ChatModel) method.invoke(null);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Error invoking executor method: " + method.getName(), e);
-                    }
-                })
+                .map(method -> (ChatModel) invokeStatic(method))
                 .ifPresentOrElse(builder::chatModel, () -> builder.chatModel(chatModel));
 
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
@@ -377,13 +393,7 @@ public class AgenticServices {
 
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(Class<T> agentServiceClass) {
         return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
-                .map(m -> (Function<ErrorContext, ErrorRecoveryResult>) errorContext -> {
-                    try {
-                        return (ErrorRecoveryResult) m.invoke(null, errorContext);
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                .map(m -> errorContext -> invokeStatic(m, errorContext));
     }
 
     private static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
@@ -391,7 +401,7 @@ public class AgenticServices {
     }
 
     private static Optional<Method> selectMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
-        for (Method method : agentServiceClass.getDeclaredMethods()) {
+        for (Method method : agentServiceClass.getMethods()) {
             if (methodSelector.test(method) && Modifier.isStatic(method.getModifiers())) {
                 return Optional.of(method);
             }
@@ -427,10 +437,101 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        return agentToExecutor((AgentSpecification) AgenticServices.agentBuilder(subagent.type())
-                .chatModel(chatModel)
-                .outputName(subagent.outputName())
-                .build());
+        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type())
+                .outputName(subagent.outputName());
+
+        getAnnotatedMethodOnClass(subagent.type(), ToolsSupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method);
+                    Object tools = invokeStatic(method);
+                    if (tools.getClass().isArray()) {
+                        agentBuilder.tools((Object[]) tools);
+                    } else {
+                        agentBuilder.tools(tools);
+                    }
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), ToolProviderSupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method);
+                    checkReturnType(method, ToolProvider.class);
+                    agentBuilder.toolProvider(invokeStatic(method));
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), ContentRetrieverSupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method);
+                    checkReturnType(method, ContentRetriever.class);
+                    agentBuilder.contentRetriever(invokeStatic(method));
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), RetrievalAugmentorSupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method);
+                    checkReturnType(method, RetrievalAugmentor.class);
+                    agentBuilder.retrievalAugmentor(invokeStatic(method));
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), ChatMemoryProviderSupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method, Object.class);
+                    checkReturnType(method, ChatMemory.class);
+                    agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), ChatMemorySupplier.class)
+                .ifPresent(method -> {
+                    checkArguments(method);
+                    checkReturnType(method, ChatMemory.class);
+                    agentBuilder.chatMemory(invokeStatic(method));
+                });
+
+        getAnnotatedMethodOnClass(subagent.type(), ChatModelSupplier.class)
+                .ifPresentOrElse(method -> {
+                            checkArguments(method);
+                            checkReturnType(method, ChatModel.class);
+                            agentBuilder.chatModel(invokeStatic(method));
+                        },
+                        () -> {
+                            if (chatModel == null) {
+                                throw new IllegalArgumentException("ChatModel not provided for subagent " + subagent.type().getName() +
+                                        ". Please provide a ChatModel either through the @ChatModelSupplier annotation on a static method " +
+                                        "or through the parent agent's chatModel parameter.");
+                            }
+                            agentBuilder.chatModel(chatModel);
+                        });
+
+        if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
+            agentBuilder.summarizedContext(subagent.summarizedContext());
+        }
+
+        return agentToExecutor((AgentSpecification) agentBuilder.build());
+    }
+
+    private static <T> T invokeStatic(Method method, Object... args) {
+        try {
+            return (T) method.invoke(null, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void checkArguments(Method method, Class<?>... expected) {
+        Class<?>[] actual = method.getParameterTypes();
+        if (actual.length != expected.length) {
+            throw new IllegalArgumentException("Method " + method + " must have " + expected.length + " arguments: " + Arrays.toString(expected));
+        }
+        for (int i = 0; i < expected.length; i++) {
+            if (!expected[i].isAssignableFrom(actual[i])) {
+                throw new IllegalArgumentException("Method " + method + " argument " + (i + 1) + " must be of type " + expected[i].getName());
+            }
+        }
+    }
+
+    private static void checkReturnType(Method method, Class<?> expected) {
+        if (!method.getReturnType().isAssignableFrom(expected)) {
+            throw new IllegalArgumentException("Method " + method + " must return " + expected.getName());
+        }
     }
 
     private static AgentExecutor createComposedAgentExecutor(Class<?> agentServiceClass, ChatModel chatModel) {

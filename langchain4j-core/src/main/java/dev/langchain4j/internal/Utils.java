@@ -466,7 +466,7 @@ public class Utils {
         if (Proxy.isProxyClass(method.getDeclaringClass())) {
             for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
                 try {
-                    Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                    Method interfaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
                     if (interfaceMethod.isAnnotationPresent(annotation)) {
                         return Optional.of(interfaceMethod);
                     }
