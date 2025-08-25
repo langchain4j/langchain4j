@@ -17,6 +17,8 @@ import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.Cu
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 class EmbeddingModelTextClassifierTest {
 
@@ -290,5 +292,65 @@ class EmbeddingModelTextClassifierTest {
             .allMatch(score -> score > minScore);
         assertThat(result.scoredLabels().stream().map(ScoredLabel::score).findFirst().orElse(null))
             .isCloseTo(minScore, offset(0.1));
+    }
+    
+    @Test
+    void constructor_shouldThrowException_whenExamplesByLabelIsEmpty() {
+        Map<CustomerServiceCategory, List<String>> emptyMap = new HashMap<>();
+        AllMiniLmL6V2QuantizedEmbeddingModel model = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(model, emptyMap, 1, 0.1, 0.5)
+        );
+
+        assertTrue(exception.getMessage().contains("examplesByLabel"));
+    }
+    
+    @Test
+    void constructor_shouldThrowException_whenMaxResultsIsZero() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 0, 0.1, 0.5)
+        );
+
+        assertTrue(exception.getMessage().contains("maxResults"));
+    }
+    
+    @Test
+    void constructor_shouldThrowException_whenMinScoreIsLessThanZero() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 1, -0.1, 0.5)
+        );
+    }
+    
+    @Test
+    void constructor_shouldThrowException_whenMinScoreIsGreaterThanOne() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 1, 1.1, 0.5)
+        );
+    }
+    
+    @Test
+    void constructor_shouldThrowException_whenMeanToMaxScoreRatioIsLessThanZero() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 1, 0.1, -0.1)
+        );
+    }
+
+    @Test
+    void constructor_shouldThrowException_whenMeanToMaxScoreRatioIsGreaterThanOne() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new EmbeddingModelTextClassifier<>(new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 1, 0.1, 1.1)
+        );
+    }
+    
+    @Test
+    void classifyWithScores_shouldThrowException_whenTextIsBlank() {
+        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+        		new AllMiniLmL6V2QuantizedEmbeddingModel(), examples, 2, 0.0, 0.5
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+            classifier.classifyWithScores("   ")
+        );
     }
 }
