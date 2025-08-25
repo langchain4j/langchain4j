@@ -1,5 +1,13 @@
 package dev.langchain4j.web.search.google.customsearch;
 
+import static com.google.api.services.customsearch.v1.model.Search.Queries;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchUtils.createUriSafely;
+import static java.util.stream.Collectors.toList;
+
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.customsearch.v1.model.Result;
 import com.google.api.services.customsearch.v1.model.Search;
@@ -8,7 +16,6 @@ import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -17,14 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.api.services.customsearch.v1.model.Search.Queries;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchUtils.createUriSafely;
-import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of a {@link WebSearchEngine} that uses
@@ -63,14 +62,15 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      *                      <p>
      *                      Default value is false.
      */
-    public GoogleCustomWebSearchEngine(String apiKey,
-                                       String csi,
-                                       Boolean siteRestrict,
-                                       Boolean includeImages,
-                                       Duration timeout,
-                                       Integer maxRetries,
-                                       Boolean logRequests,
-                                       Boolean logResponses) {
+    public GoogleCustomWebSearchEngine(
+            String apiKey,
+            String csi,
+            Boolean siteRestrict,
+            Boolean includeImages,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
 
         this.googleCustomSearchApiClient = GoogleCustomSearchApiClient.builder()
                 .apiKey(apiKey)
@@ -143,12 +143,15 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                 WebSearchInformationResult.from(
                         Long.valueOf(getOrDefault(search.getSearchInformation().getTotalResults(), "0")),
                         !isNullOrEmpty(search.getQueries().getRequest())
-                                ? calculatePageNumberFromQueries(search.getQueries().getRequest().get(0)) : 1,
+                                ? calculatePageNumberFromQueries(
+                                        search.getQueries().getRequest().get(0))
+                                : 1,
                         searchInformationMetadata.isEmpty() ? null : searchInformationMetadata),
                 toWebSearchOrganicResults(search, searchTypeImage));
     }
 
-    private static void addImagesToSearchInformation(Map<String, Object> searchInformationMetadata, List<ImageSearchResult> images) {
+    private static void addImagesToSearchInformation(
+            Map<String, Object> searchInformationMetadata, List<ImageSearchResult> images) {
         if (!isNullOrEmpty(images)) {
             searchInformationMetadata.put("images", images);
         }
@@ -182,7 +185,13 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             result.getPagemap().forEach((key, value) -> {
                 if (key.equals("metatags")) {
                     if (value instanceof List) {
-                        metadata.put(key, ((List<?>) value).stream().map(Object::toString).reduce((a, b) -> a + ", " + b).orElse(""));
+                        metadata.put(
+                                key,
+                                ((List<?>) value)
+                                        .stream()
+                                                .map(Object::toString)
+                                                .reduce((a, b) -> a + ", " + b)
+                                                .orElse(""));
                     } else {
                         metadata.put(key, value.toString());
                     }
@@ -203,8 +212,8 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                             createUriSafely(result.getLink()),
                             result.getSnippet(),
                             null, // by default google custom search api does not return content
-                            toResultMetadataMap(result, searchTypeImage)
-                    )).collect(toList());
+                            toResultMetadataMap(result, searchTypeImage)))
+                    .collect(toList());
         }
         return organicResults;
     }
@@ -223,15 +232,16 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     }
 
     private static Integer calculatePageNumber(Integer startIndex) {
-        if (startIndex == null)
-            return null;
+        if (startIndex == null) return null;
         return ((startIndex - 1) / 10) + 1;
     }
 
     private static String setCountryRestrict(WebSearchRequest webSearchRequest) {
-        return webSearchRequest.additionalParams().get("cr") != null ? webSearchRequest.additionalParams().get("cr").toString()
-                : isNotNullOrBlank(webSearchRequest.geoLocation()) ? "country" + webSearchRequest.geoLocation().toUpperCase()
-                : ""; // default value
+        return webSearchRequest.additionalParams().get("cr") != null
+                ? webSearchRequest.additionalParams().get("cr").toString()
+                : isNotNullOrBlank(webSearchRequest.geoLocation())
+                        ? "country" + webSearchRequest.geoLocation().toUpperCase()
+                        : ""; // default value
     }
 
     public static final class ImageSearchResult {
@@ -272,12 +282,11 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
 
         @Override
         public String toString() {
-            return "ImageSearchResult{" +
-                    "title='" + title + '\'' +
-                    ", imageLink=" + imageLink +
-                    ", contextLink=" + contextLink +
-                    ", thumbnailLink=" + thumbnailLink +
-                    '}';
+            return "ImageSearchResult{" + "title='"
+                    + title + '\'' + ", imageLink="
+                    + imageLink + ", contextLink="
+                    + contextLink + ", thumbnailLink="
+                    + thumbnailLink + '}';
         }
 
         public static ImageSearchResult from(String title, URI imageLink) {
@@ -299,8 +308,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        GoogleCustomWebSearchEngineBuilder() {
-        }
+        GoogleCustomWebSearchEngineBuilder() {}
 
         public GoogleCustomWebSearchEngineBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -343,11 +351,22 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         }
 
         public GoogleCustomWebSearchEngine build() {
-            return new GoogleCustomWebSearchEngine(this.apiKey, this.csi, this.siteRestrict, this.includeImages, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new GoogleCustomWebSearchEngine(
+                    this.apiKey,
+                    this.csi,
+                    this.siteRestrict,
+                    this.includeImages,
+                    this.timeout,
+                    this.maxRetries,
+                    this.logRequests,
+                    this.logResponses);
         }
 
         public String toString() {
-            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey=" + this.apiKey + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", includeImages=" + this.includeImages + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey=" + this.apiKey + ", csi="
+                    + this.csi + ", siteRestrict=" + this.siteRestrict + ", includeImages=" + this.includeImages
+                    + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests="
+                    + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
