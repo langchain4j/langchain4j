@@ -7,7 +7,7 @@ import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
-import dev.langchain4j.agentic.declarative.ExecutorService;
+import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -315,17 +316,17 @@ public class AgenticServices {
         buildOutput(agentServiceClass, parallelAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
-        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ExecutorService.class) &&
-                method.getReturnType() == java.util.concurrent.ExecutorService.class &&
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ParallelExecutor.class) &&
+                Executor.class.isAssignableFrom(method.getReturnType()) &&
                 method.getParameterCount() == 0)
                 .map(method -> {
                     try {
-                        return (java.util.concurrent.ExecutorService) method.invoke(null);
+                        return (Executor) method.invoke(null);
                     } catch (Exception e) {
                         throw new RuntimeException("Error invoking executor method: " + method.getName(), e);
                     }
                 })
-                .ifPresent(builder::executorService);
+                .ifPresent(builder::executor);
 
         return builder.build();
     }
@@ -466,7 +467,7 @@ public class AgenticServices {
         Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
         if (parallelMethod.isPresent()) {
             Method method = parallelMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildConditionalAgent(agentServiceClass, parallelMethod.get(), chatModel);
+            AgentSpecification agent = (AgentSpecification) buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel);
             ParallelAgent annotation = method.getAnnotation(ParallelAgent.class);
             String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
             String description = annotation == null ? "" : String.join("\n", annotation.description());

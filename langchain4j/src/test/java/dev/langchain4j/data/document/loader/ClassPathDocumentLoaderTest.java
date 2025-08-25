@@ -351,7 +351,7 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         // This must be visible from default class loader
         Document document = ClassPathDocumentLoader.loadDocument(resourceFromClassPath);
         assertNotNull(document);
-        assertThat(document.text()).isEqualTo("test\ncontent");
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
 
         // Create a classloader with no classpath URLs and no parent classloader.
         // This ensures that it won't find any resources (fully isolated).

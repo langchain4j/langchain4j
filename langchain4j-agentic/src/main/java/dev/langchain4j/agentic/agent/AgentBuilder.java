@@ -26,7 +26,6 @@ import java.lang.reflect.Proxy;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
-
     private final Class<T> agentServiceClass;
 
     String outputName;
@@ -48,6 +47,7 @@ public class AgentBuilder<T> {
     private Class<? extends OutputGuardrail>[] outputGuardrailClasses;
     private InputGuardrail[] inputGuardrails;
     private OutputGuardrail[] outputGuardrails;
+    private Function<Object, String> systemMessageProvider;
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
@@ -112,6 +112,9 @@ public class AgentBuilder<T> {
         }
         if (outputGuardrails != null) {
             aiServices.outputGuardrails(outputGuardrails);
+        }
+        if (systemMessageProvider != null) {
+            aiServices.systemMessageProvider(systemMessageProvider);
         }
 
         boolean agenticScopeDependent = contextProvider != null || (agentNames != null && agentNames.length > 0);
@@ -220,6 +223,11 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> summarizedContext(String... agentNames) {
         this.agentNames = agentNames;
+        return this;
+    }
+
+    public AgentBuilder<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        this.systemMessageProvider = systemMessageProvider;
         return this;
     }
 }

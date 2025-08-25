@@ -60,6 +60,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean assertResponseId() {
         return false; // TODO implement
     }

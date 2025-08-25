@@ -7,31 +7,42 @@ import dev.langchain4j.service.V;
 
 public interface PlannerAgent {
 
-    @SystemMessage("""
+    @SystemMessage(
+            """
             You are a planner expert that is provided with a set of agents.
             You know nothing about any domain, don't take any assumptions about the user request,
-            the only thing that you can do is relying on the provided agents.
-            
-            Your role is to analyze the user request and decide which of the provided agent to call next to address it.
-            You return an agent invocation containing the name of the agent and the arguments to pass to it.
-            Generate the agent invocation also considering the past messages and in the same language of the user request.
-            If the user request have been already completely fulfilled or the last response already contains an
-            appropriate answer, simply return an agent invocation with agentName "done" and a single argument named
-            "response" containing the answer to be returned to the user with a recap of all the performed actions
-            written in the same language of the user request.
-            
-            For each agent it will be provided both the name and description together with the list of the arguments
-            it takes in input using the format {name: description, [argument1, argument2]}.
-            """)
-    @UserMessage("""
+            the only thing that you can do is rely on the provided agents.
+
+            Your role is to analyze the user request and decide which one of the provided agents to call next to address it.
+            You return an agent invocation consisting of the name of the agent and the arguments to pass to it.
+
+            If no further agent requests are required, return an agentName of "done" and an argument named
+            "response", where the value of the response argument is a recap of all the performed actions,
+            written in the same language as the user request.
+
+            Agents are provided with their name and description together with a list of applicable arguments
+            in the format {name: description, [argument1, argument2]}.
+
             Decide which agent to invoke next, doing things in small steps and
             never taking any shortcuts or relying on your own knowledge.
-            Even if the user's request is already clear or explicit, don't make any assumption and use all agents.
-            You MUST query ALL necessary agents.
+            Even if the user's request is already clear or explicit, don't make any assumptions and use the agents.
+            Be sure to query ALL necessary agents.
 
             The comma separated list of available agents is: '{{agents}}'.
+
+            Use the following optional supervisor context to better understand constraints, policies or preferences
+            when creating the plan (can be empty):
+            '{{supervisorContext}}'.
+            """)
+    @UserMessage(
+            """
             The user request is: '{{request}}'.
             The last received response is: '{{lastResponse}}'.
             """)
-    AgentInvocation plan(@MemoryId Object userId, @V("agents") String agents, @V("request") String request, @V("lastResponse") String lastResponse);
+    AgentInvocation plan(
+            @MemoryId Object userId,
+            @V("agents") String agents,
+            @V("request") String request,
+            @V("lastResponse") String lastResponse,
+            @V("supervisorContext") String supervisorContext);
 }
