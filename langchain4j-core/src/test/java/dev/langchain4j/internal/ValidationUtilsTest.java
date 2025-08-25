@@ -68,7 +68,7 @@ class ValidationUtilsTest implements WithAssertions {
 
         {
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((String)null, "test"))
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((String) null, "test"))
                     .withMessageContaining("test cannot be null or empty");
         }
     }
@@ -112,7 +112,8 @@ class ValidationUtilsTest implements WithAssertions {
         {
             Object[] array = {};
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "%s", "Parameterized type has no type arguments."))
+                    .isThrownBy(() ->
+                            ValidationUtils.ensureNotEmpty(array, "%s", "Parameterized type has no type arguments."))
                     .withMessageContaining("Parameterized type has no type arguments.");
         }
 

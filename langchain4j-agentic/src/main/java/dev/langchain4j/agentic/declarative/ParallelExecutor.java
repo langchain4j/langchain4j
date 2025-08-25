@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface ExecutorService {
+public @interface ParallelExecutor {
 }
