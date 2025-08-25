@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 
 import dev.langchain4j.data.document.Metadata;
@@ -80,5 +81,32 @@ class NotTest {
         int initialHashCode = subject.hashCode();
 
         assertThat(subject.hashCode()).isEqualTo(initialHashCode);
+    }
+
+    @Test
+    void shouldHandleNullInput() {
+        boolean result = subject.test(null);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void shouldThrowExceptionWhenConstructorReceivesNull() {
+        assertThatThrownBy(() -> new Not(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldNotEqualNull() {
+        assertThat(subject).isNotEqualTo(null);
+    }
+
+    @Test
+    void shouldNotEqualDifferentClass() {
+        assertThat(subject).isNotEqualTo("not a Not filter");
+    }
+
+    @Test
+    void shouldEqualItself() {
+        assertThat(subject).isEqualTo(subject);
     }
 }
