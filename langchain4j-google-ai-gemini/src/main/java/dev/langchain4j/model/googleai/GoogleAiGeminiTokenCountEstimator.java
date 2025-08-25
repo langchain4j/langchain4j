@@ -29,6 +29,8 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 ensureNotBlank(builder.apiKey, "apiKey"),
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -106,6 +108,8 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         private String baseUrl;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
         private Duration timeout;
         private Integer maxRetries;
 
@@ -131,8 +135,19 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
+        @Deprecated(forRemoval = true, since = "1.4.0")
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 

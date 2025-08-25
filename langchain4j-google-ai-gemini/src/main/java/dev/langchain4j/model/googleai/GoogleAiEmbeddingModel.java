@@ -33,6 +33,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.apiKey,
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -132,6 +134,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer outputDimensionality;
         private Duration timeout;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         GoogleAiEmbeddingModelBuilder() {}
 
@@ -180,8 +184,19 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        @Deprecated(forRemoval = true, since = "1.4.0")
         public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 
