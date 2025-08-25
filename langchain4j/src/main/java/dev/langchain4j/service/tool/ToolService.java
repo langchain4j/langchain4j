@@ -328,17 +328,17 @@ public class ToolService {
         return toolResults;
     }
 
-    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest request,
+    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolRequest,
                                                                       ToolExecutor executor,
                                                                       Object memoryId,
                                                                       ToolArgumentsErrorHandler argumentsErrorHandler,
                                                                       ToolExecutionErrorHandler executionErrorHandler) {
         String toolResult;
         try {
-            toolResult = executor.execute(request, memoryId);
+            toolResult = executor.execute(toolRequest, memoryId);
         } catch (Exception e) {
             ToolErrorContext errorContext = ToolErrorContext.builder()
-                    .toolExecutionRequest(request)
+                    .toolExecutionRequest(toolRequest)
                     .memoryId(memoryId)
                     .build();
             ToolErrorHandlerResult errorHandlerResult;
@@ -349,7 +349,7 @@ public class ToolService {
             }
             toolResult = errorHandlerResult.text();
         }
-        return ToolExecutionResultMessage.from(request, toolResult);
+        return ToolExecutionResultMessage.from(toolRequest, toolResult);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
