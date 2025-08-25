@@ -13,6 +13,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchUtils.createUriSafely;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -121,16 +123,16 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         Map<String, Object> searchInformationMetadata = new HashMap<>();
 
         // Images search
-        if (includeImages && !searchTypeImage) {
+        if (Boolean.TRUE.equals(includeImages) && !searchTypeImage) {
             requestQuery.setSearchType("image");
             Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
             if (!isNullOrEmpty(imagesSearch.getItems())) {
                 List<ImageSearchResult> images = imagesSearch.getItems().stream()
                         .map(result -> ImageSearchResult.from(
                                 result.getTitle(),
-                                URI.create(result.getLink()),
-                                URI.create(result.getImage().getContextLink()),
-                                URI.create(result.getImage().getThumbnailLink())))
+                                createUriSafely(result.getLink()),
+                                createUriSafely(result.getImage().getContextLink()),
+                                createUriSafely(result.getImage().getThumbnailLink())))
                         .collect(toList());
                 addImagesToSearchInformation(searchInformationMetadata, images);
             }
@@ -152,9 +154,9 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         }
     }
 
-    private static Map<String, Object> toSearchMetadata(Search search, Boolean searchTypeImage) {
+    private static Map<String, Object> toSearchMetadata(Search search, boolean searchTypeImage) {
         if (search == null) {
-            return null;
+            return Collections.emptyMap();
         }
         Map<String, Object> searchMetadata = new HashMap<>();
         searchMetadata.put("status", "Success");
@@ -189,7 +191,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             });
             return metadata;
         }
-        return null;
+        return Collections.emptyMap();
     }
 
     private static List<WebSearchOrganicResult> toWebSearchOrganicResults(Search search, Boolean searchTypeImage) {
@@ -198,7 +200,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             organicResults = search.getItems().stream()
                     .map(result -> WebSearchOrganicResult.from(
                             result.getTitle(),
-                            URI.create(result.getLink()),
+                            createUriSafely(result.getLink()),
                             result.getSnippet(),
                             null, // by default google custom search api does not return content
                             toResultMetadataMap(result, searchTypeImage)
@@ -208,16 +210,13 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     }
 
     private static Integer calculatePageNumberFromQueries(GenericJson query) {
-        if (query instanceof Queries.PreviousPage) {
-            Queries.PreviousPage previousPage = (Queries.PreviousPage) query;
+        if (query instanceof Queries.PreviousPage previousPage) {
             return calculatePageNumber(previousPage.getStartIndex());
         }
-        if (query instanceof Queries.Request) {
-            Queries.Request currentPage = (Queries.Request) query;
+        if (query instanceof Queries.Request currentPage) {
             return calculatePageNumber(getOrDefault(currentPage.getStartIndex(), 1));
         }
-        if (query instanceof Queries.NextPage) {
-            Queries.NextPage nextPage = (Queries.NextPage) query;
+        if (query instanceof Queries.NextPage nextPage) {
             return calculatePageNumber(nextPage.getStartIndex());
         }
         return null;
