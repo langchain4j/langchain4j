@@ -97,7 +97,7 @@ public class ToolService {
         toolSpecifications.add(toolSpecificationFrom(method));
     }
 
-    private ToolExecutor createToolExecutor(Object object, Method method) {
+    private static ToolExecutor createToolExecutor(Object object, Method method) {
         return DefaultToolExecutor.builder()
                 .object(object)
                 .originalMethod(method)
