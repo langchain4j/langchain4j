@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodySubscriber;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -31,6 +32,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String url;
+    private final Map<String, String> userHeaders;
     private final boolean logResponses;
     private final boolean logRequests;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -44,6 +46,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
+        userHeaders = getOrDefault(builder.headers, Map.of());
         HttpClient.Builder clientBuilder = HttpClient.newBuilder();
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
@@ -74,6 +77,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (sessionId != null) {
             builder.header("Mcp-Session-Id", sessionId);
         }
+        userHeaders.forEach(builder::header);
         return builder.uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
@@ -185,6 +189,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private Executor executor;
         private String url;
+        private Map<String, String> headers;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -194,6 +199,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder url(String url) {
             this.url = url;
+            return this;
+        }
+
+        /**
+         * The request headers of the MCP server.
+         */
+        public StreamableHttpMcpTransport.Builder headers(Map<String, String> headers) {
+            this.headers = headers;
             return this;
         }
 
