@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.Tool;
@@ -15,6 +14,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
 
 @Internal
@@ -101,19 +99,7 @@ public class ToolService {
     }
 
     private static Executor defaultExecutor() {
-        return DefaultExecutorHolder.INSTANCE;
-    }
-
-    private static class DefaultExecutorHolder {
-        private static final Executor INSTANCE = createDefaultExecutor();
-    }
-
-    private static Executor createDefaultExecutor() {
-        return new ThreadPoolExecutor(
-                0, Integer.MAX_VALUE,
-                1, SECONDS,
-                new SynchronousQueue<>()
-        );
+        return DefaultExecutorProvider.getDefaultExecutorService();
     }
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
