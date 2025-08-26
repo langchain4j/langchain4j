@@ -7,7 +7,7 @@ import java.util.BitSet;
 /**
  * Utility class for Google Custom Web Search operations.
  */
-public final class GoogleCustomWebSearchUtils {
+final class GoogleCustomWebSearchUtils {
 
     private GoogleCustomWebSearchUtils() {}
 
