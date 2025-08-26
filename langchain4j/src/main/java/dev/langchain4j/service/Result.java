@@ -42,7 +42,7 @@ public class Result<T> {
      * @since 1.2.0
      */
     public Result(ResultBuilder<T> builder) {
-        this.content = ensureNotNull(builder.content, "content");
+        this.content = builder.content;
         this.tokenUsage = builder.tokenUsage;
         this.sources = copy(builder.sources);
         this.finishReason = builder.finishReason;
