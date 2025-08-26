@@ -254,12 +254,14 @@ public class ToolService {
             }
 
             if (immediateToolReturn) {
+                ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()
-                  .intermediateResponses(intermediateResponses)
-                  .finalResponse(null)
-                  .toolExecutions(toolExecutions)
-                  .aggregateTokenUsage(aggregateTokenUsage)
-                  .build();
+                        .intermediateResponses(intermediateResponses)
+                        .finalResponse(finalResponse)
+                        .toolExecutions(toolExecutions)
+                        .aggregateTokenUsage(aggregateTokenUsage)
+                        .immediateToolReturn(true)
+                        .build();
             }
 
             if (chatMemory != null) {

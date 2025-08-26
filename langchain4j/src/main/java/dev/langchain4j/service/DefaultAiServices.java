@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -287,14 +288,17 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        if (chatResponse == null) {
+                        if (toolServiceResult.immediateToolReturn()) {
                             return Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(dev.langchain4j.model.output.FinishReason.STOP)
+                                    .finishReason(TOOL_EXECUTION)
                                     .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
                                     .build();
                         }
-
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
