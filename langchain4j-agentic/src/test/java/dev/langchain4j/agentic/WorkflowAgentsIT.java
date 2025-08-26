@@ -419,6 +419,8 @@ public class WorkflowAgentsIT {
         assertThat(expertRouterAgent.evictAgenticScope("2")).isTrue();
         assertThat(expertRouterAgent.evictAgenticScope("1")).isFalse();
         assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
+
+        AgenticScopePersister.setStore(null);
     }
 
     @Test
