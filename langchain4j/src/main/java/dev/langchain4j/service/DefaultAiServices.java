@@ -290,7 +290,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (chatResponse == null) {
                             return Result.builder()
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(FinishReason.STOP)
+                                    .finishReason(dev.langchain4j.model.output.FinishReason.STOP)
                                     .toolExecutions(toolServiceResult.toolExecutions())
                                     .build();
                         }
