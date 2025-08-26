@@ -203,7 +203,6 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             boolean isResultType) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
-        int executionsLeft = maxSequentialToolsInvocations;
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
 
