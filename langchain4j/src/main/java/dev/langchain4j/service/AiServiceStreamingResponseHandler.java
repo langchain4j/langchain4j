@@ -221,7 +221,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
             if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = finalResponse(completeResponse, aiMessage);
+                ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
