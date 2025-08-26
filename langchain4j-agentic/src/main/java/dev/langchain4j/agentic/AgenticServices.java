@@ -289,7 +289,7 @@ public class AgenticServices {
         var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel));
 
-        buildOutput(agentServiceClass, sequenceAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, sequenceAgent.name(), sequenceAgent.description(), sequenceAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         return builder.build();
@@ -301,7 +301,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(loopAgent.subAgents(), chatModel))
                 .maxIterations(loopAgent.maxIterations());
 
-        buildOutput(agentServiceClass, loopAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, loopAgent.name(), loopAgent.description(), loopAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
@@ -315,7 +315,7 @@ public class AgenticServices {
         ConditionalAgent conditionalAgent = agentMethod.getAnnotation(ConditionalAgent.class);
         var builder = conditionalBuilder(agentServiceClass);
 
-        buildOutput(agentServiceClass, conditionalAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, conditionalAgent.name(), conditionalAgent.description(), conditionalAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         for (SubAgent subagent : conditionalAgent.subAgents()) {
@@ -335,7 +335,7 @@ public class AgenticServices {
         var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel));
 
-        buildOutput(agentServiceClass, parallelAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, parallelAgent.name(), parallelAgent.description(), parallelAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ParallelExecutor.class) &&
@@ -361,7 +361,15 @@ public class AgenticServices {
                 .responseStrategy(supervisorAgent.responseStrategy())
                 .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel));
 
-        if (!supervisorAgent.outputName().isBlank()) {
+        if (!isNullOrBlank(supervisorAgent.name())) {
+            builder.name(supervisorAgent.name());
+        } else {
+            builder.name(agentMethod.getName());
+        }
+        if (!isNullOrBlank(supervisorAgent.description())) {
+            builder.description(supervisorAgent.description());
+        }
+        if (!isNullOrBlank(supervisorAgent.outputName())) {
             builder.outputName(supervisorAgent.outputName());
         }
 
@@ -381,8 +389,16 @@ public class AgenticServices {
         return builder.build();
     }
 
-    private static <T> void buildOutput(Class<T> agentServiceClass, String outputName, WorkflowService<?, ?> builder) {
-        if (!outputName.isBlank()) {
+    private static <T> void buildAgentSpecs(Class<T> agentServiceClass, Method agentMethod, String name, String description, String outputName, WorkflowService<?, ?> builder) {
+        if (!isNullOrBlank(name)) {
+            builder.name(name);
+        } else {
+            builder.name(agentMethod.getName());
+        }
+        if (!isNullOrBlank(description)) {
+            builder.description(description);
+        }
+        if (!isNullOrBlank(outputName)) {
             builder.outputName(outputName);
         }
 
@@ -539,50 +555,35 @@ public class AgenticServices {
         if (sequenceMethod.isPresent()) {
             Method method = sequenceMethod.get();
             AgentSpecification agent = (AgentSpecification) buildSequentialAgent(agentServiceClass, method, chatModel);
-            SequenceAgent annotation = method.getAnnotation(SequenceAgent.class);
-            String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-            String description = annotation == null ? "" : String.join("\n", annotation.description());
-            return new AgentExecutor(AgentInvoker.fromMethodAndSpec(method, name, description, agent.outputName()), agent);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> loopMethod = getAnnotatedMethodOnClass(agentServiceClass, LoopAgent.class);
         if (loopMethod.isPresent()) {
             Method method = loopMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildLoopAgent(agentServiceClass, loopMethod.get(), chatModel);
-            LoopAgent annotation = method.getAnnotation(LoopAgent.class);
-            String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-            String description = annotation == null ? "" : String.join("\n", annotation.description());
-            return new AgentExecutor(AgentInvoker.fromMethodAndSpec(method, name, description, agent.outputName()), agent);
+            AgentSpecification agent = (AgentSpecification) buildLoopAgent(agentServiceClass, method, chatModel);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> conditionalMethod = getAnnotatedMethodOnClass(agentServiceClass, ConditionalAgent.class);
         if (conditionalMethod.isPresent()) {
             Method method = conditionalMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildConditionalAgent(agentServiceClass, conditionalMethod.get(), chatModel);
-            ConditionalAgent annotation = method.getAnnotation(ConditionalAgent.class);
-            String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-            String description = annotation == null ? "" : String.join("\n", annotation.description());
-            return new AgentExecutor(AgentInvoker.fromMethodAndSpec(method, name, description, agent.outputName()), agent);
+            AgentSpecification agent = (AgentSpecification) buildConditionalAgent(agentServiceClass, method, chatModel);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
         if (parallelMethod.isPresent()) {
             Method method = parallelMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel);
-            ParallelAgent annotation = method.getAnnotation(ParallelAgent.class);
-            String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-            String description = annotation == null ? "" : String.join("\n", annotation.description());
-            return new AgentExecutor(AgentInvoker.fromMethodAndSpec(method, name, description, agent.outputName()), agent);
+            AgentSpecification agent = (AgentSpecification) buildParallelAgent(agentServiceClass, method, chatModel);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> supervisorMethod = getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         if (supervisorMethod.isPresent()) {
             Method method = supervisorMethod.get();
-            AgentSpecification agent = (AgentSpecification) buildSupervisorAgent(agentServiceClass, supervisorMethod.get(), chatModel);
-            dev.langchain4j.agentic.declarative.SupervisorAgent annotation = method.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
-            String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-            String description = annotation == null ? "" : String.join("\n", annotation.description());
-            return new AgentExecutor(AgentInvoker.fromMethodAndSpec(method, name, description, agent.outputName()), agent);
+            AgentSpecification agent = (AgentSpecification) buildSupervisorAgent(agentServiceClass, method, chatModel);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         return null;

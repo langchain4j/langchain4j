@@ -25,9 +25,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.Function;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 public class AgentBuilder<T> {
     private final Class<T> agentServiceClass;
 
+    String name;
+    String description;
     String outputName;
 
     private ChatModel model;
@@ -56,8 +60,19 @@ public class AgentBuilder<T> {
         if (agent == null) {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
-        if (!agent.outputName().isEmpty()) {
-            outputName = agent.outputName();
+
+        if (!isNullOrBlank(agent.name())) {
+            this.name = agent.name();
+        } else {
+            this.name = agenticMethod.getName();
+        }
+        if (!isNullOrBlank(agent.description())) {
+            this.description = agent.description();
+        } else if (!isNullOrBlank(agent.value())) {
+            this.description = agent.value();
+        }
+        if (!isNullOrBlank(agent.outputName())) {
+            this.outputName = agent.outputName();
         }
     }
 
@@ -208,6 +223,16 @@ public class AgentBuilder<T> {
 
     public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrails(O... outputGuardrails) {
         this.outputGuardrails = outputGuardrails;
+        return this;
+    }
+
+    public AgentBuilder<T> name(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public AgentBuilder<T> description(String description) {
+        this.description = description;
         return this;
     }
 
