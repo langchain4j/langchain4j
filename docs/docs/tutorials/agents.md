@@ -37,7 +37,9 @@ public interface CreativeWriter {
 }
 ```
 
-It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when to use it.
+It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when to use it. This description can be also provided programmatically when building the agent, using the `description` method of the agent builder.
+
+Agents must also have a name uniquely identifying them inside the agentic system. This name can be specified either in the `@Agent` annotation or programmatically using the `name` method of the agent builder. If not specified, the name is taken from the name of the method annotated with `@Agent`.
 
 It is now possible to build an instance of this agent using the `AgenticServices.agentBuilder()` method, specifying the interface and the chat model to use. 
 
