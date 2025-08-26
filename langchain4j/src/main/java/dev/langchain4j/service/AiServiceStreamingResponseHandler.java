@@ -262,6 +262,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 completeResponse.metadata().tokenUsage()))
                         .build())
                 .build();
+    }
 
     private ToolExecutionResultMessage execute(ToolExecutionRequest toolRequest) {
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
