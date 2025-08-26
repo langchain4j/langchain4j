@@ -100,7 +100,7 @@ class InternalOpenAiOfficialHelper {
             return ModelHost.GITHUB_MODELS; // Forced by the user
         }
         if (baseUrl != null) {
-            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/")) {
+            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/") || baseUrl.endsWith("cognitiveservices.azure.com") || baseUrl.endsWith("cognitiveservices.azure.com/") ) {
                 return ModelHost.AZURE_OPENAI;
             } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
                 return ModelHost.GITHUB_MODELS;
