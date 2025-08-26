@@ -7,24 +7,20 @@ import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
 public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgentService<T>> implements ParallelAgentService<T> {
 
-    private ExecutorService executorService;
+    private Executor executor;
 
     private ParallelAgentServiceImpl(Class<T> agentServiceClass) {
         super(agentServiceClass);
-    }
-
-    private static class DefaultExecutorHolder {
-        private static final ExecutorService DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
     }
 
     @Override
@@ -57,12 +53,12 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
         }
 
         private void parallelExecution(DefaultAgenticScope agenticScope) {
-            ExecutorService executors = executorService != null ? executorService : DefaultExecutorHolder.DEFAULT_EXECUTOR;
+            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
             var tasks = agentExecutors().stream()
-                    .map(agentExecutor -> (Callable<Object>) () -> agentExecutor.execute(agenticScope))
+                    .map(agentExecutor -> CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope), exec))
                     .toList();
             try {
-                for (Future<?> future : executors.invokeAll(tasks)) {
+                for (Future<?> future : tasks) {
                     future.get();
                 }
             } catch (InterruptedException | ExecutionException e) {
@@ -79,9 +75,8 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
         return new ParallelAgentServiceImpl<>(agentServiceClass);
     }
 
-    @Override
-    public ParallelAgentServiceImpl<T> executorService(ExecutorService executorService) {
-        this.executorService = executorService;
+    public ParallelAgentServiceImpl<T> executor(Executor executor) {
+        this.executor = executor;
         return this;
     }
 }
