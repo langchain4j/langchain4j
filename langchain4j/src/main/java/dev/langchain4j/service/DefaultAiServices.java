@@ -295,7 +295,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        FinishReason finishReason = chatResponse.metadata().finishReason();
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
