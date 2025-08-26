@@ -44,7 +44,7 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
-       for (Method method : agent.getClass().getDeclaredMethods()) {
+       for (Method method : agent.getClass().getMethods()) {
            Optional<AgentExecutor> executor = A2AService.get().isPresent() ?
                    A2AService.get().methodToAgentExecutor(agent, method) :
                    methodToAgentExecutor(agent, method);
@@ -56,7 +56,7 @@ public class AgentUtil {
     }
 
     public static Optional<Method> getAnnotatedMethodOnClass(Class<?> clazz, Class<? extends Annotation> annotation) {
-        return Arrays.stream(clazz.getDeclaredMethods())
+        return Arrays.stream(clazz.getMethods())
                 .filter(m -> m.isAnnotationPresent(annotation))
                 .findFirst();
     }
@@ -124,8 +124,12 @@ public class AgentUtil {
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
+        return validateAgentClass(agentServiceClass, true);
+    }
+
+    public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getDeclaredMethods()) {
+        for (Method method : agentServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Agent.class)) {
                 if (agentMethod != null) {
                     throw new IllegalArgumentException("Multiple agent methods found in class: " + agentServiceClass.getName());
@@ -133,7 +137,7 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null) {
+        if (agentMethod == null && failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

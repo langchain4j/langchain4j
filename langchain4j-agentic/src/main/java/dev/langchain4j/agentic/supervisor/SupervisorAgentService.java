@@ -14,6 +14,10 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> chatModel(ChatModel chatModel);
 
+    SupervisorAgentService<T> name(String outputName);
+
+    SupervisorAgentService<T> description(String outputName);
+
     SupervisorAgentService<T> outputName(String outputName);
 
     SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);

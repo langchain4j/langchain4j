@@ -1,11 +1,18 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.ToolsSupplier;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopePersister;
+import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
@@ -18,11 +25,16 @@ import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
-import dev.langchain4j.agentic.declarative.SupervisorChatModel;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -243,7 +255,7 @@ public class DeclarativeAgentIT {
             return "Write a story about " + topic + " in " + style + " style";
         }
 
-        @SupervisorChatModel
+        @ChatModelSupplier
         static ChatModel chatModel() {
             return plannerModel();
         }
@@ -269,5 +281,229 @@ public class DeclarativeAgentIT {
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+    }
+
+    public interface MedicalExpertWithMemory {
+
+        @UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A medical expert")
+        @Agent("A medical expert")
+        String medical(@MemoryId String memoryId, @V("request") String request);
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface LegalExpertWithMemory {
+
+        @UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A legal expert")
+        @Agent("A legal expert")
+        String legal(@MemoryId String memoryId, @V("request") String request);
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface TechnicalExpertWithMemory {
+
+        @UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A technical expert")
+        @Agent("A technical expert")
+        String technical(@MemoryId String memoryId, @V("request") String request);
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface ExpertsAgentWithMemory {
+
+        @ConditionalAgent(outputName = "response", subAgents = {
+                @SubAgent(type = MedicalExpertWithMemory.class, outputName = "response"),
+                @SubAgent(type = TechnicalExpertWithMemory.class, outputName = "response"),
+                @SubAgent(type = LegalExpertWithMemory.class, outputName = "response", summarizedContext = {"medical", "technical"})
+        })
+        String askExpert(@V("request") String request);
+
+        @ActivationCondition(MedicalExpertWithMemory.class)
+        static boolean activateMedical(@V("category") RequestCategory category) {
+            return category == RequestCategory.MEDICAL;
+        }
+
+        @ActivationCondition(TechnicalExpertWithMemory.class)
+        static boolean activateTechnical(@V("category") RequestCategory category) {
+            return category == RequestCategory.TECHNICAL;
+        }
+
+        @ActivationCondition(LegalExpertWithMemory.class)
+        static boolean activateLegal(@V("category") RequestCategory category) {
+            return category == RequestCategory.LEGAL;
+        }
+    }
+
+    public interface CategoryRouterWithModel extends CategoryRouter {
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess  {
+
+        @SequenceAgent(outputName = "response", subAgents = {
+                @SubAgent(type = CategoryRouterWithModel.class, outputName = "category"),
+                @SubAgent(type = ExpertsAgentWithMemory.class, outputName = "response")
+        })
+        String ask(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    @Test
+    void declarative_memory_tests() {
+        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgentWithMemory.class);
+
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
+        System.out.println(response1);
+
+        AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
+
+        assertThat(store.getLoadedIds()).isEmpty();
+
+        String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
+        System.out.println(response2);
+
+        AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
+
+        AgenticScopeRegistry registry = ((AgenticScopeOwner)expertRouterAgent).registry();
+        assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
+
+        // Clear the in-memory registry to simulate a restart
+        registry.clearInMemory();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
+
+        String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
+        System.out.println(legalResponse1);
+
+        String legalResponse2 = expertRouterAgent.ask("2", "Should I sue my neighbor who caused this damage?");
+        System.out.println(legalResponse2);
+
+        assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
+
+        assertThat(legalResponse1).containsIgnoringCase("medical").doesNotContain("computer");
+        assertThat(legalResponse2).containsIgnoringCase("computer").doesNotContain("medical");
+
+        // It is necessary to read again the agenticScope instances since they were evicted from the in-memory registry
+        // and reloaded from the persistence provider
+        agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
+        agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
+
+        assertThat(expertRouterAgent.evictAgenticScope("1")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("2")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("1")).isFalse();
+        assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
+
+        AgenticScopePersister.setStore(null);
+    }
+
+    static SupervisorAgentIT.BankTool bankTool = new SupervisorAgentIT.BankTool();
+
+    public interface WithdrawAgent {
+        @SystemMessage("""
+            You are a banker that can only withdraw US dollars (USD) from a user account.
+            """)
+        @UserMessage("""
+            Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
+            """)
+        @Agent("A banker that withdraw USD from an account")
+        String withdraw(@V("user") String user, @V("amountInUSD") Double amount);
+
+        @ToolsSupplier
+        static Object tools() {
+            return bankTool;
+        }
+    }
+
+    public interface CreditAgent {
+        @SystemMessage("""
+            You are a banker that can only credit US dollars (USD) to a user account.
+            """)
+        @UserMessage("""
+            Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
+            """)
+        @Agent("A banker that credit USD to an account")
+        String credit(@V("user") String user, @V("amountInUSD") Double amount);
+
+        @ToolsSupplier
+        static Object[] tools() {
+            return new Object[] { bankTool };
+        }
+    }
+
+    public interface SupervisorBanker {
+
+        @SupervisorAgent(responseStrategy = SupervisorResponseStrategy.SUMMARY, subAgents = {
+                @SubAgent(type = WithdrawAgent.class),
+                @SubAgent(type = CreditAgent.class)
+        })
+        String invoke(@V("request") String request);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return plannerModel();
+        }
+    }
+
+    @Test
+    void declarative_tools_tests() {
+        bankTool.createAccount("Mario", 1000.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
+        String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
+
+        System.out.println(result);
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
     }
 }

@@ -216,8 +216,7 @@ public class SupervisorAgentIT {
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
-                outputName = "exchange")
+        @Agent(outputName = "exchange")
         Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency);
     }
 
@@ -310,6 +309,7 @@ public class SupervisorAgentIT {
             // Using an AI agent
             exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
                     .chatModel(baseModel())
+                    .description("A money exchanger that converts a given amount of money from the original to the target currency")
                     .tools(new ExchangeTool())
                     .build();
         } else {
