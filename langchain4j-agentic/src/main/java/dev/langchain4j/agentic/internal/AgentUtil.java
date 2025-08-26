@@ -124,6 +124,10 @@ public class AgentUtil {
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
+        return validateAgentClass(agentServiceClass, true);
+    }
+
+    public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation) {
         Method agentMethod = null;
         for (Method method : agentServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Agent.class)) {
@@ -133,7 +137,7 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null) {
+        if (agentMethod == null && failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

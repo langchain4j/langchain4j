@@ -12,7 +12,6 @@ import java.lang.reflect.Parameter;
 import java.util.Optional;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public interface AgentInvoker {
 
@@ -34,10 +33,7 @@ public interface AgentInvoker {
     }
 
     static AgentInvoker fromMethod(AgentSpecification agent, Method method) {
-        Agent annotation = method.getAnnotation(Agent.class);
-        String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        return fromMethodAndSpec(method, name, description, agent.outputName());
+        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName());
     }
 
     static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName) {

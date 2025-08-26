@@ -10,12 +10,14 @@ import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class ConditionalAgentServiceImpl<T> extends AbstractService<T, ConditionalAgentService<T>> implements ConditionalAgentService<T> {
 
@@ -23,8 +25,8 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
 
     private final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
 
-    private ConditionalAgentServiceImpl(Class<T> agentServiceClass) {
-        super(agentServiceClass);
+    private ConditionalAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        super(agentServiceClass, agenticMethod);
     }
 
     @Override
@@ -64,11 +66,11 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     }
 
     public static ConditionalAgentServiceImpl<UntypedAgent> builder() {
-        return builder(UntypedAgent.class);
+        return new ConditionalAgentServiceImpl<>(UntypedAgent.class, null);
     }
 
     public static <T> ConditionalAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new ConditionalAgentServiceImpl<>(agentServiceClass);
+        return new ConditionalAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
 
     @Override
