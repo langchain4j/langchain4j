@@ -58,8 +58,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -102,7 +102,10 @@ class InternalOpenAiOfficialHelper {
             return ModelHost.GITHUB_MODELS; // Forced by the user
         }
         if (baseUrl != null) {
-            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/") || baseUrl.endsWith("cognitiveservices.azure.com") || baseUrl.endsWith("cognitiveservices.azure.com/") ) {
+            if (baseUrl.endsWith("openai.azure.com")
+                    || baseUrl.endsWith("openai.azure.com/")
+                    || baseUrl.endsWith("cognitiveservices.azure.com")
+                    || baseUrl.endsWith("cognitiveservices.azure.com/")) {
                 return ModelHost.AZURE_OPENAI;
             } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
                 return ModelHost.GITHUB_MODELS;
@@ -241,14 +244,13 @@ class InternalOpenAiOfficialHelper {
         } else if (modelHost == ModelHost.AZURE_OPENAI) {
             // Using Azure OpenAI
             String tmpUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            // If the Azure deployment name is not configured, the model name will be used by default by the OpenAI Java SDK
+            // If the Azure deployment name is not configured, the model name will be used by default by the OpenAI Java
+            // SDK
             if (azureDeploymentName != null && !azureDeploymentName.equals(modelName)) {
                 tmpUrl += "/openai/deployments/" + azureDeploymentName;
-
             }
             if (azureOpenAiServiceVersion != null) {
-                tmpUrl += "?api-version="
-                        + azureOpenAiServiceVersion.value();
+                tmpUrl += "?api-version=" + azureOpenAiServiceVersion.value();
             }
             return tmpUrl;
         } else {
@@ -319,12 +321,13 @@ class InternalOpenAiOfficialHelper {
             }
 
             List<ChatCompletionMessageToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
-                    .map(it -> ChatCompletionMessageToolCall.ofFunction(
-                            ChatCompletionMessageFunctionToolCall.builder()
-                                    .id(it.id())
-                                    .function(ChatCompletionMessageFunctionToolCall.Function.builder().name(it.name()).arguments(it.arguments()).build())
-                                    .build()
-                            ))
+                    .map(it -> ChatCompletionMessageToolCall.ofFunction(ChatCompletionMessageFunctionToolCall.builder()
+                            .id(it.id())
+                            .function(ChatCompletionMessageFunctionToolCall.Function.builder()
+                                    .name(it.name())
+                                    .arguments(it.arguments())
+                                    .build())
+                            .build()))
                     .collect(toList());
 
             return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
@@ -472,7 +475,8 @@ class InternalOpenAiOfficialHelper {
         if (!toolCall.isFunction() || toolCall.function().isEmpty()) {
             return null;
         }
-        ChatCompletionMessageFunctionToolCall functionToolCall = toolCall.function().get();
+        ChatCompletionMessageFunctionToolCall functionToolCall =
+                toolCall.function().get();
         return ToolExecutionRequest.builder()
                 .id(functionToolCall.id())
                 .name(functionToolCall.function().name())
