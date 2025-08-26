@@ -16,7 +16,9 @@ class Json {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-    public static String toJson(Object o) {
+    static final ObjectMapper OBJECT_MAPPER_WITHOUT_INDENT = new ObjectMapper().disable(INDENT_OUTPUT);
+
+    static String toJson(Object o) {
         try {
             return OBJECT_MAPPER.writeValueAsString(o);
         } catch (JsonProcessingException e) {
@@ -24,12 +26,19 @@ class Json {
         }
     }
 
-    public static <T> T fromJson(String json, Class<T> type) {
+    static String toJsonWithoutIndent(Object o) {
+        try {
+            return OBJECT_MAPPER_WITHOUT_INDENT.writeValueAsString(o);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static <T> T fromJson(String json, Class<T> type) {
         try {
             return OBJECT_MAPPER.readValue(json, type);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-
 }

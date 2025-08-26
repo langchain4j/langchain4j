@@ -13,7 +13,7 @@ public interface ToolExecutor {
      *
      * @param toolExecutionRequest The tool execution request. Contains tool name and arguments.
      * @param memoryId             The ID of the chat memory. See {@link MemoryId} for more details.
-     * @return The result of the tool execution.
+     * @return The result of the tool execution that will be sent to the LLM.
      */
     String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId);
 }

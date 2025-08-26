@@ -1,6 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Verify that the MCP client with stdio transport doesn't get stuck when launching the subprocess fails.
  */
-public class McpStdioLaunchIssueIT {
+class McpStdioLaunchIssueIT {
 
     /**
      * With a non-existent command, the client will fail immediately after calling the ProcessBuilder.
      */
     @Test
-    void testWithNonExistentCommand() throws Exception {
+    void withNonExistentCommand() throws Exception {
         McpClient client = null;
         try {
             StdioMcpTransport transport = new StdioMcpTransport.Builder()
@@ -42,7 +42,7 @@ public class McpStdioLaunchIssueIT {
      * the client will fail after the "initialization timeout".
      */
     @Test
-    void testFailingJBangScript() throws Exception {
+    void failingJBangScript() throws Exception {
         McpServerHelper.skipTestsIfJbangNotAvailable();
         McpClient client = null;
         try {

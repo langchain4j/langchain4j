@@ -1,9 +1,10 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.20.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.1.0
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.1.0
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.25.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.4.0
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.4.0
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +36,17 @@ public class tools_mcp_server {
         return "ok";
     }
 
+    @Tool(description = "Takes an untyped array")
+    public String untypedArray(Object[] arr) throws Exception {
+        // note: I would return something like 'wrong' and 'correct' here but that 'wrong' seems to cause the model to keep retrying the call.
+        // so, 6789 is considered to be the expected output
+        if(Arrays.equals(arr, new Object[] {0, "abs", null})) {
+            return "6789";
+        } else {
+            return "1234";
+        }
+    }
+
     @Tool(description = "Throws a business error")
     public String error() throws Exception {
         throw new RuntimeException("business error");
@@ -47,4 +59,13 @@ public class tools_mcp_server {
         return new ToolResponse(true, lst);
     }
 
+    @Tool
+    public ToolResponse getWeatherThrowingException(String arg0) {
+        return new ToolResponse(true, List.of(new TextContent("Weather service is unavailable")));
+    }
+
+    @Tool
+    public String getWeather(String arg0) {
+        return "Sunny";
+    }
 }

@@ -9,9 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -37,6 +35,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -47,12 +46,17 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -102,6 +106,8 @@ class AiServicesWithToolsIT {
 
     static class TransactionService {
 
+        final Queue<Thread> threads = new ConcurrentLinkedQueue<>();
+
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
@@ -113,6 +119,7 @@ class AiServicesWithToolsIT {
 
         @Tool("returns amount of a given transaction")
         double getTransactionAmount(@P("ID of a transaction") String id) {
+            threads.add(Thread.currentThread());
             System.out.printf("called getTransactionAmount(%s)%n", id);
             switch (id) {
                 case "T001":
@@ -147,16 +154,13 @@ class AiServicesWithToolsIT {
 
         assertThat(result.content()).contains("11.1");
 
-        TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
         assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
+
+        assertThat(transactionService.threads).hasSize(1);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
@@ -177,8 +181,29 @@ class AiServicesWithToolsIT {
         assertThat(toolExecutionResultMessage.toolName()).isEqualTo("getTransactionAmount");
         assertThat(toolExecutionResultMessage.text()).isEqualTo("11.1");
 
-        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
+        AiMessage secondAiMessage = (AiMessage) messages.get(3);
+        assertThat(secondAiMessage.text()).contains("11.1");
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).request()).isEqualTo(toolExecutionRequest);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+
+        assertThat(result.intermediateResponses()).hasSize(1);
+        ChatResponse intermediateResponse = result.intermediateResponses().get(0);
+        assertThat(intermediateResponse.aiMessage()).isEqualTo(aiMessage);
+
+        assertThat(result.finalResponse().aiMessage()).isEqualTo(secondAiMessage);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().inputTokenCount()
+                        + result.finalResponse().tokenUsage().inputTokenCount());
+        assertThat(tokenUsage.outputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().outputTokenCount()
+                        + result.finalResponse().tokenUsage().outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(spyChatModel)
                 .chat(ChatRequest.builder()
@@ -226,6 +251,10 @@ class AiServicesWithToolsIT {
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
+
+        assertThat(transactionService.threads).hasSize(2);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
@@ -315,6 +344,10 @@ class AiServicesWithToolsIT {
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
 
+        assertThat(transactionService.threads).hasSize(2);
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+        assertThat(transactionService.threads.poll()).isEqualTo(Thread.currentThread());
+
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(5);
 
@@ -359,6 +392,116 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
                         .build());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TIME = "16:28";
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTime(String city) {
+                getCurrentTimeThreads.add(Thread.currentThread());
+                return CURRENT_TIME;
+            }
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current time and temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTime("Munich");
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+    }
+
+    static List<Executor> executors() {
+        return List.of(Executors.newFixedThreadPool(2));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @MethodSource("executors")
+    void should_execute_single_tool_in_the_same_thread(Executor executor) {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        assertThat(spyTools.getCurrentTemperatureThreads.poll()).isEqualTo(Thread.currentThread());
     }
 
     static class IntegerListProcessor {
@@ -941,52 +1084,5 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_propagate_exception_thrown_from_tool_method_to_LLM(ChatModel model) {
-
-        // given
-        String exceptionMessage = "Weather service is unavailable";
-
-        class FailingTool {
-
-            @Tool
-            String getWeather(String ignored) {
-                throw new RuntimeException(exceptionMessage);
-            }
-        }
-
-        interface Assistant {
-
-            String chat(String userMessage);
-        }
-
-        ChatModel spyModel = spy(model);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyModel)
-                .tools(new FailingTool())
-                .build();
-
-        // when
-        assistant.chat("What is the weather in Munich?");
-
-        // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(exceptionMessage)));
-        ignoreOtherInvocations(spyModel);
-        verifyNoMoreInteractions(spyModel);
-    }
-
-    private static void ignoreOtherInvocations(ChatModel model) {
-        verify(model, atLeast(0)).doChat(any());
-        verify(model, atLeast(0)).defaultRequestParameters();
-        verify(model, atLeast(0)).listeners();
-        verify(model, atLeast(0)).provider();
-        verify(model, atLeast(0)).supportedCapabilities();
     }
 }

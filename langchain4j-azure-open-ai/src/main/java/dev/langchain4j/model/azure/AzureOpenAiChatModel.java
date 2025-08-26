@@ -185,9 +185,9 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
-                .setStop(parameters.stopSequences())
+                .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
-                .setLogitBias(logitBias)
+                .setLogitBias(logitBias.isEmpty() ? null : logitBias)
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
@@ -200,8 +200,8 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                client.getChatCompletions(parameters.modelName(), options));
+        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.getChatCompletions(parameters.modelName(), options));
 
         ChatChoice chatChoice = chatCompletions.getChoices().get(0);
 

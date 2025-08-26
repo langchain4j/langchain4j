@@ -14,6 +14,15 @@ public abstract class AnthropicClient {
 
     public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
 
+    /**
+     * @since 1.2.0
+     */
+    public void createMessage(AnthropicCreateMessageRequest request,
+                              AnthropicCreateMessageOptions options,
+                              StreamingChatResponseHandler handler) {
+        createMessage(request, handler);
+    }
+
     public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler);
 
     @SuppressWarnings("rawtypes")

@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -192,12 +191,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 
-                        // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
-                        boolean supportsJsonSchema = supportsJsonSchema(); // TODO should it be called for
-                        // returnType==String?
+                        // TODO should it be called when returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema();
 
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
@@ -228,6 +226,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .messages(messages)
                                     .toolSpecifications(toolServiceContext.toolSpecifications())
                                     .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                    .toolExecutor(context.toolService.executor())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
@@ -258,10 +259,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = ChatRequest.builder()
-                                .messages(messages)
-                                .parameters(parameters)
-                                .build();
+                        ChatRequest chatRequest = context.chatRequestTransformer
+                                .apply(ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(), memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
@@ -283,7 +285,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 toolServiceContext.toolExecutors(),
                                 isResultType);
 
-                        chatResponse = toolServiceResult.chatResponse();
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
                         if (chatResponse == null) {
                             return Result.builder()
@@ -294,8 +296,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         FinishReason finishReason = chatResponse.metadata().finishReason();
+
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, chatResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             return response;
@@ -306,10 +309,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (isResultType) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(chatResponse.tokenUsage())
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(finishReason)
+                                    .finishReason(toolServiceResult.finalResponse().finishReason())
                                     .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
                                     .build();
                         } else {
                             return parsedResponse;
