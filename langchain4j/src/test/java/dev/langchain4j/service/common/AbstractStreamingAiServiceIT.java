@@ -12,11 +12,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -205,7 +205,11 @@ public abstract class AbstractStreamingAiServiceIT {
                 .start();
 
         ChatResponse chatResponse = future.join();
-        assertThat(chatResponse.aiMessage()).isNull();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
         assertThat(toolExecutions).hasSize(1);
         assertThat(toolExecutions.get(0).result()).isEqualTo("124");
 
@@ -216,6 +220,7 @@ public abstract class AbstractStreamingAiServiceIT {
         List<ToolExecution> toolExecutions2 = new ArrayList<>();
         CompletableFuture<ChatResponse> future2 = new CompletableFuture<>();
 
+        // when
         // Check that the memory is not corrupted and conversation can continue
         assistant.chat("Now add 47 to the previous result")
                 .onPartialResponse(ignored -> {})
@@ -225,7 +230,11 @@ public abstract class AbstractStreamingAiServiceIT {
                 .start();
 
         ChatResponse chatResponse2 = future2.join();
-        assertThat(chatResponse2.aiMessage()).isNull();
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.toolExecutionRequests()).hasSize(1);
+
         assertThat(toolExecutions2).hasSize(1);
         assertThat(toolExecutions2.get(0).result()).isEqualTo("171");
 

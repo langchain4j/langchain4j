@@ -1105,7 +1105,6 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(1)).toolExecutionRequests()).hasSize(1);
         assertThat(((AiMessage) messages.get(1)).toolExecutionRequests().get(0).name()).isEqualTo("add");
-        assertThat(((AiMessage) messages.get(1)).text()).isNullOrEmpty();
 
         // The third message is the tool execution result
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);

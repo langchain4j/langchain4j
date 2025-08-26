@@ -23,7 +23,7 @@ public class ToolServiceResult {
      */
     public ToolServiceResult(Builder builder) {
         this.intermediateResponses = copy(builder.intermediateResponses);
-        this.finalResponse = builder.finalResponse;
+        this.finalResponse = ensureNotNull(builder.finalResponse, "finalResponse");
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
         this.immediateToolReturn = builder.immediateToolReturn;

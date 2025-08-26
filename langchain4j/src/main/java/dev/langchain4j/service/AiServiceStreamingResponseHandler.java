@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
-import dev.langchain4j.service.tool.ToolServiceResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -188,7 +187,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             if (immediateToolReturn) {
-                completeResponseHandler.accept(finalResponse(chatResponse, aiMessage));
+                if (completeResponseHandler != null) {
+                    ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+                    completeResponseHandler.accept(finalChatResponse);
+                }
                 return;
             }
 
