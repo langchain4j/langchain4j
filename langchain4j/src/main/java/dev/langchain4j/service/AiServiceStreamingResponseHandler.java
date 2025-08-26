@@ -188,7 +188,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             if (immediateToolReturn) {
-                completeResponseHandler.accept(finalResponse(chatResponse, null));
+                completeResponseHandler.accept(finalResponse(chatResponse, aiMessage));
                 return;
             }
 
