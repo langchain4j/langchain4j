@@ -92,7 +92,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String textFieldName,
             String metadataFieldName,
             String vectorFieldName,
-            Map<String,Object> extraParameters) {
+            Map<String, Object> extraParameters) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
                 collectionName,
@@ -109,22 +109,20 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 extraParameters);
     }
 
-
     public MilvusEmbeddingStore(
-        MilvusServiceClient milvusClient,
-        String collectionName,
-        Integer dimension,
-        IndexType indexType,
-        MetricType metricType,
-        ConsistencyLevelEnum consistencyLevel,
-        Boolean retrieveEmbeddingsOnSearch,
-        Boolean autoFlushOnInsert,
-        String idFieldName,
-        String textFieldName,
-        String metadataFieldName,
-        String vectorFieldName,
-        Map<String,Object> extraParameters
-    ) {
+            MilvusServiceClient milvusClient,
+            String collectionName,
+            Integer dimension,
+            IndexType indexType,
+            MetricType metricType,
+            ConsistencyLevelEnum consistencyLevel,
+            Boolean retrieveEmbeddingsOnSearch,
+            Boolean autoFlushOnInsert,
+            String idFieldName,
+            String textFieldName,
+            String metadataFieldName,
+            String vectorFieldName,
+            Map<String, Object> extraParameters) {
         this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
         this.collectionName = getOrDefault(collectionName, "default");
         this.metricType = getOrDefault(metricType, COSINE);
@@ -139,11 +137,26 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.extraParameters = copy(extraParameters);
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
-            createCollection(this.milvusClient, this.collectionName, this.fieldDefinition, ensureNotNull(dimension, "dimension"));
+            createCollection(
+                    this.milvusClient,
+                    this.collectionName,
+                    this.fieldDefinition,
+                    ensureNotNull(dimension, "dimension"));
             if (this.extraParameters.isEmpty()) {
-                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType);
+                createIndex(
+                        this.milvusClient,
+                        this.collectionName,
+                        this.fieldDefinition.getVectorFieldName(),
+                        getOrDefault(indexType, FLAT),
+                        this.metricType);
             } else {
-                createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType, extraParameters.toString());
+                createIndex(
+                        this.milvusClient,
+                        this.collectionName,
+                        this.fieldDefinition.getVectorFieldName(),
+                        getOrDefault(indexType, FLAT),
+                        this.metricType,
+                        extraParameters.toString());
             }
         }
 
@@ -342,7 +355,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
-        private Map<String,Object> extraParameters;
+        private Map<String, Object> extraParameters;
 
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
@@ -533,7 +546,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder extraParameters(Map<String,Object> extraParameters) {
+        public Builder extraParameters(Map<String, Object> extraParameters) {
             this.extraParameters = extraParameters;
             return this;
         }
@@ -541,42 +554,40 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         public MilvusEmbeddingStore build() {
             if (milvusClient == null) {
                 return new MilvusEmbeddingStore(
-                    host,
-                    port,
+                        host,
+                        port,
+                        collectionName,
+                        dimension,
+                        indexType,
+                        metricType,
+                        uri,
+                        token,
+                        username,
+                        password,
+                        consistencyLevel,
+                        retrieveEmbeddingsOnSearch,
+                        autoFlushOnInsert,
+                        databaseName,
+                        idFieldName,
+                        textFieldName,
+                        metadataFieldName,
+                        vectorFieldName,
+                        extraParameters);
+            }
+            return new MilvusEmbeddingStore(
+                    milvusClient,
                     collectionName,
                     dimension,
                     indexType,
                     metricType,
-                    uri,
-                    token,
-                    username,
-                    password,
                     consistencyLevel,
                     retrieveEmbeddingsOnSearch,
                     autoFlushOnInsert,
-                    databaseName,
                     idFieldName,
                     textFieldName,
                     metadataFieldName,
                     vectorFieldName,
-                    extraParameters
-                );
-            }
-            return new MilvusEmbeddingStore(
-                milvusClient,
-                collectionName,
-                dimension,
-                indexType,
-                metricType,
-                consistencyLevel,
-                retrieveEmbeddingsOnSearch,
-                autoFlushOnInsert,
-                idFieldName,
-                textFieldName,
-                metadataFieldName,
-                vectorFieldName,
-                extraParameters
-            );
+                    extraParameters);
         }
     }
 }

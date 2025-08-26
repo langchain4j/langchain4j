@@ -40,9 +40,8 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
-    private static final Map<String, Object> HNSW_CONSTRUCTION_PARAMETERS =
-            Map.of("efConstruction", 200, "m", 16);
-    private static final  Map<String, Object> IVFPQ_PARAMETERS = Map.of("m", 8, "nlist", 1024);
+    private static final Map<String, Object> HNSW_CONSTRUCTION_PARAMETERS = Map.of("efConstruction", 200, "m", 16);
+    private static final Map<String, Object> IVFPQ_PARAMETERS = Map.of("m", 8, "nlist", 1024);
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
@@ -193,9 +192,11 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             paramMap.put(param.getKey(), param.getValue());
         }
         String key = "efConstruction";
-        assertThat(paramMap).containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
+        assertThat(paramMap)
+                .containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
         key = "m";
-        assertThat(paramMap).containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
+        assertThat(paramMap)
+                .containsEntry(key, HNSW_CONSTRUCTION_PARAMETERS.get(key).toString());
     }
 
     @Test
