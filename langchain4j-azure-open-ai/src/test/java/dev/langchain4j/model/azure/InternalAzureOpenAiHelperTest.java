@@ -45,7 +45,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -60,7 +70,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -183,5 +203,4 @@ class InternalAzureOpenAiHelperTest {
         RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(0, null);
         assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isZero();
     }
-
 }
