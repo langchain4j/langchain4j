@@ -274,7 +274,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        boolean isResultType = typeHasRawClass(returnType, Result.class);
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
 
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
@@ -284,11 +284,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 memoryId,
                                 toolServiceContext.toolExecutors(),
-                                isResultType);
+                                isReturnTypeResult);
 
-                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
-
-                        if (toolServiceResult.immediateToolReturn()) {
+                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             return Result.builder()
                                     .content(null)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
@@ -300,6 +298,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
+
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
 
@@ -309,7 +309,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
 
-                        if (isResultType) {
+                        if (isReturnTypeResult) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())

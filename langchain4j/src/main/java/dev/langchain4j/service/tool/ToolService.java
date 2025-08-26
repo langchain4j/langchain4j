@@ -201,7 +201,7 @@ public class ToolService {
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors,
-            boolean isResultType) {
+            boolean immediateToolReturn) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -231,8 +231,6 @@ public class ToolService {
 
             Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, memoryId);
-
-            boolean immediateToolReturn = isResultType;
 
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
                 ToolExecutionRequest toolExecutionRequest = entry.getKey();
