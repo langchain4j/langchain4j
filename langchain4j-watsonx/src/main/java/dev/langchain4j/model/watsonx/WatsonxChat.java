@@ -17,6 +17,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -29,13 +30,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Internal
 abstract class WatsonxChat {
 
-    private static final Logger logger = LoggerFactory.getLogger(WatsonxChatModel.class);
     protected static final ControlMessage THINKING = ControlMessage.of("thinking");
 
     protected final ChatService chatService;
@@ -116,20 +114,17 @@ abstract class WatsonxChat {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
 
-    boolean isThinkingActivable(List<ChatMessage> messages, List<ToolSpecification> tools) {
+    boolean isThinkingActivable(List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
         if (isNull(tags)) return false;
 
-        if (!isNullOrEmpty(tools)) {
-            logger.warn("The thinking/reasoning cannot be activated when tools are used");
-            return false;
-        }
+        if (!isNullOrEmpty(tools))
+            throw new LangChain4jException("The thinking/reasoning cannot be activated when tools are used");
 
         var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
 
-        if (systemMessageIsPresent) {
-            logger.warn("The thinking/reasoning cannot be activated when a system message is present");
-            return false;
-        }
+        if (systemMessageIsPresent)
+            throw new LangChain4jException(
+                    "The thinking/reasoning cannot be activated when a system message is present");
 
         return true;
     }

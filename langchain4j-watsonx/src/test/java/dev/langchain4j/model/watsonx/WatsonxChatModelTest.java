@@ -23,12 +23,12 @@ import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
-import com.ibm.watsonx.ai.chat.model.SystemMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.UserMessage;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -237,20 +237,14 @@ public class WatsonxChatModelTest {
                     .thinking(ExtractionTags.of("think"))
                     .build();
 
-            chatModel.chat(ChatRequest.builder()
-                    .messages(
-                            dev.langchain4j.data.message.SystemMessage.from("You are an helpful assistant"),
-                            dev.langchain4j.data.message.UserMessage.from("Hello"))
-                    .build());
-
-            assertEquals(2, chatRequestCaptor.getValue().getMessages().size());
-            assertEquals(
-                    SystemMessage.of("You are an helpful assistant"),
-                    chatRequestCaptor.getValue().getMessages().get(0));
-
-            assertEquals(
-                    UserMessage.text("Hello"),
-                    chatRequestCaptor.getValue().getMessages().get(1));
+            assertThrows(
+                    LangChain4jException.class,
+                    () -> chatModel.chat(ChatRequest.builder()
+                            .messages(
+                                    dev.langchain4j.data.message.SystemMessage.from("You are an helpful assistant"),
+                                    dev.langchain4j.data.message.UserMessage.from("Hello"))
+                            .build()),
+                    "The thinking/reasoning cannot be activated when a system message is present");
         });
         // --------------
 
@@ -265,14 +259,12 @@ public class WatsonxChatModelTest {
                     .toolSpecifications(ToolSpecification.builder().name("test").build())
                     .build();
 
-            chatModel.chat(ChatRequest.builder()
-                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
-                    .build());
-
-            assertEquals(1, chatRequestCaptor.getValue().getMessages().size());
-            assertEquals(
-                    UserMessage.text("Hello"),
-                    chatRequestCaptor.getValue().getMessages().get(0));
+            assertThrows(
+                    LangChain4jException.class,
+                    () -> chatModel.chat(ChatRequest.builder()
+                            .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                            .build()),
+                    "The thinking/reasoning cannot be activated when tools are used");
         });
         // --------------
     }
