@@ -172,13 +172,13 @@ class Converter {
     }
 
     private static AssistantMessage toAssistantMessage(AiMessage aiMessage) {
+        List<ToolCall> toolCalls = null;
         if (aiMessage.hasToolExecutionRequests()) {
-            var toolCalls = aiMessage.toolExecutionRequests().stream()
+            toolCalls = aiMessage.toolExecutionRequests().stream()
                     .map(Converter::toToolCall)
                     .toList();
-            return AssistantMessage.tools(toolCalls);
         }
-        return AssistantMessage.text(aiMessage.text());
+        return new AssistantMessage(AssistantMessage.ROLE, aiMessage.text(), null, null, toolCalls);
     }
 
     private static com.ibm.watsonx.ai.chat.model.UserMessage toUserMessage(UserMessage userMessage) {
