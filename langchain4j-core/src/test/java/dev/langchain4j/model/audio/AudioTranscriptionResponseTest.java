@@ -1,8 +1,8 @@
 package dev.langchain4j.model.audio;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 class AudioTranscriptionResponseTest {
 

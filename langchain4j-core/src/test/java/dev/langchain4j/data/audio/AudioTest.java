@@ -1,11 +1,10 @@
 package dev.langchain4j.data.audio;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.net.URI;
 import java.util.Base64;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class AudioTest {
 
@@ -16,10 +15,7 @@ class AudioTest {
         String mimeType = "audio/wav";
 
         // when
-        Audio audio = Audio.builder()
-                .binaryData(binaryData)
-                .mimeType(mimeType)
-                .build();
+        Audio audio = Audio.builder().binaryData(binaryData).mimeType(mimeType).build();
 
         // then
         assertThat(audio.binaryData()).isEqualTo(binaryData);
@@ -35,10 +31,7 @@ class AudioTest {
         String mimeType = "audio/mp3";
 
         // when
-        Audio audio = Audio.builder()
-                .base64Data(base64Data)
-                .mimeType(mimeType)
-                .build();
+        Audio audio = Audio.builder().base64Data(base64Data).mimeType(mimeType).build();
 
         // then
         assertThat(audio.base64Data()).isEqualTo(base64Data);
@@ -54,10 +47,7 @@ class AudioTest {
         String mimeType = "audio/wav";
 
         // when
-        Audio audio = Audio.builder()
-                .url(urlString)
-                .mimeType(mimeType)
-                .build();
+        Audio audio = Audio.builder().url(urlString).mimeType(mimeType).build();
 
         // then
         assertThat(audio.url()).isEqualTo(URI.create(urlString));
@@ -73,10 +63,7 @@ class AudioTest {
         String mimeType = "audio/wav";
 
         // when
-        Audio audio = Audio.builder()
-                .url(uri)
-                .mimeType(mimeType)
-                .build();
+        Audio audio = Audio.builder().url(uri).mimeType(mimeType).build();
 
         // then
         assertThat(audio.url()).isEqualTo(uri);
@@ -148,10 +135,8 @@ class AudioTest {
     @Test
     void should_return_null_filename_for_base64_data() {
         // given
-        Audio audio = Audio.builder()
-                .base64Data("dGVzdCBkYXRh")
-                .mimeType("audio/wav")
-                .build();
+        Audio audio =
+                Audio.builder().base64Data("dGVzdCBkYXRh").mimeType("audio/wav").build();
 
         // when
         String filename = audio.getFilename();
@@ -164,14 +149,8 @@ class AudioTest {
     void should_be_equal_when_same_content() {
         // given
         byte[] data = "test".getBytes();
-        Audio audio1 = Audio.builder()
-                .binaryData(data)
-                .mimeType("audio/wav")
-                .build();
-        Audio audio2 = Audio.builder()
-                .binaryData(data)
-                .mimeType("audio/wav")
-                .build();
+        Audio audio1 = Audio.builder().binaryData(data).mimeType("audio/wav").build();
+        Audio audio2 = Audio.builder().binaryData(data).mimeType("audio/wav").build();
 
         // then
         assertThat(audio1).isEqualTo(audio2);

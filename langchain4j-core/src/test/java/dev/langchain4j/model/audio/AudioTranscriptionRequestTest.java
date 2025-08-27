@@ -1,10 +1,10 @@
 package dev.langchain4j.model.audio;
 
-import dev.langchain4j.data.audio.Audio;
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.data.audio.Audio;
+import org.junit.jupiter.api.Test;
 
 class AudioTranscriptionRequestTest {
 
@@ -17,9 +17,8 @@ class AudioTranscriptionRequestTest {
                 .build();
 
         // when
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // then
         assertThat(request.audio()).isEqualTo(audio);
@@ -63,9 +62,8 @@ class AudioTranscriptionRequestTest {
                 .build();
 
         // when
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio)
-                .prompt("Test prompt")
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder(audio).prompt("Test prompt").build();
 
         // then
         assertThat(request.audio()).isEqualTo(audio);
@@ -75,8 +73,7 @@ class AudioTranscriptionRequestTest {
     @Test
     void should_throw_exception_when_audio_is_null() {
         // when & then
-        assertThatThrownBy(() -> AudioTranscriptionRequest.builder()
-                .build())
+        assertThatThrownBy(() -> AudioTranscriptionRequest.builder().build())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Audio must be provided");
     }
@@ -146,15 +143,11 @@ class AudioTranscriptionRequestTest {
                 .build();
 
         // when
-        AudioTranscriptionRequest request1 = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .language("en")
-                .build();
+        AudioTranscriptionRequest request1 =
+                AudioTranscriptionRequest.builder().audio(audio).language("en").build();
 
-        AudioTranscriptionRequest request2 = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .language("fr")
-                .build();
+        AudioTranscriptionRequest request2 =
+                AudioTranscriptionRequest.builder().audio(audio).language("fr").build();
 
         AudioTranscriptionRequest request3 = AudioTranscriptionRequest.builder()
                 .audio(audio)
@@ -174,9 +167,9 @@ class AudioTranscriptionRequestTest {
                 .binaryData("test audio".getBytes())
                 .mimeType("audio/wav")
                 .build();
-        String longPrompt = "This is a very long prompt that contains multiple sentences. " +
-                "It should be used to guide the transcription process. " +
-                "The prompt can contain specific terminology or context.";
+        String longPrompt = "This is a very long prompt that contains multiple sentences. "
+                + "It should be used to guide the transcription process. "
+                + "The prompt can contain specific terminology or context.";
 
         // when
         AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
