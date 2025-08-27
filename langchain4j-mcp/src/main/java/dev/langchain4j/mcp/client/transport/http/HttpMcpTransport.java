@@ -38,7 +38,7 @@ public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
-    private final Map<String, String> userHeaders;
+    private final Map<String, String> customHeaders;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
@@ -65,7 +65,7 @@ public class HttpMcpTransport implements McpTransport {
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
-        userHeaders = getOrDefault(builder.headers, Map.of());
+        customHeaders = getOrDefault(builder.customHeaders, Map.of());
         client = httpClientBuilder.build();
     }
 
@@ -185,14 +185,14 @@ public class HttpMcpTransport implements McpTransport {
 
     private Headers buildCommonHeaders() {
         Headers.Builder headerBuilder = new Headers.Builder();
-        userHeaders.forEach(headerBuilder::add);
+        customHeaders.forEach(headerBuilder::add);
         return headerBuilder.build();
     }
 
     private Request createRequest(McpClientMessage message) throws JsonProcessingException {
         Headers.Builder headerBuilder = new Headers.Builder()
                 .add(CONTENT_TYPE, CONTENT_TYPE_JSON);
-        userHeaders.forEach(headerBuilder::add);
+        customHeaders.forEach(headerBuilder::add);
 
         return new Request.Builder()
                 .url(postUrl)
@@ -214,7 +214,7 @@ public class HttpMcpTransport implements McpTransport {
     public static class Builder {
 
         private String sseUrl;
-        private Map<String, String> headers;
+        private Map<String, String> customHeaders;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -228,8 +228,8 @@ public class HttpMcpTransport implements McpTransport {
             return this;
         }
 
-        public Builder headers(Map<String, String> headers) {
-            this.headers = headers;
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 

@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
 
 public class StreamableHttpMcpTransport implements McpTransport {
 
-    private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
+    private static final Logger log = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private final String url;
-    private final Map<String, String> userHeaders;
+    private final Map<String, String> customHeaders;
     private final boolean logResponses;
     private final boolean logRequests;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -46,7 +46,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
-        userHeaders = getOrDefault(builder.headers, Map.of());
+        customHeaders = getOrDefault(builder.customHeaders, Map.of());
         HttpClient.Builder clientBuilder = HttpClient.newBuilder();
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
@@ -77,7 +77,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (sessionId != null) {
             builder.header("Mcp-Session-Id", sessionId);
         }
-        userHeaders.forEach(builder::header);
+        customHeaders.forEach(builder::header);
         return builder.uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
@@ -189,7 +189,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private Executor executor;
         private String url;
-        private Map<String, String> headers;
+        private Map<String, String> customHeaders;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -205,8 +205,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * The request headers of the MCP server.
          */
-        public StreamableHttpMcpTransport.Builder headers(Map<String, String> headers) {
-            this.headers = headers;
+        public StreamableHttpMcpTransport.Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 
