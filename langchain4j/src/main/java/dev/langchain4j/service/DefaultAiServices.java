@@ -12,7 +12,6 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -171,7 +170,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
-                        Optional<List<Content>> userContentMessageOptional = findContentMessageTemplateFromAnnotatedParameter(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
@@ -209,21 +207,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        List<ChatMessage> messages = new ArrayList<>();
-
-                        if (userContentMessageOptional.isPresent()) {
-                            final String name = userMessage.name();
+                        Optional<List<Content>> maybeContents = findContents(method, args);
+                        if (maybeContents.isPresent()) {
                             List<Content> allContents = new ArrayList<>();
-                            List<Content> contents = userContentMessageOptional.get();
-                            for (final Content content : contents) {
-                                if (content  == null) {
+                            for (Content content : maybeContents.get()) {
+                                if (content == null) { // placeholder
                                     allContents.addAll(userMessage.contents());
                                 } else {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = UserMessage.from(name, allContents);
+                            userMessage = UserMessage.from(userMessage.name(), allContents);
                         }
+
+                        List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
@@ -477,8 +474,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !(args[i] instanceof Content)
-                    && !(args[i] instanceof List<?> && ((List<?>) args[i]).stream().allMatch(Content.class::isInstance))) {
+                    && !(args[i] instanceof Content) && !isListOfContents(args[i])) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
@@ -501,45 +497,37 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    /**
-     * find all content message from annotated parameter
-     * <p>
-     * - annotated with {@link dev.langchain4j.service.UserMessage}
-     * <p>
-     * if there have UserMessage with @Content result will add, if there have UserMessage with String result will add null for UserMessage, but only one UserMessage
-     */
-    private static Optional<List<Content>> findContentMessageTemplateFromAnnotatedParameter(
-            Method method, Object[] args) {
-        final Parameter[] parameters = method.getParameters();
+    private static Optional<List<Content>> findContents(Method method, Object[] args) {
+        List<Content> contents = new ArrayList<>();
 
-        List<Content> result = new ArrayList<>();
-        Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
-        if (templateFromMethodAnnotation.isPresent()) {
-            // add for userMessage
-            result.add(null);
+        if (findUserMessageTemplateFromMethodAnnotation(method).isPresent()) {
+            contents.add(null); // placeholder
         }
+
+        Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                if (args[i] instanceof String) {
-                    // add for userMessage with String
-                    result.add(null);
-                } else if (args[i] instanceof Content) {
-                    result.add((Content) args[i]);
-                }
-                if (args[i] instanceof List<?> && ((List<?>) args[i]).stream().allMatch(Content.class::isInstance)) {
-                    result.addAll((List<Content>) args[i]);
+                if (args[i] instanceof Content) {
+                    contents.add((Content) args[i]);
+                } else if (isListOfContents(args[i])) {
+                    contents.addAll((List<Content>) args[i]);
+                } else {
+                    contents.add(null); // placeholder
                 }
             }
         }
-        long countForUserMessage = result.stream()
-                .filter(Objects::isNull)
-                .count();
-        if (countForUserMessage > 1) {
+
+        if (contents.stream().filter(Objects::isNull).count() > 1) {
             throw illegalConfiguration(
-                    "Error: The method '%s' has multiple @UserMessage for UserMessage. Please use only one.",
+                    "Error: The method '%s' has multiple @UserMessage for text content. Please use only one.",
                     method.getName());
         }
-        return result.isEmpty() ? Optional.empty() : Optional.of(result);
+
+        return contents.isEmpty() ? Optional.empty() : Optional.of(contents);
+    }
+
+    private static boolean isListOfContents(Object o) {
+        return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
     private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {

@@ -188,6 +188,14 @@ String chat(@UserMessage String userMessage);
 
 String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
 
+String chat(@UserMessage String userMessage, @UserMessage Content content); // content can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image); // second argument can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
 @UserMessage("What is the capital of Germany?")
 String chat();
 
@@ -247,8 +255,26 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 </details>
 
 ## Multimodality
-AI services currently do not support multimodality,
-please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
+
+Additionally to the text content,
+AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
+
+```java
+String chat(@UserMessage String userMessage, @UserMessage Content content);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @UserMessage AudioContent audio);
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+```
+
+AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
+
+Please check [Content API](/tutorials/chat-and-language-models#multimodality)
+for more details on the available content types.
 
 
 ## Return Types
