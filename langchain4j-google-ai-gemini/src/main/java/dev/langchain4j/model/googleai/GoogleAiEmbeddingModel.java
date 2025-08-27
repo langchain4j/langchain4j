@@ -187,7 +187,6 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
-        @Deprecated(forRemoval = true, since = "1.4.0")
         public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
