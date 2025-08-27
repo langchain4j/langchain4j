@@ -138,7 +138,6 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
-        @Deprecated(forRemoval = true, since = "1.4.0")
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
