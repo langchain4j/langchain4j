@@ -11,6 +11,8 @@
     <artifactId>langchain4j-gpu-llama3</artifactId>
     <version>1.4.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: GPULlama3.java</name>
+    <description> GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM- Requires Java 21+</description>
+
 
     <properties>
         <skipGPULlamaITs>false</skipGPULlamaITs>
@@ -69,12 +71,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>ollama</artifactId>
             <scope>test</scope>
         </dependency>
 
