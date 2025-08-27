@@ -104,24 +104,24 @@ public class SupervisorAgentIT {
 
     public interface WithdrawAgent {
         @SystemMessage("""
-            You are a banker that can only withdraw US dollars (USD) from a user account,
+            You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
         @UserMessage("""
-            Withdraw {{amount}} USD from {{user}}'s account and return the new balance.
+            Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
-        String withdraw(@V("user") String user, @V("amount") Double amount);
+        String withdraw(@V("user") String user, @V("amountInUSD") Double amount);
     }
 
     public interface CreditAgent {
         @SystemMessage("""
-            You are a banker that can only credit US dollars (USD) to a user account,
+            You are a banker that can only credit US dollars (USD) to a user account.
             """)
         @UserMessage("""
-            Credit {{amount}} USD to {{user}}'s account and return the new balance.
+            Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
-        String credit(@V("user") String user, @V("amount") Double amount);
+        String credit(@V("user") String user, @V("amountInUSD") Double amount);
     }
 
     static class BankTool {
@@ -216,8 +216,7 @@ public class SupervisorAgentIT {
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
-                outputName = "exchange")
+        @Agent(outputName = "exchange")
         Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency);
     }
 
@@ -310,6 +309,7 @@ public class SupervisorAgentIT {
             // Using an AI agent
             exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
                     .chatModel(baseModel())
+                    .description("A money exchanger that converts a given amount of money from the original to the target currency")
                     .tools(new ExchangeTool())
                     .build();
         } else {

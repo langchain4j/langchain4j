@@ -46,6 +46,43 @@ public class LoggingHttpClient implements HttpClient {
     }
 
     @Override
+    public void execute(HttpRequest request, ServerSentEventListener delegateListener) {
+
+        if (logRequests) {
+            HttpRequestLogger.log(log, request);
+        }
+
+        this.delegateHttpClient.execute(request, new ServerSentEventListener() {
+
+            @Override
+            public void onOpen(SuccessfulHttpResponse response) {
+                if (logResponses) {
+                    HttpResponseLogger.log(log, response);
+                }
+                delegateListener.onOpen(response);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                delegateListener.onError(throwable);
+            }
+
+            @Override
+            public void onClose() {
+                delegateListener.onClose();
+            }
+        });
+    }
+
+    @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener delegateListener) {
 
         if (logRequests) {

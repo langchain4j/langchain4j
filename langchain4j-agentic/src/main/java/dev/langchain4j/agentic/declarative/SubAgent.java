@@ -13,4 +13,6 @@ public @interface SubAgent {
     Class<?> type() default Object.class;
 
     String outputName() default "";
+
+    String[] summarizedContext() default {};
 }

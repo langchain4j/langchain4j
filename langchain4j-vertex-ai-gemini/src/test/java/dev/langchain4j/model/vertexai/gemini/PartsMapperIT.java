@@ -15,9 +15,9 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PartsMapperTest {
+class PartsMapperIT {
 
-    private static final String IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg";
+    private static final String IMAGE_URL = "https://www.w3.org/MarkUp/Test/xhtml-print/20050519/tests/jpeg420exif.jpg";
 
     @Test
     void should_detect_mime_type_automatically() {

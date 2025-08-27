@@ -71,6 +71,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
     protected boolean assertExceptionType() {
         // Bedrock throws ValidationException, while test expects UnsupportedFeatureException
         return false;
