@@ -293,7 +293,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
-        @Deprecated(forRemoval = true, since = "1.4.0")
         public GoogleAiGeminiChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
