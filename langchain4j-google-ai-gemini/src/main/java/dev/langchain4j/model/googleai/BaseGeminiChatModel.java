@@ -61,6 +61,8 @@ abstract class BaseGeminiChatModel {
             Boolean allowCodeExecution,
             Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean logRequests,
+            Boolean logResponses,
             Logger logger,
             Boolean responseLogprobs,
             Boolean enableEnhancedCivicAnswers,
@@ -73,7 +75,7 @@ abstract class BaseGeminiChatModel {
             ChatRequestParameters defaultRequestParameters) {
         ensureNotBlank(apiKey, "apiKey");
         this.geminiService = new GeminiService(
-                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), logger, timeout);
+                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), getOrDefault(logRequests, false), getOrDefault(logResponses, false), logger, timeout);
 
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);

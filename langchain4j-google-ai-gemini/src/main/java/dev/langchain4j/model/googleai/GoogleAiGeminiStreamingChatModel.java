@@ -42,6 +42,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logRequests,
+                builder.logResponses,
                 builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
@@ -102,6 +104,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
         private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
@@ -219,6 +223,16 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 

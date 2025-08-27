@@ -57,6 +57,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logRequests,
+                builder.logResponses,
                 builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
@@ -168,6 +170,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
         private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
@@ -291,6 +295,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 
