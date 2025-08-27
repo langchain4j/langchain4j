@@ -676,6 +676,46 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
+### Returning immediately the result of a tool execution request
+
+By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstance, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+
+```java
+class CalculatorWithImmediateReturn {
+    
+    @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+    double add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+Note that this feature is supported only on AI Services having a `Result` as returned type, while attempting to use it on a service with a different return type will produce a `RuntimeException`.
+
+In this way, an `Assistant` service like the following
+
+```java
+interface Assistant {
+    Result<String> chat(String userMessage);
+}
+```
+
+configured to use the above `CalculatorWithImmediateReturn` tool
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new CalculatorWithImmediateReturn())
+        .build();
+```
+
+will return a response with content exactly equal to `124` from an invocation like
+
+```java
+var response = assistant.chat("How much is 37 plus 87?");
+```
+
+instead of letting the LLM reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
 
 ### Error Handling
 

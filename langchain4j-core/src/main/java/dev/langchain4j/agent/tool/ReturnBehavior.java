@@ -16,7 +16,9 @@ public enum ReturnBehavior {
 
     /**
      * Returns immediately to the caller the value returned by the tool without allowing the LLM
-     * to further process it.
+     * to further process it. Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result},
+     * while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an
+     * AI service having a different return type.
      */
     IMMEDIATE;
 }

@@ -42,7 +42,8 @@ public @interface Tool {
      * Return behavior of the tool.
      * - If {@link ReturnBehavior#TO_LLM} is used (default), the value returned by the tool is sent back to the LLM for further processing.
      * - If {@link ReturnBehavior#IMMEDIATE} is used, returns immediately to the caller the value returned by the tool without
-     *   allowing the LLM to further processing it.
+     *   allowing the LLM to further processing it. Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result},
+     *   while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an AI service having a different return type.
      *
      * @return return behavior of the tool.
      */

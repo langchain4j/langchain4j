@@ -201,7 +201,7 @@ public class ToolService {
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors,
-            boolean immediateToolReturn) {
+            boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -232,6 +232,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, memoryId);
 
+            boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
                 ToolExecutionRequest toolExecutionRequest = entry.getKey();
                 ToolExecutionResultMessage toolExecutionResultMessage = entry.getValue();
@@ -248,7 +249,17 @@ public class ToolService {
                     messages.add(toolExecutionResultMessage);
                 }
 
-                immediateToolReturn = immediateToolReturn && isImmediateTool(toolExecutionRequest.name());
+                if (immediateToolReturn) {
+                    if (isImmediateTool(toolExecutionRequest.name())) {
+                        if (!isReturnTypeResult) {
+                            throw runtime(
+                                    "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
+                                    toolExecutionRequest.name());
+                        }
+                    } else {
+                        immediateToolReturn = false;
+                    }
+                }
             }
 
             if (immediateToolReturn) {

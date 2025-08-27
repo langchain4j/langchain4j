@@ -50,6 +50,7 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWi
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
@@ -1118,7 +1119,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_ignore_immediate_tool_when_not_returning_Result(ChatModel model) {
+    protected void should_throw_using_immediate_tool_on_service_not_returning_Result(ChatModel model) {
         AdderTool toolInstance = new ImmediateToolWithPrimitiveParameters();
 
         // given
@@ -1133,15 +1134,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         var text = "How much is 37 plus 87?";
 
-        // when
-        var response = assistant.chat(text);
-
-        // then
-        // The tool result is manipulated by the LLM so the response is not equal to the plain tool result
-        assertThat(response).contains("124");
-        assertThat(response).isNotEqualTo("124");
-
-        verify(tool).add(37, 87);
-        verifyNoMoreInteractions(tool);
+        assertThatThrownBy(() -> assistant.chat(text))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("add");
     }
 }
