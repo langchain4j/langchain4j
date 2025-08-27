@@ -117,7 +117,7 @@ public class Audio {
      */
     public static class Builder {
 
-        URI url;
+        private URI url;
         private byte[] binaryData;
         private String base64Data;
         private String mimeType;
