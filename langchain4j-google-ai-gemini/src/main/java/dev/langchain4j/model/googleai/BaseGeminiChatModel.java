@@ -117,7 +117,8 @@ abstract class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+        List<GeminiContent> geminiContentList =
+                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -189,6 +190,8 @@ abstract class BaseGeminiChatModel {
         return switch (toolChoice) {
             case AUTO -> GeminiMode.AUTO;
             case REQUIRED -> GeminiMode.ANY;
+            case NONE -> GeminiMode.NONE;
+            default -> null;
         };
     }
 
