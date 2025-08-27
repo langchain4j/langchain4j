@@ -5,8 +5,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
-import java.util.Objects;
 import dev.langchain4j.Experimental;
+import java.util.Objects;
 
 /**
  * Represents a partial tool call.
@@ -80,12 +80,11 @@ public class PartialToolCall {
 
     @Override
     public String toString() {
-        return "PartialToolCall{" +
-                "index=" + index +
-                ", id=" + quoted(id) +
-                ", name=" + quoted(name) +
-                ", partialArguments=" + quoted(partialArguments) +
-                '}';
+        return "PartialToolCall{" + "index="
+                + index + ", id="
+                + quoted(id) + ", name="
+                + quoted(name) + ", partialArguments="
+                + quoted(partialArguments) + '}';
     }
 
     public static Builder builder() {

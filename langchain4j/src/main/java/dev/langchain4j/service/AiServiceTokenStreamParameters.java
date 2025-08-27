@@ -5,6 +5,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,8 @@ public class AiServiceTokenStreamParameters {
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
+    private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
@@ -30,6 +34,8 @@ public class AiServiceTokenStreamParameters {
         this.messages = builder.messages;
         this.toolSpecifications = builder.toolSpecifications;
         this.toolExecutors = builder.toolExecutors;
+        this.toolArgumentsErrorHandler = builder.toolArgumentsErrorHandler;
+        this.toolExecutionErrorHandler = builder.toolExecutionErrorHandler;
         this.toolExecutor = builder.toolExecutor;
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
@@ -57,6 +63,20 @@ public class AiServiceTokenStreamParameters {
      */
     public Map<String, ToolExecutor> toolExecutors() {
         return toolExecutors;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolArgumentsErrorHandler toolArgumentsErrorHandler() {
+        return toolArgumentsErrorHandler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolExecutionErrorHandler toolExecutionErrorHandler() {
+        return toolExecutionErrorHandler;
     }
 
     /**
@@ -124,6 +144,8 @@ public class AiServiceTokenStreamParameters {
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
         private Map<String, ToolExecutor> toolExecutors;
+        private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
+        private ToolExecutionErrorHandler toolExecutionErrorHandler;
         private Executor toolExecutor;
         private List<Content> retrievedContents;
         private AiServiceContext context;
@@ -163,6 +185,22 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
             this.toolExecutors = toolExecutors;
+            return this;
+        }
+
+        /**
+         * @since 1.4.0
+         */
+        public Builder toolArgumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+            this.toolArgumentsErrorHandler = handler;
+            return this;
+        }
+
+        /**
+         * @since 1.4.0
+         */
+        public Builder toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
+            this.toolExecutionErrorHandler = handler;
             return this;
         }
 

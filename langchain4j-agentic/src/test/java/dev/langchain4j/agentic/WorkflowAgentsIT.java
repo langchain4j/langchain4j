@@ -419,6 +419,8 @@ public class WorkflowAgentsIT {
         assertThat(expertRouterAgent.evictAgenticScope("2")).isTrue();
         assertThat(expertRouterAgent.evictAgenticScope("1")).isFalse();
         assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
+
+        AgenticScopePersister.setStore(null);
     }
 
     @Test
@@ -461,7 +463,7 @@ public class WorkflowAgentsIT {
                 });
 
         if (!useDefaultExecutor) {
-            builder.executorService(Executors.newFixedThreadPool(2));
+            builder.executor(Executors.newFixedThreadPool(2));
         }
 
         EveningPlannerAgent eveningPlannerAgent = builder.build();
