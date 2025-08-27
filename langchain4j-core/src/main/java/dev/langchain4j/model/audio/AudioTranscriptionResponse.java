@@ -1,8 +1,11 @@
 package dev.langchain4j.model.audio;
 
+import dev.langchain4j.Experimental;
+
 /**
  * Response containing the transcription of an audio file.
  */
+@Experimental
 public class AudioTranscriptionResponse {
 
     private final String text;

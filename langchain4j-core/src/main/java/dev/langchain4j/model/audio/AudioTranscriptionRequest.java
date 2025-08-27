@@ -1,10 +1,12 @@
 package dev.langchain4j.model.audio;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 
 /**
  * Request to transcribe audio.
  */
+@Experimental
 public class AudioTranscriptionRequest {
 
     private final Audio audio;

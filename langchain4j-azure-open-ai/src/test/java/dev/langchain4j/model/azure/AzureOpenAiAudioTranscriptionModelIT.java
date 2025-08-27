@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import dev.langchain4j.data.audio.Audio;
@@ -9,31 +10,31 @@ import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for the Azure OpenAI audio transcription model.
  */
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_AUDIO_ENDPOINT", matches = ".+")
 public class AzureOpenAiAudioTranscriptionModelIT {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiAudioTranscriptionModelIT.class);
 
     @Test
     void should_transcribe_audio_with_new_api() throws IOException {
-        String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
-        String apiKey = System.getenv("AZURE_OPENAI_KEY");
+        String endpoint = System.getenv("AZURE_OPENAI_AUDIO_ENDPOINT");
+        String apiKey = System.getenv("AZURE_OPENAI_AUDIO_KEY");
         String deploymentName = System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME");
 
-        // Skip test if environment variables aren't configured
-        Assumptions.assumeTrue(
-                endpoint != null && !endpoint.isBlank(), "AZURE_OPENAI_ENDPOINT environment variable not set");
-        Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), "AZURE_OPENAI_KEY environment variable not set");
-        Assumptions.assumeTrue(
-                deploymentName != null && !deploymentName.isBlank(),
-                "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        if (apiKey == null || apiKey.isBlank()) {
+            fail("AZURE_OPENAI_AUDIO_KEY environment variable not set");
+        }
+        if (deploymentName == null || deploymentName.isBlank()) {
+            fail("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        }
 
         AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
                 .endpoint(endpoint)
@@ -44,7 +45,9 @@ public class AzureOpenAiAudioTranscriptionModelIT {
                 .build();
 
         File audioFile = new File("src/test/resources/hello.mp3");
-        Assumptions.assumeTrue(audioFile.exists(), "Test audio file not found: src/test/resources/hello.mp3");
+        if (!audioFile.exists()) {
+            fail("Test audio file not found: src/test/resources/hello.mp3");
+        }
 
         byte[] audioData = FileUtils.readFileToByteArray(audioFile);
         Audio audio =
@@ -67,17 +70,16 @@ public class AzureOpenAiAudioTranscriptionModelIT {
 
     @Test
     void should_transcribe_audio_with_simple_api() throws IOException {
-        String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
-        String apiKey = System.getenv("AZURE_OPENAI_KEY");
+        String endpoint = System.getenv("AZURE_OPENAI_AUDIO_ENDPOINT");
+        String apiKey = System.getenv("AZURE_OPENAI_AUDIO_KEY");
         String deploymentName = System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME");
 
-        // Skip test if environment variables aren't configured
-        Assumptions.assumeTrue(
-                endpoint != null && !endpoint.isBlank(), "AZURE_OPENAI_ENDPOINT environment variable not set");
-        Assumptions.assumeTrue(apiKey != null && !apiKey.isBlank(), "AZURE_OPENAI_KEY environment variable not set");
-        Assumptions.assumeTrue(
-                deploymentName != null && !deploymentName.isBlank(),
-                "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        if (apiKey == null || apiKey.isBlank()) {
+            fail("AZURE_OPENAI_AUDIO_KEY environment variable not set");
+        }
+        if (deploymentName == null || deploymentName.isBlank()) {
+            fail("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        }
 
         AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
                 .endpoint(endpoint)
@@ -88,7 +90,9 @@ public class AzureOpenAiAudioTranscriptionModelIT {
                 .build();
 
         File audioFile = new File("src/test/resources/hello.mp3");
-        Assumptions.assumeTrue(audioFile.exists(), "Test audio file not found: src/test/resources/hello.mp3");
+        if (!audioFile.exists()) {
+            fail("Test audio file not found: src/test/resources/hello.mp3");
+        }
 
         byte[] audioData = FileUtils.readFileToByteArray(audioFile);
         Audio audio =

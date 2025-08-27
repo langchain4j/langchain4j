@@ -364,37 +364,40 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 You can transcribe audio files with the `AzureOpenAiAudioTranscriptionModel`:
 
 ```java
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import java.io.File;
+import java.nio.file.Files;
+
 AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
     .endpoint(System.getenv("AZURE_OPENAI_URL"))
     .apiKey(System.getenv("AZURE_OPENAI_KEY"))
     .deploymentName("your-audio-model-deployment-name") // e.g., "whisper"
     .build();
 
-String transcript = model.transcribe(new File("path/to/audio-file.wav"));
+// Read audio file as binary data
+File audioFile = new File("path/to/audio-file.wav");
+byte[] audioData = Files.readAllBytes(audioFile.toPath());
+
+// Create Audio object with binary data
+Audio audio = Audio.builder()
+    .binaryData(audioData)
+    .mimeType("audio/wav")
+    .build();
+
+// Create transcription request
+AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+    .audio(audio)
+    .language("en") // optional
+    .temperature(0.0) // optional
+    .build();
+
+// Transcribe audio
+AudioTranscriptionResponse response = model.transcribe(request);
+String transcript = response.text();
 System.out.println(transcript);
 ```
-
-### Spring Boot Usage
-
-Add the following to your `application.properties`:
-
-```properties
-langchain4j.azure-open-ai.audio-transcription-model.endpoint=${AZURE_OPENAI_URL}
-langchain4j.azure-open-ai.audio-transcription-model.api-key=${AZURE_OPENAI_KEY}
-langchain4j.azure-open-ai.audio-transcription-model.deployment-name=your-audio-model-deployment-name
-```
-
-Then, you can inject and use the bean:
-
-```java
-@Autowired
-AzureOpenAiAudioTranscriptionModel audioTranscriptionModel;
-
-public String transcribeAudio(MultipartFile audioFile) throws IOException {
-    return audioTranscriptionModel.transcribe(audioFile.getInputStream());
-}
-```
-
 
 ### Notes
 

@@ -12,8 +12,9 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.model.audio.AudioModel;
+import dev.langchain4j.model.audio.AudioTranscriptionModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioTranscriptionModelBuilderFactory;
@@ -43,7 +44,8 @@ import java.util.Map;
  *     with an appropriate credential implementation like {@code DefaultAzureCredential}.</li>
  * </ol>
  */
-public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
+@Experimental
+public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionModel {
 
     private final OpenAIClient client;
     private final String deploymentName;
@@ -99,12 +101,14 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
         }
 
         Audio audio = request.audio();
+        byte[] audioData = getBinaryDataFromAudio(audio);
+
         String filename = audio.getFilename();
         if (filename == null || filename.isEmpty()) {
             filename = "audio.mp3";
         }
 
-        AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.binaryData())
+        AudioTranscriptionOptions options = new AudioTranscriptionOptions(audioData)
                 .setPrompt(request.prompt())
                 .setModel(deploymentName)
                 .setFilename(filename)
@@ -122,6 +126,29 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
                 client.getAudioTranscription(deploymentName, options.getFilename(), options);
 
         return AudioTranscriptionResponse.from(audioTranscription.getText());
+    }
+
+    /**
+     * Helper method to extract binary data from Audio object, handling different source types.
+     */
+    private byte[] getBinaryDataFromAudio(Audio audio) {
+        if (audio.binaryData() != null) {
+            return audio.binaryData();
+        }
+        
+        if (audio.base64Data() != null) {
+            try {
+                return java.util.Base64.getDecoder().decode(audio.base64Data());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid base64 audio data provided", e);
+            }
+        }
+        
+        if (audio.url() != null) {
+            throw new IllegalArgumentException("URL-based audio is not supported by Azure OpenAI transcription. Please provide audio as binary data or base64 encoded data.");
+        }
+        
+        throw new IllegalArgumentException("No audio data found. Audio must contain either binary data, base64 data, or URL.");
     }
 
     /**
