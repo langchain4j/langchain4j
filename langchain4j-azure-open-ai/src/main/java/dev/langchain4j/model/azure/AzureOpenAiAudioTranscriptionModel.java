@@ -148,7 +148,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
             throw new IllegalArgumentException("URL-based audio is not supported by Azure OpenAI transcription. Please provide audio as binary data or base64 encoded data.");
         }
         
-        throw new IllegalArgumentException("No audio data found. Audio must contain either binary data, base64 data, or URL.");
+        throw new IllegalArgumentException("No audio data found. Audio must contain either binary data, base64 data");
     }
 
     /**
