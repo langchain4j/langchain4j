@@ -388,6 +388,7 @@ Audio audio = Audio.builder()
 // Create transcription request
 AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
     .audio(audio)
+    .prompt("This is an audio file containing ...") // optional
     .language("en") // optional
     .temperature(0.0) // optional
     .build();
