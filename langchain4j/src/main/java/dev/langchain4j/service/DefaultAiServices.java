@@ -11,6 +11,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
@@ -46,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
@@ -206,8 +208,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        List<ChatMessage> messages = new ArrayList<>();
+                        Optional<List<Content>> maybeContents = findContents(method, args);
+                        if (maybeContents.isPresent()) {
+                            List<Content> allContents = new ArrayList<>();
+                            for (Content content : maybeContents.get()) {
+                                if (content == null) { // placeholder
+                                    allContents.addAll(userMessage.contents());
+                                } else {
+                                    allContents.add(content);
+                                }
+                            }
+                            userMessage = UserMessage.from(userMessage.name(), allContents);
+                        }
 
+                        List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
@@ -475,7 +489,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
+                    && !(args[i] instanceof Content) && !isListOfContents(args[i])) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
@@ -496,6 +511,39 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
         }
         return Optional.empty();
+    }
+
+    private static Optional<List<Content>> findContents(Method method, Object[] args) {
+        List<Content> contents = new ArrayList<>();
+
+        if (findUserMessageTemplateFromMethodAnnotation(method).isPresent()) {
+            contents.add(null); // placeholder
+        }
+
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content) {
+                    contents.add((Content) args[i]);
+                } else if (isListOfContents(args[i])) {
+                    contents.addAll((List<Content>) args[i]);
+                } else {
+                    contents.add(null); // placeholder
+                }
+            }
+        }
+
+        if (contents.stream().filter(Objects::isNull).count() > 1) {
+            throw illegalConfiguration(
+                    "Error: The method '%s' has multiple @UserMessage for text content. Please use only one.",
+                    method.getName());
+        }
+
+        return contents.isEmpty() ? Optional.empty() : Optional.of(contents);
+    }
+
+    private static boolean isListOfContents(Object o) {
+        return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
     private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {

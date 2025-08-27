@@ -8,12 +8,15 @@ import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class SequentialAgentServiceImpl<T> extends AbstractService<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
 
-    private SequentialAgentServiceImpl(Class<T> agentServiceClass) {
-        super(agentServiceClass);
+    private SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        super(agentServiceClass, agenticMethod);
     }
 
     @Override
@@ -47,10 +50,10 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
     }
 
     public static SequentialAgentServiceImpl<UntypedAgent> builder() {
-        return builder(UntypedAgent.class);
+        return new SequentialAgentServiceImpl<>(UntypedAgent.class, null);
     }
 
     public static <T> SequentialAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new SequentialAgentServiceImpl<>(agentServiceClass);
+        return new SequentialAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
 }
