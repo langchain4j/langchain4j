@@ -1,7 +1,6 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
-
 import java.util.Optional;
 
 @Internal
@@ -12,7 +11,7 @@ public class JsonParsingUtils {
         R apply(T t) throws Exception;
     }
 
-    public record ParsedJson<T>(T value, String json) { }
+    public record ParsedJson<T>(T value, String json) {}
 
     public static <T> Optional<ParsedJson<T>> extractAndParseJson(String text, Class<T> type) {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
@@ -50,7 +49,7 @@ public class JsonParsingUtils {
 
     private static int findJsonEnd(String text, int fromIndex) {
         int jsonMapEnd = text.lastIndexOf('}', fromIndex);
-        int jsonListEnd = text.indexOf(']', fromIndex);
+        int jsonListEnd = text.lastIndexOf(']', fromIndex);
         return Math.max(jsonMapEnd, jsonListEnd);
     }
 
@@ -63,7 +62,7 @@ public class JsonParsingUtils {
             if (c == openingBrace) {
                 braceCount++;
                 if (braceCount == 0) {
-                    return i == 0 || text.charAt(i-1) != openingBrace ? i : -1;
+                    return i == 0 || text.charAt(i - 1) != openingBrace ? i : -1;
                 }
             } else if (c == closingBrace) {
                 braceCount--;

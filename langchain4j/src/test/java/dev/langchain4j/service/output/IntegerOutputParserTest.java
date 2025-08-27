@@ -1,16 +1,15 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class IntegerOutputParserTest {
 
@@ -43,8 +42,7 @@ class IntegerOutputParserTest {
                 Arguments.of("{\"value\": 123}", 123),
                 Arguments.of("{\"value\": \"-7\"}", -7),
                 Arguments.of("   {\"value\": 77}   ", 77),
-                Arguments.of("{\"value\":\"1e3\"}", 1000)
-        );
+                Arguments.of("{\"value\":\"1e3\"}", 1000));
     }
 
     @ParameterizedTest
@@ -59,17 +57,18 @@ class IntegerOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "{\"value\":\"xyz\"}",
-            "{\"value\": 3.14}",
-            "{\"foo\":\"2.71\"}",
-            "abc",
-            "42abc",
-            "4.5",
-            "-3.1",
-            "2147483648", // Integer.MAX_VALUE + 1
-            "-2147483649" // Integer.MIN_VALUE - 1
-    })
+    @ValueSource(
+            strings = {
+                "{\"value\":\"xyz\"}",
+                "{\"value\": 3.14}",
+                "{\"foo\":\"2.71\"}",
+                "abc",
+                "42abc",
+                "4.5",
+                "-3.1",
+                "2147483648", // Integer.MAX_VALUE + 1
+                "-2147483649" // Integer.MIN_VALUE - 1
+            })
     void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> parser.parse(input))
@@ -79,7 +78,7 @@ class IntegerOutputParserTest {
     }
 
     @Test
-    void test_formatInstructions() {
+    void format_instructions() {
         // when
         String instructions = parser.formatInstructions();
 

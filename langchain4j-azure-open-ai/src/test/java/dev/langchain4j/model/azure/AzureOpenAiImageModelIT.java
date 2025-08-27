@@ -1,5 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import static com.azure.ai.openai.models.ImageGenerationQuality.STANDARD;
+import static com.azure.ai.openai.models.ImageGenerationResponseFormat.BASE64;
+import static com.azure.ai.openai.models.ImageSize.SIZE1024X1024;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
@@ -12,12 +15,10 @@ import java.nio.file.Path;
 import java.util.Base64;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @Disabled("Run manually before release. Expensive to run very often.")
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiImageModelIT {
 
     @Test
@@ -25,6 +26,9 @@ class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName("dall-e-3-30")
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
+                .logRequestsAndResponses(true)
                 .build();
 
         Response<Image> response = model.generate("A coffee mug in Paris, France");
@@ -38,9 +42,15 @@ class AzureOpenAiImageModelIT {
 
     @Test
     void should_generate_image_in_base64() throws IOException {
+
+        ImageGenerationResponseFormat responseFormat = BASE64;
+
         AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName("dall-e-3-30")
-                .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
+                .responseFormat(responseFormat)
+                .logRequestsAndResponses(true)
                 .build();
 
         Response<Image> response = model.generate("A croissant in Paris, France");
@@ -69,6 +79,9 @@ class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName(modelNameString)
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
+                .logRequestsAndResponses(true)
                 .build();
 
         // when

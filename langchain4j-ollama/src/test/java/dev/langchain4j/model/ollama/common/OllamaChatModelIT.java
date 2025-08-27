@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
@@ -220,10 +221,15 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // vision model only supports a single image per message
     }
-
+    
     @Override
     protected boolean assertResponseId() {
         return false; // Ollama does not return response ID
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return model instanceof OpenAiStreamingChatModel; // Ollama does not return tool ID via Ollama API
     }
 
     @Override
