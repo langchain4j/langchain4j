@@ -691,7 +691,7 @@ class CalculatorWithImmediateReturn {
 ```
 
 :::note
-This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an exception. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
 :::
 
 In this way, an `Assistant` service like the following
@@ -711,13 +711,15 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-will return a response with content exactly equal to `124` from an invocation like
+will return a response directly from the tool invocation. For instance, prompting the assistant with
 
 ```java
 Result<String> result = assistant.chat("How much is 37 plus 87?");
 ```
 
-instead of letting the LLM reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
 
 ### Error Handling
 

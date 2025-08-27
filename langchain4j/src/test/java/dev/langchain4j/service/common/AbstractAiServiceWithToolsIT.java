@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -1135,7 +1136,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         var text = "How much is 37 plus 87?";
 
         assertThatThrownBy(() -> assistant.chat(text))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("add");
     }
 }
