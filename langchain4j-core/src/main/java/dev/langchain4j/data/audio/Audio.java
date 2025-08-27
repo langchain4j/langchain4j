@@ -117,7 +117,7 @@ public class Audio {
      */
     public static class Builder {
 
-        URI url;
+        private URI url;
         private byte[] binaryData;
         private String base64Data;
         private String mimeType;
@@ -193,44 +193,5 @@ public class Audio {
         public Audio build() {
             return new Audio(this);
         }
-    }
-
-    /**
-     * If the audio data is a URL, return the name of the URL file.
-     * @return the file name.
-     */
-    public String getFilename() {
-        if (url == null) {
-            return null;
-        }
-
-        String urlString = url.toString();
-
-        // Remove query parameters if present
-        int queryIndex = urlString.indexOf('?');
-        if (queryIndex != -1) {
-            urlString = urlString.substring(0, queryIndex);
-        }
-
-        // Remove fragment if present
-        int fragmentIndex = urlString.indexOf('#');
-        if (fragmentIndex != -1) {
-            urlString = urlString.substring(0, fragmentIndex);
-        }
-
-        // URLs always use forward slashes, not OS-dependent separators
-        int lastSlashIndex = urlString.lastIndexOf('/');
-        if (lastSlashIndex != -1) {
-            if (lastSlashIndex == urlString.length() - 1) {
-                // URL ends with slash, return empty string
-                return "";
-            } else {
-                // Extract filename after the last slash
-                return urlString.substring(lastSlashIndex + 1);
-            }
-        }
-
-        // If no slash found, might be just a filename or malformed URL
-        return urlString;
     }
 }

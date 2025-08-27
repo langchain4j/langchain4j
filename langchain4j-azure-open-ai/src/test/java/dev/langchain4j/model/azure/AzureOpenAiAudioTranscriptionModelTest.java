@@ -273,21 +273,20 @@ class AzureOpenAiAudioTranscriptionModelTest {
     }
 
     @Test
-    void should_use_filename_from_url_when_available() {
+    void should_use_default_filename() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
         AudioTranscription mockTranscription = mock(AudioTranscription.class);
-        when(mockTranscription.getText()).thenReturn("Transcribed with filename");
+        when(mockTranscription.getText()).thenReturn("Transcribed with default filename");
         when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
                 .thenReturn(mockTranscription);
 
         AzureOpenAiAudioTranscriptionModel model =
                 new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
-        // Create audio with both binary data and URL (URL provides filename)
+        // Create audio with binary data (no URL)
         Audio audio = Audio.builder()
                 .binaryData("test audio".getBytes())
-                .url("https://example.com/custom-audio.wav")
                 .mimeType("audio/wav")
                 .build();
 
@@ -297,9 +296,9 @@ class AzureOpenAiAudioTranscriptionModelTest {
         // when
         model.transcribe(request);
 
-        // then
+        // then - should use default filename "audio.mp3"
         verify(client)
                 .getAudioTranscription(
-                        eq("test-deployment"), eq("custom-audio.wav"), any(AudioTranscriptionOptions.class));
+                        eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
     }
 }

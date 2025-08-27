@@ -73,79 +73,6 @@ class AudioTest {
     }
 
     @Test
-    void should_get_filename_from_url() {
-        // given
-        Audio audio = Audio.builder()
-                .url("https://example.com/path/audio.wav")
-                .mimeType("audio/wav")
-                .build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isEqualTo("audio.wav");
-    }
-
-    @Test
-    void should_get_filename_from_complex_url() {
-        // given
-        Audio audio = Audio.builder()
-                .url("https://example.com/path/voice-note_final(1).mp3?version=1&format=high")
-                .mimeType("audio/mp3")
-                .build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isEqualTo("voice-note_final(1).mp3");
-    }
-
-    @Test
-    void should_return_empty_string_for_url_ending_with_slash() {
-        // given
-        Audio audio = Audio.builder()
-                .url("https://example.com/folder/")
-                .mimeType("audio/wav")
-                .build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isEqualTo("");
-    }
-
-    @Test
-    void should_return_null_filename_for_binary_data() {
-        // given
-        Audio audio = Audio.builder()
-                .binaryData("test data".getBytes())
-                .mimeType("audio/wav")
-                .build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isNull();
-    }
-
-    @Test
-    void should_return_null_filename_for_base64_data() {
-        // given
-        Audio audio =
-                Audio.builder().base64Data("dGVzdCBkYXRh").mimeType("audio/wav").build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isNull();
-    }
-
-    @Test
     void should_be_equal_when_same_content() {
         // given
         byte[] data = "test".getBytes();
@@ -217,21 +144,6 @@ class AudioTest {
     }
 
     @Test
-    void should_handle_url_with_fragment() {
-        // given
-        Audio audio = Audio.builder()
-                .url("https://example.com/audio.mp3#section1")
-                .mimeType("audio/mp3")
-                .build();
-
-        // when
-        String filename = audio.getFilename();
-
-        // then
-        assertThat(filename).isEqualTo("audio.mp3");
-    }
-
-    @Test
     void should_handle_file_protocol_url() {
         // given
         Audio audio = Audio.builder()
@@ -239,10 +151,8 @@ class AudioTest {
                 .mimeType("audio/wav")
                 .build();
 
-        // when
-        String filename = audio.getFilename();
-
         // then
-        assertThat(filename).isEqualTo("audio.wav");
+        assertThat(audio.url().toString()).isEqualTo("file:///home/user/audio.wav");
+        assertThat(audio.mimeType()).isEqualTo("audio/wav");
     }
 }

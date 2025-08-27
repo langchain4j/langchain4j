@@ -103,10 +103,9 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
         Audio audio = request.audio();
         byte[] audioData = getBinaryDataFromAudio(audio);
 
-        String filename = audio.getFilename();
-        if (filename == null || filename.isEmpty()) {
-            filename = "audio.mp3";
-        }
+        // Use a default filename since Azure OpenAI API requires a filename parameter
+        // but the actual filename doesn't affect transcription quality
+        String filename = "audio.mp3";
 
         AudioTranscriptionOptions options = new AudioTranscriptionOptions(audioData)
                 .setPrompt(request.prompt())
