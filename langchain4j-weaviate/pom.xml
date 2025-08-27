@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.1.0-beta7-SNAPSHOT</version>
+        <version>1.4.0-beta10-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -14,7 +14,7 @@
 
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <dependencies>
@@ -22,31 +22,22 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.4.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>io.weaviate</groupId>
             <artifactId>client</artifactId>
-            <version>4.6.0</version>
-            <exclusions>
-                <!-- due to Cxeb68d52e-5509 vulnerability -->
-                <exclusion>
-                    <groupId>commons-codec</groupId>
-                    <artifactId>commons-codec</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>5.3.0</version>
         </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.16.0</version>
-        </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.4.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

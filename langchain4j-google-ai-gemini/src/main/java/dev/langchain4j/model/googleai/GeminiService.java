@@ -1,5 +1,19 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.firstNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.Json.fromJson;
+import static java.time.Duration.ofSeconds;
+
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -11,64 +25,74 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.time.Duration;
-import java.util.Optional;
-
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.googleai.Json.fromJson;
-import static java.time.Duration.ofSeconds;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
 
 class GeminiService {
 
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
+    private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
+    private static final Duration DEFAULT_READ_TIMEOUT = ofSeconds(60);
 
     private final HttpClient httpClient;
+    private final String baseUrl;
+    private final String apiKey;
 
-    GeminiService(HttpClientBuilder httpClientBuilder, boolean logRequestsAndResponses, Duration timeout) {
-        httpClientBuilder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+    GeminiService(
+            final @Nullable HttpClientBuilder httpClientBuilder,
+            final String apiKey,
+            final String baseUrl,
+            final boolean logRequestsAndResponses,
+            final boolean logRequests,
+            final boolean logResponses,
+            final Logger logger,
+            final Duration timeout) {
+        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
+        final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+        HttpClient httpClient = builder.connectTimeout(
+                        firstNotNull("connectTimeout", timeout, builder.connectTimeout(), DEFAULT_CONNECT_TIMEOUT))
+                .readTimeout(firstNotNull("readTimeout", timeout, builder.readTimeout(), DEFAULT_READ_TIMEOUT))
                 .build();
 
-        if (logRequestsAndResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, true, true);
+        if (logRequestsAndResponses || logResponses || logRequests) {
+            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
         } else {
             this.httpClient = httpClient;
         }
     }
 
-    GeminiGenerateContentResponse generateContent(String modelName, String apiKey, GeminiGenerateContentRequest request) {
-        String url = String.format("%s/models/%s:generateContent", GEMINI_AI_ENDPOINT, modelName);
+    GeminiGenerateContentResponse generateContent(String modelName, GeminiGenerateContentRequest request) {
+        String url = String.format("%s/models/%s:generateContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
 
-    GeminiCountTokensResponse countTokens(String modelName, String apiKey, GeminiCountTokensRequest request) {
-        String url = String.format("%s/models/%s:countTokens", GEMINI_AI_ENDPOINT, modelName);
+    GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
+        String url = String.format("%s/models/%s:countTokens", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
     }
 
-    GoogleAiEmbeddingResponse embed(String modelName, String apiKey, GoogleAiEmbeddingRequest request) {
-        String url = String.format("%s/models/%s:embedContent", GEMINI_AI_ENDPOINT, modelName);
+    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+        String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
     }
 
-    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, String apiKey, GoogleAiBatchEmbeddingRequest request) {
-        String url = String.format("%s/models/%s:batchEmbedContents", GEMINI_AI_ENDPOINT, modelName);
+    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+        String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
     }
 
-    void generateContentStream(String modelName,
-                               String apiKey,
-                               GeminiGenerateContentRequest request,
-                               boolean includeCodeExecutionOutput,
-                               StreamingChatResponseHandler handler) {
-        String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", GEMINI_AI_ENDPOINT, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, handler);
+    void generateContentStream(
+            String modelName,
+            GeminiGenerateContentRequest request,
+            boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
+            StreamingChatResponseHandler handler) {
+        String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
+        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
@@ -80,39 +104,48 @@ class GeminiService {
         return fromJson(response.body(), responseType);
     }
 
-    private void streamRequest(String url,
-                               String apiKey,
-                               Object requestBody,
-                               boolean includeCodeExecutionOutput,
-                               StreamingChatResponseHandler handler) {
+    private void streamRequest(
+            String url,
+            String apiKey,
+            Object requestBody,
+            boolean includeCodeExecutionOutput,
+            Boolean returnThinking,
+            StreamingChatResponseHandler handler) {
         String jsonBody = Json.toJson(requestBody);
         HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
 
-        GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
+        GeminiStreamingResponseBuilder responseBuilder =
+                new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
+
+            AtomicInteger toolIndex = new AtomicInteger(0);
 
             @Override
             public void onEvent(ServerSentEvent event) {
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
-                Optional<String> maybeText = responseBuilder.append(response);
-                maybeText.ifPresent(text -> {
-                    try {
-                        handler.onPartialResponse(text);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
+                GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
+                textAndTools.maybeText().ifPresent(text -> {
+                    onPartialResponse(handler, text);
+                });
+                textAndTools.maybeThought().ifPresent(thought -> {
+                    if (Boolean.TRUE.equals(returnThinking)) {
+                        onPartialThinking(handler, thought);
+                    } else if (returnThinking == null) {
+                        onPartialResponse(handler, thought); // for backward compatibility
                     }
                 });
+                for (ToolExecutionRequest tool : textAndTools.tools()) {
+                    CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
+                    onCompleteToolCall(handler, completeToolCall);
+                    toolIndex.incrementAndGet();
+                }
             }
 
             @Override
             public void onClose() {
-                ChatResponse chatResponse = responseBuilder.build();
-                try {
-                    handler.onCompleteResponse(chatResponse);
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                }
+                ChatResponse completeResponse = responseBuilder.build();
+                onCompleteResponse(handler, completeResponse);
             }
 
             @Override

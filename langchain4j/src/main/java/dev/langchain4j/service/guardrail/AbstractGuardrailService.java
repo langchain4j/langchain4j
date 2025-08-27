@@ -11,10 +11,10 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Responsible for managing and applying input and output guardrails to methods
@@ -28,13 +28,15 @@ import java.util.Optional;
  */
 @Internal
 public abstract class AbstractGuardrailService implements GuardrailService {
+    private static final Object NULL_KEY = new Object();
+
     private final Class<?> aiServiceClass;
-    private final Map<Object, InputGuardrailExecutor> inputGuardrails = new HashMap<>();
-    private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new HashMap<>();
+    private final Map<Object, InputGuardrailExecutor> inputGuardrails = new ConcurrentHashMap<>();
+    private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new ConcurrentHashMap<>();
 
     // Caches for whether or not a method has input or output guardrails
-    private final Map<Object, Boolean> inputGuardrailMethods = new HashMap<>();
-    private final Map<Object, Boolean> outputGuardrailMethods = new HashMap<>();
+    private final Map<Object, Boolean> inputGuardrailMethods = new ConcurrentHashMap<>();
+    private final Map<Object, Boolean> outputGuardrailMethods = new ConcurrentHashMap<>();
 
     protected AbstractGuardrailService(
             Class<?> aiServiceClass,
@@ -69,13 +71,17 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     @Override
     public <MethodKey> boolean hasInputGuardrails(MethodKey method) {
         return this.inputGuardrailMethods.computeIfAbsent(
-                method, m -> !getInputGuardrails(m).isEmpty());
+                checkMethodKey(method), m -> !getInputGuardrails(m).isEmpty());
     }
 
     @Override
     public <MethodKey> boolean hasOutputGuardrails(MethodKey method) {
         return this.outputGuardrailMethods.computeIfAbsent(
-                method, m -> !getOutputGuardrails(m).isEmpty());
+                checkMethodKey(method), m -> !getOutputGuardrails(m).isEmpty());
+    }
+
+    private static <MethodKey> MethodKey checkMethodKey(MethodKey method) {
+        return (method != null) ? method : (MethodKey) NULL_KEY;
     }
 
     // These methods below really only exist for testing purposes

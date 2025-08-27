@@ -5,7 +5,6 @@ public enum GitHubModelsChatModelName {
     GPT_4_O("gpt-4o", "gpt-4"),
     GPT_4_O_MINI("gpt-4o-mini", "gpt-4"),
     //O1_MINI("o1-mini", "o1"),
-    //O1_PREVIEW("o1-preview", "o1"),
 
     PHI_3_5_MINI_INSTRUCT("Phi-3.5-mini-instruct", "phi"),
     PHI_3_5_VISION_INSTRUCT("Phi-3.5-vision-instruct", "phi"),

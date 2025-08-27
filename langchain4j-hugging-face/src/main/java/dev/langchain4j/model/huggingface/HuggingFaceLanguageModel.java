@@ -1,5 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
@@ -173,10 +174,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         }
 
         public HuggingFaceLanguageModel build() {
-            if (accessToken == null || accessToken.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-            }
+            ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             return new HuggingFaceLanguageModel(this);
         }
     }

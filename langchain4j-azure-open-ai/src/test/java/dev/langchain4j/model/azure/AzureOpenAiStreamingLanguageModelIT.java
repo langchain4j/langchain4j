@@ -1,25 +1,24 @@
 package dev.langchain4j.model.azure;
 
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.output.Response;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiStreamingLanguageModelIT {
 
-    StreamingLanguageModel model = AzureOpenAiStreamingLanguageModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    StreamingLanguageModel model = AzureModelBuilders.streamingLanguageModelBuilder()
             .deploymentName("gpt-35-turbo-instruct-0914")
             .temperature(0.0)
-            .maxTokens(20)
+            .maxTokens(10)
             .logRequestsAndResponses(true)
             .build();
 
@@ -57,7 +56,12 @@ class AzureOpenAiStreamingLanguageModelIT {
         assertThat(answer).containsIgnoringCase("Paris");
         assertThat(response.content()).isEqualTo(answer);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount())
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -67,11 +71,10 @@ class AzureOpenAiStreamingLanguageModelIT {
 
         CompletableFuture<Response<String>> futureResponse = new CompletableFuture<>();
 
-        model.generate("Describe the capital of France in 100 words: ", new StreamingResponseHandler<>() {
+        model.generate("Describe the capital of France in 50 words: ", new StreamingResponseHandler<>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<String> response) {

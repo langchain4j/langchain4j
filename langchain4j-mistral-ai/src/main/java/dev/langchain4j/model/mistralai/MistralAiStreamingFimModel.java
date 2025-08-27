@@ -5,13 +5,13 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingFimModelBuilderFactory;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
@@ -22,7 +22,6 @@ import java.util.List;
  * <p>
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
-@Experimental
 public class MistralAiStreamingFimModel implements StreamingLanguageModel {
 
     private final MistralAiClient client;
@@ -39,14 +38,15 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.maxTokens = builder.maxTokens;
-        this.minTokens = getOrDefault(builder.minTokens, 0);
+        this.minTokens = builder.minTokens;
         this.topP = builder.topP;
         this.randomSeed = builder.randomSeed;
         this.stop = copy(builder.stop);
@@ -116,6 +116,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public Builder() {}
 
@@ -242,6 +243,15 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
          */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

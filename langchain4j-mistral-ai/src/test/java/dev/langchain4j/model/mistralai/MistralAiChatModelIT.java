@@ -12,6 +12,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -27,10 +28,13 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MistralAiChatModelIT {
 
@@ -444,14 +448,14 @@ class MistralAiChatModelIT {
     void should_return_valid_json_object_using_model_large() {
 
         // given
-        String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+        String userMessage = "Return JSON with two fields: name = Klaus, age = 42";
 
-        String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
+        String expectedJson = "{\"name\":\"Klaus\",\"age\":42}";
 
         ChatModel mistralLargeModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MISTRAL_LARGE_LATEST)
-                .temperature(0.1)
+                .modelName("mistral-medium-2508")
+                .temperature(0.0)
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
                 .logResponses(true)
@@ -664,5 +668,26 @@ class MistralAiChatModelIT {
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
 
         assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("open-mistral-nemo")
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 }

@@ -57,7 +57,7 @@ However, in some scenarios, end users may want to upload their custom documents 
 In this case, indexing should be performed online and be a part of the main application.
 
 Here is a simplified diagram of the indexing stage:
-[![](/img/rag-ingestion.png)](/tutorials/rag)
+![](/img/rag-ingestion.png)
 
 
 ### Retrieval
@@ -70,7 +70,7 @@ and performing a similarity search in the embedding store.
 Relevant segments (pieces of the original documents) are then injected into the prompt and sent to the LLM.
 
 Here is a simplified diagram of the retrieval stage:
-[![](/img/rag-retrieval.png)](/tutorials/rag)
+![](/img/rag-retrieval.png)
 
 
 ## RAG Flavours in LangChain4j
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.1-beta6</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 
@@ -271,6 +271,7 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
 - `GoogleCloudStorageDocumentLoader` from the `langchain4j-document-loader-google-cloud-storage` module
 - `SeleniumDocumentLoader` from the `langchain4j-document-loader-selenium` module
+- `PlaywrightDocumentLoader` from the `langchain4j-document-loader-playwright` module
 - `TencentCosDocumentLoader` from the `langchain4j-document-loader-tencent-cos` module
 
 
@@ -323,6 +324,87 @@ which can extract desired text content and metadata entries from the raw HTML.
 
 Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,
 tailored to your unique data.
+
+
+### Graph Transformer
+
+`GraphTransformer` is an interface that converts unstructured `Document` objects into structured `GraphDocument`s by extracting **semantic graph elements** such as nodes and relationships.
+It is ideal for converting raw text into structured semantic graphs
+
+A `GraphTransformer` transforms raw documents into `GraphDocument`s. These include:
+
+* A set of **nodes** (`GraphNode`) representing entities or concepts in the text.
+* A set of **relationships** (`GraphEdge`) representing how those entities are connected.
+* The original `Document` as the `source`.
+
+The default implementation is `LLMGraphTransformer`, which uses a language model (e.g., OpenAI) to extract graph information from natural language using prompt engineering.
+
+#### Key Benefits
+
+* **Entity and Relationship Extraction**: Identify key concepts and their semantic connections.
+* **Graph Representation**: Output is ready for integration into knowledge graphs or graph databases.
+* **Model-Powered Parsing**: Uses a large language model to infer structure from unstructured text.
+
+#### Maven Dependency
+
+```xml
+<dependency>
+  <groupId>dev.langchain4j</groupId>
+  <artifactId>langchain4j-community-llm-graph-transformer</artifactId>
+  <version>${latest version here}</version>
+</dependency>
+```
+
+#### Example Usage
+
+```java
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.community.data.document.graph.GraphDocument;
+import dev.langchain4j.community.data.document.graph.GraphNode;
+import dev.langchain4j.community.data.document.graph.GraphEdge;
+import dev.langchain4j.community.data.document.transformer.graph.GraphTransformer;
+import dev.langchain4j.community.data.document.transformer.graph.llm.LLMGraphTransformer;
+
+import java.time.Duration;
+import java.util.Set;
+
+public class GraphTransformerExample {
+    public static void main(String[] args) {
+        // Create a GraphTransformer backed by an LLM
+        GraphTransformer transformer = new LLMGraphTransformer(
+            OpenAiChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .timeout(Duration.ofSeconds(60))
+                .build()
+        );
+
+        // Input document
+        Document document = Document.from("Barack Obama was born in Hawaii and served as the 44th President of the United States.");
+
+        // Transform the document
+        GraphDocument graphDocument = transformer.transform(document);
+
+        // Access nodes and relationships
+        Set<GraphNode> nodes = graphDocument.nodes();
+        Set<GraphEdge> relationships = graphDocument.relationships();
+
+        nodes.forEach(System.out::println);
+        relationships.forEach(System.out::println);
+    }
+}
+```
+
+#### Output Example
+
+```
+GraphNode(name=Barack Obama, type=Person)
+GraphNode(name=Hawaii, type=Location)
+GraphEdge(from=Barack Obama, predicate=was born in, to=Hawaii)
+
+GraphEdge(from=Barack Obama, predicate=served as, to=President of the United States)
+```
+
 
 
 ### Text Segment
@@ -473,7 +555,7 @@ Currently supported embedding stores can be found [here](/integrations/embedding
 - `EmbeddingStore.addAll(List<String> ids, List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated IDs and `TextSegment`s to the store
 - `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
 - `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
-- `EmbeddingStore.removeAll(Collection<String> ids)` removes multiple `Embedding`s from the store by ID
+- `EmbeddingStore.removeAll(Collection<String> ids)` removes all `Embedding`s from the store whose IDs are present in the given collection.
 - `EmbeddingStore.removeAll(Filter)` removes all `Embedding`s that match the specified `Filter` from the store
 - `EmbeddingStore.removeAll()` removes all `Embedding`s from the store
 </details>
@@ -614,7 +696,7 @@ Advanced RAG can be implemented with LangChain4j with the following core compone
 - `ContentInjector`
 
 The following diagram shows how these components work together:
-[![](/img/advanced-rag.png)](/tutorials/rag)
+![](/img/advanced-rag.png)
 
 The process is as follows:
 1. The user produces a `UserMessage`, which is converted into a `Query`
@@ -812,13 +894,13 @@ The `ContentAggregator` is responsible for aggregating multiple ranked lists of 
 #### Default Content Aggregator
 The `DefaultContentAggregator` is the default implementation of `ContentAggregator`,
 which performs two-stage Reciprocal Rank Fusion (RRF).
-Please see `DefaultContentAggregator` Javadoc for more details.
+Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/DefaultContentAggregator.html) for more details.
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
-Please see `ReRankingContentAggregator` Javadoc for more details.
+Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
 
 ### Content Injector
 

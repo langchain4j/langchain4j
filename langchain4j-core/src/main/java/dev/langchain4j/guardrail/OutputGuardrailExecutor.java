@@ -4,9 +4,11 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 /**
@@ -65,24 +67,24 @@ public non-sealed class OutputGuardrailExecutor
                 throw new OutputGuardrailException(result.toString(), result.getFirstFailureException());
             }
 
-            // If we get here we know it is some kind of retry
-            // We don't want to add intermediary UserMessages to the memory
-            var chatMessages = Optional.ofNullable(
-                            accumulatedParams.requestParams().chatMemory())
-                    .map(ChatMemory::messages)
-                    .orElseGet(ArrayList::new);
-            result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
+            if (++attempt < maxAttempts) {
+                // If we get here we know it is some kind of retry
+                // We don't want to add intermediary UserMessages to the memory
+                var chatMessages = Optional.ofNullable(
+                                accumulatedParams.requestParams().chatMemory())
+                        .map(ChatMemory::messages)
+                        .orElseGet(ArrayList::new);
+                result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-            // Re-execute the request with the appended message
-            // But don't add it or the resulting message to the memory
-            var response = accumulatedParams.chatExecutor().execute(chatMessages);
-
-            attempt++;
-            accumulatedParams = OutputGuardrailRequest.builder()
-                    .responseFromLLM(response)
-                    .chatExecutor(accumulatedParams.chatExecutor())
-                    .requestParams(accumulatedParams.requestParams())
-                    .build();
+                // Re-execute the request with the appended message
+                // But don't add it or the resulting message to the memory
+                var response = accumulatedParams.chatExecutor().execute(chatMessages);
+                accumulatedParams = OutputGuardrailRequest.builder()
+                        .responseFromLLM(response)
+                        .chatExecutor(accumulatedParams.chatExecutor())
+                        .requestParams(accumulatedParams.requestParams())
+                        .build();
+            }
         }
 
         if (attempt == maxAttempts) {
@@ -132,7 +134,10 @@ public non-sealed class OutputGuardrailExecutor
      * @return A new {@link OutputGuardrailExecutorBuilder} instance.
      */
     public static OutputGuardrailExecutorBuilder builder() {
-        return new OutputGuardrailExecutorBuilder();
+        return ServiceLoader.load(OutputGuardrailExecutorBuilderFactory.class)
+                .findFirst()
+                .map(OutputGuardrailExecutorBuilderFactory::getBuilder)
+                .orElseGet(OutputGuardrailExecutorBuilder::new);
     }
 
     /**

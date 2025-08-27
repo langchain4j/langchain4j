@@ -6,12 +6,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Arrays;
-
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = "\\w{32,36}")
 class GoogleAiGeminiTokenCountEstimatorIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
@@ -19,7 +20,8 @@ class GoogleAiGeminiTokenCountEstimatorIT {
     void should_estimate_token_count_for_text() {
         // given
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .modelName("gemini-1.5-flash")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
@@ -35,7 +37,8 @@ class GoogleAiGeminiTokenCountEstimatorIT {
     void should_estimate_token_count_for_a_message() {
         // given
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .modelName("gemini-1.5-flash")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
@@ -51,7 +54,8 @@ class GoogleAiGeminiTokenCountEstimatorIT {
     void should_estimate_token_count_for_list_of_messages() {
         // given
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .modelName("gemini-1.5-flash")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
@@ -68,7 +72,8 @@ class GoogleAiGeminiTokenCountEstimatorIT {
     void should_estimate_token_count_for_tool_exec_reqs() {
         // given
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .modelName("gemini-1.5-flash")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
@@ -92,7 +97,8 @@ class GoogleAiGeminiTokenCountEstimatorIT {
     void should_estimate_token_count_for_tool_specs() {
         // given
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .modelName("gemini-1.5-flash")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();

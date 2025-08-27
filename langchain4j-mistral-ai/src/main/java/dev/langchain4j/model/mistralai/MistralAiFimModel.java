@@ -8,7 +8,6 @@ import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.fi
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
@@ -17,6 +16,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionReques
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
@@ -27,7 +27,6 @@ import java.util.List;
  * <p>
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
-@Experimental
 public class MistralAiFimModel implements LanguageModel {
 
     private final MistralAiClient client;
@@ -45,14 +44,15 @@ public class MistralAiFimModel implements LanguageModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.maxTokens = builder.maxTokens;
-        this.minTokens = getOrDefault(builder.minTokens, 0);
+        this.minTokens = builder.minTokens;
         this.topP = builder.topP;
         this.randomSeed = builder.randomSeed;
         this.stop = copy(builder.stop);
@@ -98,9 +98,10 @@ public class MistralAiFimModel implements LanguageModel {
 
         MistralAiChatCompletionResponse response =
                 withRetryMappingExceptions(() -> client.fimCompletion(request), maxRetries);
+
         MistralAiChatCompletionChoice responseChoice = response.getChoices().get(0);
         return Response.from(
-                responseChoice.getMessage().getContent(),
+                responseChoice.getMessage().asText(),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(responseChoice.getFinishReason()));
     }
@@ -127,6 +128,7 @@ public class MistralAiFimModel implements LanguageModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Integer maxRetries;
 
         public Builder() {}
@@ -254,6 +256,15 @@ public class MistralAiFimModel implements LanguageModel {
          */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
