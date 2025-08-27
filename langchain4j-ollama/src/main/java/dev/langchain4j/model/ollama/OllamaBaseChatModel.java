@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
 
@@ -36,6 +37,7 @@ abstract class OllamaBaseChatModel {
                 .customHeaders(builder.customHeaders)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .logger(builder.logger)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -110,6 +112,7 @@ abstract class OllamaBaseChatModel {
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
         protected Boolean logResponses;
+        protected Logger logger;
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
 
@@ -262,6 +265,15 @@ abstract class OllamaBaseChatModel {
 
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return self();
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public B logger(Logger logger) {
+            this.logger = logger;
             return self();
         }
 
