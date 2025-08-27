@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
@@ -100,6 +102,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
@@ -216,6 +219,15 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
