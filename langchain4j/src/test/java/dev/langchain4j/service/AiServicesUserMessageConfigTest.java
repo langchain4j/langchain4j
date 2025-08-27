@@ -4,17 +4,23 @@ import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -22,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import wiremock.com.google.common.collect.Lists;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
@@ -56,6 +63,13 @@ class AiServicesUserMessageConfigTest {
 
         @UserMessage("What is the capital of {{arg0}}?")
         String chat8(String country);
+
+        String chat9(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+        @UserMessage("How many lamas are there in this image?")
+        String chat10(@UserMessage List<ImageContent> images);
+
+        String chat11(@UserMessage ImageContent image1, @UserMessage String text, @UserMessage ImageContent image2);
 
         // illegal configuration
 
@@ -187,6 +201,56 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    private static final Image image = Image.builder().url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg").build();
+    private static final ImageContent imageContent = ImageContent.from(image);
+
+    @Test
+    void user_message_configuration_9() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat9("Count the number of lamas in this image", imageContent))
+                .isNotBlank();
+
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(dev.langchain4j.data.message.UserMessage.from(TextContent.from("Count the number of lamas in this image"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_10() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat10(List.of(imageContent))).isNotBlank();
+
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(dev.langchain4j.data.message.UserMessage.from(TextContent.from("How many lamas are there in this image?"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_11() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat11(imageContent, "Count the number of lamas in this image", imageContent))
+                .isNotBlank();
+
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(dev.langchain4j.data.message.UserMessage.from(imageContent, TextContent.from("Count the number of lamas in this image"), imageContent))
+                .build());
         verify(chatModel).supportedCapabilities();
     }
 
