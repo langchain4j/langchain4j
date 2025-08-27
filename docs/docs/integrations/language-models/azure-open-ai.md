@@ -383,7 +383,6 @@ byte[] audioData = Files.readAllBytes(audioFile.toPath());
 // Create Audio object with binary data
 Audio audio = Audio.builder()
     .binaryData(audioData)
-    .mimeType("audio/wav")
     .build();
 
 // Create transcription request
