@@ -14,6 +14,10 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> chatModel(ChatModel chatModel);
 
+    SupervisorAgentService<T> name(String outputName);
+
+    SupervisorAgentService<T> description(String outputName);
+
     SupervisorAgentService<T> outputName(String outputName);
 
     SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);
@@ -29,6 +33,8 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> subAgents(List<AgentExecutor> agentExecutors);
 
     SupervisorAgentService<T> maxAgentsInvocations(int maxAgentsInvocations);
+
+    SupervisorAgentService<T> output(Function<AgenticScope, Object> output);
 
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 }

@@ -17,16 +17,25 @@ import org.slf4j.LoggerFactory;
 @Internal
 public class LoggingHttpClient implements HttpClient {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingHttpClient.class);
+    private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(LoggingHttpClient.class);
 
     private final HttpClient delegateHttpClient;
     private final boolean logRequests;
     private final boolean logResponses;
+    private final Logger log;
 
     public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses) {
         this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
+        this.log = DEFAULT_LOG;
+    }
+
+    public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses, Logger logger) {
+        this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
+        this.log = getOrDefault(logger, DEFAULT_LOG);
     }
 
     @Override

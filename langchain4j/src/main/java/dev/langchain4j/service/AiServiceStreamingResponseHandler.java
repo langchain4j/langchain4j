@@ -158,12 +158,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (intermediateResponseHandler != null) {
                 intermediateResponseHandler.accept(chatResponse);
             }
+          
+            boolean immediateToolReturn = true;
 
             if (toolExecutor != null) {
                 for (CompletableFuture<ToolExecutionResultMessage> toolResultFuture : toolResultFutures) {
                     try {
                         ToolExecutionResultMessage toolExecutionResultMessage = toolResultFuture.get();
                         addToMemory(toolExecutionResultMessage);
+                        immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -179,7 +182,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                     ToolExecutionResultMessage toolExecutionResultMessage = execute(toolExecutionRequest);
                     addToMemory(toolExecutionResultMessage);
+                    immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
                 }
+            }
+
+            if (immediateToolReturn) {
+                if (completeResponseHandler != null) {
+                    ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+                    completeResponseHandler.accept(finalChatResponse);
+                }
+                return;
             }
 
             ChatRequest chatRequest = ChatRequest.builder()
@@ -211,13 +223,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
             if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(aiMessage)
-                        .metadata(chatResponse.metadata().toBuilder()
-                                .tokenUsage(
-                                        tokenUsage.add(chatResponse.metadata().tokenUsage()))
-                                .build())
-                        .build();
+                ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
@@ -248,6 +254,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
+    }
+
+    private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(completeResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsage.add(
+                                completeResponse.metadata().tokenUsage()))
+                        .build())
+                .build();
     }
 
     private ToolExecutionResultMessage execute(ToolExecutionRequest toolRequest) {

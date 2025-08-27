@@ -9,18 +9,21 @@ import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgentService<T>> implements ParallelAgentService<T> {
 
     private Executor executor;
 
-    private ParallelAgentServiceImpl(Class<T> agentServiceClass) {
-        super(agentServiceClass);
+    private ParallelAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        super(agentServiceClass, agenticMethod);
     }
 
     @Override
@@ -68,11 +71,11 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
     }
 
     public static ParallelAgentServiceImpl<UntypedAgent> builder() {
-        return builder(UntypedAgent.class);
+        return new ParallelAgentServiceImpl<>(UntypedAgent.class, null);
     }
 
     public static <T> ParallelAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new ParallelAgentServiceImpl<>(agentServiceClass);
+        return new ParallelAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
 
     public ParallelAgentServiceImpl<T> executor(Executor executor) {

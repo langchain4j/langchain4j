@@ -59,7 +59,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
@@ -136,7 +137,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -194,7 +196,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                         .toolSpecifications(toolSpecification)
                         .build())
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
@@ -333,7 +336,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
                 .thinkingConfig(thinkingConfig)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         String userMessage = "What is the capital of Germany?";
@@ -377,7 +381,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         String userMessage = "What is the capital of Germany?";

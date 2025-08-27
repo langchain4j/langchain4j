@@ -411,3 +411,19 @@ ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .build();
 String toolResult = mcpClient.executeTool(request);
 ```
+
+## Notes about Tool Caching
+
+`DefaultMcpClient` maintains an internal cache of MCP tools. Once retrieved, the
+tool list won't be requested again from the MCP server unless the server sends a
+notification that the list has been updated. You can manually clear this cache
+by calling `DefaultMcpClient.evictToolListCache()`. If you prefer to disable
+caching entirely, configure the client as follows:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+    .key("MyMCPClient")
+    .transport(transport)
+    .cacheToolList(false)
+    .build();
+```

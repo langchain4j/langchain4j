@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.data.message.UserMessage.*;
 import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -8,13 +9,18 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +31,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
+
+    private static final Image image = Image.builder()
+            .url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg")
+            .build();
+    private static final ImageContent imageContent = ImageContent.from(image);
 
     @Spy
     ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
@@ -57,6 +68,21 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the capital of {{arg0}}?")
         String chat8(String country);
 
+        String chat9(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+        @UserMessage("How many lamas are there in this image?")
+        String chat10(@UserMessage List<ImageContent> images);
+
+        String chat11(@UserMessage ImageContent image1, @UserMessage String text, @UserMessage ImageContent image2);
+
+        String chat12(MyObject myObject);
+
+        String chat13(@UserMessage MyObject myObject);
+
+        String chat14(@UserMessage MyObject myObject, @UserMessage ImageContent image);
+
+        String chat15(@UserMessage String userMessage, @UserMessage Content content);
+
         // illegal configuration
 
         String illegalChat1();
@@ -74,6 +100,20 @@ class AiServicesUserMessageConfigTest {
         String illegalChat6(@UserMessage String userMessage);
 
         // TODO more tests with @UserName, @V, @MemoryId
+    }
+
+    class MyObject {
+
+        private final String value;
+
+        MyObject(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
     }
 
     @Test
@@ -187,6 +227,128 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_9() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat9("Count the number of lamas in this image", imageContent);
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_10() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat10(List.of(imageContent));
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(userMessage(TextContent.from("How many lamas are there in this image?"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_11() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat11(imageContent, "Count the number of lamas in this image", imageContent);
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(userMessage(imageContent, TextContent.from("Count the number of lamas in this image"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_12() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat12(new MyObject("test123"));
+
+        // then
+        verify(chatModel).chat(chatRequest("test123"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_13() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat13(new MyObject("test123"));
+
+        // then
+        verify(chatModel).chat(chatRequest("test123"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_14() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat14(new MyObject("Count the number of lamas in this image"), imageContent);
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
+                .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_15() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        aiService.chat15("Hello!", TextContent.from("How are you?"));
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(userMessage(TextContent.from("Hello!"), TextContent.from("How are you?")))
+                .build());
         verify(chatModel).supportedCapabilities();
     }
 
