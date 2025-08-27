@@ -11,6 +11,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MessageTokenCountResponse {
+
     private Integer inputTokens;
 
     public Integer getInputTokens() {

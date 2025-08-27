@@ -1,5 +1,14 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -11,17 +20,12 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicRole;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
-
+/**
+ * @since 1.4.0
+ */
+@Experimental
 public class AnthropicTokenCountEstimator implements TokenCountEstimator {
+
     private final AnthropicClient client;
     private final String modelName;
 
@@ -41,22 +45,22 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCountInText(final String text) {
+    public int estimateTokenCountInText(String text) {
         AnthropicCountTokensRequest request = AnthropicCountTokensRequest.builder()
                 .model(this.modelName)
-                .messages(singletonList(new AnthropicMessage(AnthropicRole.USER, singletonList(new AnthropicTextContent(text)))))
+                .messages(List.of(new AnthropicMessage(AnthropicRole.USER, List.of(new AnthropicTextContent(text)))))
                 .build();
 
         return client.countTokens(request).getInputTokens();
     }
 
     @Override
-    public int estimateTokenCountInMessage(final ChatMessage message) {
-        return estimateTokenCountInMessages(singletonList(message));
+    public int estimateTokenCountInMessage(ChatMessage message) {
+        return estimateTokenCountInMessages(List.of(message));
     }
 
     @Override
-    public int estimateTokenCountInMessages(final Iterable<ChatMessage> messages) {
+    public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
         List<ChatMessage> systemMessages = new ArrayList<>();
         List<ChatMessage> otherMessages = new ArrayList<>();
         for (ChatMessage message : messages) {
@@ -67,7 +71,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
             }
         }
 
-        AnthropicCountTokensRequest.Builder requestBuilder = AnthropicCountTokensRequest.builder().model(this.modelName);
+        AnthropicCountTokensRequest.Builder requestBuilder = AnthropicCountTokensRequest.builder()
+                .model(this.modelName);
 
         if (!systemMessages.isEmpty()) {
             requestBuilder.system(toAnthropicSystemPrompt(systemMessages, AnthropicCacheType.NO_CACHE));
@@ -84,6 +89,7 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
     }
 
     public static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;

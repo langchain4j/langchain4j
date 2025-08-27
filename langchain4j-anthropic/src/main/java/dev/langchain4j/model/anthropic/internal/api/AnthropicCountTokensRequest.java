@@ -12,25 +12,26 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AnthropicCountTokensRequest {
+
     private String model;
     private List<AnthropicMessage> messages;
     private List<AnthropicTextContent> system;
-    public List<AnthropicTool> tools;
-    public AnthropicThinking thinking;
+    private List<AnthropicTool> tools;
+    private AnthropicThinking thinking;
 
-    public AnthropicCountTokensRequest(final String model, final List<AnthropicTextContent> system, final List<AnthropicMessage> messages, final AnthropicThinking thinking, final List<AnthropicTool> tools) {
-        this.thinking = thinking;
-        this.tools = tools;
-        this.system = system;
-        this.messages = messages;
-        this.model = model;
+    public AnthropicCountTokensRequest(Builder builder) {
+        this.thinking = builder.thinking;
+        this.tools = builder.tools;
+        this.system = builder.system;
+        this.messages = builder.messages;
+        this.model = builder.model;
     }
 
     public String getModel() {
         return model;
     }
 
-    public void setModel(final String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
@@ -38,7 +39,7 @@ public class AnthropicCountTokensRequest {
         return messages;
     }
 
-    public void setMessages(final List<AnthropicMessage> messages) {
+    public void setMessages(List<AnthropicMessage> messages) {
         this.messages = messages;
     }
 
@@ -46,7 +47,7 @@ public class AnthropicCountTokensRequest {
         return system;
     }
 
-    public void setSystem(final List<AnthropicTextContent> system) {
+    public void setSystem(List<AnthropicTextContent> system) {
         this.system = system;
     }
 
@@ -54,7 +55,7 @@ public class AnthropicCountTokensRequest {
         return tools;
     }
 
-    public void setTools(final List<AnthropicTool> tools) {
+    public void setTools(List<AnthropicTool> tools) {
         this.tools = tools;
     }
 
@@ -62,7 +63,7 @@ public class AnthropicCountTokensRequest {
         return thinking;
     }
 
-    public void setThinking(final AnthropicThinking thinking) {
+    public void setThinking(AnthropicThinking thinking) {
         this.thinking = thinking;
     }
 
@@ -71,11 +72,12 @@ public class AnthropicCountTokensRequest {
     }
 
     public static class Builder {
+
         private String model;
         private List<AnthropicMessage> messages;
         private List<AnthropicTextContent> system;
-        public List<AnthropicTool> tools;
-        public AnthropicThinking thinking;
+        private List<AnthropicTool> tools;
+        private AnthropicThinking thinking;
 
         public Builder model(String model) {
             this.model = model;
@@ -103,7 +105,7 @@ public class AnthropicCountTokensRequest {
         }
 
         public AnthropicCountTokensRequest build() {
-            return new AnthropicCountTokensRequest(model, system, messages, thinking, tools);
+            return new AnthropicCountTokensRequest(this);
         }
     }
 }

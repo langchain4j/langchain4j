@@ -14,8 +14,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicTokenCountEstimatorIT {
-    private static final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
 
+    private static final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
 
     @Test
     void should_estimate_token_count_in_text() {
@@ -34,7 +34,6 @@ class AnthropicTokenCountEstimatorIT {
 
         // then
         assertThat(count).isGreaterThan(0);
-        System.out.println("count: " + count);
     }
 
     @Test
@@ -54,7 +53,6 @@ class AnthropicTokenCountEstimatorIT {
 
         // then
         assertThat(count).isGreaterThan(0);
-        System.out.println("count: " + count);
     }
 
     @Test
@@ -76,7 +74,6 @@ class AnthropicTokenCountEstimatorIT {
 
         // then
         assertThat(count).isGreaterThan(0);
-        System.out.println("count: " + count);
     }
 
     @Test
@@ -99,6 +96,5 @@ class AnthropicTokenCountEstimatorIT {
 
         // then
         assertThat(count).isGreaterThan(0);
-        System.out.println("count: " + count);
     }
 }
