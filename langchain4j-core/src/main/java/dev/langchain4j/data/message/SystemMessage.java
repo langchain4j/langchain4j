@@ -1,12 +1,12 @@
 package dev.langchain4j.data.message;
 
-import java.util.Objects;
-import java.util.List;
-import java.util.Optional;
-
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents a system message, typically defined by a developer.
@@ -52,9 +52,7 @@ public class SystemMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "SystemMessage {" +
-                " text = " + quoted(text) +
-                " }";
+        return "SystemMessage {" + " text = " + quoted(text) + " }";
     }
 
     /**

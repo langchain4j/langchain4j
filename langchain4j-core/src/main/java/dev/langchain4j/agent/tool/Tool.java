@@ -1,11 +1,11 @@
 package dev.langchain4j.agent.tool;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import dev.langchain4j.Experimental;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Java methods annotated with {@code @Tool} are considered tools/functions that language model can execute/call.
