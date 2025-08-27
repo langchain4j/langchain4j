@@ -186,6 +186,79 @@ public class DefaultMcpClientTest {
         verify(transport, times(1)).executeOperationWithResponse(any());
     }
 
+    @Test
+    public void should_evict_tool_list_cache() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        final ObjectNode toolsJsonResult = getToolResultJson(
+                new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
+        when(transport.executeOperationWithResponse(any()))
+                .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
+
+        // and: the tools are cached
+        final List<ToolSpecification> tools = client.listTools();
+        // and: the tool list is changed
+        final ObjectNode newToolsJsonResult = getToolResultJson(new ToolDefinition(
+                "testToolAnother",
+                "Another test tool",
+                new ToolArg("argumentAnother1", "integer", "Another argument")));
+        when(transport.executeOperationWithResponse(any()))
+                .thenReturn(CompletableFuture.completedFuture(newToolsJsonResult));
+
+        // when
+        client.evictToolListCache();
+        final List<ToolSpecification> toolsAfterEviction = client.listTools();
+
+        // then: the tools were retrieved again
+        assertThat(tools).isNotNull().isNotEmpty();
+        assertThat(toolsAfterEviction).isNotNull().isNotEmpty();
+        assertThat(toolsAfterEviction).isNotSameAs(tools);
+        // and: the tool lists are different
+        assertThat(tools.get(0).name()).isEqualTo("testTool");
+        assertThat(toolsAfterEviction.get(0).name()).isEqualTo("testToolAnother");
+        // and: the transport operation was executed once more after the eviction
+        verify(transport, times(2)).executeOperationWithResponse(any());
+    }
+
+    @Test
+    public void should_allow_to_disable_tool_list_caching() {
+        // given: a client built with caching disabled
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .cacheToolList(false)
+                .build();
+        final ObjectNode toolsJsonResult = getToolResultJson(
+                new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
+        when(transport.executeOperationWithResponse(any()))
+                .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
+
+        // and: an initial tool list is retrieved
+        final List<ToolSpecification> initialTools = client.listTools();
+        // and: the tool list is changed
+        final ObjectNode newToolsJsonResult = getToolResultJson(new ToolDefinition(
+                "testToolAnother",
+                "Another test tool",
+                new ToolArg("argumentAnother1", "integer", "Another argument")));
+        when(transport.executeOperationWithResponse(any()))
+                .thenReturn(CompletableFuture.completedFuture(newToolsJsonResult));
+
+        // when
+        final List<ToolSpecification> subsequentTools = client.listTools();
+
+        // then: the tools were retrieved again
+        assertThat(initialTools).isNotNull().isNotEmpty();
+        assertThat(subsequentTools).isNotNull().isNotEmpty();
+        assertThat(subsequentTools).isNotSameAs(initialTools);
+        // and: the tool lists are different
+        assertThat(initialTools.get(0).name()).isEqualTo("testTool");
+        assertThat(subsequentTools.get(0).name()).isEqualTo("testToolAnother");
+        // and: the transport operation was executed as many times as tools were retrieved
+        verify(transport, times(2)).executeOperationWithResponse(any());
+    }
+
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
