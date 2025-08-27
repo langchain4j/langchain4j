@@ -54,7 +54,6 @@ public class WatsonxScoringModel implements ScoringModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
-                .httpClient(builder.httpClient)
                 .build();
     }
 
