@@ -195,6 +195,12 @@
                 <version>1.4.0-beta10-SNAPSHOT</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-watsonx</artifactId>
+                <version>1.4.0-beta10-SNAPSHOT</version>
+            </dependency>
+
             <!-- embedding stores -->
 
             <dependency>
