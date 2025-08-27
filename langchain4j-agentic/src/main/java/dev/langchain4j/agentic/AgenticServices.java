@@ -353,6 +353,24 @@ public class AgenticServices {
         return builder.build();
     }
 
+    private static <T> void buildAgentSpecs(Class<T> agentServiceClass, Method agentMethod, String name, String description, String outputName, WorkflowService<?, ?> builder) {
+        if (!isNullOrBlank(name)) {
+            builder.name(name);
+        } else {
+            builder.name(agentMethod.getName());
+        }
+        if (!isNullOrBlank(description)) {
+            builder.description(description);
+        }
+        if (!isNullOrBlank(outputName)) {
+            builder.outputName(outputName);
+        }
+
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
+                .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))
+                .ifPresent(builder::output);
+    }
+
     private static <T> T buildSupervisorAgent(Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel) {
         dev.langchain4j.agentic.declarative.SupervisorAgent supervisorAgent = agentMethod.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         var builder = supervisorBuilder(agentServiceClass)
@@ -384,27 +402,13 @@ public class AgenticServices {
                 .map(method -> (ChatModel) invokeStatic(method))
                 .ifPresentOrElse(builder::chatModel, () -> builder.chatModel(chatModel));
 
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-
-        return builder.build();
-    }
-
-    private static <T> void buildAgentSpecs(Class<T> agentServiceClass, Method agentMethod, String name, String description, String outputName, WorkflowService<?, ?> builder) {
-        if (!isNullOrBlank(name)) {
-            builder.name(name);
-        } else {
-            builder.name(agentMethod.getName());
-        }
-        if (!isNullOrBlank(description)) {
-            builder.description(description);
-        }
-        if (!isNullOrBlank(outputName)) {
-            builder.outputName(outputName);
-        }
-
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
                 .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))
                 .ifPresent(builder::output);
+
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+
+        return builder.build();
     }
 
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(Class<T> agentServiceClass) {
