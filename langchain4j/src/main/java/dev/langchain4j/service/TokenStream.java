@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 import java.util.function.Consumer;
@@ -62,12 +63,23 @@ public interface TokenStream {
      * @since 1.2.0
      */
     default TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
-        throw new UnsupportedOperationException("Consuming intermediate responses is not supported " +
-                "by this implementation of TokenStream: " + this.getClass().getName());
+        throw new UnsupportedOperationException("Consuming intermediate responses is not supported "
+                + "by this implementation of TokenStream: " + this.getClass().getName());
     }
 
     /**
-     * The provided consumer will be invoked if any tool is executed.
+     * The provided consumer will be invoked right before a tool is executed.
+     *
+     * @param beforeToolExecutionHandler lambda that consumes {@link BeforeToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.2.0
+     */
+    default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked right after a tool is executed.
      * <p>
      * The invocation happens after the tool method has finished and before any other tool is executed.
      *

@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,6 +30,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 ensureNotBlank(builder.apiKey, "apiKey"),
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                builder.logger,
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -106,6 +108,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         private String baseUrl;
         private Boolean logRequestsAndResponses;
+        private Logger logger;
         private Duration timeout;
         private Integer maxRetries;
 
@@ -133,6 +136,15 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

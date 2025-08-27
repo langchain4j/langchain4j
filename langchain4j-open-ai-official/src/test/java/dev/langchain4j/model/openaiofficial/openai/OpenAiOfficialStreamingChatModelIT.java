@@ -1,9 +1,11 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -16,6 +18,7 @@ import java.util.List;
 
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -91,5 +94,23 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
         io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "ance"));
         io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+    }
+
+    @Test
+    void should_work_with_o_models() {
+
+        // given
+
+        StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("o4-mini")
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is the capital of Germany?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).contains("Berlin");
     }
 }

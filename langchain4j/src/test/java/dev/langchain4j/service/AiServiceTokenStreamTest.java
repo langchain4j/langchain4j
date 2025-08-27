@@ -11,10 +11,12 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ class AiServiceTokenStreamTest {
     static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
+    static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -71,6 +74,29 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onPartialResponse must be invoked on TokenStream exactly 1 time");
+    }
+
+    @Test
+    void start_beforeToolExecutionInvoked_shouldNotThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_beforeToolExecutionInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
@@ -154,6 +180,10 @@ class AiServiceTokenStreamTest {
                         .userMessageTemplate("")
                         .variables(Map.of())
                         .build())
+                .toolArgumentsErrorHandler((e, c) -> {
+                    throw new RuntimeException(e);
+                })
+                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
     }
 }

@@ -17,16 +17,25 @@ import org.slf4j.LoggerFactory;
 @Internal
 public class LoggingHttpClient implements HttpClient {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingHttpClient.class);
+    private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(LoggingHttpClient.class);
 
     private final HttpClient delegateHttpClient;
     private final boolean logRequests;
     private final boolean logResponses;
+    private final Logger log;
 
     public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses) {
         this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
+        this.log = DEFAULT_LOG;
+    }
+
+    public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses, Logger logger) {
+        this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
+        this.log = getOrDefault(logger, DEFAULT_LOG);
     }
 
     @Override
@@ -43,6 +52,43 @@ public class LoggingHttpClient implements HttpClient {
         }
 
         return response;
+    }
+
+    @Override
+    public void execute(HttpRequest request, ServerSentEventListener delegateListener) {
+
+        if (logRequests) {
+            HttpRequestLogger.log(log, request);
+        }
+
+        this.delegateHttpClient.execute(request, new ServerSentEventListener() {
+
+            @Override
+            public void onOpen(SuccessfulHttpResponse response) {
+                if (logResponses) {
+                    HttpResponseLogger.log(log, response);
+                }
+                delegateListener.onOpen(response);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                delegateListener.onError(throwable);
+            }
+
+            @Override
+            public void onClose() {
+                delegateListener.onClose();
+            }
+        });
     }
 
     @Override

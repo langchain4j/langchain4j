@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
@@ -50,63 +52,6 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.returnThinking,
                 builder.sendThinking,
                 builder.defaultRequestParameters);
-    }
-
-    /**
-     * @deprecated please use {@link #GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiGeminiStreamingChatModel(
-            String apiKey,
-            String baseUrl,
-            String modelName,
-            Double temperature,
-            Integer topK,
-            Double topP,
-            Integer seed,
-            Integer maxOutputTokens,
-            Duration timeout,
-            ResponseFormat responseFormat,
-            List<String> stopSequences,
-            GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution,
-            Boolean includeCodeExecutionOutput,
-            Boolean logRequestsAndResponses,
-            Boolean responseLogprobs,
-            Boolean enableEnhancedCivicAnswers,
-            Integer logprobs,
-            List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners,
-            Integer maxRetries) {
-        super(
-                null,
-                apiKey,
-                baseUrl,
-                modelName,
-                temperature,
-                topK,
-                seed,
-                topP,
-                null,
-                null,
-                maxOutputTokens,
-                logprobs,
-                timeout,
-                responseFormat,
-                stopSequences,
-                toolConfig,
-                allowCodeExecution,
-                includeCodeExecutionOutput,
-                logRequestsAndResponses,
-                responseLogprobs,
-                enableEnhancedCivicAnswers,
-                safetySettings,
-                listeners,
-                maxRetries,
-                null,
-                null,
-                null,
-                null);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
@@ -157,6 +102,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
@@ -276,6 +222,15 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public GoogleAiGeminiStreamingChatModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
@@ -283,14 +238,6 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
-            return this;
-        }
-
-        /**
-         * @deprecated retries are not supported for streaming model
-         */
-        @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-        public GoogleAiGeminiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
             return this;
         }
 

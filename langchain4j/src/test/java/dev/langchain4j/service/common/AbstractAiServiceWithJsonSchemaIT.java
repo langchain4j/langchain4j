@@ -1000,6 +1000,11 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
             String name;
             List<Person> children;
+
+            @Override
+            public String toString() {
+                return "Person{name='" + name + "', children=" + children + "}";
+            }
         }
 
         Person extractPersonFrom(String text);
