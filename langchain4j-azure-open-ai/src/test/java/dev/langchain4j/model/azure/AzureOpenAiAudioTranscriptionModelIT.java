@@ -31,7 +31,9 @@ public class AzureOpenAiAudioTranscriptionModelIT {
 
         // Skip test if required environment variables are not set
         assumeTrue(apiKey != null && !apiKey.isBlank(), "AZURE_OPENAI_AUDIO_KEY environment variable not set");
-        assumeTrue(deploymentName != null && !deploymentName.isBlank(), "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        assumeTrue(
+                deploymentName != null && !deploymentName.isBlank(),
+                "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
 
         AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
                 .endpoint(endpoint)
@@ -72,7 +74,9 @@ public class AzureOpenAiAudioTranscriptionModelIT {
 
         // Skip test if required environment variables are not set
         assumeTrue(apiKey != null && !apiKey.isBlank(), "AZURE_OPENAI_AUDIO_KEY environment variable not set");
-        assumeTrue(deploymentName != null && !deploymentName.isBlank(), "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
+        assumeTrue(
+                deploymentName != null && !deploymentName.isBlank(),
+                "AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME environment variable not set");
 
         AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
                 .endpoint(endpoint)

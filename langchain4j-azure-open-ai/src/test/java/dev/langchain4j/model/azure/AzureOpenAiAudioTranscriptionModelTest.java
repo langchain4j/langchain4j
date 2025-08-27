@@ -298,7 +298,6 @@ class AzureOpenAiAudioTranscriptionModelTest {
 
         // then - should use default filename "audio.mp3"
         verify(client)
-                .getAudioTranscription(
-                        eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
+                .getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
     }
 }
