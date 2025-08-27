@@ -46,6 +46,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
+        <module>langchain4j-watsonx</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -126,7 +127,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.11.3</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -173,7 +174,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.11.3</version>
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>

@@ -25,10 +25,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.Function;
 
-public class AgentBuilder<T> {
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+public class AgentBuilder<T> {
     private final Class<T> agentServiceClass;
 
+    String name;
+    String description;
     String outputName;
 
     private ChatModel model;
@@ -36,7 +39,7 @@ public class AgentBuilder<T> {
     private ChatMemoryProvider chatMemoryProvider;
     private Object[] objectsWithTools;
     private Function<AgenticScope, String> contextProvider;
-    private String[] agentNames;
+    private String[] contextProvidingAgents;
     private ToolProvider toolProvider;
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
@@ -48,6 +51,7 @@ public class AgentBuilder<T> {
     private Class<? extends OutputGuardrail>[] outputGuardrailClasses;
     private InputGuardrail[] inputGuardrails;
     private OutputGuardrail[] outputGuardrails;
+    private Function<Object, String> systemMessageProvider;
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
@@ -56,8 +60,19 @@ public class AgentBuilder<T> {
         if (agent == null) {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
-        if (!agent.outputName().isEmpty()) {
-            outputName = agent.outputName();
+
+        if (!isNullOrBlank(agent.name())) {
+            this.name = agent.name();
+        } else {
+            this.name = agenticMethod.getName();
+        }
+        if (!isNullOrBlank(agent.description())) {
+            this.description = agent.description();
+        } else if (!isNullOrBlank(agent.value())) {
+            this.description = agent.value();
+        }
+        if (!isNullOrBlank(agent.outputName())) {
+            this.outputName = agent.outputName();
         }
     }
 
@@ -113,13 +128,16 @@ public class AgentBuilder<T> {
         if (outputGuardrails != null) {
             aiServices.outputGuardrails(outputGuardrails);
         }
+        if (systemMessageProvider != null) {
+            aiServices.systemMessageProvider(systemMessageProvider);
+        }
 
-        boolean agenticScopeDependent = contextProvider != null || (agentNames != null && agentNames.length > 0);
+        boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
                 aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, agentNames));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
             }
         }
 
@@ -208,6 +226,16 @@ public class AgentBuilder<T> {
         return this;
     }
 
+    public AgentBuilder<T> name(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public AgentBuilder<T> description(String description) {
+        this.description = description;
+        return this;
+    }
+
     public AgentBuilder<T> outputName(String outputName) {
         this.outputName = outputName;
         return this;
@@ -218,8 +246,13 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> summarizedContext(String... agentNames) {
-        this.agentNames = agentNames;
+    public AgentBuilder<T> summarizedContext(String... contextProvidingAgents) {
+        this.contextProvidingAgents = contextProvidingAgents;
+        return this;
+    }
+
+    public AgentBuilder<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        this.systemMessageProvider = systemMessageProvider;
         return this;
     }
 }

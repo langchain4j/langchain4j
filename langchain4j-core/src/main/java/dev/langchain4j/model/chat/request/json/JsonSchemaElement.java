@@ -11,6 +11,7 @@ package dev.langchain4j.model.chat.request.json;
  * @see JsonNullSchema
  * @see JsonNumberSchema
  * @see JsonObjectSchema
+ * @see JsonRawSchema
  * @see JsonReferenceSchema
  * @see JsonStringSchema
  */

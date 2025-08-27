@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -328,6 +329,10 @@ public class JsonSchemaElementUtils {
             return map;
         } else if (jsonSchemaElement instanceof JsonNullSchema) {
             return Map.of("type", "null");
+        } else if (jsonSchemaElement instanceof JsonRawSchema jsonNative) {
+            @SuppressWarnings("unchecked")
+            var map = (Map<String, Object>) Json.fromJson(jsonNative.schema(), Map.class);
+            return map;
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }

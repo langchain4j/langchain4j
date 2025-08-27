@@ -14,7 +14,7 @@
     <description>Vespa is a fully featured search engine and vector database</description>
 
     <properties>
-        <vespa.version>8.458.13</vespa.version>
+        <vespa.version>8.524.25</vespa.version>
     </properties>
 
     <dependencies>
@@ -61,7 +61,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 

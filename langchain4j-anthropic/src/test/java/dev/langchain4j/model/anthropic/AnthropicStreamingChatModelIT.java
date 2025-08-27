@@ -14,6 +14,7 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -125,7 +126,9 @@ class AnthropicStreamingChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+    })
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given

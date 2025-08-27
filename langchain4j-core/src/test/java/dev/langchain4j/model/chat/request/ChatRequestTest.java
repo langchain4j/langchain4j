@@ -1,11 +1,11 @@
 package dev.langchain4j.model.chat.request;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ChatRequestTest {
 
@@ -14,9 +14,8 @@ class ChatRequestTest {
 
         // given
         UserMessage userMessage = UserMessage.from("hi");
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("tool")
-                .build();
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("tool").build();
         ResponseFormat responseFormat = ResponseFormat.JSON;
 
         // when
@@ -37,9 +36,8 @@ class ChatRequestTest {
 
         // given
         UserMessage userMessage = UserMessage.from("hi");
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("tool")
-                .build();
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("tool").build();
         ResponseFormat responseFormat = ResponseFormat.JSON;
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
@@ -64,10 +62,10 @@ class ChatRequestTest {
     void should_fail_when_both_request_parameters_and_response_format_are_set() {
 
         assertThatThrownBy(() -> ChatRequest.builder()
-                .messages(UserMessage.from("hi"))
-                .parameters(DefaultChatRequestParameters.EMPTY)
-                .responseFormat(ResponseFormat.JSON)
-                .build())
+                        .messages(UserMessage.from("hi"))
+                        .parameters(DefaultChatRequestParameters.EMPTY)
+                        .responseFormat(ResponseFormat.JSON)
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
     }
@@ -76,10 +74,11 @@ class ChatRequestTest {
     void should_fail_when_both_request_parameters_and_toolSpecifications_are_set() {
 
         assertThatThrownBy(() -> ChatRequest.builder()
-                .messages(UserMessage.from("hi"))
-                .parameters(DefaultChatRequestParameters.EMPTY)
-                .toolSpecifications(ToolSpecification.builder().name("tool").build())
-                .build())
+                        .messages(UserMessage.from("hi"))
+                        .parameters(DefaultChatRequestParameters.EMPTY)
+                        .toolSpecifications(
+                                ToolSpecification.builder().name("tool").build())
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
     }

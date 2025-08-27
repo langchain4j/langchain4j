@@ -1,9 +1,9 @@
 package dev.langchain4j.classification;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represent the result of classification.
@@ -24,9 +24,8 @@ public class ClassificationResult<L> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (ClassificationResult) obj;
+        if (this == obj) return true;
+        if (!(obj instanceof ClassificationResult<?> that)) return false;
         return Objects.equals(this.scoredLabels, that.scoredLabels);
     }
 
@@ -37,8 +36,6 @@ public class ClassificationResult<L> {
 
     @Override
     public String toString() {
-        return "ClassificationResult {" +
-                " scoredLabels = " + scoredLabels +
-                " }";
+        return "ClassificationResult {" + " scoredLabels = " + scoredLabels + " }";
     }
 }

@@ -73,6 +73,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -441,7 +442,8 @@ class InternalAzureOpenAiHelper {
         if (jsonSchema == null) {
             return new ChatCompletionsJsonResponseFormat();
         } else {
-            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
                         "For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
