@@ -712,7 +712,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 will return a response with content exactly equal to `124` from an invocation like
 
 ```java
-var response = assistant.chat("How much is 37 plus 87?");
+Result<String> result = assistant.chat("How much is 37 plus 87?");
 ```
 
 instead of letting the LLM reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
