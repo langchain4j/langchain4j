@@ -135,7 +135,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
         if (audio.binaryData() != null) {
             return audio.binaryData();
         }
-        
+
         if (audio.base64Data() != null) {
             try {
                 return java.util.Base64.getDecoder().decode(audio.base64Data());
@@ -143,11 +143,12 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                 throw new IllegalArgumentException("Invalid base64 audio data provided", e);
             }
         }
-        
+
         if (audio.url() != null) {
-            throw new IllegalArgumentException("URL-based audio is not supported by Azure OpenAI transcription. Please provide audio as binary data or base64 encoded data.");
+            throw new IllegalArgumentException(
+                    "URL-based audio is not supported by Azure OpenAI transcription. Please provide audio as binary data or base64 encoded data.");
         }
-        
+
         throw new IllegalArgumentException("No audio data found. Audio must contain either binary data, base64 data");
     }
 

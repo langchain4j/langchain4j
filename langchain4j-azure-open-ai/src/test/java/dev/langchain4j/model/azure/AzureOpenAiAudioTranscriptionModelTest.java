@@ -1,17 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.AudioTranscription;
-import com.azure.ai.openai.models.AudioTranscriptionFormat;
-import com.azure.ai.openai.models.AudioTranscriptionOptions;
-import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.model.audio.AudioTranscriptionRequest;
-import dev.langchain4j.model.audio.AudioTranscriptionResponse;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.util.Base64;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +7,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.models.AudioTranscription;
+import com.azure.ai.openai.models.AudioTranscriptionFormat;
+import com.azure.ai.openai.models.AudioTranscriptionOptions;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import java.util.Base64;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class AzureOpenAiAudioTranscriptionModelTest {
 
@@ -42,8 +41,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
         String deploymentName = "test-deployment";
 
         // when
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, deploymentName, AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, deploymentName, AudioTranscriptionFormat.JSON);
 
         // then
         assertThat(model).isNotNull();
@@ -52,8 +51,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
     @Test
     void should_throw_exception_when_client_is_null() {
         // when & then
-        assertThatThrownBy(() -> new AzureOpenAiAudioTranscriptionModel(
-                null, "deployment", AudioTranscriptionFormat.JSON))
+        assertThatThrownBy(
+                        () -> new AzureOpenAiAudioTranscriptionModel(null, "deployment", AudioTranscriptionFormat.JSON))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("client is required");
     }
@@ -64,8 +63,7 @@ class AzureOpenAiAudioTranscriptionModelTest {
         OpenAIClient client = mock(OpenAIClient.class);
 
         // when & then
-        assertThatThrownBy(() -> new AzureOpenAiAudioTranscriptionModel(
-                client, null, AudioTranscriptionFormat.JSON))
+        assertThatThrownBy(() -> new AzureOpenAiAudioTranscriptionModel(client, null, AudioTranscriptionFormat.JSON))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("deploymentName is required");
     }
@@ -76,8 +74,7 @@ class AzureOpenAiAudioTranscriptionModelTest {
         OpenAIClient client = mock(OpenAIClient.class);
 
         // when & then
-        assertThatThrownBy(() -> new AzureOpenAiAudioTranscriptionModel(
-                client, "", AudioTranscriptionFormat.JSON))
+        assertThatThrownBy(() -> new AzureOpenAiAudioTranscriptionModel(client, "", AudioTranscriptionFormat.JSON))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("deploymentName is required");
     }
@@ -91,25 +88,23 @@ class AzureOpenAiAudioTranscriptionModelTest {
         when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
                 .thenReturn(mockTranscription);
 
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         byte[] audioData = "test audio data".getBytes();
-        Audio audio = Audio.builder()
-                .binaryData(audioData)
-                .mimeType("audio/wav")
-                .build();
+        Audio audio =
+                Audio.builder().binaryData(audioData).mimeType("audio/wav").build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when
         AudioTranscriptionResponse response = model.transcribe(request);
 
         // then
         assertThat(response.text()).isEqualTo("Transcribed text");
-        verify(client).getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
+        verify(client)
+                .getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
     }
 
     @Test
@@ -121,27 +116,25 @@ class AzureOpenAiAudioTranscriptionModelTest {
         when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
                 .thenReturn(mockTranscription);
 
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         byte[] originalData = "test audio data".getBytes();
         String base64Data = Base64.getEncoder().encodeToString(originalData);
-        Audio audio = Audio.builder()
-                .base64Data(base64Data)
-                .mimeType("audio/wav")
-                .build();
+        Audio audio =
+                Audio.builder().base64Data(base64Data).mimeType("audio/wav").build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when
         AudioTranscriptionResponse response = model.transcribe(request);
 
         // then
         assertThat(response.text()).isEqualTo("Transcribed base64 text");
-        
-        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor = ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
+
+        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor =
+                ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
         verify(client).getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), optionsCaptor.capture());
     }
 
@@ -149,17 +142,16 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_throw_exception_for_url_based_audio() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         Audio audio = Audio.builder()
                 .url("https://example.com/audio.wav")
                 .mimeType("audio/wav")
                 .build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when & then
         assertThatThrownBy(() -> model.transcribe(request))
@@ -171,16 +163,13 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_throw_exception_when_no_audio_data() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
-        Audio audio = Audio.builder()
-                .mimeType("audio/wav")
-                .build();
+        Audio audio = Audio.builder().mimeType("audio/wav").build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when & then
         assertThatThrownBy(() -> model.transcribe(request))
@@ -192,8 +181,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_throw_exception_when_request_is_null() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         // when & then
         assertThatThrownBy(() -> model.transcribe(null))
@@ -205,13 +194,11 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_throw_exception_when_audio_is_null() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         // when & then - the builder itself should throw the exception
-        assertThatThrownBy(() -> AudioTranscriptionRequest.builder()
-                .audio(null)
-                .build())
+        assertThatThrownBy(() -> AudioTranscriptionRequest.builder().audio(null).build())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Audio must be provided");
     }
@@ -220,17 +207,16 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_handle_invalid_base64_data() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         Audio audio = Audio.builder()
                 .base64Data("invalid-base64-data!")
                 .mimeType("audio/wav")
                 .build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when & then
         assertThatThrownBy(() -> model.transcribe(request))
@@ -242,10 +228,10 @@ class AzureOpenAiAudioTranscriptionModelTest {
     void should_use_default_response_format_when_null() {
         // given
         OpenAIClient client = mock(OpenAIClient.class);
-        
+
         // when
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", null);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", null);
 
         // then - should not throw exception, default format should be used
         assertThat(model).isNotNull();
@@ -260,8 +246,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
         when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
                 .thenReturn(mockTranscription);
 
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         Audio audio = Audio.builder()
                 .binaryData("test audio".getBytes())
@@ -281,7 +267,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
         // then
         assertThat(response.text()).isEqualTo("Full parameter transcription");
 
-        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor = ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
+        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor =
+                ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
         verify(client).getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), optionsCaptor.capture());
     }
 
@@ -294,8 +281,8 @@ class AzureOpenAiAudioTranscriptionModelTest {
         when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
                 .thenReturn(mockTranscription);
 
-        AzureOpenAiAudioTranscriptionModel model = new AzureOpenAiAudioTranscriptionModel(
-                client, "test-deployment", AudioTranscriptionFormat.JSON);
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         // Create audio with both binary data and URL (URL provides filename)
         Audio audio = Audio.builder()
@@ -304,14 +291,15 @@ class AzureOpenAiAudioTranscriptionModelTest {
                 .mimeType("audio/wav")
                 .build();
 
-        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
-                .audio(audio)
-                .build();
+        AudioTranscriptionRequest request =
+                AudioTranscriptionRequest.builder().audio(audio).build();
 
         // when
         model.transcribe(request);
 
         // then
-        verify(client).getAudioTranscription(eq("test-deployment"), eq("custom-audio.wav"), any(AudioTranscriptionOptions.class));
+        verify(client)
+                .getAudioTranscription(
+                        eq("test-deployment"), eq("custom-audio.wav"), any(AudioTranscriptionOptions.class));
     }
 }
