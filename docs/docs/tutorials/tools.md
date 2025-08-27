@@ -678,7 +678,7 @@ It is possible for an AI service to use both programmatically and dynamically sp
 
 ### Returning immediately the result of a tool execution request
 
-By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstance, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstances, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately/directly return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
 
 ```java
 class CalculatorWithImmediateReturn {
