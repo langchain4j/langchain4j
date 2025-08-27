@@ -690,7 +690,9 @@ class CalculatorWithImmediateReturn {
 }
 ```
 
-Note that this feature is supported only on AI Services having a `Result` as returned type, while attempting to use it on a service with a different return type will produce a `RuntimeException`.
+:::note
+This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an exception. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+:::
 
 In this way, an `Assistant` service like the following
 
