@@ -93,10 +93,11 @@ class MultipleMcpToolsIT {
                 .provideTools(null);
 
         Set<ToolSpecification> tools = toolProviderResult.tools().keySet();
-        assertThat(tools).hasSize(4);
+        assertThat(tools).hasSize(6);
         assertThat(tools)
                 .extracting(ToolSpecification::name)
-                .containsExactlyInAnyOrder("longOperation", "error", "errorResponse", "untypedArray");
+                .containsExactlyInAnyOrder("longOperation", "error", "errorResponse", "untypedArray",
+                        "getWeatherThrowingException", "getWeather");
     }
 
     @Test

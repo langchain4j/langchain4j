@@ -22,7 +22,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -43,7 +44,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(false) // embeddings are huge in logs
+                .logResponses(false)
                 .titleMetadataKey("title")
                 .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
                 .build();
@@ -68,7 +70,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(false) // embeddings are huge in logs
+                .logResponses(false)
                 .outputDimensionality(outputDimensionality)
                 .build();
 

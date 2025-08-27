@@ -676,6 +676,50 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
+### Returning immediately the result of a tool execution request
+
+By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstances, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately/directly return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+
+```java
+class CalculatorWithImmediateReturn {
+    
+    @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+    double add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+:::note
+This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+:::
+
+In this way, an `Assistant` service like the following
+
+```java
+interface Assistant {
+    Result<String> chat(String userMessage);
+}
+```
+
+configured to use the above `CalculatorWithImmediateReturn` tool
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new CalculatorWithImmediateReturn())
+        .build();
+```
+
+will return a response directly from the tool invocation. For instance, prompting the assistant with
+
+```java
+Result<String> result = assistant.chat("How much is 37 plus 87?");
+```
+
+will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
 
 ### Error Handling
 

@@ -111,4 +111,8 @@ public abstract class AbstractService<T, S> {
         }
         this.agentExecutors.addAll(agents);
     }
+
+    protected boolean hasOutputFunction() {
+        return this.output != DEFAULT_OUTPUT_FUNCTION;
+    }
 }

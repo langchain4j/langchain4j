@@ -56,7 +56,7 @@ public class Result<T> {
                   List<Content> sources,
                   FinishReason finishReason,
                   List<ToolExecution> toolExecutions) {
-        this.content = ensureNotNull(content, "content");
+        this.content = content;
         this.tokenUsage = tokenUsage;
         this.sources = copy(sources);
         this.finishReason = finishReason;
@@ -66,7 +66,7 @@ public class Result<T> {
     }
 
     public static <T> ResultBuilder<T> builder() {
-        return new ResultBuilder<T>();
+        return new ResultBuilder<>();
     }
 
     public T content() {
