@@ -34,5 +34,7 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> maxAgentsInvocations(int maxAgentsInvocations);
 
+    SupervisorAgentService<T> output(Function<AgenticScope, Object> output);
+
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 }

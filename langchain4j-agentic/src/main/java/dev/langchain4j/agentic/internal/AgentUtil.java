@@ -99,13 +99,21 @@ public class AgentUtil {
                 invocationArgs[i++] = agenticScope;
                 continue;
             }
-            Object argValue = agenticScope.readState(argName);
-            if (argValue == null) {
-                throw new MissingArgumentException(argName);
-            }
-            invocationArgs[i++] = parseArgument(argValue, arg.type());
+            invocationArgs[i++] = argumentFromAgenticScope(agenticScope, arg.type(), argName);
         }
         return invocationArgs;
+    }
+
+    public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {
+        Object argValue = agenticScope.readState(argName);
+        if (argValue == null) {
+            throw new MissingArgumentException(argName);
+        }
+        Object parsedArgument = parseArgument(argValue, argType);
+        if (argValue != parsedArgument) {
+            agenticScope.writeState(argName, parsedArgument);
+        }
+        return parsedArgument;
     }
 
     static Object parseArgument(Object argValue, Class<?> type) {
