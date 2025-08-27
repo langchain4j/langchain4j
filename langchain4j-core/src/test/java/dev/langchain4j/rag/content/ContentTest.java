@@ -2,8 +2,10 @@ package dev.langchain4j.rag.content;
 
 import static dev.langchain4j.rag.content.ContentMetadata.SCORE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
+import java.util.Collections;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -78,5 +80,44 @@ class ContentTest {
         assertThat(content)
                 .hasToString(
                         "DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} }, metadata = {} }");
+    }
+
+    @Test
+    void create_from_text_segment_with_null_metadata() {
+        // given
+        TextSegment segment = TextSegment.from("text");
+
+        // when
+        Content content = Content.from(segment, null);
+
+        // then
+        assertThat(content.textSegment()).isSameAs(segment);
+        assertThat(content.metadata()).isEmpty();
+    }
+
+    @Test
+    void create_from_text_segment_with_empty_metadata() {
+        // given
+        TextSegment segment = TextSegment.from("text");
+        Map<ContentMetadata, Object> emptyMetadata = Collections.emptyMap();
+
+        // when
+        Content content = Content.from(segment, emptyMetadata);
+
+        // then
+        assertThat(content.textSegment()).isSameAs(segment);
+        assertThat(content.metadata()).isEmpty();
+    }
+
+    @Test
+    void metadata_returned_is_defensive_copy() {
+        // given
+        TextSegment segment = TextSegment.from("text");
+        Map<ContentMetadata, Object> metadata = Map.of(SCORE, 0.5);
+        Content content = Content.from(segment, metadata);
+
+        // when/then - attempting to modify returned metadata should fail
+        assertThatThrownBy(() -> content.metadata().put(ContentMetadata.EMBEDDING_ID, "test"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

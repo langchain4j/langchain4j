@@ -1,5 +1,12 @@
 package dev.langchain4j.data.message;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import static java.util.Collections.emptyList;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -16,17 +23,9 @@ import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
-
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-import static java.util.Collections.emptyList;
 
 @Internal
 public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
@@ -53,10 +52,10 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
                 .addMixIn(PdfFile.class, PdfFileMixin.class);
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = chatMessageJsonMapperBuilder().build();
+    private static final ObjectMapper OBJECT_MAPPER =
+            chatMessageJsonMapperBuilder().build();
 
-    private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {
-    }.getType();
+    private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {}.getType();
 
     @Override
     public ChatMessage messageFromJson(String json) {
@@ -101,136 +100,119 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @JsonInclude(NON_NULL)
     @JsonTypeInfo(use = NAME, include = EXISTING_PROPERTY, property = "type")
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = SystemMessage.class, name = "SYSTEM"),
-            @JsonSubTypes.Type(value = UserMessage.class, name = "USER"),
-            @JsonSubTypes.Type(value = AiMessage.class, name = "AI"),
-            @JsonSubTypes.Type(value = ToolExecutionResultMessage.class, name = "TOOL_EXECUTION_RESULT"),
-            @JsonSubTypes.Type(value = CustomMessage.class, name = "CUSTOM"),
+        @JsonSubTypes.Type(value = SystemMessage.class, name = "SYSTEM"),
+        @JsonSubTypes.Type(value = UserMessage.class, name = "USER"),
+        @JsonSubTypes.Type(value = AiMessage.class, name = "AI"),
+        @JsonSubTypes.Type(value = ToolExecutionResultMessage.class, name = "TOOL_EXECUTION_RESULT"),
+        @JsonSubTypes.Type(value = CustomMessage.class, name = "CUSTOM"),
     })
-    private static abstract class ChatMessageMixin {
+    private abstract static class ChatMessageMixin {
 
         @JsonProperty
         public abstract ChatMessageType type();
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class SystemMessageMixin {
+    private abstract static class SystemMessageMixin {
 
         @JsonCreator
-        public SystemMessageMixin(@JsonProperty("text") String text) {
-        }
+        public SystemMessageMixin(@JsonProperty("text") String text) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = UserMessage.Builder.class)
-    private static abstract class UserMessageMixin {
-    }
+    private abstract static class UserMessageMixin {}
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = AiMessage.Builder.class)
-    private static abstract class AiMessageMixin {
-    }
+    private abstract static class AiMessageMixin {}
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = ToolExecutionRequest.Builder.class)
-    private static abstract class ToolExecutionRequestMixin {
-    }
+    private abstract static class ToolExecutionRequestMixin {}
 
     @JsonInclude(NON_NULL)
     private static class ToolExecutionResultMessageMixin {
 
         @JsonCreator
-        public ToolExecutionResultMessageMixin(@JsonProperty("id") String id,
-                                               @JsonProperty("toolName") String toolName,
-                                               @JsonProperty("text") String text) {
-        }
+        public ToolExecutionResultMessageMixin(
+                @JsonProperty("id") String id,
+                @JsonProperty("toolName") String toolName,
+                @JsonProperty("text") String text) {}
     }
 
     @JsonInclude(NON_NULL)
     private static class CustomMessageMixin {
 
         @JsonCreator
-        public CustomMessageMixin(@JsonProperty("attributes") Map<String, Object> attributes) {
-        }
+        public CustomMessageMixin(@JsonProperty("attributes") Map<String, Object> attributes) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonTypeInfo(use = NAME, include = EXISTING_PROPERTY, property = "type")
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = TextContent.class, name = "TEXT"),
-            @JsonSubTypes.Type(value = ImageContent.class, name = "IMAGE"),
-            @JsonSubTypes.Type(value = AudioContent.class, name = "AUDIO"),
-            @JsonSubTypes.Type(value = VideoContent.class, name = "VIDEO"),
-            @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"),
+        @JsonSubTypes.Type(value = TextContent.class, name = "TEXT"),
+        @JsonSubTypes.Type(value = ImageContent.class, name = "IMAGE"),
+        @JsonSubTypes.Type(value = AudioContent.class, name = "AUDIO"),
+        @JsonSubTypes.Type(value = VideoContent.class, name = "VIDEO"),
+        @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"),
     })
-    private static abstract class ContentMixin {
+    private abstract static class ContentMixin {
 
         @JsonProperty
         public abstract ContentType type();
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class TextContentMixin {
+    private abstract static class TextContentMixin {
 
         @JsonCreator
-        public TextContentMixin(@JsonProperty("text") String text) {
-        }
+        public TextContentMixin(@JsonProperty("text") String text) {}
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class ImageContentMixin {
+    private abstract static class ImageContentMixin {
 
         @JsonCreator
-        public ImageContentMixin(@JsonProperty("image") Image image,
-                                 @JsonProperty("detailLevel") ImageContent.DetailLevel detailLevel) {
-        }
+        public ImageContentMixin(
+                @JsonProperty("image") Image image,
+                @JsonProperty("detailLevel") ImageContent.DetailLevel detailLevel) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = Image.Builder.class)
-    private static abstract class ImageMixin {
-
-    }
+    private abstract static class ImageMixin {}
 
     @JsonInclude(NON_NULL)
-    private static abstract class AudioContentMixin {
+    private abstract static class AudioContentMixin {
 
         @JsonCreator
-        public AudioContentMixin(@JsonProperty("audio") Audio audio) {
-        }
+        public AudioContentMixin(@JsonProperty("audio") Audio audio) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = Audio.Builder.class)
-    private static abstract class AudioMixin {
-
-    }
+    private abstract static class AudioMixin {}
 
     @JsonInclude(NON_NULL)
-    private static abstract class VideoContentMixin {
+    private abstract static class VideoContentMixin {
 
         @JsonCreator
-        public VideoContentMixin(@JsonProperty("video") Video video) {
-        }
+        public VideoContentMixin(@JsonProperty("video") Video video) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = Video.Builder.class)
-    private static abstract class VideoMixin {
-
-    }
+    private abstract static class VideoMixin {}
 
     @JsonInclude(NON_NULL)
-    private static abstract class PdfFileContentMixin {
+    private abstract static class PdfFileContentMixin {
 
         @JsonCreator
-        public PdfFileContentMixin(@JsonProperty("pdfFile") PdfFile pdfFile) {
-        }
+        public PdfFileContentMixin(@JsonProperty("pdfFile") PdfFile pdfFile) {}
     }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = PdfFile.Builder.class)
-    private static abstract class PdfFileMixin {
-
-    }
+    private abstract static class PdfFileMixin {}
 }
