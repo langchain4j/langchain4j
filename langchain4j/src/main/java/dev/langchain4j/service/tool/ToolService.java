@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,15 +22,19 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -50,6 +55,7 @@ public class ToolService {
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
+    private final Set<String> immediateReturnTools = new HashSet<>();
     private ToolProvider toolProvider;
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
@@ -92,9 +98,14 @@ public class ToolService {
             throw new IllegalConfigurationException(
                     "Duplicated definition for tool: " + toolSpecification.name());
         }
+        toolSpecifications.add(toolSpecification);
+
         ToolExecutor toolExecutor = createToolExecutor(object, method);
         toolExecutors.put(toolSpecification.name(), toolExecutor);
-        toolSpecifications.add(toolSpecificationFrom(method));
+
+        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
+            immediateReturnTools.add(toolSpecification.name());
+        }
     }
 
     private static ToolExecutor createToolExecutor(Object object, Method method) {
@@ -160,7 +171,7 @@ public class ToolService {
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty() ?
-                    new ToolServiceContext(null, null) :
+                    ToolServiceContext.Empty.INSTANCE :
                     new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
@@ -189,8 +200,8 @@ public class ToolService {
             ChatModel chatModel,
             ChatMemory chatMemory,
             Object memoryId,
-            Map<String, ToolExecutor> toolExecutors) {
-
+            Map<String, ToolExecutor> toolExecutors,
+            boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -221,6 +232,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, memoryId);
 
+            boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
                 ToolExecutionRequest toolExecutionRequest = entry.getKey();
                 ToolExecutionResultMessage toolExecutionResultMessage = entry.getValue();
@@ -236,6 +248,29 @@ public class ToolService {
                 } else {
                     messages.add(toolExecutionResultMessage);
                 }
+
+                if (immediateToolReturn) {
+                    if (isImmediateTool(toolExecutionRequest.name())) {
+                        if (!isReturnTypeResult) {
+                            throw illegalConfiguration(
+                                    "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
+                                    toolExecutionRequest.name());
+                        }
+                    } else {
+                        immediateToolReturn = false;
+                    }
+                }
+            }
+
+            if (immediateToolReturn) {
+                ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
+                return ToolServiceResult.builder()
+                        .intermediateResponses(intermediateResponses)
+                        .finalResponse(finalResponse)
+                        .toolExecutions(toolExecutions)
+                        .aggregateTokenUsage(aggregateTokenUsage)
+                        .immediateToolReturn(true)
+                        .build();
             }
 
             if (chatMemory != null) {
@@ -373,5 +408,9 @@ public class ToolService {
 
     public ToolProvider toolProvider() {
         return toolProvider;
+    }
+
+    public boolean isImmediateTool(String toolName) {
+        return immediateReturnTools.contains(toolName);
     }
 }

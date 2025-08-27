@@ -14,6 +14,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +40,7 @@ class VoyageAiClient {
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -99,6 +100,7 @@ class VoyageAiClient {
         private String apiKey;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -128,6 +130,15 @@ class VoyageAiClient {
 
         Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

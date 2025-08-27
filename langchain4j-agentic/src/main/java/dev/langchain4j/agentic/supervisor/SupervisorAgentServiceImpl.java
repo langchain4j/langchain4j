@@ -115,6 +115,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                     : agenticScope.readState("request", "");
             String lastResponse = "";
             Object memoryId = agenticScope.memoryId();
+            Object result = null;
 
             for (int loopCount = 0; loopCount < maxAgentsInvocations; loopCount++) {
 
@@ -127,8 +128,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
                 if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-                    String doneResponse = agentInvocation.getArguments().get("response");
-                    lastResponse = response(request, lastResponse, doneResponse);
+                    if (hasOutputFunction()) {
+                        result = output.apply(agenticScope);
+                    } else {
+                        String doneResponse = agentInvocation.getArguments().get("response");
+                        result = response(request, lastResponse, doneResponse);
+                    }
                     break;
                 }
 
@@ -147,10 +152,13 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 lastResponse = agentExec.execute(agenticScope).toString();
             }
 
-            if (outputName != null) {
-                agenticScope.writeState(outputName, lastResponse);
+            if (result == null) {
+                result = lastResponse;
             }
-            return lastResponse;
+            if (outputName != null) {
+                agenticScope.writeState(outputName, result);
+            }
+            return result;
         }
 
         private String response(String request, String lastResponse, String doneResponse) {
