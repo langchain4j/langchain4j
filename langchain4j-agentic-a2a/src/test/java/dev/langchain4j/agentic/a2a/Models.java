@@ -10,7 +10,7 @@ public class Models {
 
     private enum MODEL_PROVIDER {
         OPENAI,
-        OLLAMA,
+        OLLAMA
     }
 
     private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OPENAI;
