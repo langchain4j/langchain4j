@@ -8,7 +8,7 @@ import java.util.Objects;
 public class JsonRawSchema implements JsonSchemaElement {
 
     private final String schema;
-    
+
     public JsonRawSchema(Builder builder) {
         this.schema = ensureNotBlank(builder.schema, "schema");
     }
@@ -21,7 +21,7 @@ public class JsonRawSchema implements JsonSchemaElement {
     public String schema() {
         return schema;
     }
-    
+
     public static JsonRawSchema from(String schema) {
         return builder().schema(schema).build();
     }

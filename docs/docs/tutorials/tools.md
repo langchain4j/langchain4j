@@ -447,10 +447,6 @@ Using AI services as tools for other AI services is a powerful feature that enab
 - The agent-tool, being a totally separated AI service, has no access to the chat memory of the agent calling it, so it cannot use the chat memory to provide a more informed answer.
 :::
 
-### Exception Handling
-If a method annotated with `@Tool` throws an `Exception`,
-the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
-This allows the LLM to correct its mistake and retry, if it considers it necessary.
 
 ### `@Tool`
 Any Java method annotated with `@Tool`
@@ -680,9 +676,60 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
-### Tools Hallucination Strategy
+### Returning immediately the result of a tool execution request
 
-It may happen that an LLM hallucinates on tools invocation, or in other words that it asks to use a tool with a name that doesn't exist. In this case by default LangChain4j will throw an exception reporting the problem, but it is possible to configure a different behavior providing the AI service with a strategy to be used in this situation. 
+By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstances, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately/directly return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+
+```java
+class CalculatorWithImmediateReturn {
+    
+    @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+    double add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+:::note
+This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+:::
+
+In this way, an `Assistant` service like the following
+
+```java
+interface Assistant {
+    Result<String> chat(String userMessage);
+}
+```
+
+configured to use the above `CalculatorWithImmediateReturn` tool
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new CalculatorWithImmediateReturn())
+        .build();
+```
+
+will return a response directly from the tool invocation. For instance, prompting the assistant with
+
+```java
+Result<String> result = assistant.chat("How much is 37 plus 87?");
+```
+
+will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
+
+### Error Handling
+
+#### Handling Tool Name Errors
+
+It may happen that an LLM hallucinates on tools invocation,
+or in other words that it asks to use a tool with a name that doesn't exist.
+In this case by default LangChain4j will throw an exception reporting the problem,
+but it is possible to configure a different behavior providing the AI service
+with a strategy to be used in this situation.
 
 This strategy is an implementation of a `Function<ToolExecutionRequest, ToolExecutionResultMessage>` defining which `ToolExecutionResultMessage` should be produced as the result for a `ToolExecutionRequest` containing the request to invoke a tool that is not available. For instance, it could be possible to configure the AI service with a strategy that returns to the LLM a response that hopefully will push it to retry a different tool invocation, knowing that the formerly required tool doesn't exist, as in the following example:
 
@@ -694,6 +741,72 @@ AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTo
                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
         .build();
 ```
+
+#### Handling Tool Arguments Errors
+
+By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON),
+the AI Service will not be able to execute the tool, so it will fail with an exception.
+
+You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, context) -> ...)
+        .build();
+```
+
+Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
+
+- Throw an exception: this will stop the AI service flow.
+- Return a text message (e.g., an error description) that will be sent back to the LLM,
+  allowing it to respond appropriately (for example, by correcting the error and retrying).
+
+Here is an example of the first approach:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, context) -> { throw MyCustomException(error); })
+        .build();
+
+try {
+    assistant.chat(...);
+} catch (MyCustomException e) {
+        // handle e
+}
+```
+
+Here is an example of the second approach:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, context) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
+        .build();
+```
+
+#### Handling Tool Execution Errors
+
+By default, when a method annotated with `@Tool` throws an `Exception`,
+the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
+This allows the LLM to correct its mistake and retry, if it considers it necessary.
+
+You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler((error, context) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
+        .build();
+```
+
+As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
+throw an exception or return a text message.
 
 ## Model Context Protocol (MCP)
 

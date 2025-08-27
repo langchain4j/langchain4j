@@ -11,10 +11,14 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,14 +26,20 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -40,6 +50,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -48,6 +59,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -180,15 +192,21 @@ class StreamingAiServicesWithToolsIT {
             final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
             final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
 
+            final CountDownLatch latch = new CountDownLatch(2);
+
             @Tool
-            String getCurrentTime(String city) {
+            String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                latch.await(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
             @Tool
-            String getCurrentTemperature(String city) {
+            String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                latch.await(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
@@ -613,6 +631,445 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions.get(1).request().arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
+    }
+
+    // Error Handling: Tool Error
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        String errorMessage = "Weather service is unavailable";
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw new RuntimeException(errorMessage);
+            }
+        }
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        FailingTool spyTool = spy(new FailingTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+
+        futureResponse.get(30, SECONDS);
+
+        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(errorMessage)), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(errorMessage)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_customize_error_returned_from_tool_before_sending_to_LLM(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        RuntimeException toolError = new RuntimeException("Can't connect to the reliable-weather.com");
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw toolError;
+            }
+        }
+
+        String customizedErrorMessage = "Weather service is unavailable";
+
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+
+            assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
+            assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
+        };
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        FailingTool spyTool = spy(new FailingTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+
+        futureResponse.get(30, SECONDS);
+
+        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(customizedErrorMessage)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_when_tool_throws_error(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        RuntimeException toolError = new RuntimeException("Weather service is unavailable");
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw toolError;
+            }
+        }
+
+        ToolExecutionErrorHandler toolExecutionErrorHandler = (error, context) -> {
+            assertThat(error).isSameAs(toolError);
+
+            assertThat(context.toolExecutionRequest().name()).isEqualTo("getWeather");
+            assertThat(context.toolExecutionRequest().arguments()).contains("Munich");
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            throw toolError;
+        };
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        FailingTool spyTool = spy(new FailingTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolExecutionErrorHandler(toolExecutionErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
+                .start();
+
+        // then
+        assertThat(futureError.get(30, SECONDS))
+                .isSameAs(toolError);
+
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
+    }
+
+    // Error Handling: Argument Error
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_when_cannot_parse_tool_arguments_by_default(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
+                .start();
+
+        // then
+        Throwable error = futureError.get(60, SECONDS);
+
+        assertThat(error)
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("Unexpected character");
+
+        verifyNoInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_customize_argument_parsing_error_before_sending_to_LLM(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{\"arg0\":\"Munich\"}")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(toolExecutionRequest1),
+                AiMessage.from(toolExecutionRequest2),
+                AiMessage.from("sunny")
+        ));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        String customizedErrorMessage = "Invalid JSON, try again";
+
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            return ToolErrorHandlerResult.text(customizedErrorMessage);
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .start();
+
+        // then
+        futureResponse.get(60, SECONDS);
+
+        // then
+        verify(spyTool).getWeather("Munich");
+        verifyNoMoreInteractions(spyTool);
+
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)), any());
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler, times(2)).beforeToolExecution(any());
+        verify(handler).onToolExecuted(argThat(toolExecution -> toolExecution.result().equals(customizedErrorMessage)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_fail_with_custom_exception_when_tool_arguments_cannot_be_parsed(boolean executeToolsConcurrently) throws Exception {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+
+        class WeatherTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                return "sunny";
+            }
+        }
+
+        WeatherTool spyTool = spy(new WeatherTool());
+
+        RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
+
+        ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
+            assertThat(error)
+                    .isExactlyInstanceOf(JsonParseException.class)
+                    .hasMessageContaining("Unexpected character");
+
+            assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(context.memoryId()).isEqualTo("default");
+
+            throw customException;
+        };
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .tools(spyTool)
+                .toolArgumentsErrorHandler(toolArgumentsErrorHandler);
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather in Munich?")
+                .onPartialResponse(handler::onPartialResponse)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureError.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .onError(error -> {
+                    handler.onError(error);
+                    futureError.complete(error);
+                })
+                .start();
+
+        Throwable error = futureError.get(60, SECONDS);
+
+        assertThat(error).isSameAs(customException);
+
+        // then
+        verifyNoInteractions(spyTool);
+
+        verify(spyModel).chat(any(ChatRequest.class), any());
+        verifyNoMoreInteractionsFor(spyModel);
+
+        verify(handler).beforeToolExecution(any());
+        verify(handler, never()).onToolExecuted(any());
     }
 
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
