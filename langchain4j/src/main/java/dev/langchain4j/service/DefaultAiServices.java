@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -287,6 +288,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
+
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
@@ -294,7 +297,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.chatModel,
                                 chatMemory,
                                 memoryId,
-                                toolServiceContext.toolExecutors());
+                                toolServiceContext.toolExecutors(),
+                                isReturnTypeResult);
+
+                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(TOOL_EXECUTION)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
+                                    .build();
+                        }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
@@ -307,7 +323,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
 
-                        if (typeHasRawClass(returnType, Result.class)) {
+                        if (isReturnTypeResult) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
