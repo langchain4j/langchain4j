@@ -11,7 +11,6 @@ public class Models {
     private enum MODEL_PROVIDER {
         OPENAI,
         OLLAMA,
-        GPULLAMA3
     }
 
     private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OPENAI;
