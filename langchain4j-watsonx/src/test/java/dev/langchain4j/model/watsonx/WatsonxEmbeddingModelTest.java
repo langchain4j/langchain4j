@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
+import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingRequest;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
@@ -55,7 +56,6 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingServiceBuilder.version(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logRequests(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logResponses(any())).thenReturn(mockEmbeddingServiceBuilder);
-        when(mockEmbeddingServiceBuilder.httpClient(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.build()).thenReturn(mockEmbeddingService);
     }
 
@@ -68,46 +68,48 @@ public class WatsonxEmbeddingModelTest {
         var mockHttpClient = mock(HttpClient.class);
         var mockHttpResponse = mock(HttpResponse.class);
         var mockAuthenticatorProvider = mock(IAMAuthenticator.class);
-        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
-        when(mockAuthenticatorProvider.getToken()).thenReturn("my-token");
-
+        when(mockAuthenticatorProvider.token()).thenReturn("my-token");
         when(mockHttpResponse.statusCode()).thenReturn(200);
         when(mockHttpResponse.body())
                 .thenReturn(Json.toJson(new EmbeddingResponse("modelId", "createdAt", results, 10)));
-
-        when(mockHttpClient.send(requestCaptor.capture(), any(BodyHandler.class)))
+        when(mockHttpClient.send(mockHttpRequest.capture(), any(BodyHandler.class)))
                 .thenReturn(mockHttpResponse);
 
-        var embeddingModel = WatsonxEmbeddingModel.builder()
-                .url(CloudRegion.FRANKFURT)
-                .modelName("model-name")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .spaceId("space-id")
-                .version("my-version")
-                .logRequests(true)
-                .logResponses(true)
-                .authenticationProvider(mockAuthenticatorProvider)
-                .httpClient(mockHttpClient)
-                .timeout(Duration.ofSeconds(10))
-                .build();
+        try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
+            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
 
-        embeddingModel.embed(TextSegment.from("test1"));
+            var embeddingModel = WatsonxEmbeddingModel.builder()
+                    .url(CloudRegion.FRANKFURT)
+                    .modelName("model-name")
+                    .apiKey("api-key-test")
+                    .projectId("project-id")
+                    .spaceId("space-id")
+                    .version("my-version")
+                    .logRequests(true)
+                    .logResponses(true)
+                    .authenticationProvider(mockAuthenticatorProvider)
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
 
-        var embeddingRequest = Json.fromJson(HttpUtils.bodyPublisherToString(requestCaptor), EmbeddingRequest.class);
-        assertEquals("model-name", embeddingRequest.modelId());
-        assertEquals("project-id", embeddingRequest.projectId());
-        assertEquals("space-id", embeddingRequest.spaceId());
+            embeddingModel.embed(TextSegment.from("test1"));
 
-        assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
-                .url("https://test.com")
-                .modelName("model-name")
-                .authenticationProvider(
-                        IAMAuthenticator.builder().apiKey("api-key").build())
-                .projectId("project-id")
-                .spaceId("space-id")
-                .build());
+            var embeddingRequest =
+                    Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), EmbeddingRequest.class);
+            assertEquals("model-name", embeddingRequest.modelId());
+            assertEquals("project-id", embeddingRequest.projectId());
+            assertEquals("space-id", embeddingRequest.spaceId());
+            // 6. Test builder secondario
+            assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
+                    .url("https://test.com")
+                    .modelName("model-name")
+                    .authenticationProvider(
+                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .projectId("project-id")
+                    .spaceId("space-id")
+                    .build());
+        }
     }
 
     @Test

@@ -40,7 +40,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +80,6 @@ public class WatsonxChatModelTest {
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         chatResponse = new ChatResponse();
@@ -113,7 +111,6 @@ public class WatsonxChatModelTest {
                 .version("my-version")
                 .logRequests(true)
                 .logResponses(true)
-                .httpClient(HttpClient.newHttpClient())
                 .build();
 
         var defaultRequestParameters =

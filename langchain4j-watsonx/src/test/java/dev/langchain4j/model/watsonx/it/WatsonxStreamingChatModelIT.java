@@ -92,7 +92,8 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\"city\": \""));
         io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich\"}"));
+        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich"));
+        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
@@ -100,7 +101,8 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
         io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"country\": \""));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "France\"}"));
+        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "France"));
+        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
@@ -112,6 +114,7 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .modelName(model)
                 .logRequests(true)
                 .logResponses(true)
+                .temperature(0.0)
                 .timeLimit(Duration.ofSeconds(30));
     }
 }
