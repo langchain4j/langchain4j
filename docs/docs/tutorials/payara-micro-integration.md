@@ -17,7 +17,7 @@ First, add the core langchain4j dependency and the specific model integration mo
     <maven.compiler.release>21</maven.compiler.release>
     <jakartaee-api.version>10.0.0</jakartaee-api.version>
     <payara.version>6.2025.5</payara.version>
-    <version.langchain4j>1.2.0</version.langchain4j>
+    <version.langchain4j>1.3.0</version.langchain4j>
 </properties>
 
 <dependencies>
@@ -154,12 +154,12 @@ After the server starts, you can test the endpoints in two ways:
     a. Open the file `test.http` located in `src/test/resources/`.
     
     b. The IDE will display a small green "play" icon next to each request definition: 
-    [![](/img/payara-micro-test-http.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-test-http.png)
 
     c. Click the icon next to the request you want to run. The response from the API will be displayed directly in the IDE's tool window:
-    [![](/img/payara-micro-test-results.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-test-results.png)
 
 2. Using the AI Chat Interface
 
     Navigate to http://localhost:8080/ in your browser. This will open an interactive **Chat Page** where you can explore and test the available endpoints directly from your browser:
-    [![](/img/payara-micro-ai-chat.png)](/tutorials/payara-micro-integration)
+    ![](/img/payara-micro-ai-chat.png)

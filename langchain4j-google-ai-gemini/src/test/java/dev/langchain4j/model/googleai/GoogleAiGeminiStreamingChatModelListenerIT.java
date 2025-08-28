@@ -20,7 +20,8 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -34,7 +35,8 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey("banana")
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 

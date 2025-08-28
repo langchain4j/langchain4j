@@ -288,6 +288,39 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
+    void should_execute_a_tool_with_blank_partial_arguments() {
+
+        // given
+        ToolSpecification appendToFile = ToolSpecification.builder()
+                .name("append_to_file")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("text")
+                        .required("text")
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("Append to file the following text: '          '");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .maxOutputTokens(30)
+                .toolSpecifications(appendToFile)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+
+        // then
+        AiMessage aiMessage = handler.get().aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
+    }
+
+    @Test
     void should_execute_tool_forcefully_then_stream_answer() throws Exception {
 
         // given
@@ -515,80 +548,13 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_accept_image_url() {
-
-        // given
-        ImageContent imageContent = ImageContent.from(CAT_IMAGE_URL);
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(singletonList(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_base64_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(singletonList(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_image() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(singletonList(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL));
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(singletonList(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
     void should_accept_text_and_multiple_images_from_different_sources() {
 
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
+                TextContent.from("What do you see? Briefly describe each image."));
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

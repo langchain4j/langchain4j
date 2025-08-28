@@ -80,4 +80,12 @@ public class AzureModelBuilders {
                 .quality("low")
                 .logRequestsAndResponses(false); // images are huge in logs;
     }
+
+    public static AzureOpenAiAudioTranscriptionModel.Builder audioTranscriptionModelBuilder() {
+        return AzureOpenAiAudioTranscriptionModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME"))
+                .logRequestsAndResponses(true);
+    }
 }

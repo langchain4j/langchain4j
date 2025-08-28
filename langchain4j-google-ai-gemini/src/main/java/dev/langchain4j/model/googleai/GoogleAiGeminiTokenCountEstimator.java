@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,6 +30,9 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 ensureNotBlank(builder.apiKey, "apiKey"),
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger,
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -106,6 +110,9 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         private String baseUrl;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
         private Duration timeout;
         private Integer maxRetries;
 
@@ -133,6 +140,25 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
