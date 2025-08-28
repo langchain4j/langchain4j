@@ -94,6 +94,20 @@ public interface AudienceEditor {
 
 and with a very similar `StyleEditor` doing the same job but for a specific style.
 
+```java
+public interface StyleEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent("Edits a story to better fit a given style")
+    String editStory(@V("story") String story, @V("style") String style);
+}
+```
+
 Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `AgenticScope` shared variables having those names. This allows the agent to access the output of previous agents in the workflow. If the agent class is compiled with the `-parameters` option enabled, thus retaining at runtime the names of the method parameters, the `@V` annotation can be omitted, and the variable names will be automatically inferred from the parameter names.
 
 At this point it is possible to create a sequential workflow that combines these three agents, where the output of the `CreativeWriter` is passed as input to both the `AudienceEditor` and `StyleEditor`, and the final output is the edited story.
