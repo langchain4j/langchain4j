@@ -36,6 +36,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -109,6 +110,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -121,6 +123,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -133,6 +136,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -363,6 +367,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIAsyncClient openAIAsyncClient;
@@ -527,6 +532,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 
