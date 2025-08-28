@@ -65,13 +65,15 @@ public class StreamingChatModelMock implements StreamingChatModel {
         return AiMessage.from(text);
     }
 
-    private static List<String> toTokens(AiMessage aiMessage) {
+    static List<String> toTokens(AiMessage aiMessage) {
         if (isNullOrEmpty(aiMessage.text())) {
             return List.of();
         }
 
         // approximating: each char will become a token
-        return Stream.of(aiMessage.text().toCharArray()).map(String::valueOf).toList();
+        return aiMessage.text().chars()
+                .mapToObj(c -> String.valueOf((char) c))
+                .toList();
     }
 
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {
