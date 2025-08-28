@@ -12,6 +12,7 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioTranscriptionModel;
@@ -162,6 +163,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.tokenCredential,
                     builder.timeout,
                     builder.maxRetries,
+                    builder.retryOptions,
                     builder.httpClientProvider != null
                             ? builder.httpClientProvider
                             : new NettyAsyncHttpClientProvider(),
@@ -176,6 +178,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.keyCredential,
                     builder.timeout,
                     builder.maxRetries,
+                    builder.retryOptions,
                     builder.httpClientProvider != null
                             ? builder.httpClientProvider
                             : new NettyAsyncHttpClientProvider(),
@@ -190,6 +193,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.apiKey,
                     builder.timeout,
                     builder.maxRetries,
+                    builder.retryOptions,
                     builder.httpClientProvider != null
                             ? builder.httpClientProvider
                             : new NettyAsyncHttpClientProvider(),
@@ -230,6 +234,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
         private AudioTranscriptionFormat responseFormat = AudioTranscriptionFormat.JSON;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -331,8 +336,16 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
             return this;
         }
 
+        /**
+         * @see #retryOptions(RetryOptions)
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 
