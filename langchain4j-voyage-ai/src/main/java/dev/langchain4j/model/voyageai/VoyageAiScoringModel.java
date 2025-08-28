@@ -30,6 +30,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final Integer topK;
     private final Boolean truncation;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiScoringModel(
             HttpClientBuilder httpClientBuilder,
             Map<String, String> customHeaders,
