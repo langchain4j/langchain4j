@@ -12,7 +12,7 @@ https://coherence.community/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-coherence</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.4.0-beta10</version>
 </dependency>
 ```
 
@@ -39,7 +39,7 @@ For example, to use Community Edition (CE), add the Coherence BOM to the depende
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-coherence</artifactId>
-        <version>1.3.0-beta9</version>
+        <version>1.4.0-beta10</version>
     </dependency>
     <dependency>
         <groupId>com.oracle.coherence.ce</groupId>
