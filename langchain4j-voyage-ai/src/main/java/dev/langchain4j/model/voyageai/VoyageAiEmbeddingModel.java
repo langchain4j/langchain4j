@@ -35,6 +35,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String encodingFormat;
     private final Integer maxSegmentsPerBatch;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiEmbeddingModel(
             HttpClientBuilder httpClientBuilder,
             Map<String, String> customHeaders,
