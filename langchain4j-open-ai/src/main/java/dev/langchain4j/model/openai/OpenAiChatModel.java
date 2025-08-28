@@ -52,7 +52,7 @@ public class OpenAiChatModel implements ChatModel {
     private final Integer maxRetries;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final ResponseFormat responseFormat;
+    private final String responseFormatString;
     private final Set<Capability> supportedCapabilities;
     private final boolean strictJsonSchema;
     private final boolean strictTools;
@@ -115,7 +115,7 @@ public class OpenAiChatModel implements ChatModel {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .customParameters(openAiParameters.customParameters())
                 .build();
-        this.responseFormat = builder.responseFormat;
+        this.responseFormatString = builder.responseFormatString;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
@@ -131,8 +131,7 @@ public class OpenAiChatModel implements ChatModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON
-                && responseFormat.jsonSchema() != null) {
+        if ("json_schema".equals(responseFormatString)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -206,6 +205,7 @@ public class OpenAiChatModel implements ChatModel {
         private Map<String, Integer> logitBias;
         private Set<Capability> supportedCapabilities;
         private ResponseFormat responseFormat;
+        private String responseFormatString;
         private Boolean strictJsonSchema;
         private Integer seed;
         private String user;
@@ -313,13 +313,17 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
-        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
+        public OpenAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
-        public OpenAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
+            this.responseFormatString = responseFormat;
             return this;
         }
 

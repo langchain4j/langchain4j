@@ -369,13 +369,16 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public OpenAiStreamingChatModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
+        public OpenAiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
-        public OpenAiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public OpenAiStreamingChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
             return this;
         }
 
