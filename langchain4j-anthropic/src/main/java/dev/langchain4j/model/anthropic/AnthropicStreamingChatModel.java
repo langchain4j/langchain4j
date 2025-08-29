@@ -31,6 +31,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -77,6 +78,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
 
         ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
@@ -128,6 +130,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private List<ChatModelListener> listeners;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -273,6 +276,15 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         public AnthropicStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public AnthropicStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

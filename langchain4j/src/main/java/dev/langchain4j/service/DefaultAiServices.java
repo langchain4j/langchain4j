@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -11,6 +12,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.Internal;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
@@ -47,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
@@ -157,11 +160,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+
+                        if (method.isDefault()) {
+                            return InvocationHandler.invokeDefault(proxy, method, args);
+                        }
 
                         if (method.getDeclaringClass() == Object.class) {
-                            // methods like equals(), hashCode() and toString() should not be handled by this proxy
-                            return method.invoke(this, args);
+                            switch (method.getName()) {
+                                case "equals":
+                                    return proxy == args[0];
+                                case "hashCode":
+                                    return System.identityHashCode(proxy);
+                                case "toString":
+                                    return context.aiServiceClass.getName() + "@" +
+                                            Integer.toHexString(System.identityHashCode(proxy));
+                                default:
+                                    throw new IllegalStateException("Unexpected Object method: " + method);
+                            }
                         }
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
@@ -224,8 +240,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        List<ChatMessage> messages = new ArrayList<>();
+                        Optional<List<Content>> maybeContents = findContents(method, args);
+                        if (maybeContents.isPresent()) {
+                            List<Content> allContents = new ArrayList<>();
+                            for (Content content : maybeContents.get()) {
+                                if (content == null) { // placeholder
+                                    allContents.addAll(userMessage.contents());
+                                } else {
+                                    allContents.add(content);
+                                }
+                            }
+                            userMessage = UserMessage.from(userMessage.name(), allContents);
+                        }
 
+                        List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
@@ -246,6 +274,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .messages(messages)
                                     .toolSpecifications(toolServiceContext.toolSpecifications())
                                     .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
@@ -292,6 +322,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
+
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
@@ -300,7 +332,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 memoryId,
                                 toolServiceContext.toolExecutors(),
+                                isReturnTypeResult,
                                 invocationContext);
+
+                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(TOOL_EXECUTION)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
+                                    .build();
+                        }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
@@ -313,7 +358,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
 
-                        if (typeHasRawClass(returnType, Result.class)) {
+                        if (isReturnTypeResult) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
@@ -490,7 +535,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
+                    && !(args[i] instanceof Content) && !isListOfContents(args[i])) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
@@ -511,6 +557,39 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
         }
         return Optional.empty();
+    }
+
+    private static Optional<List<Content>> findContents(Method method, Object[] args) {
+        List<Content> contents = new ArrayList<>();
+
+        if (findUserMessageTemplateFromMethodAnnotation(method).isPresent()) {
+            contents.add(null); // placeholder
+        }
+
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content) {
+                    contents.add((Content) args[i]);
+                } else if (isListOfContents(args[i])) {
+                    contents.addAll((List<Content>) args[i]);
+                } else {
+                    contents.add(null); // placeholder
+                }
+            }
+        }
+
+        if (contents.stream().filter(Objects::isNull).count() > 1) {
+            throw illegalConfiguration(
+                    "Error: The method '%s' has multiple @UserMessage for text content. Please use only one.",
+                    method.getName());
+        }
+
+        return contents.isEmpty() ? Optional.empty() : Optional.of(contents);
+    }
+
+    private static boolean isListOfContents(Object o) {
+        return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
     private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {

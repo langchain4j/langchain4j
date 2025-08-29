@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -56,6 +57,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logRequests,
+                builder.logResponses,
+                builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
@@ -166,6 +170,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
@@ -288,6 +295,25 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiGeminiChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

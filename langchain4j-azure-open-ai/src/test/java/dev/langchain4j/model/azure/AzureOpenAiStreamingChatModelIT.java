@@ -105,6 +105,7 @@ class AzureOpenAiStreamingChatModelIT {
                     5,
                     null,
                     null,
+                    null,
                     true,
                     null,
                     null);

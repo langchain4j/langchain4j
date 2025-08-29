@@ -34,6 +34,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -79,6 +80,7 @@ public class AnthropicChatModel implements ChatModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
 
         this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
@@ -139,6 +141,7 @@ public class AnthropicChatModel implements ChatModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
 
@@ -294,6 +297,15 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public AnthropicChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

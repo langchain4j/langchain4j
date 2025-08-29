@@ -10,16 +10,19 @@ import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.Predicate;
+
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService<T>> implements LoopAgentService<T> {
 
     private int maxIterations = Integer.MAX_VALUE;
     private Predicate<AgenticScope> exitCondition = state -> false;
 
-    private LoopAgentServiceImpl(Class<T> agentServiceClass) {
-        super(agentServiceClass);
+    private LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        super(agentServiceClass, agenticMethod);
     }
 
     @Override
@@ -60,11 +63,11 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
     }
 
     public static LoopAgentServiceImpl<UntypedAgent> builder() {
-        return builder(UntypedAgent.class);
+        return new LoopAgentServiceImpl<>(UntypedAgent.class, null);
     }
 
     public static <T> LoopAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new LoopAgentServiceImpl<>(agentServiceClass);
+        return new LoopAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
 
     @Override

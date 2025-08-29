@@ -14,6 +14,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class SupervisorAgentServiceImpl<T> extends AbstractService<T, SupervisorAgentServiceImpl<T>>
         implements SupervisorAgentService<T> {
@@ -44,8 +47,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     private Function<AgenticScope, String> requestGenerator;
     private String supervisorContext;
 
-    private SupervisorAgentServiceImpl(Class<T> agentServiceClass) {
-        super(agentServiceClass);
+    private SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        super(agentServiceClass, agenticMethod);
     }
 
     public T build() {
@@ -112,6 +115,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                     : agenticScope.readState("request", "");
             String lastResponse = "";
             Object memoryId = agenticScope.memoryId();
+            Object result = null;
 
             for (int loopCount = 0; loopCount < maxAgentsInvocations; loopCount++) {
 
@@ -124,8 +128,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
                 if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-                    String doneResponse = agentInvocation.getArguments().get("response");
-                    lastResponse = response(request, lastResponse, doneResponse);
+                    if (hasOutputFunction()) {
+                        result = output.apply(agenticScope);
+                    } else {
+                        String doneResponse = agentInvocation.getArguments().get("response");
+                        result = response(request, lastResponse, doneResponse);
+                    }
                     break;
                 }
 
@@ -144,10 +152,13 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 lastResponse = agentExec.execute(agenticScope).toString();
             }
 
-            if (outputName != null) {
-                agenticScope.writeState(outputName, lastResponse);
+            if (result == null) {
+                result = lastResponse;
             }
-            return lastResponse;
+            if (outputName != null) {
+                agenticScope.writeState(outputName, result);
+            }
+            return result;
         }
 
         private String response(String request, String lastResponse, String doneResponse) {
@@ -176,11 +187,11 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
-        return builder(SupervisorAgent.class);
+        return new SupervisorAgentServiceImpl<>(SupervisorAgent.class, null);
     }
 
     public static <T> SupervisorAgentService<T> builder(Class<T> agentServiceClass) {
-        return new SupervisorAgentServiceImpl<>(agentServiceClass);
+        return new SupervisorAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
 
     @Override

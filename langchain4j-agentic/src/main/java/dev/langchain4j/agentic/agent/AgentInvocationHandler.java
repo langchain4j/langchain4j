@@ -48,6 +48,8 @@ public class AgentInvocationHandler implements InvocationHandler {
 
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
+                case "name" -> builder.name;
+                case "description" -> builder.description;
                 case "outputName" -> builder.outputName;
                 default ->
                         throw new UnsupportedOperationException(

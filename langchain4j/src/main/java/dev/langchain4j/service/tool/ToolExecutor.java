@@ -26,9 +26,9 @@ public interface ToolExecutor {
     /**
      * Executes a tool requests.
      *
-     * @param request  The tool execution request. Contains tool name and arguments.
-     * @param memoryId The ID of the chat memory. See {@link MemoryId} for more details.
-     * @return The result of the tool execution.
+     * @param request The tool execution request. Contains tool name and arguments.
+     * @param memoryId             The ID of the chat memory. See {@link MemoryId} for more details.
+     * @return The result of the tool execution that will be sent to the LLM.
      */
     // TODO deprecate?
     String execute(ToolExecutionRequest request, Object memoryId);

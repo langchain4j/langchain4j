@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -451,6 +452,7 @@ abstract class AbstractBedrockChatModel {
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
+        protected Logger logger;
         protected List<ChatModelListener> listeners;
 
         @SuppressWarnings("unchecked")
@@ -519,6 +521,15 @@ abstract class AbstractBedrockChatModel {
 
         public T logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return self();
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public T logger(Logger logger) {
+            this.logger = logger;
             return self();
         }
 

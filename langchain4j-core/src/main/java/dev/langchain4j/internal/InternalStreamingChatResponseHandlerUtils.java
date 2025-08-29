@@ -20,8 +20,10 @@ public class InternalStreamingChatResponseHandlerUtils {
         try {
             runnable.run();
         } catch (Exception e) {
-            log.warn("An exception occurred during the invocation of StreamingChatResponseHandler.onError(). "
-                    + "This exception has been ignored.", e);
+            log.warn(
+                    "An exception occurred during the invocation of StreamingChatResponseHandler.onError(). "
+                            + "This exception has been ignored.",
+                    e);
         }
     }
 
