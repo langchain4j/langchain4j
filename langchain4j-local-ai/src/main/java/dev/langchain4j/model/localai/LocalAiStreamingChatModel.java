@@ -21,10 +21,12 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -47,6 +49,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
     private final Double topP;
     private final Integer maxTokens;
 
+    @Deprecated(forRemoval = true, since = "1.5.0")
     public LocalAiStreamingChatModel(String baseUrl,
                                      String modelName,
                                      Double temperature,
@@ -70,6 +73,21 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
+    }
+
+    public LocalAiStreamingChatModel(LocalAiStreamingChatModelBuilder builder) {
+        this.client = OpenAiClient.builder()
+                .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = getOrDefault(builder.temperature, 0.7);
+        this.topP = builder.topP;
+        this.maxTokens = builder.maxTokens;
     }
 
     @Override
@@ -198,6 +216,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public LocalAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -245,7 +264,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         }
 
         public LocalAiStreamingChatModel build() {
-            return new LocalAiStreamingChatModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.logRequests, this.logResponses);
+            return new LocalAiStreamingChatModel(this);
         }
 
         public String toString() {

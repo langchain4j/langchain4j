@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.spi.ServiceHelper;
+import org.slf4j.Logger;
 import java.time.Duration;
 
 public abstract class OvhAiClient {
@@ -24,6 +25,7 @@ public abstract class OvhAiClient {
         public Duration timeout;
         public Boolean logRequests;
         public Boolean logResponses;
+        public Logger logger;
 
         public abstract T build();
 
@@ -66,6 +68,11 @@ public abstract class OvhAiClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return (B) this;
+        }
+
+        public B logger(Logger logger) {
+            this.logger = logger;
             return (B) this;
         }
     }

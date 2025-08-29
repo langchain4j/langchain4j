@@ -8,11 +8,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.nomic.RequestLoggingInterceptor.inOneLine;
 
 class ResponseLoggingInterceptor implements Interceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
+    private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
+
+    private final Logger log;
+
+    ResponseLoggingInterceptor(Logger logger) {
+        this.log = getOrDefault(logger, DEFAULT_LOG);
+    }
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();

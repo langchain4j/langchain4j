@@ -16,11 +16,13 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -44,6 +46,7 @@ public class LocalAiChatModel implements ChatModel {
     private final Integer maxTokens;
     private final Integer maxRetries;
 
+    @Deprecated(forRemoval = true, since = "1.5.0")
     public LocalAiChatModel(String baseUrl,
                             String modelName,
                             Double temperature,
@@ -70,6 +73,22 @@ public class LocalAiChatModel implements ChatModel {
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.maxRetries = maxRetries;
+    }
+
+    public LocalAiChatModel(LocalAiChatModelBuilder builder) {
+        this.client = OpenAiClient.builder()
+                .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = getOrDefault(builder.temperature, 0.7);
+        this.topP = builder.topP;
+        this.maxTokens = builder.maxTokens;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
 
     @Override
@@ -162,6 +181,7 @@ public class LocalAiChatModel implements ChatModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public LocalAiChatModelBuilder() {
             // This is public so it can be extended
@@ -213,8 +233,17 @@ public class LocalAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public LocalAiChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public LocalAiChatModel build() {
-            return new LocalAiChatModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new LocalAiChatModel(this);
         }
 
         public String toString() {

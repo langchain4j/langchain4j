@@ -50,10 +50,10 @@ public class DefaultOvhAiClient extends OvhAiClient {
             .writeTimeout(builder.timeout);
 
         if (builder.logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(builder.logger));
         }
         if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(builder.logger));
         }
 
         this.okHttpClient = okHttpClientBuilder.build();

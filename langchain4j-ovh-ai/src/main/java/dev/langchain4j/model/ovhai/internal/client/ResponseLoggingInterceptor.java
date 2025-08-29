@@ -5,13 +5,21 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ovhai.internal.client.RequestLoggingInterceptor.inOneLine;
 import java.io.IOException;
 
 
 class ResponseLoggingInterceptor implements Interceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
+    private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
+
+    private final Logger log;
+
+    ResponseLoggingInterceptor(Logger logger) {
+        this.log = getOrDefault(logger, DEFAULT_LOG);
+    }
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();
