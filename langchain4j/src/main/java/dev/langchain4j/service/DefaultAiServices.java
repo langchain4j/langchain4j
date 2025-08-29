@@ -9,6 +9,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
@@ -79,8 +80,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            boolean isContext = parameter.getType() == InvocationContext.class;
-            if (v == null && userMessage == null && memoryId == null && userName == null && !isContext) {
+            boolean isExtraParameters = parameter.getType() == ExtraParameters.class;
+            if (v == null && userMessage == null && memoryId == null && userName == null && !isExtraParameters) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
                                 "%s, %s, %s, or %s, or it should be of type %s",
@@ -89,7 +90,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
-                        InvocationContext.class.getName()
+                        ExtraParameters.class.getName()
                 );
             }
         }
@@ -198,8 +199,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        InvocationContext invocationContext = findInvocationContext(args)
-                                .orElseGet(InvocationContext::new);
+                        ExtraParameters extraParameters = findExtraParameters(args)
+                                .orElseGet(ExtraParameters::new);
+                        InvocationContext invocationContext = new InvocationContext(extraParameters);
                         // TODO what if user passed null?
 
                         AugmentationResult augmentationResult = null;
@@ -373,15 +375,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private Optional<InvocationContext> findInvocationContext(Object[] args) { // TODO name
+                    private Optional<ExtraParameters> findExtraParameters(Object[] args) { // TODO name
                         if (args == null) {
                             return Optional.empty();
                         }
                         return Arrays.stream(args)
-                                .filter(arg -> arg instanceof InvocationContext)
-                                .map(it -> (InvocationContext) it)
+                                .filter(arg -> arg instanceof ExtraParameters)
+                                .map(it -> (ExtraParameters) it)
                                 .findFirst();
-                        // TODO validate that there is only one AiServiceInvocationContext arg
+                        // TODO validate that there is only one ExtraParameters arg
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

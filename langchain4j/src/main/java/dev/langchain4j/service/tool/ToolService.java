@@ -179,7 +179,7 @@ public class ToolService {
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecs = new HashMap<>(this.toolExecutors);
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
-                .chatMemoryId(memoryId)
+                .chatMemoryId(memoryId) // TODO memoryId inside the invocation context?
                 .userMessage(userMessage)
                 .invocationContext(invocationContext)
                 .build();
@@ -382,7 +382,7 @@ public class ToolService {
         } catch (Exception e) {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
-                    .memoryId(toolContext.chatMemoryId()) // TODO pass whole context
+                    .memoryId(toolContext.chatMemoryId()) // TODO pass whole context?
                     .build();
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
@@ -391,6 +391,7 @@ public class ToolService {
                 errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
             }
             return ToolExecutionResult.builder()
+                    .isError(true) // TODO?
                     .result(null) // TODO?
                     .resultText(errorHandlerResult.text()) // TODO
                     .build();

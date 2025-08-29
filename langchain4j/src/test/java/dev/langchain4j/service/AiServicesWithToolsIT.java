@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -792,14 +793,14 @@ class AiServicesWithToolsIT {
     // TODO test propagating from toolprovider to tool to etc
 
     @Test
-    void should_propagate_invocation_context_into_tool() { // TODO name
+    void should_propagate_extra_parameters_into_tool() { // TODO name
 
         // given
         class Tools {
 
             @Tool
-            String getWeather(InvocationContext invocationContext) {
-                String city = invocationContext.get("city");
+            String getWeather(ExtraParameters extraParameters) {
+                String city = extraParameters.get("city");
                 return switch (city) {
                     case "Munich" -> "rainy";
                     default -> "sunny";
@@ -809,8 +810,7 @@ class AiServicesWithToolsIT {
 
         interface Assistant {
 
-            // TODO "Invocation Context" name assumes more than just parameters: it could contain intermediate responses, retrieved documents, etc
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationContext invocationContext);
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, ExtraParameters extraParameters);
         }
 
         Tools spyTools = spy(new Tools());
@@ -820,28 +820,28 @@ class AiServicesWithToolsIT {
                 .tools(spyTools)
                 .build();
 
-        InvocationContext invocationContext1 = InvocationContext.from("city", "Munich");
+        ExtraParameters extraParameters1 = ExtraParameters.from("city", "Munich");
 
         // when
-        String answer1 = assistant.chat("What is the weather?", invocationContext1);
+        String answer1 = assistant.chat("What is the weather?", extraParameters1);
 
         // then
         assertThat(answer1).contains("rain");
-        verify(spyTools).getWeather(invocationContext1);
+        verify(spyTools).getWeather(extraParameters1);
 
         // given
-        InvocationContext invocationContext2 = InvocationContext.from("city", "Paris");
+        ExtraParameters extraParameters2 = ExtraParameters.from("city", "Paris");
 
         // when
-        String answer2 = assistant.chat("What is the weather?", invocationContext2);
+        String answer2 = assistant.chat("What is the weather?", extraParameters2);
 
         // then
         assertThat(answer2).contains("sun");
-        verify(spyTools).getWeather(invocationContext2);
+        verify(spyTools).getWeather(extraParameters2);
     }
 
     @Test
-    void should_propagate_invocation_context_between_tools() { // TODO name
+    void should_propagate_extra_parameters_between_tools() { // TODO name
 
         // given
         class Tools {
@@ -849,16 +849,16 @@ class AiServicesWithToolsIT {
             static final LocalTime CURRENT_TIME = LocalTime.of(12, 34, 56);
 
             @Tool
-            String getWeather(InvocationContext invocationContext) {
-                assertThat(invocationContext.asMap()).isEmpty();
-                invocationContext.put("calledGetWeather", true);
+            String getWeather(ExtraParameters extraParameters) {
+                assertThat(extraParameters.asMap()).isEmpty();
+                extraParameters.put("calledGetWeather", true);
 
                 return "sunny";
             }
 
             @Tool
-            LocalTime getTime(InvocationContext invocationContext) {
-                assertThat(invocationContext.asMap()).containsOnly(Map.entry("calledGetWeather", true));
+            LocalTime getTime(ExtraParameters extraParameters) {
+                assertThat(extraParameters.asMap()).containsOnly(Map.entry("calledGetWeather", true));
                 return CURRENT_TIME;
             }
         }
@@ -887,19 +887,19 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_propagate_invocation_context_into_tool_provider() { // TODO name
+    void should_propagate_extra_parameters_into_tool_provider() { // TODO name
 
         // given
         interface Assistant {
 
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationContext invocationContext);
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, ExtraParameters extraParameters);
         }
 
         String includeToolsKey = "includeTools";
 
         ToolProvider toolProvider = request -> {
 
-            if (request.invocationContext().get(includeToolsKey)) {
+            if (request.invocationContext().extraParameters().get(includeToolsKey)) {
                 ToolSpecification toolSpecification = ToolSpecification.builder()
                         .name("xyz")
                         .parameters(JsonObjectSchema.builder()
@@ -912,7 +912,7 @@ class AiServicesWithToolsIT {
 
                             @Override
                             public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
-                                assertThat((boolean) context.invocationContext().get(includeToolsKey)).isEqualTo(true);
+                                assertThat((boolean) context.invocationContext().extraParameters().get(includeToolsKey)).isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
                                 return ToolExecutionResult.builder()
@@ -938,27 +938,27 @@ class AiServicesWithToolsIT {
                 .toolProvider(toolProvider)
                 .build();
 
-        InvocationContext invocationContext1 = new InvocationContext();
-        invocationContext1.put(includeToolsKey, false);
+        ExtraParameters extraParameters1 = new ExtraParameters();
+        extraParameters1.put(includeToolsKey, false);
 
         // when
-        assistant.chat("does not matter", invocationContext1);
+        assistant.chat("does not matter", extraParameters1);
 
         // then
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().isEmpty()));
 
         // given
-        InvocationContext invocationContext2 = new InvocationContext();
-        invocationContext2.put(includeToolsKey, true);
+        ExtraParameters extraParameters2 = new ExtraParameters();
+        extraParameters2.put(includeToolsKey, true);
 
         // when
-        assistant.chat("does not matter", invocationContext2);
+        assistant.chat("does not matter", extraParameters2);
 
         // then
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().size() == 1));
     }
 
-    // TODO search for invocationContext everywhere
+    // TODO search for invocationContext and extraParameters everywhere
 
     private static Map<String, Object> toMap(String arguments) {
         try {

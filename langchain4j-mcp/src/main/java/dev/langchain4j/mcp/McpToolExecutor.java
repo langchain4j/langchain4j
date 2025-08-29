@@ -18,7 +18,7 @@ public class McpToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        return mcpClient.executeTool(request);
+    public String execute(ToolExecutionRequest executionRequest, Object memoryId) {
+        return mcpClient.executeTool(executionRequest);
     }
 }

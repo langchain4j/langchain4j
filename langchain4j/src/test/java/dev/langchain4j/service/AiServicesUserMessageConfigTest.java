@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
@@ -52,7 +52,7 @@ class AiServicesUserMessageConfigTest {
 
         String chat2(@UserMessage String userMessage);
 
-        String chat2_1(@UserMessage String userMessage, InvocationContext invocationContext);
+        String chat2_1(@UserMessage String userMessage, ExtraParameters extraParameters);
 
         String chat3(@UserMessage String userMessage, @V("country") String country);
 
@@ -102,7 +102,7 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
-        String illegalChat7(String userMessage, InvocationContext invocationContext); // TODO should be allowed?
+        String illegalChat7(String userMessage, ExtraParameters extraParameters); // TODO should be allowed?
 
         // TODO more tests with @UserName, @V, @MemoryId
     }
@@ -158,10 +158,8 @@ class AiServicesUserMessageConfigTest {
                 .chatModel(chatModel)
                 .build();
 
-        InvocationContext invocationContext = new InvocationContext();
-
         // when-then
-        assertThat(aiService.chat2_1("What is the capital of Germany?", invocationContext))
+        assertThat(aiService.chat2_1("What is the capital of Germany?", new ExtraParameters()))
                 .containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
@@ -469,10 +467,8 @@ class AiServicesUserMessageConfigTest {
                 .chatModel(chatModel)
                 .build();
 
-        InvocationContext invocationContext = new InvocationContext();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat7("Hello", invocationContext))
+        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new ExtraParameters()))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The parameter 'arg0' in the method 'illegalChat7' " +
                         "of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService " +

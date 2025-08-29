@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -87,6 +88,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
+    @Override
     public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
         Object[] arguments = prepareArguments(request, context);
 
@@ -175,6 +177,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
                 // TODO test extending from AiServiceInvocationContext
                 arguments[i] = context.invocationContext();
+                continue;
+            }
+
+            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
+                // TODO test extending from AiServiceInvocationContext
+                arguments[i] = context.invocationContext().extraParameters();
                 continue;
             }
 
