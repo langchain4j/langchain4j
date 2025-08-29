@@ -22,8 +22,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -237,10 +235,10 @@ public class ToolService {
 
             intermediateResponses.add(chatResponse);
 
-            ToolExecutionContext executionContext = new ToolExecutionContext(memoryId, invocationContext);
+            ToolExecutionContext toolContext = new ToolExecutionContext(memoryId, invocationContext);
 
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(aiMessage.toolExecutionRequests(), toolExecutors, executionContext);
+                    execute(aiMessage.toolExecutionRequests(), toolExecutors, toolContext);
 
             boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
@@ -261,11 +259,11 @@ public class ToolService {
                 }
 
                 if (immediateToolReturn) {
-                    if (isImmediateTool(toolExecutionRequest.name())) {
+                    if (isImmediateTool(toolRequest.name())) {
                         if (!isReturnTypeResult) {
                             throw illegalConfiguration(
                                     "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
-                                    toolExecutionRequest.name());
+                                    toolRequest.name());
                         }
                     } else {
                         immediateToolReturn = false;
@@ -306,34 +304,34 @@ public class ToolService {
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResult> execute(
-            List<ToolExecutionRequest> toolExecutionRequests,
+            List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            ToolExecutionContext executionContext) {
-        if (executor != null && toolExecutionRequests.size() > 1) {
-            return executeConcurrently(toolExecutionRequests, toolExecutors, executionContext);
+            ToolExecutionContext toolContext) {
+        if (executor != null && toolRequests.size() > 1) {
+            return executeConcurrently(toolRequests, toolExecutors, toolContext);
         } else {
             // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolExecutionRequests, toolExecutors, executionContext);
+            return executeSequentially(toolRequests, toolExecutors, toolContext);
         }
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
-            List<ToolExecutionRequest> toolExecutionRequests,
+            List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            ToolExecutionContext executionContext) {
+            ToolExecutionContext toolContext) {
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
 
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
+        for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(() -> {
-                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+                ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
                 if (toolExecutor == null) {
-                    return applyToolHallucinationStrategy(toolExecutionRequest);
+                    return applyToolHallucinationStrategy(toolRequest);
                 } else {
-                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, executionContext,
+                    return executeWithErrorHandling(toolRequest, toolExecutor, toolContext,
                             argumentsErrorHandler(), executionErrorHandler());
                 }
             }, executor);
-            futures.put(toolExecutionRequest, future);
+            futures.put(toolRequest, future);
         }
 
         Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
@@ -374,18 +372,17 @@ public class ToolService {
         return toolResults;
     }
 
-    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolRequest,
-                                                                      ToolExecutor executor,
-                                                                      Object memoryId,
-                                                                      ToolArgumentsErrorHandler argumentsErrorHandler,
-                                                                      ToolExecutionErrorHandler executionErrorHandler) {
-        String toolResult;
+    public static ToolExecutionResult executeWithErrorHandling(ToolExecutionRequest toolRequest,
+                                                               ToolExecutor toolExecutor,
+                                                               ToolExecutionContext toolContext,
+                                                               ToolArgumentsErrorHandler argumentsErrorHandler,
+                                                               ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            toolResult = executor.execute(toolRequest, memoryId);
+            return toolExecutor.execute(toolRequest, toolContext);
         } catch (Exception e) {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
-                    .memoryId(memoryId)
+                    .memoryId(toolContext.chatMemoryId()) // TODO pass whole context
                     .build();
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
@@ -393,15 +390,17 @@ public class ToolService {
             } else {
                 errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
             }
-            toolResult = errorHandlerResult.text();
+            return ToolExecutionResult.builder()
+                    .result(null) // TODO?
+                    .resultText(errorHandlerResult.text()) // TODO
+                    .build();
         }
-        return ToolExecutionResultMessage.from(toolRequest, toolResult);
     }
 
-    public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
-        ToolExecutionResultMessage toolExecutionResultMessage = toolHallucinationStrategy.apply(toolExecutionRequest);
+    public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
+        ToolExecutionResultMessage toolResultMessage = toolHallucinationStrategy.apply(toolRequest);
         return ToolExecutionResult.builder()
-                .resultText(toolExecutionResultMessage.text())
+                .resultText(toolResultMessage.text())
                 .build();
     }
 

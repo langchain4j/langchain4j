@@ -126,10 +126,10 @@ public class DefaultToolExecutor implements ToolExecutor {
         return result.resultText();
     }
 
-    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, ToolExecutionContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, memoryId);
+            return prepareArguments(originalMethod, argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));

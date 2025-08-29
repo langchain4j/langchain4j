@@ -149,8 +149,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
-                ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-                return execute(toolExecutionRequest);
+                ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
+                ToolExecutionResult toolResult = execute(toolRequest);
+                return ToolExecutionResultMessage.from(toolRequest, toolResult.resultText());
             }, toolExecutor);
             toolResultFutures.add(future);
         }
@@ -187,10 +188,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     }
                 }
             } else {
-                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                    ToolExecutionResultMessage toolExecutionResultMessage = execute(toolExecutionRequest);
-                    addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
+                for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
+                    ToolExecutionResult toolResult = execute(toolRequest);
+                    addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
+                    immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());
                 }
             }
 
@@ -279,8 +280,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
         // TODO applyToolHallucinationStrategy
         handleBeforeTool(toolRequest);
-        ToolExecutionContext context = new ToolExecutionContext(memoryId, invocationContext);
-        ToolExecutionResult toolResult = executeWithErrorHandling(toolRequest, toolExecutor, context,
+        ToolExecutionContext toolContext = new ToolExecutionContext(memoryId, invocationContext);
+        ToolExecutionResult toolResult = executeWithErrorHandling(toolRequest, toolExecutor, toolContext,
                 toolArgumentsErrorHandler, toolExecutionErrorHandler);
         handleAfterTool(toolRequest, toolResult);
         return toolResult;
