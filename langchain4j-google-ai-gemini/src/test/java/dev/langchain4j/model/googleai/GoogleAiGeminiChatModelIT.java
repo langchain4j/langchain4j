@@ -217,22 +217,19 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         // when
+        byte[] videoBytes = readBytes("https://file-examples.com/storage/feed00481a68af85f931c46/2017/04/file_example_MP4_480_1_5MG.mp4");
+        String base64Data = new String(Base64.getEncoder().encode(videoBytes)); // TODO use local file
+
         ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(
-                        new String(
-                                Base64.getEncoder()
-                                        .encode( // TODO use local file
-                                                readBytes(
-                                                        "https://www.sample-videos.com/video321/mp4/480/big_buck_bunny_480p_1mb.mp4"))),
-                        "video/mp4"),
+                VideoContent.from(base64Data, "video/mp4"),
                 TextContent.from("Give a summary of the video")));
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("rabbit");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("earth");
     }
 
     @Test

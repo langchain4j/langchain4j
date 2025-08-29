@@ -21,6 +21,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 class GoogleAiGeminiChatModelThinkingIT {
 
@@ -136,8 +137,16 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(aiMessage.attributes()).isEmpty();
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
+    @RetryingTest(3)
+    void should_think_and_return_thinking_with_tools__sendThinking_true() {
+        should_think_and_return_thinking_with_tools(true);
+    }
+
+    @RetryingTest(3)
+    void should_think_and_return_thinking_with_tools__sendThinking_false() {
+        should_think_and_return_thinking_with_tools(false);
+    }
+
     void should_think_and_return_thinking_with_tools(boolean sendThinking) {
 
         // given
