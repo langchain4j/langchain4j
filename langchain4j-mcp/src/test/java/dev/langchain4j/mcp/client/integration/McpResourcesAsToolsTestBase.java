@@ -53,7 +53,7 @@ public abstract class McpResourcesAsToolsTestBase {
 
         // call the list_resources tool and verify the output
         String listResourcesResult =
-                toolProviderResult.toolExecutorByName("list_resources").execute(null, null);
+                toolProviderResult.toolExecutorByName("list_resources").execute(null, (Object) null);
         ArrayNode resources = Json.fromJson(listResourcesResult, ArrayNode.class);
         assertThat(resources.size()).isEqualTo(1);
         assertThat(resources.get(0).get("mcpServer").asText()).isEqualTo("alice");
@@ -69,7 +69,7 @@ public abstract class McpResourcesAsToolsTestBase {
                 .arguments("{\"mcpServer\": \"alice\", \"uri\": \"file:///info\"}")
                 .build();
         String getBasicInfoResult =
-                toolProviderResult.toolExecutorByName("get_resource").execute(request, null);
+                toolProviderResult.toolExecutorByName("get_resource").execute(request, (Object) null);
         assertThat(getBasicInfoResult).isEqualTo("Alice was born in 1962 and lives in Manchester.");
     }
 
@@ -92,7 +92,7 @@ public abstract class McpResourcesAsToolsTestBase {
         String out = toolProvider
                 .provideTools(null)
                 .toolExecutorByName("list_resources")
-                .execute(request, null);
+                .execute(request, (Object) null);
         System.out.println(out);
 
         String aliceResponse = service.chat("When was Alice born?");
