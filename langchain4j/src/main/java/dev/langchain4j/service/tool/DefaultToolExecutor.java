@@ -1,10 +1,12 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.InvocationContext;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -86,8 +88,9 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        Object[] arguments = prepareArguments(toolExecutionRequest, memoryId);
+    @Override
+    public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+        Object[] arguments = prepareArguments(request, context);
 
         try {
             return execute(arguments);
@@ -101,22 +104,34 @@ public class DefaultToolExecutor implements ToolExecutor {
                 if (propagateToolExecutionExceptions) {
                     throw new ToolExecutionException(e2.getCause());
                 } else {
-                    return e2.getCause().getMessage();
+                    return ToolExecutionResult.builder()
+                            .isError(true)
+                            .resultText(e2.getCause().getMessage())
+                            .build();
                 }
             }
         } catch (InvocationTargetException e) {
             if (propagateToolExecutionExceptions) {
                 throw new ToolExecutionException(e.getCause());
             } else {
-                return e.getCause().getMessage();
+                return ToolExecutionResult.builder()
+                        .isError(true)
+                        .resultText(e.getCause().getMessage())
+                        .build();
             }
         }
     }
 
-    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        ToolExecutionResult result = execute(request, new ToolExecutionContext(memoryId, null));
+        return result.resultText();
+    }
+
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, ToolExecutionContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, memoryId);
+            return prepareArguments(originalMethod, argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -126,8 +141,16 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+    private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+        String resultText = toText(result);
+        return ToolExecutionResult.builder()
+                .result(result)
+                .resultText(resultText)
+                .build();
+    }
+
+    private String toText(Object result) { // TODO should this be here?
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
@@ -138,7 +161,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, ToolExecutionContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -147,7 +170,19 @@ public class DefaultToolExecutor implements ToolExecutor {
             Parameter parameter = parameters[i];
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
-                arguments[i] = memoryId;
+                arguments[i] = context.chatMemoryId();
+                continue;
+            }
+
+            if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
+                // TODO test extending from AiServiceInvocationContext
+                arguments[i] = context.invocationContext();
+                continue;
+            }
+
+            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
+                // TODO test extending from AiServiceInvocationContext
+                arguments[i] = context.invocationContext().extraParameters();
                 continue;
             }
 

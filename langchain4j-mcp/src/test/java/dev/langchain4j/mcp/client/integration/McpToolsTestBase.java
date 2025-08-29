@@ -73,7 +73,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("echoString")
                 .arguments("{\"input\": \"abc\"}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, (Object) null);
         assertThat(toolExecutionResultString).isEqualTo("abc");
     }
 
@@ -139,7 +139,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("longOperation")
                 .arguments("{}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, (Object) null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
     }
 

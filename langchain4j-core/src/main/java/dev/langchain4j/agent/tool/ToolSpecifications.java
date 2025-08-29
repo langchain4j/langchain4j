@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -104,7 +105,8 @@ public class ToolSpecifications {
         Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
 
         for (Parameter parameter : parameters) {
-            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)
+                    || parameter.getType().isAssignableFrom(ExtraParameters.class)) {
                 continue;
             }
 

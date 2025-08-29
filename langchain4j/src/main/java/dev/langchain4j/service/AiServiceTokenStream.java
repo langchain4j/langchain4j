@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
@@ -42,6 +43,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final Object memoryId;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final InvocationContext invocationContext;
 
     private Consumer<String> partialResponseHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
@@ -81,6 +83,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
+        this.invocationContext = parameters.invocationContext();
     }
 
     @Override
@@ -181,7 +184,8 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey);
+                methodKey,
+                invocationContext);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

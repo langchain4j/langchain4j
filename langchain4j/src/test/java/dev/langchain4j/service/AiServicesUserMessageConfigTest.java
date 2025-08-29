@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
@@ -50,6 +51,8 @@ class AiServicesUserMessageConfigTest {
         String chat1(String userMessage);
 
         String chat2(@UserMessage String userMessage);
+
+        String chat2_1(@UserMessage String userMessage, ExtraParameters extraParameters);
 
         String chat3(@UserMessage String userMessage, @V("country") String country);
 
@@ -99,6 +102,8 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
+        String illegalChat7(String userMessage, ExtraParameters extraParameters); // TODO should be allowed?
+
         // TODO more tests with @UserName, @V, @MemoryId
     }
 
@@ -141,6 +146,21 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_2_1() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat2_1("What is the capital of Germany?", new ExtraParameters()))
+                .containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
     }
@@ -437,6 +457,25 @@ class AiServicesUserMessageConfigTest {
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
                         "Error: The method 'illegalChat6' has multiple @UserMessage annotations. Please use only one.");
+    }
+
+    @Test
+    void illegal_user_message_configuration_7() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new ExtraParameters()))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' " +
+                        "of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService " +
+                        "must be annotated with either dev.langchain4j.service.UserMessage, " +
+                        "dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, " +
+                        "or dev.langchain4j.service.UserName, or it should be of type " +
+                        "dev.langchain4j.InvocationContext");
     }
 
     interface AssistantHallucinatedTool {
