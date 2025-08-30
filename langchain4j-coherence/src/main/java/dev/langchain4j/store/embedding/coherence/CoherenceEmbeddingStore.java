@@ -162,9 +162,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(DocumentChunk.Id id, Embedding embedding, TextSegment segment) {
-        Map<DocumentChunk.Id, DocumentChunk> map = new HashMap<>();
-        map.put(id, createChunk(embedding, segment));
-        documentChunks.putAll(map);
+        documentChunks.put(id, createChunk(embedding, segment));
     }
 
     /**
