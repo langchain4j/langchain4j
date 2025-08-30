@@ -9,6 +9,7 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -32,6 +33,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxRetries;
     private final Boolean lateChunking;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public JinaEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -51,6 +53,20 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.lateChunking = getOrDefault(lateChunking, false);
+    }
+
+    public JinaEmbeddingModel(JinaEmbeddingModelBuilder builder) {
+        this.client = JinaClient.builder()
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(builder.apiKey)
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.lateChunking = getOrDefault(builder.lateChunking, false);
     }
 
     public static JinaEmbeddingModelBuilder builder() {
@@ -85,6 +101,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean lateChunking;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         JinaEmbeddingModelBuilder() {
         }
@@ -129,8 +146,17 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public JinaEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public JinaEmbeddingModel build() {
-            return new JinaEmbeddingModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.lateChunking, this.logRequests, this.logResponses);
+            return new JinaEmbeddingModel(this);
         }
 
         public String toString() {

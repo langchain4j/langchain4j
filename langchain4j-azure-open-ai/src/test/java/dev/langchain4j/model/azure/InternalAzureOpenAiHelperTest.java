@@ -12,6 +12,8 @@ import com.azure.ai.openai.models.ChatRequestMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.core.http.policy.ExponentialBackoffOptions;
+import com.azure.core.http.policy.RetryOptions;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
@@ -43,7 +45,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -58,7 +70,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -153,5 +175,32 @@ class InternalAzureOpenAiHelperTest {
                         .name(functionName)
                         .arguments(functionArguments)
                         .build());
+    }
+
+    @Test
+    void resolveRetryOptions_returnsProvidedRetryOptions() {
+        ExponentialBackoffOptions backoff = new ExponentialBackoffOptions();
+        backoff.setMaxRetries(42);
+        RetryOptions custom = new RetryOptions(backoff);
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(5, custom);
+        assertThat(result).isSameAs(custom);
+    }
+
+    @Test
+    void resolveRetryOptions_createsDefaultWithGivenMaxRetries() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(7, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isEqualTo(7);
+    }
+
+    @Test
+    void resolveRetryOptions_usesDefaultMaxRetriesIfBothNull() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(null, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isEqualTo(2);
+    }
+
+    @Test
+    void resolveRetryOptions_handlesZeroMaxRetries() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(0, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isZero();
     }
 }

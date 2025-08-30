@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.3.0-beta9-SNAPSHOT</version>
+    <version>1.5.0-beta11-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -46,6 +46,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
+        <module>langchain4j-watsonx</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -100,6 +101,8 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-agentic</module>
+        <module>langchain4j-agentic-a2a</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
@@ -214,7 +217,7 @@
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.43.4</version>
+                        <version>5.47.3</version>
                         <configuration>
                             <activeRecipes>
                                 <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>

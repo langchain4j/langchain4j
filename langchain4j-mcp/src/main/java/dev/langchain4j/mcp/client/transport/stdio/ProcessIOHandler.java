@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.BufferedReader;
@@ -37,7 +39,11 @@ class ProcessIOHandler implements Runnable, Closeable {
                     if (logEvents) {
                         trafficLog.debug("< {}", line);
                     }
-                    messageHandler.handle(OBJECT_MAPPER.readTree(line));
+                    try {
+                        messageHandler.handle(OBJECT_MAPPER.readTree(line));
+                    } catch(JsonProcessingException e) {
+                        log.warn("Ignoring message received from the server because it is not valid JSON: " + line);
+                    }
                 }
             } catch (IOException e) {
                 // If this handler was closed, it means the MCP server process is shutting down,

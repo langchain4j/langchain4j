@@ -7,6 +7,7 @@ import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -30,6 +31,7 @@ public class JinaScoringModel implements ScoringModel {
     private final String modelName;
     private final Integer maxRetries;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public JinaScoringModel(String baseUrl,
                             String apiKey,
                             String modelName,
@@ -46,6 +48,19 @@ public class JinaScoringModel implements ScoringModel {
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
+    }
+
+    public JinaScoringModel(JinaScoringModelBuilder builder) {
+        this.client = JinaClient.builder()
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static JinaScoringModelBuilder builder() {
@@ -87,6 +102,7 @@ public class JinaScoringModel implements ScoringModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         JinaScoringModelBuilder() {
         }
@@ -126,8 +142,17 @@ public class JinaScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public JinaScoringModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public JinaScoringModel build() {
-            return new JinaScoringModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new JinaScoringModel(this);
         }
 
         public String toString() {

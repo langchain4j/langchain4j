@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
+import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
@@ -34,7 +35,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     public BedrockChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
+                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false), builder.logger)
                 : builder.client;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
@@ -89,14 +90,14 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return new Builder();
     }
 
-    private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses) {
+    private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses, Logger logger) {
         return BedrockRuntimeClient.builder()
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .overrideConfiguration(config -> {
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
-                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses));
+                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                 })
                 .build();
     }

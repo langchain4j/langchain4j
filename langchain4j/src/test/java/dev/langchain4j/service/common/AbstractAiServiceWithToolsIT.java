@@ -1,8 +1,15 @@
 package dev.langchain4j.service.common;
 
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -12,8 +19,12 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +35,13 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
@@ -38,6 +51,7 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWi
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
@@ -68,18 +82,31 @@ public abstract class AbstractAiServiceWithToolsIT {
         Result<String> chat(String userMessage);
     }
 
-    static class ToolWithPrimitiveParameters {
+    static JsonSchemaElement PRIMITIVE_TOOL_EXPECTED_SCHEMA = JsonObjectSchema.builder()
+            .addIntegerProperty("arg0")
+            .addIntegerProperty("arg1")
+            .required("arg0", "arg1")
+            .build();
+
+    interface AdderTool {
+        int add(int a, int b);
+    }
+
+    static class ToolWithPrimitiveParameters implements AdderTool {
 
         @Tool
-        int add(int a, int b) {
+        @Override
+        public int add(int a, int b) {
             return a + b;
         }
+    }
 
-        static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addIntegerProperty("arg0")
-                .addIntegerProperty("arg1")
-                .required("arg0", "arg1")
-                .build();
+    static class ImmediateToolWithPrimitiveParameters implements AdderTool {
+
+        @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+        public int add(int a, int b) {
+            return a + b;
+        }
     }
 
     @ParameterizedTest
@@ -117,7 +144,7 @@ public abstract class AbstractAiServiceWithToolsIT {
             ToolSpecification toolSpecification = toolSpecifications.get(0);
             assertThat(toolSpecification.name()).isEqualTo("add");
             assertThat(toolSpecification.description()).isNull();
-            assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPrimitiveParameters.EXPECTED_SCHEMA);
+            assertThat(toolSpecification.parameters()).isEqualTo(PRIMITIVE_TOOL_EXPECTED_SCHEMA);
         }
     }
 
@@ -254,7 +281,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         void process(Person person) {
         }
 
-        static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
+        static final String REFERENCE = generateUUIDFrom(Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .addStringProperty("name")
@@ -784,5 +811,332 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(toolSpecifications).hasSize(1);
             assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithUUIDParameter.EXPECTED_SPECIFICATION);
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_execute_normal_tool_with_primitive_parameters(ChatModel chatModel) {
+        checkSingleToolExecution(chatModel, ReturnBehavior.TO_LLM);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_execute_immediate_tool_with_primitive_parameters(ChatModel chatModel) {
+        checkSingleToolExecution(chatModel, ReturnBehavior.IMMEDIATE);
+    }
+
+    private void checkSingleToolExecution(ChatModel model, ReturnBehavior returnBehavior) {
+        AdderTool toolInstance = null;
+        int chatInvocations = 0;
+
+        switch (returnBehavior) {
+            case TO_LLM: {
+                toolInstance = new ToolWithPrimitiveParameters();
+                // 2 times = 2 tool requests + LLM response
+                chatInvocations = 2;
+                break;
+            }
+            case IMMEDIATE: {
+                toolInstance = new ImmediateToolWithPrimitiveParameters();
+                // 1 time, the model is called only once returning immediately the tool result
+                chatInvocations = 1;
+                break;
+            }
+        }
+
+        // given
+        model = spy(model);
+
+        var tool = spy(toolInstance);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        var text = "How much is 37 plus 87?";
+
+        // when
+        var response = assistant.chat(text);
+
+        // then
+        if (returnBehavior == ReturnBehavior.TO_LLM) {
+            // The tool result is manipulated by the LLM so the response is not equal to the plain tool result
+            assertThat(response.content()).contains("124");
+            assertThat(response.content()).isNotEqualTo("124");
+        } else {
+            // The tool result is returned directly so the content response is null
+            assertThat(response.content()).isNull();
+        }
+
+        assertThat(response.toolExecutions().size()).isEqualTo(1);
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+
+        verify(tool).add(37, 87);
+        verifyNoMoreInteractions(tool);
+
+        if (verifyModelInteractions()) {
+            verify(model).supportedCapabilities();
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+
+            var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+            assertThat(toolSpecifications).hasSize(1);
+            var toolSpecification = toolSpecifications.get(0);
+            assertThat(toolSpecification.name()).isEqualTo("add");
+            assertThat(toolSpecification.description()).isNull();
+            assertThat(toolSpecification.parameters()).isEqualTo(PRIMITIVE_TOOL_EXPECTED_SCHEMA);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_execute_normal_tool_in_parallel_with_primitive_parameters(ChatModel chatModel) {
+        parallelToolsExecution(chatModel, ReturnBehavior.TO_LLM);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_execute_immediate_tool_in_parallel_with_primitive_parameters(ChatModel chatModel) {
+        parallelToolsExecution(chatModel, ReturnBehavior.IMMEDIATE);
+    }
+
+    private void parallelToolsExecution(ChatModel model, ReturnBehavior returnBehavior) {
+        AdderTool toolInstance = null;
+        int chatInvocations = 0;
+
+        switch (returnBehavior) {
+            case TO_LLM: {
+                toolInstance = new ToolWithPrimitiveParameters();
+                // 2 times = 2 tool requests + LLM response
+                chatInvocations = 2;
+                break;
+            }
+            case IMMEDIATE: {
+                toolInstance = new ImmediateToolWithPrimitiveParameters();
+                // 1 time, the model is called only once returning immediately the tool result
+                chatInvocations = 1;
+                break;
+            }
+        }
+
+        // given
+        model = spy(model);
+
+        var tool = spy(toolInstance);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        var text = "How much is 37 plus 87? How much is 73 plus 78? Call 2 tools in parallel (at the same time)!";
+
+        // when
+        var response = assistant.chat(text);
+
+        // then
+        if (returnBehavior == ReturnBehavior.TO_LLM) {
+            // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
+            assertThat(response.content()).contains("124");
+            assertThat(response.content()).contains("151");
+        } else {
+            // The first tool result is returned immediately so the response is equal to the plain tool result
+            assertThat(response.content()).isNull();
+            verify(tool).add(37, 87);
+        }
+
+        assertThat(response.toolExecutions().size()).isEqualTo(2);
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+        assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
+        verify(tool).add(37, 87);
+        verify(tool).add(73, 78);
+
+        verifyNoMoreInteractions(tool);
+
+        if (verifyModelInteractions()) {
+            verify(model).supportedCapabilities();
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+
+            var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+            assertThat(toolSpecifications).hasSize(1);
+            var toolSpecification = toolSpecifications.get(0);
+            assertThat(toolSpecification.name()).isEqualTo("add");
+            assertThat(toolSpecification.description()).isNull();
+            assertThat(toolSpecification.parameters()).isEqualTo(PRIMITIVE_TOOL_EXPECTED_SCHEMA);
+        }
+    }
+
+    static class MultiplyTool {
+        @Tool
+        int multiply(int a, int b) {
+            return a * b;
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_return_to_LLM(ChatModel chatModel) {
+        checkMultipleToolsExecution(chatModel, ReturnBehavior.TO_LLM);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel chatModel) {
+        checkMultipleToolsExecution(chatModel, ReturnBehavior.IMMEDIATE);
+    }
+
+    private void checkMultipleToolsExecution(ChatModel model, ReturnBehavior returnBehavior) {
+        AdderTool toolInstance = null;
+        int chatInvocations = 0;
+
+        switch (returnBehavior) {
+            case TO_LLM: {
+                toolInstance = new ToolWithPrimitiveParameters();
+                // 3 times = 2 tool requests + LLM response
+                chatInvocations = 3;
+                break;
+            }
+            case IMMEDIATE: {
+                toolInstance = new ImmediateToolWithPrimitiveParameters();
+                // 1 time, the model is called only once returning immediately the tool result
+                chatInvocations = 1;
+                break;
+            }
+        }
+
+        // given
+        model = spy(model);
+
+        var addTool = spy(toolInstance);
+        var multiplyTool = spy(new MultiplyTool());
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(addTool, multiplyTool)
+                .build();
+
+        var text = "First add 2 and 3, then multiply the result by 4";
+
+        // when
+        var response = assistant.chat(text);
+
+        // then
+        switch (returnBehavior) {
+            case TO_LLM: {
+                // the result is not only "20" but is manipulated by the LLM since one of the 2 tools doesn't have direct return
+                assertThat(response.content()).contains("20");
+                assertThat(response.toolExecutions()).hasSize(2);
+                break;
+            }
+            case IMMEDIATE: {
+                // the result is "5" since the first tool has immediate return
+                assertThat(response.content()).isNull();
+                assertThat(response.toolExecutions()).hasSize(1);
+                break;
+            }
+        }
+
+        // verify tool executions
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
+        assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
+        verify(addTool).add(2, 3);
+
+        // with immediate return the multiply tool is not executed
+        if (returnBehavior != ReturnBehavior.IMMEDIATE) {
+            assertThat(response.toolExecutions().get(1).result()).isEqualTo("20");
+            assertThat(response.toolExecutions().get(1).request().name()).isEqualTo("multiply");
+            verify(multiplyTool).multiply(5, 4);
+        }
+
+        verifyNoMoreInteractions(addTool, multiplyTool);
+
+        if (verifyModelInteractions()) {
+            verify(model).supportedCapabilities();
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+
+            var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+            assertThat(toolSpecifications).hasSize(2);
+        }
+
+        // perform one more invocation of the AI service to make sure that memory is not corrupted and the service can be used further
+        var text2 = "How much is 37 plus 87?";
+        var response2 = assistant.chat(text2);
+        if (returnBehavior == ReturnBehavior.IMMEDIATE) {
+            assertThat(response2.content()).isNull();
+        } else {
+            assertThat(response2.content()).contains("124");
+        }
+        assertThat(response2.toolExecutions().get(0).result()).isEqualTo("124");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_keep_memory_consistent_using_return_immediate(ChatModel model) {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new ImmediateToolWithPrimitiveParameters())
+                .chatMemory(chatMemory)
+                .build();
+
+        var response = assistant.chat("How much is 37 plus 87?");
+        assertThat(response.content()).isNull();
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(3);
+        checkMemoryWithImmediateTool(messages, "How much is 37 plus 87?", "124");
+
+        // Check that the memory is not corrupted and conversation can continue
+        response = assistant.chat("Now add 47 to the previous result");
+        assertThat(response.content()).isNull();
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("171");
+
+        messages = chatMemory.messages();
+        assertThat(messages).hasSize(6);
+        checkMemoryWithImmediateTool(messages.subList(3, 6), "Now add 47 to the previous result", "171");
+    }
+
+    static void checkMemoryWithImmediateTool(List<ChatMessage> messages, String request, String response) {
+        // The first message is the user request
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(request);
+
+        // The second message is the AI response with tool execution request
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) messages.get(1)).toolExecutionRequests()).hasSize(1);
+        assertThat(((AiMessage) messages.get(1)).toolExecutionRequests().get(0).name()).isEqualTo("add");
+
+        // The third message is the tool execution result
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((ToolExecutionResultMessage) messages.get(2)).toolName()).isEqualTo("add");
+        assertThat(((ToolExecutionResultMessage) messages.get(2)).text()).isEqualTo(response);
+    }
+
+    interface StringAssistant {
+        String chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_throw_using_immediate_tool_on_service_not_returning_Result(ChatModel model) {
+        AdderTool toolInstance = new ImmediateToolWithPrimitiveParameters();
+
+        // given
+        model = spy(model);
+
+        var tool = spy(toolInstance);
+
+        var assistant = AiServices.builder(StringAssistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        var text = "How much is 37 plus 87?";
+
+        assertThatThrownBy(() -> assistant.chat(text))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("add");
     }
 }

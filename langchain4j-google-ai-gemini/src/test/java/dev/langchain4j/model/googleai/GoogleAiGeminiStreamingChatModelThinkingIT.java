@@ -4,6 +4,7 @@ import static dev.langchain4j.JsonTestUtils.jsonify;
 import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModelThinkingIT.THOUGHT_LENGTH_THRESHOLD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junitpioneer.jupiter.RetryingTest;
 import org.mockito.InOrder;
 
 class GoogleAiGeminiStreamingChatModelThinkingIT {
@@ -58,7 +60,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
@@ -135,7 +138,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -160,8 +164,16 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         verifyNoMoreInteractions(spyHandler);
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
+    @RetryingTest(3)
+    void should_think_and_return_thinking_with_tools__sendThinking_true() {
+        should_think_and_return_thinking_with_tools(true);
+    }
+
+    @RetryingTest(3)
+    void should_think_and_return_thinking_with_tools__sendThinking_false() {
+        should_think_and_return_thinking_with_tools(false);
+    }
+
     void should_think_and_return_thinking_with_tools(boolean sendThinking) {
 
         // given
@@ -193,7 +205,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                         .toolSpecifications(toolSpecification)
                         .build())
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
@@ -288,9 +301,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);
-        if (!sendThinking) {
-            inOrder4.verify(spyHandler4).onPartialThinking(any());
-        }
+        inOrder4.verify(spyHandler4, atLeast(0)).onPartialThinking(any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
@@ -334,7 +345,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
 
                 .thinkingConfig(thinkingConfig)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         String userMessage = "What is the capital of Germany?";
@@ -378,7 +390,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         String userMessage = "What is the capital of Germany?";

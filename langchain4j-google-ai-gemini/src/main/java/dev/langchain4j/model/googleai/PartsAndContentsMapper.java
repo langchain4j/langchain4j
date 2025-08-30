@@ -139,12 +139,14 @@ class PartsAndContentsMapper {
     static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts,
                                            boolean includeCodeExecutionOutput,
                                            Boolean returnThinking) {
+
+        List<GeminiPart> safeParts = Objects.requireNonNullElse(parts, List.of());
         StringBuilder fullText = new StringBuilder();
         List<String> thoughts = new ArrayList<>();
         List<String> thoughtSignatures = new ArrayList<>();
         List<GeminiFunctionCall> functionCalls = new ArrayList<>();
 
-        for (GeminiPart part : parts) {
+        for (GeminiPart part : safeParts) {
             GeminiExecutableCode executableCode = part.getExecutableCode();
             if (executableCode != null && includeCodeExecutionOutput) {
                 fullText

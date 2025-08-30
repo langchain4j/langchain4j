@@ -23,7 +23,7 @@ search results page.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vertex-ai</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.4.0-beta10</version>
 </dependency>
 ```
 
