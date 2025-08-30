@@ -181,7 +181,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "file1.txt",
                         "file2.txt",
                         "test-file-3.banana",
-                        "test-file-4.banana");
+                        "test-file-4.banana",
+                        "sample.txt");
 
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), new TextDocumentParser()))
