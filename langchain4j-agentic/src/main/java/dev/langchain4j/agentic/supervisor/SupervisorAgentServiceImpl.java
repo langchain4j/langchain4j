@@ -114,8 +114,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                     ? requestGenerator.apply(agenticScope)
                     : agenticScope.readState("request", "");
             String lastResponse = "";
+            AgentInvocation done = null;
             Object memoryId = agenticScope.memoryId();
-            Object result = null;
 
             for (int loopCount = 0; loopCount < maxAgentsInvocations; loopCount++) {
 
@@ -123,17 +123,11 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                         ? agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent)
                         : this.plannerAgent;
                 String supervisorContext = agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "");
-                AgentInvocation agentInvocation =
-                        planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
+                AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
                 if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-                    if (hasOutputFunction()) {
-                        result = output.apply(agenticScope);
-                    } else {
-                        String doneResponse = agentInvocation.getArguments().get("response");
-                        result = response(request, lastResponse, doneResponse);
-                    }
+                    done = agentInvocation;
                     break;
                 }
 
@@ -152,16 +146,18 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 lastResponse = agentExec.execute(agenticScope).toString();
             }
 
-            if (result == null) {
-                result = lastResponse;
-            }
+            Object result = result(agenticScope, request, lastResponse, done);
             if (outputName != null) {
                 agenticScope.writeState(outputName, result);
             }
             return result;
         }
 
-        private String response(String request, String lastResponse, String doneResponse) {
+        private Object result(DefaultAgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
+            if (hasOutputFunction()) {
+                return output.apply(agenticScope);
+            }
+            String doneResponse = done != null ? done.getArguments().get("response") : null;
             if (doneResponse == null) {
                 return lastResponse;
             }

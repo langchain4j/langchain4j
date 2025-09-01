@@ -343,7 +343,16 @@ public class SupervisorAgentIT {
     }
 
     @Test
-    void typed_banker_test() {
+    void typed_banker_test_with_maxAgentsInvocations() {
+        typed_banker_test(true);
+    }
+
+    @Test
+    void typed_banker_test_without_maxAgentsInvocations() {
+        typed_banker_test(false);
+    }
+
+    private void typed_banker_test(boolean useMaxAgentsInvocations) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -363,14 +372,19 @@ public class SupervisorAgentIT {
                 .tools(new ExchangeTool())
                 .build();
 
-        TypedBankerAgent bankSupervisor = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
+        var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
                 .chatModel(plannerModel())
                 .output(agenticScope -> new TransactionDetails(
                         agenticScope.readState("withdrawUser", ""),
                         agenticScope.readState("creditUser", ""),
                         agenticScope.readState("amountInUSD", 0.0)))
-                .subAgents(withdrawAgent, creditAgent, exchange)
-                .build();
+                .subAgents(withdrawAgent, creditAgent, exchange);
+
+        if (useMaxAgentsInvocations) {
+            supervisorBuilder.maxAgentsInvocations(3);
+        }
+
+        TypedBankerAgent bankSupervisor = supervisorBuilder.build();
 
         String userRequest = "Transfer 100 EUR from Mario's account to Georgios' one";
         TransactionDetails result = bankSupervisor.execute(userRequest);
