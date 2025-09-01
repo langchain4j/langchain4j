@@ -82,6 +82,22 @@ public class DeclarativeAgentIT {
         System.out.println(story);
     }
 
+    public interface StoryCreatorWithModel extends StoryCreator {
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_model_tests() {
+        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithModel.class);
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        System.out.println(story);
+    }
+
     @Test
     void declarative_sequence_with_error_tests() {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());

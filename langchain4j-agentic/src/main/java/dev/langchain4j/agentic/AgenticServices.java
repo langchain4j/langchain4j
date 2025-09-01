@@ -236,7 +236,13 @@ public class AgenticServices {
      * @param agentServiceClass the class of the agent service
      */
     public static <T> T createAgenticSystem(Class<T> agentServiceClass) {
-        return createAgenticSystem(agentServiceClass, null);
+        ChatModel chatModel = selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatModelSupplier.class) &&
+                method.getReturnType() == ChatModel.class &&
+                method.getParameterCount() == 0)
+                .map(method -> (ChatModel) invokeStatic(method))
+                .orElse(null);
+
+        return createAgenticSystem(agentServiceClass, chatModel);
     }
 
     /**
