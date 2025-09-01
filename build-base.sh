@@ -1,0 +1,1 @@
+mvn clean install --projects "langchain4j" --also-make -T3C -DskipTests -DskipITs -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -Djacoco.skip=true

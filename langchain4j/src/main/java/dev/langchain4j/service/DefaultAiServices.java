@@ -92,7 +92,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-
+            Format format = parameter.getAnnotation(Format.class);
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 if (invocationParametersExist) {
                     throw illegalConfiguration(
@@ -106,10 +106,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                 continue;
             }
 
-            if (userMessage == null && v == null && memoryId == null && userName == null) {
+            if (userMessage == null && v == null && memoryId == null && userName == null && format == null) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
+                                + "%s, %s, %s, %s, or %s, or it should be of type %s",
                         parameter.getName(),
                         method.getName(),
                         aiServiceClass.getName(),
@@ -117,6 +117,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
+                        Format.class.getName(),
                         InvocationParameters.class.getName());
             }
         }
@@ -293,12 +294,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
 
-                        Optional<JsonSchema> jsonSchema = Optional.empty();
-                        if (supportsJsonSchema && !streaming) {
-                            jsonSchema = serviceOutputParser.jsonSchema(returnType);
-                        }
-                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
-                            userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                        ResponseFormat responseFormat = findResponseFormatParam(method, args);
+                        if (responseFormat == null) {
+                            Optional<JsonSchema> jsonSchema = Optional.empty();
+                            if (supportsJsonSchema && !streaming) {
+                                jsonSchema = serviceOutputParser.jsonSchema(returnType);
+                            }
+                            if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
+                                userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                            }
+                            if (supportsJsonSchema && jsonSchema.isPresent()) {
+                                responseFormat = ResponseFormat.builder()
+                                        .type(JSON)
+                                        .jsonSchema(jsonSchema.get())
+                                        .build();
+                            }
                         }
 
                         Optional<List<Content>> maybeContents = findContents(method, args);
@@ -352,14 +362,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             } else {
                                 return adapt(tokenStream, returnType);
                             }
-                        }
-
-                        ResponseFormat responseFormat = null;
-                        if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            responseFormat = ResponseFormat.builder()
-                                    .type(JSON)
-                                    .jsonSchema(jsonSchema.get())
-                                    .build();
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -581,6 +583,17 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return context.systemMessageProvider.apply(memoryId);
+    }
+
+    private ResponseFormat findResponseFormatParam(Method method, Object[] args) {
+        for (int i = 0; i < method.getParameters().length; i++) {
+            Parameter parameter = method.getParameters()[i];
+            Format format = parameter.getAnnotation(Format.class);
+            if (format != null) {
+                return (ResponseFormat) args[i];
+            }
+        }
+        return null;
     }
 
     private static UserMessage prepareUserMessage(
