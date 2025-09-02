@@ -3,6 +3,7 @@ package dev.langchain4j.model.gpullama3;
 import dev.langchain4j.model.chat.ChatModel;
 import org.beehive.gpullama3.Options;
 import org.beehive.gpullama3.LlamaApp;
+import org.beehive.gpullama3.auxiliary.LastRunMetrics;
 import org.beehive.gpullama3.model.Model;
 import org.beehive.gpullama3.inference.sampler.Sampler;
 import org.beehive.gpullama3.model.loader.ModelLoader;
@@ -10,7 +11,7 @@ import org.beehive.gpullama3.model.loader.ModelLoader;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class GpuLlama3ChatModel implements ChatModel {
+public class GPULlama3ChatModel implements ChatModel {
 
     private final Path modelPath;
     private final float temperature;
@@ -21,7 +22,7 @@ public class GpuLlama3ChatModel implements ChatModel {
     private Model model;
     private Sampler sampler;
 
-    private GpuLlama3ChatModel(Builder builder) {
+    private GPULlama3ChatModel(Builder builder) {
         this.modelPath = builder.modelPath;
         this.temperature = builder.temperature;
         this.topp = builder.topp;
@@ -41,21 +42,25 @@ public class GpuLlama3ChatModel implements ChatModel {
     @Override
     public String chat(String userMessage) {
         Options defaultOptions = Options.getDefaultOptions();
-        Options opts = new Options(modelPath, userMessage,
-                defaultOptions.systemPrompt(),
+        Options opts = new Options(modelPath,
+                userMessage,
+               defaultOptions.systemPrompt(),
                 defaultOptions.suffix(),
                 false /* interactive */,
                 defaultOptions.temperature(),
                 defaultOptions.topp(),
                 defaultOptions.seed(),
                 defaultOptions.maxTokens(),
-                defaultOptions.stream(),
+                false,
                 defaultOptions.echo());
 
-        return model.runInstructOnce(sampler, opts, false /* print metrics */);
+        return model.runInstructOnce(sampler, opts);
     }
 
-    // ----------------- Builder ------------------
+    public void printLastMetrics() {
+        LastRunMetrics.printMetrics();
+    }
+
 
     public static Builder builder() {
         return new Builder();
@@ -89,9 +94,9 @@ public class GpuLlama3ChatModel implements ChatModel {
             return this;
         }
 
-        public GpuLlama3ChatModel build() {
+        public GPULlama3ChatModel build() {
             if (modelPath == null) throw new IllegalArgumentException("modelPath is required");
-            return new GpuLlama3ChatModel(this);
+            return new GPULlama3ChatModel(this);
         }
     }
 }
