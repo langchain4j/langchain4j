@@ -13,7 +13,7 @@
     <name>LangChain4j :: ONNX Runtime GenAI</name>
 
     <properties>
-        <onnxruntime-genai.version>0.9.0-SNAPSHOT</onnxruntime-genai.version>
+        <onnxruntime-genai.version>0.9.0</onnxruntime-genai.version>
         <onnxruntime.version>1.22.0</onnxruntime.version>
     </properties>
 
