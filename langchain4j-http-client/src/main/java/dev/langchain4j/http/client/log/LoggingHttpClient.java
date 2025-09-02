@@ -40,7 +40,6 @@ public class LoggingHttpClient implements HttpClient {
 
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
-
         if (logRequests) {
             HttpRequestLogger.log(log, request);
         }
