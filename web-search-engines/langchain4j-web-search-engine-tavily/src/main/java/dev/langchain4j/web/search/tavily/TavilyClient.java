@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
@@ -56,15 +57,15 @@ class TavilyClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ToolExecutionException(e);
         }
     }
 
-    private static RuntimeException toException(Response<?> response) throws IOException {
+    private static ToolExecutionException toException(Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        return new ToolExecutionException(errorMessage);
     }
 
     public static class TavilyClientBuilder {

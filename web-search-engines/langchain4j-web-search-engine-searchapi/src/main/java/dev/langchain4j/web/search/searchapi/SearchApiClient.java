@@ -1,6 +1,7 @@
 package dev.langchain4j.web.search.searchapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.exception.ToolExecutionException;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.Response;
@@ -50,7 +51,7 @@ class SearchApiClient {
             Response<SearchApiWebSearchResponse> response = api.search(finalParameters, bearerToken).execute();
             return getBody(response);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ToolExecutionException(e);
         }
     }
 
@@ -62,15 +63,15 @@ class SearchApiClient {
         }
     }
 
-    private static RuntimeException toException(Response<?> response) throws IOException {
+    private static ToolExecutionException toException(Response<?> response) throws IOException {
         try (ResponseBody responseBody = response.errorBody()) {
             int code = response.code();
             if (responseBody != null) {
                 String body = responseBody.string();
                 String errorMessage = String.format("status code: %s; body: %s", code, body);
-                return new RuntimeException(errorMessage);
+                return new ToolExecutionException(errorMessage);
             } else {
-                return new RuntimeException(String.format("status code: %s;", code));
+                return new ToolExecutionException(String.format("status code: %s;", code));
             }
         }
     }

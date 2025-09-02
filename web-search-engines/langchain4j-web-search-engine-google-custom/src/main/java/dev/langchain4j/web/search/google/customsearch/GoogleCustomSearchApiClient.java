@@ -7,6 +7,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
 import com.google.api.services.customsearch.v1.model.Search;
+import dev.langchain4j.exception.ToolExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +67,10 @@ class GoogleCustomSearchApiClient {
             }
         } catch (IOException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client", e);
-            throw new RuntimeException(e);
+            throw new ToolExecutionException(e);
         } catch (GeneralSecurityException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client using GoogleNetHttpTransport.newTrustedTransport()", e);
-            throw new RuntimeException(e);
+            throw new ToolExecutionException(e);
         }
     }
 
@@ -160,7 +161,7 @@ class GoogleCustomSearchApiClient {
             }
             return searchPerformed;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ToolExecutionException(e);
         }
     }
 
