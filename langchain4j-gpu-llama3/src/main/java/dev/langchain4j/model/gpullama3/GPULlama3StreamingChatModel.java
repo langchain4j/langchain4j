@@ -1,10 +1,11 @@
 package dev.langchain4j.model.gpullama3;
 
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.beehive.gpullama3.LlamaApp;
 import org.beehive.gpullama3.Options;
@@ -41,18 +42,6 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(String userMessage, StreamingChatResponseHandler handler) {
-
-//        ChatRequest chatRequest = ChatRequest.builder()
-//                .messages(UserMessage.from(userMessage))
-//                .build();
-
-//        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
-//        ChatRequestParameters parameters = chatRequest.parameters();
-//        ChatRequestValidationUtils.validateParameters(parameters);
-//        ChatRequestValidationUtils.validate(parameters.toolChoice());
-//        ChatRequestValidationUtils.validate(parameters.responseFormat());
-
-
         Options defaultOptions = Options.getDefaultOptions();
         Options opts = new Options(modelPath,
                 userMessage,
@@ -66,34 +55,13 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
                 true,
                 defaultOptions.echo());
 
-        model.runInstructOnce(sampler,opts);
-        handler.onCompleteResponse(null); // TODO: pass actual re
-//        chat(chatRequest, handler);
-    }
+        String finalResponse = model.runInstructOnceLangChain4J(
+                sampler,
+                opts,
+                token -> handler.onPartialResponse(token));
 
-    @Override
-    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
-        ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-        ChatRequestValidationUtils.validate(parameters.responseFormat());
-
-
-        Options defaultOptions = Options.getDefaultOptions();
-        Options opts = new Options(modelPath,
-                "",
-                defaultOptions.systemPrompt(),
-                defaultOptions.suffix(),
-                false /* interactive */,
-                defaultOptions.temperature(),
-                defaultOptions.topp(),
-                defaultOptions.seed(),
-                defaultOptions.maxTokens(),
-                true,
-                defaultOptions.echo());
-
-        model.runInstructOnce(sampler,opts);
+        ChatResponse chatResponse  = ChatResponse.builder().aiMessage(AiMessage.from(finalResponse)).build();
+        handler.onCompleteResponse(chatResponse);
     }
 
     public static Builder builder() {
