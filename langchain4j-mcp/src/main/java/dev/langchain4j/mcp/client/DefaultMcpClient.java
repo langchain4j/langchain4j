@@ -193,7 +193,7 @@ public class DefaultMcpClient implements McpClient {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
                 // if an update is already in progress, wait for it to finish
-                toolListUpdateInProgress.get();
+                updateInProgress.join();
                 return toolListRefs.get();
             } else {
                 // if no update is in progress, start one
