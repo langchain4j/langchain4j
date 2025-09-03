@@ -18,9 +18,9 @@ public class GPULlama3ChatModel implements ChatModel {
     private final float topp;
     private final long seed;
     private final int maxTokens;
-
     private Model model;
     private Sampler sampler;
+    private boolean onGPU;
 
     private GPULlama3ChatModel(Builder builder) {
         this.modelPath = builder.modelPath;
@@ -28,6 +28,7 @@ public class GPULlama3ChatModel implements ChatModel {
         this.topp = builder.topp;
         this.seed = builder.seed;
         this.maxTokens = builder.maxTokens;
+        this.onGPU = builder.onGPU;
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true);
             this.sampler = LlamaApp.selectSampler(
@@ -52,7 +53,8 @@ public class GPULlama3ChatModel implements ChatModel {
                 defaultOptions.seed(),
                 defaultOptions.maxTokens(),
                 false,
-                defaultOptions.echo());
+                defaultOptions.echo(),
+                onGPU);
 
         return model.runInstructOnce(sampler, opts);
     }
@@ -72,6 +74,7 @@ public class GPULlama3ChatModel implements ChatModel {
         private float topp = 1.0f;
         private long seed = 42;
         private int maxTokens = 512;
+        private boolean onGPU = true;
 
         public Builder modelPath(Path modelPath) {
             this.modelPath = modelPath;
@@ -91,6 +94,11 @@ public class GPULlama3ChatModel implements ChatModel {
         }
         public Builder maxTokens(int maxTokens) {
             this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder onGPU(boolean onGPU) {
+            this.onGPU = onGPU;
             return this;
         }
 

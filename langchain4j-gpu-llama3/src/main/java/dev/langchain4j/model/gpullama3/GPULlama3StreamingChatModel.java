@@ -1,10 +1,7 @@
 package dev.langchain4j.model.gpullama3;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.beehive.gpullama3.LlamaApp;
@@ -22,7 +19,7 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
     private final float topp;
     private final long seed;
     private final int maxTokens;
-
+    private final boolean onGPU;
     private Model model;
     private Sampler sampler;
 
@@ -32,6 +29,7 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
         this.topp = builder.topp;
         this.seed = builder.seed;
         this.maxTokens = builder.maxTokens;
+        this.onGPU = builder.onGPU;
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true);
             this.sampler = LlamaApp.selectSampler(model.configuration().vocabularySize(), temperature, topp, seed);
@@ -42,18 +40,7 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(String userMessage, StreamingChatResponseHandler handler) {
-        Options defaultOptions = Options.getDefaultOptions();
-        Options opts = new Options(modelPath,
-                userMessage,
-                defaultOptions.systemPrompt(),
-                defaultOptions.suffix(),
-                false /* interactive */,
-                defaultOptions.temperature(),
-                defaultOptions.topp(),
-                defaultOptions.seed(),
-                defaultOptions.maxTokens(),
-                true,
-                defaultOptions.echo());
+        Options opts = getOptions(userMessage);
 
         String finalResponse = model.runInstructOnceLangChain4J(
                 sampler,
@@ -62,6 +49,23 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
 
         ChatResponse chatResponse  = ChatResponse.builder().aiMessage(AiMessage.from(finalResponse)).build();
         handler.onCompleteResponse(chatResponse);
+    }
+
+    private Options getOptions(String userMessage) {
+        Options defaultOptions = Options.getDefaultOptions();
+        Options opts = new Options(modelPath, userMessage,
+                defaultOptions.systemPrompt(),
+                defaultOptions.suffix(),
+                false /* interactive */,
+                defaultOptions.temperature(),
+                defaultOptions.topp(),
+                defaultOptions.seed(),
+                defaultOptions.maxTokens(),
+                true,
+                defaultOptions.echo(),
+                onGPU
+        );
+        return opts;
     }
 
     public static Builder builder() {
@@ -74,7 +78,8 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
         private float topp = 1.0f;
         private long seed = 42;
         private int maxTokens = 1024;
-
+        private boolean onGPU = true;
+        
         public Builder modelPath(Path modelPath) {
             this.modelPath = modelPath;
             return this;
@@ -97,6 +102,11 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
 
         public Builder maxTokens(int maxTokens) {
             this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder onGPU(boolean onGPU) {
+            this.onGPU = onGPU;
             return this;
         }
 
