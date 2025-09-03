@@ -16,7 +16,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.0-flash-lite")
-            .logRequestsAndResponses(false) // images are huge in logs
+            .logRequests(false) // images are huge in logs
+            .logResponses(false)
             .build();
 
     @Override
@@ -38,7 +39,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -50,5 +52,15 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
+    }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
     }
 }

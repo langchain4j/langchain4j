@@ -25,17 +25,13 @@ class Message {
 
     Message() {}
 
-    public Message(
-            Role role,
-            String content,
-            List<String> images,
-            List<ToolCall> toolCalls,
-            Map<String, Object> additionalFields) {
-        this.role = role;
-        this.content = content;
-        this.images = images;
-        this.toolCalls = toolCalls;
-        this.additionalFields = additionalFields;
+    Message(Builder builder) {
+        this.role = builder.role;
+        this.content = builder.content;
+        this.thinking = builder.thinking;
+        this.images = builder.images;
+        this.toolCalls = builder.toolCalls;
+        this.additionalFields = builder.additionalFields;
     }
 
     static Builder builder() {
@@ -96,6 +92,7 @@ class Message {
 
         private Role role;
         private String content;
+        private String thinking;
         private List<String> images;
         private List<ToolCall> toolCalls;
         private Map<String, Object> additionalFields;
@@ -107,6 +104,11 @@ class Message {
 
         Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        Builder thinking(String thinking) {
+            this.thinking = thinking;
             return this;
         }
 
@@ -126,7 +128,7 @@ class Message {
         }
 
         Message build() {
-            return new Message(role, content, images, toolCalls, additionalFields);
+            return new Message(this);
         }
     }
 }

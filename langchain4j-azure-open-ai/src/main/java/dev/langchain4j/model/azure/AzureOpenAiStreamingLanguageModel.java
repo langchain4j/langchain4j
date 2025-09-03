@@ -1,13 +1,15 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.implementation.accesshelpers.CompletionsOptionsAccessHelper;
+import com.azure.ai.openai.models.ChatCompletionStreamOptions;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
@@ -15,9 +17,9 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -56,7 +58,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
     private final OpenAIClient client;
     private final String deploymentName;
-    private final TokenCountEstimator tokenCountEstimator;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -77,6 +78,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -89,6 +91,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -101,6 +104,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -112,7 +116,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         this.deploymentName = ensureNotBlank(builder.deploymentName, "deploymentName");
-        this.tokenCountEstimator = builder.tokenCountEstimator;
         this.maxTokens = builder.maxTokens;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -140,16 +143,17 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
-        Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
+        CompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
 
+        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder();
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
                 responseBuilder.append(completions);
                 handle(completions, handler);
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
+            Response<AiMessage> response = responseBuilder.build();
 
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
@@ -187,7 +191,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private TokenCredential tokenCredential;
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
-        private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -200,6 +203,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -285,11 +289,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
-        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
-            this.tokenCountEstimator = tokenCountEstimator;
-            return this;
-        }
-
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
@@ -347,6 +346,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

@@ -179,7 +179,7 @@ class BedrockChatModelIT {
     }
 
     @Test
-    void should_fail_if_reasoning_enabled() {
+    void should_fail_if_reasoning_is_enabled_on_non_reasoning_model() {
 
         // given
         String modelNotSupportingReasoning = "us.amazon.nova-lite-v1:0";

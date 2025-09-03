@@ -14,6 +14,7 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -125,7 +126,9 @@ class AnthropicStreamingChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+    })
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -486,31 +489,6 @@ class AnthropicStreamingChatModelIT {
 
         assertTokenUsage(secondResponse.tokenUsage());
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_answer_with_thinking() {
-
-        // given
-        StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(1024)
-                .maxTokens(1024 + 100)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(List.of(userMessage), handler);
-        ChatResponse chatResponse = handler.get();
-
-        // then
-        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
     }
 
     @ParameterizedTest

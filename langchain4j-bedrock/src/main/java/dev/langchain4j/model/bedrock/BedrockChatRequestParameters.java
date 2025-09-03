@@ -54,6 +54,20 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        public Builder additionalModelRequestField(String key, Object value) {
+            if (additionalModelRequestFields == null) {
+                additionalModelRequestFields = new HashMap<>();
+            }
+            additionalModelRequestFields.put(key, value);
+            return this;
+        }
+
+        /**
+         * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">reasoning</a>.
+         *
+         * @see BedrockChatModel.Builder#returnThinking(Boolean)
+         * @see BedrockChatModel.Builder#sendThinking(Boolean)
+         */
         public Builder enableReasoning(Integer tokenBudget) {
             if (tokenBudget != null) {
                 if (additionalModelRequestFields == null) {
