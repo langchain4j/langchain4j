@@ -19,12 +19,15 @@ import org.slf4j.LoggerFactory;
 public class OnnxGenaiChatModelIT {
 
     private static final Logger logger = LoggerFactory.getLogger(OnnxGenaiChatModelIT.class);
-    private static final String TEST_MODEL_DIR = "target/test-classes/Llama-3.2-1B-Instruct-INT4";
+    private static String TEST_MODEL_DIR;
     private static OnnxGenaiChatModel model;
 
     @BeforeAll
     static void setUp() {
         try {
+            // Download model from Hugging Face if not already present
+            TEST_MODEL_DIR = ModelDownloadUtil.ensureModelDownloaded();
+
             // Create model with default parameters
             model = OnnxGenaiChatModel.withDefaultParameters(TEST_MODEL_DIR);
             logger.info("Initialized test model from {}", TEST_MODEL_DIR);

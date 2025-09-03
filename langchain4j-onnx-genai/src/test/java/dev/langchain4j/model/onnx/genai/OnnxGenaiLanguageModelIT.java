@@ -15,13 +15,16 @@ import org.slf4j.LoggerFactory;
 public class OnnxGenaiLanguageModelIT {
 
     private static final Logger logger = LoggerFactory.getLogger(OnnxGenaiLanguageModelIT.class);
-    private static final String TEST_MODEL_DIR = "target/test-classes/Llama-3.2-1B-Instruct-INT4";
+    private static String TEST_MODEL_DIR;
     private static OnnxGenaiLanguageModel model;
 
     @BeforeAll
     static void setUp() {
         try {
             System.out.println("ONNX Runtime version: " + OrtEnvironment.getEnvironment());
+
+            // Download model from Hugging Face if not already present
+            TEST_MODEL_DIR = ModelDownloadUtil.ensureModelDownloaded();
 
             // Create model with default parameters
             model = OnnxGenaiLanguageModel.withDefaultParameters(TEST_MODEL_DIR);
