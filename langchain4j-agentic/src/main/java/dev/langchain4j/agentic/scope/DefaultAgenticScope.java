@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -102,12 +103,20 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public Object readState(String key) {
-        return state.get(key);
+        return readStateBlocking(key, state.get(key));
     }
 
     @Override
     public <T> T readState(String key, T defaultValue) {
-        return (T) state.getOrDefault(key, defaultValue);
+        return (T) readStateBlocking(key, state.getOrDefault(key, defaultValue));
+    }
+
+    private Object readStateBlocking(String key, Object state) {
+        if (state instanceof AsyncResponse asyncResponse) {
+            state = asyncResponse.blockingGet();
+            writeState(key, state);
+        }
+        return state;
     }
 
     @Override
