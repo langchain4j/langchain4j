@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticScope;

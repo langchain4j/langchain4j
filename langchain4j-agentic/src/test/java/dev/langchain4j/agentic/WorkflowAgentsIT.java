@@ -20,6 +20,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -171,6 +172,50 @@ public class WorkflowAgentsIT {
         verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    public static class FailingNonBlockingAgent {
+        private final AtomicInteger callsCounter = new AtomicInteger(0);
+
+        @Agent(nonBlocking = true, outputName = "topic")
+        public String getTopic() {
+            if (callsCounter.getAndIncrement() < 2) {
+                try {
+                    Thread.sleep(10L); // simulate some delay in the processing
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                throw new RuntimeException("Intentional failure");
+            }
+            return "dragons and wizards";
+        }
+    }
+
+    @Test
+    void error_recovery_with_non_blocking_agent_tests() {
+        AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
+
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(new FailingNonBlockingAgent(), creativeWriter)
+                .errorHandler(errorContext -> {
+                    errorRecoveryCalled.set(true);
+                    if (errorContext.agentName().equals("getTopic")) {
+                        return ErrorRecoveryResult.retry();
+                    }
+                    return ErrorRecoveryResult.throwException();
+                })
+                .outputName("story")
+                .build();
+
+        String story = (String) novelCreator.invoke(Map.of());
+        System.out.println(story);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
     }
 
     @Test

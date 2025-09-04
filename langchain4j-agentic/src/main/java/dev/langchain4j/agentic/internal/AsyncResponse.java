@@ -1,8 +1,16 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
-public record AsyncResponse<T>(CompletableFuture<T> futureResponse) {
+public class AsyncResponse<T> {
+
+    private final CompletableFuture<T> futureResponse;
+
+    public AsyncResponse(Supplier<T> responseSupplier) {
+        this.futureResponse = CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutorService());
+    }
 
     public T blockingGet() {
         return futureResponse.join();
