@@ -149,7 +149,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 }
 
                 agentInvocation.getArguments().forEach(agenticScope::writeState);
-                lastResponse = agentExec.execute(agenticScope).toString();
+                // the supervisor always uses blocking execution to allow the planner reasoning over the actual results
+                lastResponse = agentExec.blockingExecute(agenticScope).toString();
             }
 
             if (result == null) {

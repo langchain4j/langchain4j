@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -178,14 +180,28 @@ public class WorkflowAgentsIT {
                 .outputName("story")
                 .build());
 
+        CyclicBarrier barrier = new CyclicBarrier(2);
         AtomicReference<String> request = new AtomicReference<>();
+        AtomicReference<String> audience = new AtomicReference<>();
 
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the audience for the story")
                 .inputName("topic")
                 .outputName("audience")
+                .nonBlocking(true)
                 .requestWriter(q -> request.set("Which audience for topic " + q + "?"))
-                .responseReader(() -> "young adults")
+                .responseReader(() -> {
+                    try {
+                        barrier.await();
+                    } catch (InterruptedException | BrokenBarrierException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    // check that the creativeWriter was already invoked
+                    verify(creativeWriter).generateStory("dragons and wizards");
+
+                    return "young adults";
+                })
                 .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
@@ -194,7 +210,12 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                .subAgents(creativeWriter, humanInTheLoop, audienceEditor)
+                .subAgents(
+                        humanInTheLoop, // asks user for the audience in a non-blocking way
+                        creativeWriter, // doesn't need the audience so it can generate the story without waiting for the human-in-the-loop response
+                        AgenticServices.agentAction(barrier::await), // unblock the human-in-the-loop making its response available
+                        audienceEditor, // use the audience provided by the human-in-the-loop
+                        AgenticServices.agentAction(agenticScope -> audience.set(agenticScope.readState("audience", "")))) // read the audience state, just for test purposes
                 .outputName("story")
                 .build();
 
@@ -206,8 +227,7 @@ public class WorkflowAgentsIT {
         System.out.println(story);
 
         assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
-
-        verify(creativeWriter).generateStory("dragons and wizards");
+        assertThat(audience.get()).isEqualTo("young adults");
         verify(audienceEditor).editStory(any(), eq("young adults"));
     }
 
@@ -467,6 +487,43 @@ public class WorkflowAgentsIT {
         }
 
         EveningPlannerAgent eveningPlannerAgent = builder.build();
+
+        List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
+        System.out.println(plans);
+        assertThat(plans).hasSize(3);
+    }
+
+    @Test
+    void non_blocking_agents_tests() {
+        FoodExpert foodExpert = AgenticServices.agentBuilder(FoodExpert.class)
+                .chatModel(baseModel())
+                .nonBlocking(true)
+                .outputName("meals")
+                .build();
+
+        MovieExpert movieExpert = AgenticServices.agentBuilder(MovieExpert.class)
+                .chatModel(baseModel())
+                .nonBlocking(true)
+                .outputName("movies")
+                .build();
+
+        EveningPlannerAgent eveningPlannerAgent = AgenticServices.sequenceBuilder(EveningPlannerAgent.class)
+                .subAgents(foodExpert, movieExpert)
+                .outputName("plans")
+                .output(agenticScope -> {
+                    List<String> movies = agenticScope.readState("movies", List.of());
+                    List<String> meals = agenticScope.readState("meals", List.of());
+
+                    List<EveningPlan> moviesAndMeals = new ArrayList<>();
+                    for (int i = 0; i < movies.size(); i++) {
+                        if (i >= meals.size()) {
+                            break;
+                        }
+                        moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
+                    }
+                    return moviesAndMeals;
+                })
+                .build();
 
         List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);

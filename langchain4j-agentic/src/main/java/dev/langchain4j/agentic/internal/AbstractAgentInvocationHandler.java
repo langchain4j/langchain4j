@@ -82,6 +82,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
                 case "name" -> name;
                 case "description" -> description;
                 case "outputName" -> outputName;
+                case "nonBlocking" -> false;
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on AgentInstance class : " + method.getName());
