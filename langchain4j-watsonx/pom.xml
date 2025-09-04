@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai</artifactId>
-            <version>0.7.0</version>
+            <version>0.9.0</version>
         </dependency>
 
         <!-- test dependencies -->

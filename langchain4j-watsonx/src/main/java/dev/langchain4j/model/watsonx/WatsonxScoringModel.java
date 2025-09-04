@@ -115,6 +115,8 @@ public class WatsonxScoringModel implements ScoringModel {
         private String spaceId;
         private Duration timeout;
 
+        private Builder() {}
+
         public Builder url(CloudRegion cloudRegion) {
             return super.url(cloudRegion.getMlEndpoint());
         }

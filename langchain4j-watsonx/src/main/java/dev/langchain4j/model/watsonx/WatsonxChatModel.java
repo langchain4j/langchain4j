@@ -66,12 +66,17 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) messages.add(THINKING);
+        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+
+        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
+            messages.add(THINKING);
+            watsonxChatRequest.thinking(tags);
+        }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
-        com.ibm.watsonx.ai.chat.ChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> chatService.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
+        com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatService.chat(watsonxChatRequest
                         .messages(messages)
                         .tools(tools)
                         .parameters(parameters)
@@ -90,9 +95,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                     .map(Converter::toToolExecutionRequest)
                     .toList());
         } else if (nonNull(tags)) {
-            var parts = chatResponse.toTextByTags(Set.of(tags.think(), tags.response()));
-            aiMessage.thinking(parts.get(tags.think()));
-            aiMessage.text(parts.get(tags.response()));
+            aiMessage.thinking(chatResponse.extractThinking());
+            aiMessage.text(chatResponse.extractContent());
         } else {
             aiMessage.text(message.content());
         }
@@ -160,6 +164,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      * Builder class for constructing {@link WatsonxChatModel} instances with configurable parameters.
      */
     public static class Builder extends WatsonxChat.Builder<Builder> {
+
+        private Builder() {}
 
         public WatsonxChatModel build() {
             return new WatsonxChatModel(this);

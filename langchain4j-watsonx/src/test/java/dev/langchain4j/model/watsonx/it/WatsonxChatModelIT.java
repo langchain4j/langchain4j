@@ -57,6 +57,12 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected void should_accept_single_image_as_base64_encoded_string(ChatModel model) {
+        super.should_respect_user_message(
+                createChatModel("mistralai/mistral-medium-2505").build());
+    }
+
+    @Override
     protected void should_respect_user_message(ChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(

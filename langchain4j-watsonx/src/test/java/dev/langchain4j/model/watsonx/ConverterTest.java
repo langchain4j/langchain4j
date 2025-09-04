@@ -252,8 +252,8 @@ public class ConverterTest {
                 .partialArguments("{\"name\":\"Klaus\"")
                 .build();
 
-        var toConvert = new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
-                10, "id", "name", "{\"name\":\"Klaus\"");
+        var toConvert = new com.ibm.watsonx.ai.chat.model.PartialToolCall(
+                "completion-id", 10, "id", "name", "{\"name\":\"Klaus\"");
         assertEquals(EXPECTED, Converter.toPartialToolCall(toConvert));
     }
 
