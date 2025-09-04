@@ -37,6 +37,7 @@ import static java.util.stream.Collectors.toList;
 class PartsAndContentsMapper {
 
     static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+    static final String GENERATED_IMAGES_KEY = "generated_images"; // key for storing generated images in AiMessage attributes
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();
@@ -145,6 +146,7 @@ class PartsAndContentsMapper {
         List<String> thoughts = new ArrayList<>();
         List<String> thoughtSignatures = new ArrayList<>();
         List<GeminiFunctionCall> functionCalls = new ArrayList<>();
+        List<Image> generatedImages = new ArrayList<>();
 
         for (GeminiPart part : safeParts) {
             GeminiExecutableCode executableCode = part.getExecutableCode();
@@ -205,17 +207,37 @@ class PartsAndContentsMapper {
             if (part.getFunctionCall() != null) {
                 functionCalls.add(part.getFunctionCall());
             }
+
+            // Handle generated images from inlineData
+            GeminiBlob inlineData = part.getInlineData();
+            if (inlineData != null && inlineData.getMimeType() != null && 
+                inlineData.getMimeType().startsWith("image/") && inlineData.getData() != null) {
+                Image generatedImage = Image.builder()
+                        .base64Data(inlineData.getData())
+                        .mimeType(inlineData.getMimeType())
+                        .build();
+                generatedImages.add(generatedImage);
+            }
         }
 
         String text = fullText.toString();
         String thinking = thoughts.stream().collect(joining("\n\n"));
         String thinkingSignature = thoughtSignatures.stream().collect(joining("\n\n"));
 
+        // Build attributes map with thinking signature and generated images
+        Map<String, Object> attributes = new java.util.HashMap<>();
+        if (isNotNullOrEmpty(thinkingSignature)) {
+            attributes.put(THINKING_SIGNATURE_KEY, thinkingSignature);
+        }
+        if (!generatedImages.isEmpty()) {
+            attributes.put(GENERATED_IMAGES_KEY, generatedImages);
+        }
+
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toToolExecutionRequests(functionCalls))
-                .attributes(isNullOrEmpty(thinkingSignature) ? null : Map.of(THINKING_SIGNATURE_KEY, thinkingSignature))
+                .attributes(attributes.isEmpty() ? Map.of() : attributes)
                 .build();
     }
 
