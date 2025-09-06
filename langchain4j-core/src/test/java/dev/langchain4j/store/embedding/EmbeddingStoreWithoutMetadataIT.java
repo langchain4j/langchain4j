@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.within;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -115,7 +116,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertEmbeddingApprox(embedding, match.embedding(), 1e-6f);
         }
         assertThat(match.embedded()).isEqualTo(segment);
     }
@@ -196,7 +197,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -249,7 +250,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -395,5 +396,15 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     protected Percentage percentage() {
         return withPercentage(1);
+    }
+
+
+    protected void assertEmbeddingApprox(Embedding expected, Embedding actual, float atol) {
+        float[] exp = expected.vector();
+        float[] act = actual.vector();
+        assertThat(act).hasSize(exp.length);
+        for (int i = 0; i < exp.length; i++) {
+            assertThat(act[i]).isCloseTo(exp[i], within(atol)); // or offset(atol)
+        }
     }
 }

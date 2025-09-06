@@ -18,6 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.github.dockerjava.api.model.HealthCheck;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import static java.time.Duration.ofSeconds;
 
 @Testcontainers
 class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
@@ -27,12 +30,12 @@ class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
             .withExposedPorts(8000)
             // disable the built-in Docker HEALTHCHECK
             .withCreateContainerCmdModifier(
-                    cmd -> cmd.withHealthcheck(new com.github.dockerjava.api.model.HealthCheck()))
+                    cmd -> cmd.withHealthcheck(new HealthCheck()))
             // V2 API check endpoint
-            .waitingFor(new org.testcontainers.containers.wait.strategy.HttpWaitStrategy()
+            .waitingFor(new HttpWaitStrategy()
                     .forPath("/api/v2/version")
                     .forStatusCode(200)
-                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
+                    .withStartupTimeout(ofSeconds(60)));
 
     private final EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl(chroma.getEndpoint())

@@ -35,9 +35,38 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String databaseName;
 
     /**
-     * Initializes a new instance of ChromaEmbeddingStore with the specified parameters.
+     * Initializes a new instance of ChromaEmbeddingStore with the specified parameters. (V1 Deprecated)
      *
      * @param baseUrl        The base URL of the Chroma service.
+     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
+     * @param logRequests    If true, requests to the Chroma service are logged.
+     * @param logResponses   If true, responses from the Chroma service are logged.
+     */
+    @Deprecated
+    public ChromaEmbeddingStore(
+            String baseUrl,
+            String collectionName,
+            Duration timeout,
+            boolean logRequests,
+            boolean logResponses) {
+        this(
+                baseUrl,
+                "default_tenant",
+                "default_database",
+                collectionName,
+                timeout,
+                logRequests,
+                logResponses
+        );
+    }
+
+    /**
+     * Initializes a new instance of ChromaEmbeddingStore with the specified parameters. (V2 API)
+     *
+     * @param baseUrl        The base URL of the Chroma service.
+     * @param tenantName     The tenant of the collection in the Chroma service. If not specified, "default_tenant" will be used.
+     * @param databaseName   The database of the collection in the Chroma service. If not specified, "default_database" will be used.
      * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
      * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
      * @param logRequests    If true, requests to the Chroma service are logged.
@@ -103,7 +132,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param tenantName The name of the collection in the Chroma service. If not specified, "default" will be used.
+         * @param tenantName The name of the tenant in the Chroma service. If not specified, "default" will be used.
          * @return builder
          */
         public Builder tenantName(String tenantName) {
@@ -112,7 +141,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param databaseName The name of the collection in the Chroma service. If not specified, "default" will be used.
+         * @param databaseName The name of the database in the Chroma service. If not specified, "default" will be used.
          * @return builder
          */
         public Builder databaseName(String databaseName) {
@@ -162,7 +191,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void add(String id, Embedding embedding) {
         // for api V2, need to keep consistent number of IDs, embeddings, documents, URIs and metadatas
         // so can not just leave documents and metadatas null
-        addInternal(id, embedding, new TextSegment("This is a dummy document", new Metadata()));
+        addInternal(id, embedding, new TextSegment("<empty>", new Metadata()));
     }
 
     @Override
@@ -178,7 +207,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         List<TextSegment> textSegments = new ArrayList<>();
         for (int i = 0; i < embeddings.size(); i++) {
-            textSegments.add(new TextSegment("This is a dummy document", new Metadata()));
+            textSegments.add(new TextSegment("<empty>", new Metadata()));
         }
         addAll(ids, embeddings, textSegments);
 
