@@ -100,7 +100,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
     @Override
