@@ -51,7 +51,7 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "name" -> builder.name;
                 case "description" -> builder.description;
                 case "outputName" -> builder.outputName;
-                case "nonBlocking" -> builder.nonBlocking;
+                case "async" -> builder.async;
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on ChatMemoryAccess class : " + method.getName());

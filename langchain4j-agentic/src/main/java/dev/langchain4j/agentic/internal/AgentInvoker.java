@@ -17,7 +17,7 @@ public interface AgentInvoker {
     String name();
     String description();
     String outputName();
-    boolean nonBlocking();
+    boolean async();
     Method method();
 
     String toCard();
@@ -33,15 +33,15 @@ public interface AgentInvoker {
     }
 
     static AgentInvoker fromMethod(AgentSpecification agent, Method method) {
-        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName(), agent.nonBlocking());
+        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName(), agent.async());
     }
 
-    static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName, boolean nonBlocking) {
+    static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName, boolean async) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
-            return new UntypedAgentInvoker(method, name, description, outputName, nonBlocking);
+            return new UntypedAgentInvoker(method, name, description, outputName, async);
         }
 
-        return new MethodAgentInvoker(method, name, description, outputName, nonBlocking, argumentsFromMethod(method));
+        return new MethodAgentInvoker(method, name, description, outputName, async, argumentsFromMethod(method));
     }
 
     static String parameterName(Parameter parameter) {

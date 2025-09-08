@@ -33,7 +33,7 @@ public class AgentBuilder<T> {
     String name;
     String description;
     String outputName;
-    boolean nonBlocking;
+    boolean async;
 
     private ChatModel model;
     private ChatMemory chatMemory;
@@ -75,7 +75,7 @@ public class AgentBuilder<T> {
         if (!isNullOrBlank(agent.outputName())) {
             this.outputName = agent.outputName();
         }
-        this.nonBlocking = agent.nonBlocking();
+        this.async = agent.async();
     }
 
     public T build() {
@@ -243,8 +243,8 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> nonBlocking(boolean nonBlocking) {
-        this.nonBlocking = nonBlocking;
+    public AgentBuilder<T> async(boolean async) {
+        this.async = async;
         return this;
     }
 

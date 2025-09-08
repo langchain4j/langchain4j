@@ -174,10 +174,10 @@ public class WorkflowAgentsIT {
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
 
-    public static class FailingNonBlockingAgent {
+    public static class FailingAsyncAgent {
         private final AtomicInteger callsCounter = new AtomicInteger(0);
 
-        @Agent(nonBlocking = true, outputName = "topic")
+        @Agent(async = true, outputName = "topic")
         public String getTopic() {
             if (callsCounter.getAndIncrement() < 2) {
                 try {
@@ -192,7 +192,7 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void error_recovery_with_non_blocking_agent_tests() {
+    void error_recovery_with_async_agent_tests() {
         AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
 
         CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
@@ -201,7 +201,7 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                .subAgents(new FailingNonBlockingAgent(), creativeWriter)
+                .subAgents(new FailingAsyncAgent(), creativeWriter)
                 .errorHandler(errorContext -> {
                     errorRecoveryCalled.set(true);
                     if (errorContext.agentName().equals("getTopic")) {
@@ -233,7 +233,7 @@ public class WorkflowAgentsIT {
                 .description("An agent that asks the audience for the story")
                 .inputName("topic")
                 .outputName("audience")
-                .nonBlocking(true)
+                .async(true)
                 .requestWriter(q -> request.set("Which audience for topic " + q + "?"))
                 .responseReader(() -> {
                     try {
@@ -539,16 +539,16 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void non_blocking_agents_tests() {
+    void async_agents_tests() {
         FoodExpert foodExpert = AgenticServices.agentBuilder(FoodExpert.class)
                 .chatModel(baseModel())
-                .nonBlocking(true)
+                .async(true)
                 .outputName("meals")
                 .build();
 
         MovieExpert movieExpert = AgenticServices.agentBuilder(MovieExpert.class)
                 .chatModel(baseModel())
-                .nonBlocking(true)
+                .async(true)
                 .outputName("movies")
                 .build();
 

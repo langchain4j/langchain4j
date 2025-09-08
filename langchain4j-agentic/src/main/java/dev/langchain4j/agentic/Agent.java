@@ -44,9 +44,9 @@ public @interface Agent {
     String outputName() default "";
 
     /**
-     * If true, the agent will be invoked in a non-blocking manner, allowing the workflow to continue without waiting for the agent's result.
+     * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
      *
-     * @return true if the agent should be invoked in a non-blocking manner, false otherwise.
+     * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
-    boolean nonBlocking() default false;
+    boolean async() default false;
 }

@@ -417,26 +417,26 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
-## Non-blocking agents
+## Asynchronous agents
 
-By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are blocking, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in a non-blocking way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.
+By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.
 
-For this reason it is possible to flag an agent as non-blocking using the `nonBlocking` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the non-blocking agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
+For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as non-blocking, will make them to be executed at the same time even when used in a sequential workflow.
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
 
 ```java
 FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
-        .nonBlocking(true)
+        .async(true)
         .outputName("meals")
         .build();
 
 MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
-        .nonBlocking(true)
+        .async(true)
         .outputName("movies")
         .build();
 
@@ -1149,7 +1149,7 @@ What is your zodiac sign?
 
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
-Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent in non-blocking mode. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer. Note however that the supervisor always enforces blocking execution for all agents in order to allow the planning of the next action to take into account the complete state of the `AgenticScope`. For this reason configuring the `HumanInTheLoop` agent in non-blocking mode wouldn't have any effect in the former example.
+Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer. Note however that the supervisor always enforces blocking execution for all agents in order to allow the planning of the next action to take into account the complete state of the `AgenticScope`. For this reason configuring the `HumanInTheLoop` agent in asynchronous mode wouldn't have any effect in the former example.
 
 ## A2A Integration
 
