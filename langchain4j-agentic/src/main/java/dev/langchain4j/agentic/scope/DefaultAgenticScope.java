@@ -232,34 +232,4 @@ public class DefaultAgenticScope implements AgenticScope {
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
     }
-
-    DefaultAgenticScope normalizeAfterDeserialization() {
-        Map modifiedEntries = new HashMap<>();
-        for (Map.Entry<String, Object> entry : state.entrySet()) {
-            enumValue(entry).ifPresent(enumValue -> modifiedEntries.put(entry.getKey(), enumValue));
-        }
-        state.putAll(modifiedEntries);
-        return this;
-    }
-
-    /**
-     * This method is used only during json deserialization of a AgenticScope.
-     * It checks if the value of an entry is a map with a single entry, where
-     * the key is the name of an enum class and the value is the name of an
-     * enum constant. If so, it returns the corresponding enum value.
-     */
-    private Optional<Object> enumValue(Map.Entry<String, Object> entry) {
-        if (entry.getValue() instanceof Map m && m.size() == 1) {
-            Map.Entry e = (Map.Entry) m.entrySet().iterator().next();
-            try {
-                Class c = Class.forName(e.getKey().toString());
-                if (c.isEnum()) {
-                    return Optional.ofNullable(Enum.valueOf(c, e.getValue().toString()));
-                }
-            } catch (Exception ex) {
-                // Ignore
-            }
-        }
-        return Optional.empty();
-    }
 }
