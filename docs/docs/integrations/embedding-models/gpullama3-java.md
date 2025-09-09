@@ -33,6 +33,6 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.4.0'
+implementation 'dev.langchain4j:langchain4j:1.5.0'
 implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.4.0'
 ```
