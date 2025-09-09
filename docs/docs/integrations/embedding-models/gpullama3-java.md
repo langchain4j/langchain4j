@@ -25,7 +25,7 @@ For Maven project `pom.xml`
 <dependency>
 <groupId>dev.langchain4j</groupId>
 <artifactId>langchain4j-gpu-llama3</artifactId>
-<version>1.4.0-SNAPSHOT</version>
+<version>1.5.0-beta11</version>
 </dependency>
 
 ```
