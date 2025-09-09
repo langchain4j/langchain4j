@@ -104,13 +104,7 @@ public class JsonSchemaElementUtils {
                 if (Objects.equals(description, obj.description())) {
                     return obj;
                 }
-                return JsonObjectSchema.builder()
-                        .description(description)
-                        .addProperties(obj.properties())
-                        .required(obj.required())
-                        .additionalProperties(obj.additionalProperties())
-                        .definitions(obj.definitions())
-                        .build();
+                return obj.toBuilder().description(description).build();
             }
 
             return jsonSchemaElement;
