@@ -37,9 +37,9 @@ public class AgentUtil {
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(),
+                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(), spec.async(),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName());
+                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName(), annotation.async());
         return new AgentExecutor(agentInvoker, agent);
     }
 

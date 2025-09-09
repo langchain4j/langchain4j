@@ -598,4 +598,68 @@ public class AgenticServices {
 
         return null;
     }
+
+    /**
+     * Wraps a runnable into an agent action that can be executed within the context of an agent.
+     *
+     * @param runnable the runnable to be executed
+     * @return an AgentAction that encapsulates the runnable
+     */
+    public static AgentAction agentAction(AgentAction.NonThrowingRunnable runnable) {
+        return new AgentAction(runnable);
+    }
+
+    public static class AgentAction {
+        private final NonThrowingRunnable runnable;
+
+        @FunctionalInterface
+        public interface NonThrowingRunnable {
+            void run() throws Exception;
+        }
+
+        private AgentAction(NonThrowingRunnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Agent
+        public void run() {
+            try {
+                runnable.run();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Wraps a consumer of the AgenticScope into an agent action that can be executed within the context of an agent.
+     *
+     * @param consumer the consumer to be executed
+     * @return an AgentAction that encapsulates the consumer
+     */
+    public static AgenticScopeAction agentAction(AgenticScopeAction.NonThrowingConsumer<AgenticScope> consumer) {
+        return new AgenticScopeAction(consumer);
+    }
+
+    public static class AgenticScopeAction {
+        private final NonThrowingConsumer<AgenticScope> consumer;
+
+        @FunctionalInterface
+        public interface NonThrowingConsumer<T> {
+            void accept(T arg) throws Exception;
+        }
+
+        private AgenticScopeAction(NonThrowingConsumer<AgenticScope> consumer) {
+            this.consumer = consumer;
+        }
+
+        @Agent
+        public void accept(AgenticScope agenticScope) {
+            try {
+                consumer.accept(agenticScope);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 }
