@@ -20,9 +20,12 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -38,21 +41,27 @@ public class AgentBuilder<T> {
     private ChatModel model;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
-    private Object[] objectsWithTools;
     private Function<AgenticScope, String> contextProvider;
     private String[] contextProvidingAgents;
-    private ToolProvider toolProvider;
-    private Integer maxSequentialToolsInvocations;
-    private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private ContentRetriever contentRetriever;
     private RetrievalAugmentor retrievalAugmentor;
+    private Function<Object, String> systemMessageProvider;
+
     private InputGuardrailsConfig inputGuardrailsConfig;
     private OutputGuardrailsConfig outputGuardrailsConfig;
     private Class<? extends InputGuardrail>[] inputGuardrailClasses;
     private Class<? extends OutputGuardrail>[] outputGuardrailClasses;
     private InputGuardrail[] inputGuardrails;
     private OutputGuardrail[] outputGuardrails;
-    private Function<Object, String> systemMessageProvider;
+
+    private Object[] objectsWithTools;
+    private ToolProvider toolProvider;
+    private Integer maxSequentialToolsInvocations;
+    private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
+    private boolean executeToolsConcurrently;
+    private Executor concurrentToolsExecutor;
+    private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
+    private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
@@ -94,17 +103,8 @@ public class AgentBuilder<T> {
         if (chatMemoryProvider != null) {
             aiServices.chatMemoryProvider(chatMemoryProvider);
         }
-        if (objectsWithTools != null) {
-            aiServices.tools(objectsWithTools);
-        }
-        if (toolProvider != null) {
-            aiServices.toolProvider(toolProvider);
-        }
-        if (maxSequentialToolsInvocations != null) {
-            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
-        }
-        if (hallucinatedToolNameStrategy != null) {
-            aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        if (systemMessageProvider != null) {
+            aiServices.systemMessageProvider(systemMessageProvider);
         }
         if (contentRetriever != null) {
             aiServices.contentRetriever(contentRetriever);
@@ -112,6 +112,26 @@ public class AgentBuilder<T> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
+
+        setupGuardrails(aiServices);
+        setupTools(aiServices);
+
+        boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
+        if (agenticScope != null && agenticScopeDependent) {
+            if (contextProvider != null) {
+                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
+            } else {
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+            }
+        }
+
+        return (T) Proxy.newProxyInstance(
+                agentServiceClass.getClassLoader(),
+                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
+                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+    }
+
+    private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
             aiServices.inputGuardrailsConfig(inputGuardrailsConfig);
         }
@@ -130,23 +150,34 @@ public class AgentBuilder<T> {
         if (outputGuardrails != null) {
             aiServices.outputGuardrails(outputGuardrails);
         }
-        if (systemMessageProvider != null) {
-            aiServices.systemMessageProvider(systemMessageProvider);
-        }
+    }
 
-        boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
-        if (agenticScope != null && agenticScopeDependent) {
-            if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
+    private void setupTools(AiServices<T> aiServices) {
+        if (objectsWithTools != null) {
+            aiServices.tools(objectsWithTools);
+        }
+        if (toolProvider != null) {
+            aiServices.toolProvider(toolProvider);
+        }
+        if (maxSequentialToolsInvocations != null) {
+            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        }
+        if (hallucinatedToolNameStrategy != null) {
+            aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        }
+        if (executeToolsConcurrently) {
+            if (concurrentToolsExecutor != null) {
+                aiServices.executeToolsConcurrently(concurrentToolsExecutor);
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.executeToolsConcurrently();
             }
         }
-
-        return (T) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+        if (toolArgumentsErrorHandler != null) {
+            aiServices.toolArgumentsErrorHandler(toolArgumentsErrorHandler);
+        }
+        if (toolExecutionErrorHandler != null) {
+            aiServices.toolExecutionErrorHandler(toolExecutionErrorHandler);
+        }
     }
 
     String agentId() {
@@ -260,6 +291,27 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         this.systemMessageProvider = systemMessageProvider;
+        return this;
+    }
+
+    public AgentBuilder<T> executeToolsConcurrently() {
+        this.executeToolsConcurrently = true;
+        return this;
+    }
+
+    public AgentBuilder<T> executeToolsConcurrently(Executor executor) {
+        this.executeToolsConcurrently = true;
+        this.concurrentToolsExecutor = executor;
+        return this;
+    }
+
+    public AgentBuilder<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler toolArgumentsErrorHandler) {
+        this.toolArgumentsErrorHandler = toolArgumentsErrorHandler;
+        return this;
+    }
+
+    public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+        this.toolExecutionErrorHandler = toolExecutionErrorHandler;
         return this;
     }
 }
