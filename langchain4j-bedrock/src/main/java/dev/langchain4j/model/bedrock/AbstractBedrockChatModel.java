@@ -389,7 +389,7 @@ abstract class AbstractBedrockChatModel {
                 .maxTokens(parameters.maxOutputTokens())
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
-                .stopSequences(parameters.stopSequences())
+                .stopSequences(isNullOrEmpty(parameters.stopSequences()) ? null : parameters.stopSequences())
                 .build();
     }
 

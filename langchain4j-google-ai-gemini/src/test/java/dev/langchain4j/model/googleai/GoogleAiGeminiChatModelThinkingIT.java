@@ -142,7 +142,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         should_think_and_return_thinking_with_tools(true);
     }
 
-    @RetryingTest(3)
+    @RetryingTest(value = 3, suspendForMs = 2_000)
     void should_think_and_return_thinking_with_tools__sendThinking_false() {
         should_think_and_return_thinking_with_tools(false);
     }

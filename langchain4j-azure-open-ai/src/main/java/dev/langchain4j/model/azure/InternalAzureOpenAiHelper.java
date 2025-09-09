@@ -455,7 +455,7 @@ class InternalAzureOpenAiHelper {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For Azure OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             ChatCompletionsJsonSchemaResponseFormatJsonSchema schema =

@@ -45,6 +45,8 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.output.JsonSchemas;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -221,15 +223,15 @@ class GoogleAiGeminiChatModelIT {
                 .build();
 
         // when
-        byte[] videoBytes = readBytes("https://file-examples.com/storage/feed00481a68af85f931c46/2017/04/file_example_MP4_480_1_5MG.mp4");
-        String base64Data = new String(Base64.getEncoder().encode(videoBytes)); // TODO use local file
+        URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
+        String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
         ChatResponse response = gemini.chat(UserMessage.from(
                 VideoContent.from(base64Data, "video/mp4"),
                 TextContent.from("Give a summary of the video")));
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("earth");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("example");
     }
 
     @Test
@@ -440,7 +442,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -471,7 +473,7 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text().trim())
-                .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
+                .isEqualToIgnoringWhitespace("{\"name\": \"Tommy Skybridge\", \"address\": {\"city\": \"Liverpool\"}}");
     }
 
     @Test
