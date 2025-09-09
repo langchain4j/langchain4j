@@ -30,8 +30,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -1298,7 +1298,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsJsonResponseFormatWithRawSchema")
-    protected void should_respect_JsonRawSchema_responseFormat(M model) throws Exception {
+    protected void should_respect_JsonRawSchema_responseFormat(M model) {
         var rawSchema =
                 """
             {

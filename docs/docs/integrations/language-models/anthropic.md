@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -139,6 +139,21 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
+## AnthropicTokenCountEstimator
+
+```java
+TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
+        .modelName(CLAUDE_3_OPUS_20240229)
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+List<ChatMessage> messages = List.of(...);
+
+int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+```
+
 ## Quarkus
 
 See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
@@ -150,7 +165,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.4.0-beta10</version>
 </dependency>
 ```
 

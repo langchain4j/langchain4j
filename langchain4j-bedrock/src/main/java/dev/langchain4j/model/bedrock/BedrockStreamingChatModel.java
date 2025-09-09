@@ -51,7 +51,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     public BedrockStreamingChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
+                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false), builder.logger)
                 : builder.client;
         this.logResponses = getOrDefault(builder.logResponses, false);
     }
@@ -183,14 +183,14 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return new Builder();
     }
 
-    private BedrockRuntimeAsyncClient createClient(boolean logRequests, boolean logResponses) {
+    private BedrockRuntimeAsyncClient createClient(boolean logRequests, boolean logResponses, Logger logger) {
         return BedrockRuntimeAsyncClient.builder()
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .overrideConfiguration(config -> {
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
-                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses));
+                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                 })
                 .build();
     }

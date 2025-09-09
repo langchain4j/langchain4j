@@ -3,7 +3,6 @@ package dev.langchain4j.model.openai;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -17,6 +16,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -409,65 +410,6 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_accept_image_url() {
-
-        // given
-        ImageContent imageContent = ImageContent.from(CAT_IMAGE_URL);
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_base64_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_image() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Briefly describe each image."),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL));
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
     void should_accept_text_and_multiple_images_from_different_sources() {
 
         // given
@@ -599,29 +541,81 @@ class OpenAiChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Where can I buy good coffee?"))
                 .parameters(OpenAiChatRequestParameters.builder()
-                        .modelName("gpt-4o-mini-search-preview")
                         .customParameters(customParameters)
-                        .maxOutputTokens(20) // to save tokens
                         .build())
                 .build();
 
+        SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body("""
+                        {
+                          "id": "chatcmpl-C9QWFjhlUn7vBERtBTMFbbgoKqTDh",
+                          "object": "chat.completion",
+                          "created": 1756362927,
+                          "model": "gpt-4o-mini-2024-07-18",
+                          "choices": [
+                            {
+                              "index": 0,
+                              "message": {
+                                "role": "assistant",
+                                "content": "Bla bla bla",
+                                "refusal": null,
+                                "annotations": []
+                              },
+                              "logprobs": null,
+                              "finish_reason": "stop"
+                            }
+                          ],
+                          "usage": {
+                            "prompt_tokens": 14,
+                            "completion_tokens": 7,
+                            "total_tokens": 21,
+                            "prompt_tokens_details": {
+                              "cached_tokens": 0,
+                              "audio_tokens": 0
+                            },
+                            "completion_tokens_details": {
+                              "reasoning_tokens": 0,
+                              "audio_tokens": 0,
+                              "accepted_prediction_tokens": 0,
+                              "rejected_prediction_tokens": 0
+                            }
+                          },
+                          "service_tier": "default",
+                          "system_fingerprint": "fp_560af6e559"
+                        }
+                        """)
+                .build();
+
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+
         ChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .logRequests(true)
-                .logResponses(true)
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains(city);
+        assertThat(mockHttpClient.request().body()).isEqualToIgnoringWhitespace("""
+                {
+                  "messages" : [ {
+                    "role" : "user",
+                    "content" : "Where can I buy good coffee?"
+                  } ],
+                  "stream" : false,
+                  "web_search_options" : {
+                    "user_location" : {
+                      "type" : "approximate",
+                      "approximate" : {
+                        "city" : "Munich"
+                      }
+                    }
+                  }
+                }
+                """);
 
         SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
-        JsonNode jsonNode = new ObjectMapper().readTree(rawResponse.body());
-        assertThat(jsonNode.get("choices").get(0).get("message").get("annotations").get(0).get("type").asText())
-                .isEqualTo("url_citation");
+        assertThat(rawResponse).isEqualTo(httpResponse);
     }
 }

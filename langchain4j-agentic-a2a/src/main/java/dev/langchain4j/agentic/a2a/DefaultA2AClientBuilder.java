@@ -60,6 +60,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
                         if (method.getDeclaringClass() == AgentSpecification.class) {
                             return switch (method.getName()) {
+                                case "name" -> agentCard.name();
+                                case "description" -> agentCard.description();
                                 case "outputName" -> outputName;
                                 default ->
                                         throw new UnsupportedOperationException(

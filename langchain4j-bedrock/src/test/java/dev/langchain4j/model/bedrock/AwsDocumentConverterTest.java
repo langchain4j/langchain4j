@@ -22,6 +22,7 @@ class AwsDocumentConverterTest {
         docMap.put("integer", Document.fromNumber(42));
         docMap.put("double", Document.fromNumber(42.5));
         docMap.put("boolean", Document.fromBoolean(true));
+        docMap.put("null", Document.fromNull());
         Document document = Document.fromMap(docMap);
 
         // When
@@ -32,7 +33,8 @@ class AwsDocumentConverterTest {
                 .containsIgnoringWhitespaces("\"string\": \"test\"")
                 .containsIgnoringWhitespaces("\"integer\": 42")
                 .containsIgnoringWhitespaces("\"double\": 42.5")
-                .containsIgnoringWhitespaces("\"boolean\": true");
+                .containsIgnoringWhitespaces("\"boolean\": true")
+                .containsIgnoringWhitespaces("\"null\": null");
     }
 
     @Test

@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.4.0-beta10</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-pgvector:1.3.0-beta9'```
+```implementation 'dev.langchain4j:langchain4j-pgvector:1.4.0-beta10'```
 
 ## APIs
 

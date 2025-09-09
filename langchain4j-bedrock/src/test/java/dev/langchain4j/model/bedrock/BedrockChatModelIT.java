@@ -7,7 +7,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -32,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import software.amazon.awssdk.regions.Region;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -214,6 +214,19 @@ class BedrockChatModelIT {
         // when
         assertThatThrownBy(() -> model.chat("hi"))
                 .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_support_gpt_oss_model() {
+
+        BedrockChatModel bedrockChatModel = BedrockChatModel.builder()
+                .modelId("openai.gpt-oss-20b-1:0")
+                .region(Region.US_WEST_2)
+                .build();
+
+        String answer = bedrockChatModel.chat("What is the capital of Germany?");
+
+        assertThat(answer).contains("Berlin");
     }
 
     @AfterEach
