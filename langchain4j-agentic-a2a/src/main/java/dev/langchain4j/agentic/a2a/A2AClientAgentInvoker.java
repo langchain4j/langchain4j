@@ -21,7 +21,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.agentCard = a2AClientInstance.agentCard();
         this.inputNames = inputNames(a2AClientInstance);
         this.outputName = a2AClientInstance.outputName();
-        this.nonBlocking = a2AClientInstance.async();
+        this.async = a2AClientInstance.async();
     }
 
     private String[] inputNames(A2AClientSpecification a2AClientInstance) {
