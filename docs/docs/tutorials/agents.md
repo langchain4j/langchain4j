@@ -1187,3 +1187,5 @@ A2ACreativeWriter creativeWriter = AgenticServices
 ```
 
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
+
+The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
