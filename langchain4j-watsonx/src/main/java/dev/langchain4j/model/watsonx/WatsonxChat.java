@@ -17,6 +17,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
@@ -117,12 +118,12 @@ abstract class WatsonxChat {
         if (isNull(tags)) return false;
 
         if (!isNullOrEmpty(tools))
-            throw new LangChain4jException("The thinking/reasoning cannot be activated when tools are used");
+            throw new InvalidRequestException("The thinking/reasoning cannot be activated when tools are used");
 
         var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
 
         if (systemMessageIsPresent)
-            throw new LangChain4jException(
+            throw new InvalidRequestException(
                     "The thinking/reasoning cannot be activated when a system message is present");
 
         return true;

@@ -17,7 +17,11 @@ public class WatsonxExecutorProvider implements IOExecutorProvider {
     public synchronized Executor executor() {
         if (isNull(ioExecutor)) {
 
-            ExecutorService defaultExecutor = Executors.newSingleThreadExecutor();
+            ExecutorService defaultExecutor = Executors.newFixedThreadPool(1, r -> {
+                Thread t = new Thread(r);
+                t.setDaemon(true);
+                return t;
+            });
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 defaultExecutor.shutdown();
