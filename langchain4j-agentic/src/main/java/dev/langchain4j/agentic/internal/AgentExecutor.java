@@ -20,7 +20,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
 
     public Object syncExecute(DefaultAgenticScope agenticScope) {
         if (agentInvoker.async()) {
-            LOG.info("Executing '{}' agent in a blocking way even if declared as non-blocking", agentInvoker.name());
+            LOG.info("Executing '{}' agent in a sync way even if declared as async", agentInvoker.name());
         }
         return execute(agenticScope, false);
     }
