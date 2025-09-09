@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.mockito.Mockito.spy;
@@ -107,10 +108,10 @@ public class SupervisorAgentIT {
             You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
         @UserMessage("""
-            Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
+            Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
-        String withdraw(@V("user") String user, @V("amountInUSD") Double amount);
+        String withdraw(@V("withdrawUser") String withdrawUser, @V("amountInUSD") Double amountInUSD);
     }
 
     public interface CreditAgent {
@@ -118,10 +119,10 @@ public class SupervisorAgentIT {
             You are a banker that can only credit US dollars (USD) to a user account.
             """)
         @UserMessage("""
-            Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
+            Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
-        String credit(@V("user") String user, @V("amountInUSD") Double amount);
+        String credit(@V("creditUser") String creditUser, @V("amountInUSD") Double amountInUSD);
     }
 
     static class BankTool {
@@ -216,8 +217,7 @@ public class SupervisorAgentIT {
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
-                outputName = "exchange")
+        @Agent(outputName = "exchange")
         Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency);
     }
 
@@ -310,6 +310,7 @@ public class SupervisorAgentIT {
             // Using an AI agent
             exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
                     .chatModel(baseModel())
+                    .description("A money exchanger that converts a given amount of money from the original to the target currency")
                     .tools(new ExchangeTool())
                     .build();
         } else {
@@ -331,5 +332,69 @@ public class SupervisorAgentIT {
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
 
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
+    }
+
+    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) { }
+
+    public interface TypedBankerAgent {
+
+        @Agent
+        TransactionDetails execute(@V("request") String request);
+    }
+
+    @Test
+    void typed_banker_test_with_maxAgentsInvocations() {
+        typed_banker_test(true);
+    }
+
+    @Test
+    void typed_banker_test_without_maxAgentsInvocations() {
+        typed_banker_test(false);
+    }
+
+    private void typed_banker_test(boolean useMaxAgentsInvocations) {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        ExchangeAgent exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
+                .chatModel(baseModel())
+                .description("A money exchanger that converts a given amount of money from the original to the target currency")
+                .tools(new ExchangeTool())
+                .build();
+
+        var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
+                .chatModel(plannerModel())
+                .output(agenticScope -> new TransactionDetails(
+                        agenticScope.readState("withdrawUser", ""),
+                        agenticScope.readState("creditUser", ""),
+                        agenticScope.readState("amountInUSD", 0.0)))
+                .subAgents(withdrawAgent, creditAgent, exchange);
+
+        if (useMaxAgentsInvocations) {
+            supervisorBuilder.maxAgentsInvocations(3);
+        }
+
+        TypedBankerAgent bankSupervisor = supervisorBuilder.build();
+
+        String userRequest = "Transfer 100 EUR from Mario's account to Georgios' one";
+        TransactionDetails result = bankSupervisor.execute(userRequest);
+        System.out.println(result);
+
+        assertThat(result.fromUser()).isEqualTo("Mario");
+        assertThat(result.toUser()).isEqualTo("Georgios");
+        assertThat(result.amountInUSD()).isCloseTo(115.0, offset(0.1));
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
     }
 }

@@ -120,7 +120,8 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-pro")
                 .responseFormat(ResponseFormat.JSON)
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the firstname of the John Doe?\n"
@@ -245,7 +246,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .allowCodeExecution(true)
                 .includeCodeExecutionOutput(true)
                 .build();
@@ -270,7 +272,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -322,7 +325,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -367,7 +371,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .safetySettings(mapSafetySettings)
                 .build();
 
@@ -386,8 +391,9 @@ class GoogleAiGeminiStreamingChatModelIT {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .modelName("gemini-2.5-flash-lite")
+                .logRequests(true)
+                .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
@@ -420,7 +426,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text().trim())
-                .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
+                .isEqualToIgnoringWhitespace("{\"name\": \"Tommy Skybridge\", \"address\": {\"city\": \"Liverpool\"}}");
     }
 
     @Test
@@ -429,7 +435,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
@@ -471,7 +478,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
@@ -501,7 +509,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
@@ -537,7 +546,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.0-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
@@ -562,7 +572,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         List<ChatMessage> chatMessages = List.of(UserMessage.from("Call toolOne"));
@@ -588,7 +599,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .toolConfig(GeminiMode.ANY, "toolTwo")
                 .build();
 
@@ -626,7 +638,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-pro")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .timeout(Duration.ofMinutes(2))
                 .temperature(0.0)
                 .topP(0.0)
@@ -681,7 +694,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .timeout(timeout)
                 .build();
 

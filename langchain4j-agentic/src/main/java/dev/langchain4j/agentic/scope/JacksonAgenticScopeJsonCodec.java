@@ -24,6 +24,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.JacksonChatMessageJsonCodec;
 
 import java.util.Collection;
+import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -41,30 +42,20 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
         ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
 
         // Configure the ObjectMapper to add type information for users types
-        // At the moment, this is only needed and used for enums, but we could add support for other types in the future
         mapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder()
-                        .allowIfBaseType(Object.class)
-                        .build(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.WRAPPER_OBJECT
+                mapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL
         );
-
-        CustomTypeResolverBuilder typeResolverBuilder = new CustomTypeResolverBuilder();
-        typeResolverBuilder.init(JsonTypeInfo.Id.CLASS, null);
-        typeResolverBuilder.inclusion(JsonTypeInfo.As.WRAPPER_OBJECT);
-        mapper.setDefaultTyping(typeResolverBuilder);
 
         return mapper;
     }
 
-    private static final ObjectMapper SERIALIZER_MAPPER = agenticScopeJsonSerializer();
-    private static final ObjectMapper DESERIALIZER_MAPPER = agenticScopeJsonMapperBuilder().build();
+    private static final ObjectMapper MAPPER = agenticScopeJsonSerializer();
 
     @Override
     public DefaultAgenticScope fromJson(String json) {
         try {
-            return DESERIALIZER_MAPPER.readValue(json, DefaultAgenticScope.class);
+            return MAPPER.readValue(json, DefaultAgenticScope.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to deserialize AgenticScope from JSON", e);
         }
@@ -73,7 +64,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return SERIALIZER_MAPPER.writeValueAsString(agenticScope);
+            return MAPPER.writeValueAsString(agenticScope);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }
@@ -104,60 +95,6 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("input") Object[] input,
                 @JsonProperty("output") Object output) {
-        }
-    }
-
-    public static class CustomTypeIdResolver extends TypeIdResolverBase {
-
-        @Override
-        public String idFromValue(Object value) {
-            return idFromValueAndType(value, value.getClass());
-        }
-
-        @Override
-        public String idFromValueAndType(Object value, Class<?> suggestedType) {
-            String className = suggestedType.getName();
-            return isBuiltInType(className) ? null : className;
-        }
-
-        private boolean isBuiltInType(String className) {
-            return className.startsWith("java.") ||
-                    className.startsWith("[Ljava.") ||
-                    className.startsWith("dev.langchain4j.data.message.") ||
-                    className.startsWith("dev.langchain4j.agentic.scope.") ||
-                    className.startsWith("dev.langchain4j.agentic.internal.");
-        }
-
-        @Override
-        public JavaType typeFromId(DatabindContext context, String id) {
-            if (id == null) {
-                return null;
-            }
-            try {
-                Class<?> clazz = Class.forName(id);
-                return context.constructType(clazz);
-            } catch (ClassNotFoundException e) {
-                if (id.equals("id")) {
-                    return context.constructType(String.class);
-                }
-                return null;
-            }
-        }
-
-        @Override
-        public JsonTypeInfo.Id getMechanism() {
-            return JsonTypeInfo.Id.CLASS;
-        }
-    }
-
-    // Custom TypeResolverBuilder
-    public static class CustomTypeResolverBuilder extends StdTypeResolverBuilder {
-
-        @Override
-        protected TypeIdResolver idResolver(MapperConfig<?> config, JavaType baseType,
-                                            PolymorphicTypeValidator subtypeValidator, Collection<NamedType> subtypes,
-                                            boolean forSer, boolean forDeser) {
-            return new CustomTypeIdResolver();
         }
     }
 }

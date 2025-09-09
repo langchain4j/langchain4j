@@ -29,7 +29,9 @@ import com.openai.models.chat.completions.ChatCompletionContentPartImage;
 import com.openai.models.chat.completions.ChatCompletionContentPartInputAudio;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionFunctionTool;
 import com.openai.models.chat.completions.ChatCompletionMessage;
+import com.openai.models.chat.completions.ChatCompletionMessageFunctionToolCall;
 import com.openai.models.chat.completions.ChatCompletionMessageParam;
 import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
@@ -56,8 +58,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -100,7 +102,10 @@ class InternalOpenAiOfficialHelper {
             return ModelHost.GITHUB_MODELS; // Forced by the user
         }
         if (baseUrl != null) {
-            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/")) {
+            if (baseUrl.endsWith("openai.azure.com")
+                    || baseUrl.endsWith("openai.azure.com/")
+                    || baseUrl.endsWith("cognitiveservices.azure.com")
+                    || baseUrl.endsWith("cognitiveservices.azure.com/")) {
                 return ModelHost.AZURE_OPENAI;
             } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
                 return ModelHost.GITHUB_MODELS;
@@ -238,18 +243,16 @@ class InternalOpenAiOfficialHelper {
             return GITHUB_MODELS_URL;
         } else if (modelHost == ModelHost.AZURE_OPENAI) {
             // Using Azure OpenAI
-            if (azureDeploymentName == null) {
-                // If the Azure deployment name is not configured, we use the model name instead, as it's the default
-                // deployment name
-                azureDeploymentName = modelName;
-            }
-            ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             String tmpUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            if (azureOpenAiServiceVersion == null) {
-                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
+            // If the Azure deployment name is not configured, the model name will be used by default by the OpenAI Java
+            // SDK
+            if (azureDeploymentName != null && !azureDeploymentName.equals(modelName)) {
+                tmpUrl += "/openai/deployments/" + azureDeploymentName;
             }
-            return tmpUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAiServiceVersion.value();
+            if (azureOpenAiServiceVersion != null) {
+                tmpUrl += "?api-version=" + azureOpenAiServiceVersion.value();
+            }
+            return tmpUrl;
         } else {
             throw new IllegalArgumentException("Unknown model host: " + modelHost);
         }
@@ -318,13 +321,13 @@ class InternalOpenAiOfficialHelper {
             }
 
             List<ChatCompletionMessageToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
-                    .map(it -> ChatCompletionMessageToolCall.builder()
+                    .map(it -> ChatCompletionMessageToolCall.ofFunction(ChatCompletionMessageFunctionToolCall.builder()
                             .id(it.id())
-                            .function(ChatCompletionMessageToolCall.Function.builder()
+                            .function(ChatCompletionMessageFunctionToolCall.Function.builder()
                                     .name(it.name())
                                     .arguments(it.arguments())
                                     .build())
-                            .build())
+                            .build()))
                     .collect(toList());
 
             return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
@@ -403,9 +406,9 @@ class InternalOpenAiOfficialHelper {
             functionDefinitionBuilder.strict(true);
         }
 
-        return ChatCompletionTool.builder()
+        return ChatCompletionTool.ofFunction(ChatCompletionFunctionTool.builder()
                 .function(functionDefinitionBuilder.build())
-                .build();
+                .build());
     }
 
     private static FunctionParameters toOpenAiParameters(ToolSpecification toolSpecification, boolean strict) {
@@ -453,6 +456,7 @@ class InternalOpenAiOfficialHelper {
         if (toolCalls.isPresent()) {
             List<ToolExecutionRequest> toolExecutionRequests = toolCalls.get().stream()
                     .map(InternalOpenAiOfficialHelper::toToolExecutionRequest)
+                    .filter(java.util.Objects::nonNull)
                     .collect(toList());
 
             if (text.isEmpty()) {
@@ -468,11 +472,15 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ChatCompletionMessageToolCall toolCall) {
-        ChatCompletionMessageToolCall.Function function = toolCall.function();
+        if (!toolCall.isFunction() || toolCall.function().isEmpty()) {
+            return null;
+        }
+        ChatCompletionMessageFunctionToolCall functionToolCall =
+                toolCall.function().get();
         return ToolExecutionRequest.builder()
-                .id(toolCall.id())
-                .name(function.name())
-                .arguments(function.arguments())
+                .id(functionToolCall.id())
+                .name(functionToolCall.function().name())
+                .arguments(functionToolCall.function().arguments())
                 .build();
     }
 
@@ -566,7 +574,7 @@ class InternalOpenAiOfficialHelper {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             Map<String, JsonValue> properties = new HashMap<>();

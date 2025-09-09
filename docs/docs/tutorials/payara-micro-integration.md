@@ -17,7 +17,7 @@ First, add the core langchain4j dependency and the specific model integration mo
     <maven.compiler.release>21</maven.compiler.release>
     <jakartaee-api.version>10.0.0</jakartaee-api.version>
     <payara.version>6.2025.5</payara.version>
-    <version.langchain4j>1.3.0</version.langchain4j>
+    <version.langchain4j>1.4.0</version.langchain4j>
 </properties>
 
 <dependencies>

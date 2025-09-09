@@ -23,8 +23,7 @@ class AwsDocumentConverter {
 
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .disable(INDENT_OUTPUT)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private AwsDocumentConverter() {}
 
@@ -55,6 +54,8 @@ class AwsDocumentConverter {
             Map<String, Object> innerObject = new HashMap<>();
             doc.asMap().forEach((k, v) -> innerObject.put(k, documentToObject(v)));
             return innerObject;
+        } else if (doc.isNull()) {
+            return null;
         } else {
             return doc.asString();
         }
