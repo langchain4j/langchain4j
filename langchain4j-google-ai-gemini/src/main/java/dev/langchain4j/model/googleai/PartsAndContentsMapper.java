@@ -204,7 +204,6 @@ class PartsAndContentsMapper {
                 functionCalls.add(part.getFunctionCall());
             }
 
-            // Handle generated images from inlineData
             GeminiBlob inlineData = part.getInlineData();
             if (inlineData != null
                     && inlineData.getMimeType() != null
