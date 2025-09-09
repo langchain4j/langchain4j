@@ -38,7 +38,7 @@ ChatModel chatModel = WatsonxChatModel.builder()
     .url(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
-    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .modelName("ibm/granite-3-3-8b-instruct")
     .temperature(0.7)
     .maxOutputTokens(0)
     .build();
@@ -62,7 +62,6 @@ You can create an API key at [https://cloud.ibm.com/iam/apikeys](https://cloud.i
 
 Available foundation models are listed [here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided).
 
-
 ## WatsonxStreamingChatModel
 
 The `WatsonxStreamingChatModel` provides streaming support for IBM watsonx.ai within LangChain4j. It’s useful when you want to process tokens as they are generated, ideal for real-time applications such as chat UIs or long text generation.
@@ -82,7 +81,7 @@ StreamingChatModel model = WatsonxStreamingChatModel.builder()
     .url(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
-    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .modelName("ibm/granite-3-3-8b-instruct")
     .maxOutputTokens(0)
     .build();
 
@@ -133,7 +132,7 @@ ChatModel chatModel = WatsonxChatModel.builder()
     .url(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
-    .modelName("llama-4-maverick-17b-128e-instruct-fp8")
+    .modelName("mistralai/mistral-small-3-1-24b-instruct-2503")
     .maxOutputTokens(0)
     .build();
 
@@ -151,7 +150,7 @@ System.out.println(answer);
 
 ## Enabling Thinking / Reasoning Output
 
-Some foundation models can include "thinking" or "reasoning" steps in their responses.  
+Some foundation models can include "thinking"/"reasoning" steps in their responses.  
 You can capture and separate this reasoning content from the final answer by using the `thinking(...)` builder method with `ExtractionTags`.
 
 `ExtractionTags` defines the XML-like tags used to extract different parts of the model output:
@@ -159,7 +158,10 @@ You can capture and separate this reasoning content from the final answer by usi
 - **Reasoning tag**: typically `<think>` — contains the model's internal reasoning.
 - **Response tag**: typically `<response>` — contains the user-facing answer.
 
-If no `response` tag is provided, it defaults to `root`, meaning that text directly under the root element is treated as the final response.
+### Behavior
+
+- If **both tags** are specified, they will be used directly for extracting reasoning and response.  
+- If **only the reasoning tag** is specified, everything outside it will be considered the final response.  
 
 #### Example ChatModel
 
@@ -219,15 +221,6 @@ model.chat(chatRequest, new StreamingChatResponseHandler() {
 });
 ```
 
-You can also provide only the reasoning tag — in that case, the `response` tag defaults to `"root"`:
-
-```java
-ChatModel model = WatsonxChatModel.builder()
-    ...
-    .thinking(ExtractionTags.of("think"))
-    .build();
-```
-
 > **Note:** Ensure that the selected model is enabled for reasoning.
 
 ## WatsonxEmbeddingModel
@@ -238,9 +231,9 @@ It implements the LangChain4j `EmbeddingModel` interface.
 
 ```java
 EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-    .url("https://test.com")
-    .apiKey("...")
-    .projectId("...")
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
     .modelName("ibm/granite-embedding-278m-multilingual")
     .build();
 
@@ -260,9 +253,9 @@ It is particularly useful for ranking a list of documents (or text segments) bas
 
 ```java
 ScoringModel scoringModel = WatsonxScoringModel.builder()
-    .url("https://test.com")
-    .apiKey("...")
-    .projectId("...")
+    .url(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
     .modelName("cross-encoder/ms-marco-minilm-l-12-v2")
     .build();
 
