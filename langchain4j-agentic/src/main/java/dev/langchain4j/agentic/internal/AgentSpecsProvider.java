@@ -5,4 +5,5 @@ public interface AgentSpecsProvider {
     String inputName();
     String outputName();
     String description();
+    boolean async();
 }
