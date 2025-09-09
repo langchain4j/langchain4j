@@ -222,7 +222,6 @@ class PartsAndContentsMapper {
         String thinking = thoughts.stream().collect(joining("\n\n"));
         String thinkingSignature = thoughtSignatures.stream().collect(joining("\n\n"));
 
-        // Build attributes map with thinking signature and generated images
         Map<String, Object> attributes = new java.util.HashMap<>();
         if (isNotNullOrEmpty(thinkingSignature)) {
             attributes.put(THINKING_SIGNATURE_KEY, thinkingSignature);
