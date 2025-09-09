@@ -76,8 +76,7 @@ class Converter {
         return new CompleteToolCall(toolCall.index(), toToolExecutionRequest(toolCall));
     }
 
-    public static PartialToolCall toPartialToolCall(
-            com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall partialToolCall) {
+    public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
                 .index(partialToolCall.index())
