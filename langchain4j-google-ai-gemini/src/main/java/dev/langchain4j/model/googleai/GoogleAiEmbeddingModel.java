@@ -9,6 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +34,9 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.apiKey,
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger,
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -132,6 +136,9 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer outputDimensionality;
         private Duration timeout;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
 
         GoogleAiEmbeddingModelBuilder() {}
 
@@ -182,6 +189,25 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

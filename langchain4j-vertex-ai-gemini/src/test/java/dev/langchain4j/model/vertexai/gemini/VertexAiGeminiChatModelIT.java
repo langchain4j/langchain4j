@@ -333,7 +333,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
     }
 
-    @Test
+    @RetryingTest(3)
     void should_handle_parallel_function_calls() {
 
         // given
@@ -359,6 +359,7 @@ class VertexAiGeminiChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? "
+                + "Call 2 tools in parallel (at the same time)! "
                 + "Output just a (single) name of the product with more stock.");
         allMessages.add(inventoryQuestion);
 

@@ -11,6 +11,7 @@ import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.Map;
@@ -45,6 +46,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
@@ -115,6 +117,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
 
         public OpenAiStreamingLanguageModelBuilder() {
@@ -173,6 +176,15 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
         public OpenAiStreamingLanguageModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiStreamingLanguageModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

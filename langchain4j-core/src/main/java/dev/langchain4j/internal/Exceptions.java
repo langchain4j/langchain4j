@@ -35,4 +35,13 @@ public class Exceptions {
     public static RuntimeException runtime(String format, Object... args) {
         return new RuntimeException(format.formatted(args));
     }
+
+    public static Throwable unwrapRuntimeException(Exception e) {
+        if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+            // when checked exception (e.g., JsonProcessingException) is wrapped into RuntimeException
+            return e.getCause();
+        } else {
+            return e;
+        }
+    }
 }

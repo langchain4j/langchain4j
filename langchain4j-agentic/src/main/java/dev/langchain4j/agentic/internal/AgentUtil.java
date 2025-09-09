@@ -37,14 +37,14 @@ public class AgentUtil {
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(),
+                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(), spec.async(),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName());
+                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName(), annotation.async());
         return new AgentExecutor(agentInvoker, agent);
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
-       for (Method method : agent.getClass().getDeclaredMethods()) {
+       for (Method method : agent.getClass().getMethods()) {
            Optional<AgentExecutor> executor = A2AService.get().isPresent() ?
                    A2AService.get().methodToAgentExecutor(agent, method) :
                    methodToAgentExecutor(agent, method);
@@ -56,7 +56,7 @@ public class AgentUtil {
     }
 
     public static Optional<Method> getAnnotatedMethodOnClass(Class<?> clazz, Class<? extends Annotation> annotation) {
-        return Arrays.stream(clazz.getDeclaredMethods())
+        return Arrays.stream(clazz.getMethods())
                 .filter(m -> m.isAnnotationPresent(annotation))
                 .findFirst();
     }
@@ -99,13 +99,21 @@ public class AgentUtil {
                 invocationArgs[i++] = agenticScope;
                 continue;
             }
-            Object argValue = agenticScope.readState(argName);
-            if (argValue == null) {
-                throw new MissingArgumentException(argName);
-            }
-            invocationArgs[i++] = parseArgument(argValue, arg.type());
+            invocationArgs[i++] = argumentFromAgenticScope(agenticScope, arg.type(), argName);
         }
         return invocationArgs;
+    }
+
+    public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {
+        Object argValue = agenticScope.readState(argName);
+        if (argValue == null) {
+            throw new MissingArgumentException(argName);
+        }
+        Object parsedArgument = parseArgument(argValue, argType);
+        if (argValue != parsedArgument) {
+            agenticScope.writeState(argName, parsedArgument);
+        }
+        return parsedArgument;
     }
 
     static Object parseArgument(Object argValue, Class<?> type) {
@@ -124,8 +132,12 @@ public class AgentUtil {
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
+        return validateAgentClass(agentServiceClass, true);
+    }
+
+    public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getDeclaredMethods()) {
+        for (Method method : agentServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Agent.class)) {
                 if (agentMethod != null) {
                     throw new IllegalArgumentException("Multiple agent methods found in class: " + agentServiceClass.getName());
@@ -133,7 +145,7 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null) {
+        if (agentMethod == null && failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

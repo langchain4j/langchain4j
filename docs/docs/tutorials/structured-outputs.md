@@ -122,7 +122,9 @@ System.out.println(person); // Person[name=John, age=42, height=1.75, married=fa
 ```
 Notes:
 - [1] - In most cases, the root element must be of `JsonObjectSchema` type,
-however Gemini allows `JsonEnumSchema` and `JsonArraySchema` as well.
+however:
+  - Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official also allow `JsonRawSchema` as a root element
+  - Gemini also allows `JsonEnumSchema` and `JsonArraySchema` as root elements
 - [2] - Required properties must be explicitly specified; otherwise, they are considered optional.
 
 The structure of the JSON schema is defined using `JsonSchemaElement` interface,
