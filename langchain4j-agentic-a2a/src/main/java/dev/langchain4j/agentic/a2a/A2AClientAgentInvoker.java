@@ -12,7 +12,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final String[] inputNames;
     private final String outputName;
-    private final boolean nonBlocking;
+    private final boolean async;
     private final AgentCard agentCard;
     private final Method method;
 
