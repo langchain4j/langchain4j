@@ -47,7 +47,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public boolean async() {
-        return nonBlocking;
+        return async;
     }
 
     @Override
