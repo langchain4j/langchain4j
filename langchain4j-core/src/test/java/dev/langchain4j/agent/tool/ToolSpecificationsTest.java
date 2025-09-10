@@ -13,7 +13,6 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -113,6 +112,11 @@ class ToolSpecificationsTest implements WithAssertions {
         public int aDifferentMethod(int typeInt) {
             return 42;
         }
+    }
+
+    public static class ToolWithSameCustomParametersButDifferentDescriptions {
+        @Tool
+        public void toolMethod(@P("first person") Person p0, @P("second person") Person p1) {}
     }
 
     private static Method getF() throws NoSuchMethodException {
@@ -332,5 +336,25 @@ class ToolSpecificationsTest implements WithAssertions {
                                         .build())
                         .required("arg0")
                         .build());
+    }
+
+    @Test
+    void two_custom_params_same_type_have_distinct_descriptions() throws NoSuchMethodException {
+        Method method = ToolWithSameCustomParametersButDifferentDescriptions.class.getMethod(
+                "toolMethod", Person.class, Person.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        Map<String, JsonSchemaElement> props = ts.parameters().properties();
+        JsonObjectSchema p0Schema = (JsonObjectSchema) props.get("arg0");
+        JsonObjectSchema p1Schema = (JsonObjectSchema) props.get("arg1");
+
+        assertThat(p0Schema.description()).isEqualTo("first person");
+        assertThat(p1Schema.description()).isEqualTo("second person");
+        assertThat(p0Schema.properties().keySet())
+                .containsExactlyInAnyOrder(
+                        "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
+        assertThat(p1Schema.properties().keySet())
+                .containsExactlyInAnyOrder(
+                        "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
     }
 }

@@ -42,4 +42,11 @@ public @interface Agent {
      * @return name of the output variable.
      */
     String outputName() default "";
+
+    /**
+     * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     *
+     * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
+     */
+    boolean async() default false;
 }
