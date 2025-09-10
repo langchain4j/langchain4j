@@ -1,5 +1,17 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -12,20 +24,21 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Random;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -415,6 +428,146 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_execute_one_specific_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
+        // given
+        String expectedToolName = "get_weather";
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .toolNameChoice(expectedToolName)
+                .disableParallelToolUse(true)
+                .build();
+
+        ToolSpecification getWeather = ToolSpecification.builder()
+                .name(expectedToolName)
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+        ToolSpecification getTime = ToolSpecification.builder()
+                .name("get_time")
+                .description("Get the current time in a given timezone")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("timezone")
+                        .required("timezone")
+                        .build())
+                .build();
+
+        List<ToolSpecification> toolSpecifications = List.of(getWeather, getTime);
+
+        UserMessage userMessage = userMessage("What's the weather in SF and NYC, and what time is it there?");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        ToolExecutionRequest tool = aiMessage.toolExecutionRequests().get(0);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        assertThat(tool.name()).isEqualTo(expectedToolName);
+    }
+
+    @Test
+    void should_force_execution_without_tools_when_pass_tool_choice_none() {
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .toolChoice(ToolChoice.NONE)
+                .build();
+
+        ToolSpecification getWeather = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+        ToolSpecification getTime = ToolSpecification.builder()
+                .name("get_time")
+                .description("Get the current time in a given timezone")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("timezone")
+                        .required("timezone")
+                        .build())
+                .build();
+
+        List<ToolSpecification> toolSpecifications = List.of(getWeather, getTime);
+
+        UserMessage userMessage = userMessage("What's the weather in SF and NYC, and what time is it there?");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_execute_one_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .toolChoice(ToolChoice.REQUIRED)
+                .disableParallelToolUse(true)
+                .build();
+
+        ToolSpecification getWeather = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+        ToolSpecification getTime = ToolSpecification.builder()
+                .name("get_time")
+                .description("Get the current time in a given timezone")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("timezone")
+                        .required("timezone")
+                        .build())
+                .build();
+
+        List<ToolSpecification> toolSpecifications = List.of(getWeather, getTime);
+
+        UserMessage userMessage = userMessage("What's the weather in SF and NYC, and what time is it there?");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
     void should_execute_a_tool_then_answer() {
 
         // given
@@ -664,8 +817,7 @@ class AnthropicChatModelIT {
                         AiMessage.from("Hi"),
                         UserMessage.from("What is the"),
                         UserMessage.from("capital of"),
-                        UserMessage.from("Germany?")
-                )
+                        UserMessage.from("Germany?"))
                 .build();
 
         // when

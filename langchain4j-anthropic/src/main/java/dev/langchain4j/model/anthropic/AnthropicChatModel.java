@@ -16,7 +16,6 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -69,6 +68,8 @@ public class AnthropicChatModel implements ChatModel {
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final String toolNameChoice;
+    private final Boolean disableParallelToolUse;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -91,6 +92,8 @@ public class AnthropicChatModel implements ChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
+        this.toolNameChoice = builder.toolNameChoice;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -105,7 +108,8 @@ public class AnthropicChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
-                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
+                .maxOutputTokens(
+                        getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
@@ -131,6 +135,8 @@ public class AnthropicChatModel implements ChatModel {
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
+        private String toolNameChoice;
+        private Boolean disableParallelToolUse;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -216,6 +222,16 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder toolNameChoice(String toolNameChoice) {
+            this.toolNameChoice = toolNameChoice;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
+            this.disableParallelToolUse = disableParallelToolUse;
             return this;
         }
 
@@ -328,12 +344,15 @@ public class AnthropicChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
-        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
+        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+                chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
-                false);
+                false,
+                toolNameChoice,
+                disableParallelToolUse);
 
         AnthropicCreateMessageResponse response =
                 withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);
