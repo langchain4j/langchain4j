@@ -245,21 +245,21 @@ class PartsAndContentsMapper {
                         case SYSTEM:
                             SystemMessage systemMessage = (SystemMessage) msg;
 
-                        if (systemInstruction != null) {
-                            systemInstruction.addPart(GeminiPart.builder()
-                                .text(systemMessage.text())
-                                .build());
-                            return null;
-                        }
+                            if (systemInstruction != null) {
+                                systemInstruction.addPart(GeminiPart.builder()
+                                        .text(systemMessage.text())
+                                        .build());
+                                return null;
+                            }
 
-                        if (isNotNullOrEmpty(systemMessage.text())) {
-                            return GeminiContent.builder()
-                                .role(GeminiRole.MODEL.toString())
-                                .parts(List.of(GeminiPart.builder()
-                                    .text(systemMessage.text())
-                                    .build()))
-                                .build();
-                        }
+                            if (isNotNullOrEmpty(systemMessage.text())) {
+                                return GeminiContent.builder()
+                                        .role(GeminiRole.MODEL.toString())
+                                        .parts(List.of(GeminiPart.builder()
+                                                .text(systemMessage.text())
+                                                .build()))
+                                        .build();
+                            }
 
                             return null;
                         case AI:
