@@ -32,6 +32,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -631,7 +633,8 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
-                        UserMessage.from("'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
+                        UserMessage.from(
+                                "'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
                 .build());
 
         Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
@@ -769,5 +772,34 @@ class GoogleAiGeminiChatModelIT {
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
+    }
+
+    @Test
+    void shouldReturnResponseWithSystemMessageRequest() {
+
+        // given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .responseFormat(ResponseFormat.TEXT)
+                .logRequestsAndResponses(true)
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .build();
+
+        TokenCountEstimator estimator = GoogleAiGeminiTokenCountEstimator.builder()
+                .modelName("gemini-2.5-flash")
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessageProvider(o -> "You are a useful assistant")
+                .chatMemoryProvider(memoryId -> TokenWindowChatMemory.withMaxTokens(3000, estimator))
+                .build();
+
+        // when
+        String response = assistant.chat("Hello!");
+
+        // then
+        assertThat(response).isNotEmpty();
     }
 }
