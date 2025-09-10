@@ -64,6 +64,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DeclarativeAgentIT {
 
+    @Test
+    void declarative_single_agent_tests() {
+        CreativeWriter creativeWriter = AgenticServices.createAgenticSystem(CreativeWriter.class, baseModel());
+
+        String story = creativeWriter.generateStory("dragons and wizards");
+        System.out.println(story);
+    }
+
     public interface StoryCreator {
 
         @SequenceAgent(outputName = "story", subAgents = {
