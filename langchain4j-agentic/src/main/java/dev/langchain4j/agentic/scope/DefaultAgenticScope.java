@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
@@ -19,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -54,21 +54,19 @@ public class DefaultAgenticScope implements AgenticScope {
      * This lock is used to ensure that the AgenticScope doesn't get concurrently modified when it is going to be persisted.
      * The internal data structures of the AgenticScope are all thread-safe, so they don't need to be guarded by a read lock
      * when accessed. In essence multiple changes are allowed at the same time, but it is not allowed to persist a
-     * AgenticScope that is not in a frozen state. That's why the read lock is acquired for the firsts and a write lock
+     * AgenticScope that is not in a frozen state. That's why the read lock is acquired for the first and a write lock
      * when the second happens.
      */
-    private transient ReadWriteLock lock = null;
+    private final transient ReadWriteLock lock;
 
     DefaultAgenticScope(Kind kind) {
-        this(UUID.randomUUID().toString(), kind);
+        this(Utils.randomUUID(), kind);
     }
 
     DefaultAgenticScope(Object memoryId, Kind kind) {
         this.memoryId = memoryId;
         this.kind = kind;
-        if (kind == Kind.PERSISTENT) {
-            lock = new ReentrantReadWriteLock();
-        }
+        this.lock = (kind == Kind.PERSISTENT) ? new ReentrantReadWriteLock() : null;
     }
 
     @Override
@@ -158,24 +156,34 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private void registerContext(String agentName, Object agent) {
-        if (agent instanceof ChatMemoryAccess agentWithMemory) {
-            ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
-            if (chatMemory != null) {
-                List<ChatMessage> agentMessages = chatMemory.messages();
-                ChatMessage lastMessage = agentMessages.get(agentMessages.size() - 1);
-                if (lastMessage instanceof AiMessage aiMessage) {
-                    for (int i = agentMessages.size() - 1; i >= 0; i--) {
-                        if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                            // Only add to the agenticScope's context the last UserMessage ...
-                            context.add(new AgentMessage(agentName, userMessage));
-                            // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                            context.add(new AgentMessage(agentName, aiMessage));
-                            return;
-                        }
-                    }
-                }
-            }
-        }
+    	if (!(agent instanceof ChatMemoryAccess agentWithMemory)) {
+    		return;
+    	}
+        
+    	ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
+    	if (chatMemory == null) {
+    		return;
+    	}
+        
+    	List<ChatMessage> agentMessages = chatMemory.messages();
+    	if(Utils.isNullOrEmpty(agentMessages)) {
+    		return;
+    	}
+        
+    	ChatMessage lastMessage = agentMessages.get(agentMessages.size() - 1);
+    	if (!(lastMessage instanceof AiMessage aiMessage)) {
+    		return;
+    	}
+        
+        for (int i = agentMessages.size() - 1; i >= 0; i--) {
+        	if (agentMessages.get(i) instanceof UserMessage userMessage) {
+        		// Only add to the agenticScope's context the last UserMessage ...
+        		context.add(new AgentMessage(agentName, userMessage));
+        		// ... and last AiMessage response, all other messages are local to the invoked agent internals
+        		context.add(new AgentMessage(agentName, aiMessage));
+        		return;
+        	}
+        }       
     }
 
     public List<AgentMessage> context() {
