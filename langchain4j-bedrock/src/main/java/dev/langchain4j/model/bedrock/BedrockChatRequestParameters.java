@@ -16,7 +16,8 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, Object> additionalModelRequestFields;
 
     /**
-     * Enum representing where to place cache points in the conversation
+     * Enum representing where to place cache points in the conversation.
+     * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
      */
     public enum CachePointPlacement {
         AFTER_SYSTEM,
@@ -91,38 +92,26 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * Enables prompt caching for supported models (Claude 3.5 Sonnet, Claude 3.5 Haiku, etc.).
-         * This allows caching of frequently used prompts to reduce latency and costs.
-         *
-         * @param enabled true to enable prompt caching
-         * @return this builder
-         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
-         */
-        public Builder enablePromptCaching(boolean enabled) {
-            if (enabled) {
-                if (additionalModelRequestFields == null) {
-                    additionalModelRequestFields = new HashMap<>();
-                }
-                additionalModelRequestFields.put("promptCaching", Map.of("enabled", true));
-            }
-            return this;
-        }
-
-        /**
-         * Sets where to place the cache point in the conversation.
+         * Enables prompt caching and sets where to place the cache point in the conversation.
          * Cache points mark where to cache content for reuse across API calls.
          * The cache has a 5-minute TTL which resets on each cache hit.
+         * Supported models include Claude 3.5 Sonnet, Claude 3.5 Haiku, Amazon Nova, etc.
+         * This can reduce latency by up to 85% and costs by up to 90% for cached prompts.
          *
-         * @param placement where to place the cache point
+         * @param placement where to place the cache point (null disables caching)
          * @return this builder
          * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
          */
-        public Builder cachePoint(CachePointPlacement placement) {
+        public Builder promptCaching(CachePointPlacement placement) {
             if (placement != null) {
                 if (additionalModelRequestFields == null) {
                     additionalModelRequestFields = new HashMap<>();
                 }
 
+                // Enable caching
+                additionalModelRequestFields.put("promptCaching", Map.of("enabled", true));
+
+                // Set cache point placement
                 Map<String, Object> cachePoint = Map.of("cachePoint", Map.of("type", "default"));
                 additionalModelRequestFields.put("cachePointPlacement", placement.name());
                 additionalModelRequestFields.put("cachePointData", cachePoint);

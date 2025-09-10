@@ -8,11 +8,10 @@ import org.junit.jupiter.api.Test;
 class BedrockChatRequestParametersTest {
 
     @Test
-    void should_enable_prompt_caching() {
+    void should_enable_prompt_caching_with_placement() {
         // Given & When
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .build();
 
         // Then
@@ -48,24 +47,20 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
-    void should_enable_prompt_caching_without_cache_point() {
+    void should_not_enable_caching_with_null_placement() {
         // Given & When
         BedrockChatRequestParameters params =
-                BedrockChatRequestParameters.builder().enablePromptCaching(true).build();
+                BedrockChatRequestParameters.builder().promptCaching(null).build();
 
         // Then
-        assertThat(params.additionalModelRequestFields())
-                .isNotNull()
-                .containsKey("promptCaching")
-                .doesNotContainKey("cachePointPlacement")
-                .doesNotContainKey("cachePointData");
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
     }
 
     @Test
-    void should_set_cache_point_without_enabling() {
+    void should_enable_caching_with_after_user_message_placement() {
         // Given & When
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
                 .build();
 
         // Then
@@ -73,25 +68,28 @@ class BedrockChatRequestParametersTest {
                 .isNotNull()
                 .containsEntry("cachePointPlacement", "AFTER_USER_MESSAGE")
                 .containsKey("cachePointData")
-                .doesNotContainKey("promptCaching");
+                .containsKey("promptCaching");
     }
 
     @Test
     void should_set_different_cache_point_placements() {
         // Test AFTER_TOOLS
         BedrockChatRequestParameters paramsAfterTools = BedrockChatRequestParameters.builder()
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_TOOLS)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_TOOLS)
                 .build();
 
-        assertThat(paramsAfterTools.additionalModelRequestFields()).containsEntry("cachePointPlacement", "AFTER_TOOLS");
+        assertThat(paramsAfterTools.additionalModelRequestFields())
+                .containsEntry("cachePointPlacement", "AFTER_TOOLS")
+                .containsKey("promptCaching");
 
         // Test AFTER_USER_MESSAGE
         BedrockChatRequestParameters paramsAfterUser = BedrockChatRequestParameters.builder()
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
                 .build();
 
         assertThat(paramsAfterUser.additionalModelRequestFields())
-                .containsEntry("cachePointPlacement", "AFTER_USER_MESSAGE");
+                .containsEntry("cachePointPlacement", "AFTER_USER_MESSAGE")
+                .containsKey("promptCaching");
     }
 
     @Test
@@ -99,8 +97,7 @@ class BedrockChatRequestParametersTest {
         // Given & When
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
                 .additionalModelRequestField("customField", "customValue")
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .build();
 
         // Then
@@ -117,7 +114,7 @@ class BedrockChatRequestParametersTest {
         // Given & When
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
                 .enableReasoning(1000)
-                .enablePromptCaching(true)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .build();
 
         // Then
@@ -128,37 +125,16 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
-    void should_not_enable_prompt_caching_when_false() {
-        // Given & When
-        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(false)
-                .build();
-
-        // Then
-        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
-    }
-
-    @Test
-    void should_handle_null_cache_point_placement() {
-        // Given & When
-        BedrockChatRequestParameters params =
-                BedrockChatRequestParameters.builder().cachePoint(null).build();
-
-        // Then
-        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
-    }
-
-    @Test
     void should_override_with_bedrock_parameters() {
         // Given
         BedrockChatRequestParameters original = BedrockChatRequestParameters.builder()
                 .temperature(0.5)
-                .enablePromptCaching(true)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
                 .build();
 
         BedrockChatRequestParameters override = BedrockChatRequestParameters.builder()
                 .temperature(0.8)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .build();
 
         // When

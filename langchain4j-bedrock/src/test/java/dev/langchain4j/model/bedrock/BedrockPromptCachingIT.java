@@ -26,8 +26,7 @@ class BedrockPromptCachingIT {
     void should_chat_with_prompt_caching_enabled() {
         // Given
         BedrockChatRequestParameters requestParams = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .temperature(0.7)
                 .maxOutputTokens(200)
                 .build();
@@ -58,8 +57,7 @@ class BedrockPromptCachingIT {
     void should_chat_with_different_cache_point_placements() {
         // Test AFTER_USER_MESSAGE placement
         BedrockChatRequestParameters afterUserParams = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
                 .build();
 
         ChatModel modelAfterUser = BedrockChatModel.builder()
@@ -74,8 +72,7 @@ class BedrockPromptCachingIT {
 
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_TOOLS)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_TOOLS)
                 .build();
 
         ChatModel modelAfterTools = BedrockChatModel.builder()
@@ -106,8 +103,7 @@ class BedrockPromptCachingIT {
     void should_override_prompt_caching_parameters() {
         // Given - default parameters with caching enabled
         BedrockChatRequestParameters defaultParams = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .temperature(0.5)
                 .build();
 
@@ -118,7 +114,7 @@ class BedrockPromptCachingIT {
 
         // When - override with different cache point
         BedrockChatRequestParameters overrideParams = BedrockChatRequestParameters.builder()
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
                 .temperature(0.8)
                 .build();
 
@@ -138,8 +134,7 @@ class BedrockPromptCachingIT {
     void should_handle_multiple_messages_with_caching() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
@@ -174,8 +169,7 @@ class BedrockPromptCachingIT {
     void should_combine_prompt_caching_with_other_parameters() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .enablePromptCaching(true)
-                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
                 .temperature(0.3)
                 .maxOutputTokens(150)
                 .topP(0.9)
