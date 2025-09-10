@@ -929,7 +929,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = "How much is 37 plus 87? How much is 73 plus 78?";
+        var text = "How much is 37 plus 87? How much is 73 plus 78? Call 2 tools in parallel (at the same time)!";
 
         // when
         var response = assistant.chat(text);

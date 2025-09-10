@@ -32,6 +32,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -45,6 +47,8 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.output.JsonSchemas;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -217,22 +221,19 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         // when
+        URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
+        String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
+
         ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(
-                        new String(
-                                Base64.getEncoder()
-                                        .encode( // TODO use local file
-                                                readBytes(
-                                                        "https://www.sample-videos.com/video321/mp4/480/big_buck_bunny_480p_1mb.mp4"))),
-                        "video/mp4"),
+                VideoContent.from(base64Data, "video/mp4"),
                 TextContent.from("Give a summary of the video")));
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("rabbit");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("example");
     }
 
     @Test
@@ -443,7 +444,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -474,7 +475,7 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text().trim())
-                .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
+                .isEqualToIgnoringWhitespace("{\"name\": \"Tommy Skybridge\", \"address\": {\"city\": \"Liverpool\"}}");
     }
 
     @Test
@@ -632,7 +633,8 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
-                        UserMessage.from("'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
+                        UserMessage.from(
+                                "'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
                 .build());
 
         Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
@@ -770,5 +772,34 @@ class GoogleAiGeminiChatModelIT {
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
+    }
+
+    @Test
+    void shouldReturnResponseWithSystemMessageRequest() {
+
+        // given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .responseFormat(ResponseFormat.TEXT)
+                .logRequestsAndResponses(true)
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .build();
+
+        TokenCountEstimator estimator = GoogleAiGeminiTokenCountEstimator.builder()
+                .modelName("gemini-2.5-flash")
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessageProvider(o -> "You are a useful assistant")
+                .chatMemoryProvider(memoryId -> TokenWindowChatMemory.withMaxTokens(3000, estimator))
+                .build();
+
+        // when
+        String response = assistant.chat("Hello!");
+
+        // then
+        assertThat(response).isNotEmpty();
     }
 }

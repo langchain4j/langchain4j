@@ -54,7 +54,6 @@ public class WatsonxScoringModel implements ScoringModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
-                .httpClient(builder.httpClient)
                 .build();
     }
 
@@ -115,6 +114,8 @@ public class WatsonxScoringModel implements ScoringModel {
         private String projectId;
         private String spaceId;
         private Duration timeout;
+
+        private Builder() {}
 
         public Builder url(CloudRegion cloudRegion) {
             return super.url(cloudRegion.getMlEndpoint());

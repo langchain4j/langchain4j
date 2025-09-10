@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
+import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankRequest;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
@@ -56,7 +57,6 @@ public class WatsonxScoringModelTest {
         when(mockRerankServiceBuilder.version(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.logRequests(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.logResponses(any())).thenReturn(mockRerankServiceBuilder);
-        when(mockRerankServiceBuilder.httpClient(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.build()).thenReturn(mockRerankService);
     }
 
@@ -73,45 +73,48 @@ public class WatsonxScoringModelTest {
         var mockHttpClient = mock(HttpClient.class);
         var mockHttpResponse = mock(HttpResponse.class);
         var mockAuthenticatorProvider = mock(IAMAuthenticator.class);
-        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
-        when(mockAuthenticatorProvider.getToken()).thenReturn("my-token");
-
+        when(mockAuthenticatorProvider.token()).thenReturn("my-token");
         when(mockHttpResponse.statusCode()).thenReturn(200);
         when(mockHttpResponse.body()).thenReturn(Json.toJson(rerankResponse));
 
-        when(mockHttpClient.send(requestCaptor.capture(), any(BodyHandler.class)))
+        when(mockHttpClient.send(mockHttpRequest.capture(), any(BodyHandler.class)))
                 .thenReturn(mockHttpResponse);
 
-        var scoringModel = WatsonxScoringModel.builder()
-                .url(CloudRegion.FRANKFURT)
-                .modelName("model-name")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .spaceId("space-id")
-                .version("my-version")
-                .logRequests(true)
-                .logResponses(true)
-                .authenticationProvider(mockAuthenticatorProvider)
-                .httpClient(mockHttpClient)
-                .timeout(Duration.ofSeconds(10))
-                .build();
+        try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
+            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
 
-        scoringModel.scoreAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")), "query");
+            var scoringModel = WatsonxScoringModel.builder()
+                    .url(CloudRegion.FRANKFURT)
+                    .modelName("model-name")
+                    .apiKey("api-key-test")
+                    .projectId("project-id")
+                    .spaceId("space-id")
+                    .version("my-version")
+                    .logRequests(true)
+                    .logResponses(true)
+                    .authenticationProvider(mockAuthenticatorProvider)
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
 
-        var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(requestCaptor), RerankRequest.class);
-        assertEquals("model-name", rerankRequest.modelId());
-        assertEquals("project-id", rerankRequest.projectId());
-        assertEquals("space-id", rerankRequest.spaceId());
+            scoringModel.scoreAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")), "query");
 
-        assertDoesNotThrow(() -> WatsonxScoringModel.builder()
-                .url("https://test.com")
-                .modelName("model-name")
-                .authenticationProvider(
-                        IAMAuthenticator.builder().apiKey("api-key").build())
-                .projectId("project-id")
-                .spaceId("space-id")
-                .build());
+            var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), RerankRequest.class);
+            assertEquals("model-name", rerankRequest.modelId());
+            assertEquals("project-id", rerankRequest.projectId());
+            assertEquals("space-id", rerankRequest.spaceId());
+
+            assertDoesNotThrow(() -> WatsonxScoringModel.builder()
+                    .url("https://test.com")
+                    .modelName("model-name")
+                    .authenticationProvider(
+                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .projectId("project-id")
+                    .spaceId("space-id")
+                    .build());
+        }
+        ;
     }
 
     @Test

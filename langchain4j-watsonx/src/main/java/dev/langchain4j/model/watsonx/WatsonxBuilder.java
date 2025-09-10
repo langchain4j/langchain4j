@@ -2,7 +2,6 @@ package dev.langchain4j.model.watsonx;
 
 import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
 import java.net.URI;
-import java.net.http.HttpClient;
 
 @SuppressWarnings("unchecked")
 abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
@@ -12,7 +11,6 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
     protected String apiKey;
     protected Boolean logRequests;
     protected Boolean logResponses;
-    protected HttpClient httpClient;
     protected AuthenticationProvider authenticationProvider;
 
     public T url(String url) {
@@ -41,11 +39,6 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
 
     public T logResponses(Boolean logResponses) {
         this.logResponses = logResponses;
-        return (T) this;
-    }
-
-    public T httpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
         return (T) this;
     }
 

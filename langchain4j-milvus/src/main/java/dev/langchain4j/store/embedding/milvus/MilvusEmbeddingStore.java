@@ -46,6 +46,7 @@ import io.milvus.response.SearchResultsWrapper;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
@@ -69,7 +70,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final boolean retrieveEmbeddingsOnSearch;
     private final boolean autoFlushOnInsert;
     private final FieldDefinition fieldDefinition;
+    private final Map<String, Object> extraParameters;
 
+    @Deprecated(since = "1.4.0")
     public MilvusEmbeddingStore(
             String host,
             Integer port,
@@ -104,6 +107,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 vectorFieldName);
     }
 
+    @Deprecated(since = "1.4.0")
     public MilvusEmbeddingStore(
             MilvusServiceClient milvusClient,
             String collectionName,
@@ -128,6 +132,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
                 getOrDefault(metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
                 getOrDefault(vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
+        this.extraParameters = Map.of();
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(
@@ -141,6 +146,56 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.fieldDefinition.getVectorFieldName(),
                     getOrDefault(indexType, FLAT),
                     this.metricType);
+        }
+
+        loadCollectionInMemory(this.milvusClient, collectionName);
+    }
+
+    public MilvusEmbeddingStore(Builder builder) {
+        this.milvusClient = (builder.milvusClient == null)
+                ? createMilvusClient(
+                        builder.host,
+                        builder.port,
+                        builder.uri,
+                        builder.token,
+                        builder.username,
+                        builder.password,
+                        builder.databaseName)
+                : builder.milvusClient;
+        this.collectionName = getOrDefault(builder.collectionName, "default");
+        this.metricType = getOrDefault(builder.metricType, COSINE);
+        this.consistencyLevel = getOrDefault(builder.consistencyLevel, EVENTUALLY);
+        this.retrieveEmbeddingsOnSearch = getOrDefault(builder.retrieveEmbeddingsOnSearch, false);
+        this.autoFlushOnInsert = getOrDefault(builder.autoFlushOnInsert, false);
+        this.fieldDefinition = new FieldDefinition(
+                getOrDefault(builder.idFieldName, DEFAULT_ID_FIELD_NAME),
+                getOrDefault(builder.textFieldName, DEFAULT_TEXT_FIELD_NAME),
+                getOrDefault(builder.metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
+                getOrDefault(builder.vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
+        this.extraParameters = getOrDefault(builder.extraParameters, Map.of());
+
+        if (!hasCollection(this.milvusClient, this.collectionName)) {
+            createCollection(
+                    this.milvusClient,
+                    this.collectionName,
+                    this.fieldDefinition,
+                    ensureNotNull(builder.dimension, "dimension"));
+            if (this.extraParameters.isEmpty()) {
+                createIndex(
+                        this.milvusClient,
+                        this.collectionName,
+                        this.fieldDefinition.getVectorFieldName(),
+                        getOrDefault(builder.indexType, FLAT),
+                        this.metricType);
+            } else {
+                createIndex(
+                        this.milvusClient,
+                        this.collectionName,
+                        this.fieldDefinition.getVectorFieldName(),
+                        getOrDefault(builder.indexType, FLAT),
+                        this.metricType,
+                        builder.extraParameters.toString());
+            }
         }
 
         loadCollectionInMemory(this.milvusClient, collectionName);
@@ -338,6 +393,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
+        private Map<String, Object> extraParameters;
 
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
@@ -528,41 +584,13 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder extraParameters(Map<String, Object> extraParameters) {
+            this.extraParameters = extraParameters;
+            return this;
+        }
+
         public MilvusEmbeddingStore build() {
-            if (milvusClient == null) {
-                return new MilvusEmbeddingStore(
-                        host,
-                        port,
-                        collectionName,
-                        dimension,
-                        indexType,
-                        metricType,
-                        uri,
-                        token,
-                        username,
-                        password,
-                        consistencyLevel,
-                        retrieveEmbeddingsOnSearch,
-                        autoFlushOnInsert,
-                        databaseName,
-                        idFieldName,
-                        textFieldName,
-                        metadataFieldName,
-                        vectorFieldName);
-            }
-            return new MilvusEmbeddingStore(
-                    milvusClient,
-                    collectionName,
-                    dimension,
-                    indexType,
-                    metricType,
-                    consistencyLevel,
-                    retrieveEmbeddingsOnSearch,
-                    autoFlushOnInsert,
-                    idFieldName,
-                    textFieldName,
-                    metadataFieldName,
-                    vectorFieldName);
+            return new MilvusEmbeddingStore(this);
         }
     }
 }

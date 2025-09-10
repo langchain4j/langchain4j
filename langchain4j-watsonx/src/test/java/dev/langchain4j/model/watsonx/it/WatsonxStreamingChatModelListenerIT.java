@@ -1,7 +1,5 @@
 package dev.langchain4j.model.watsonx.it;
 
-import com.ibm.watsonx.ai.core.auth.AuthenticationProvider;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
@@ -20,9 +18,6 @@ public class WatsonxStreamingChatModelListenerIT extends AbstractStreamingChatMo
     static final String API_KEY = System.getenv("WATSONX_API_KEY");
     static final String PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     static final String URL = System.getenv("WATSONX_URL");
-
-    static final AuthenticationProvider authProvider =
-            IAMAuthenticator.builder().apiKey(API_KEY).build();
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

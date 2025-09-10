@@ -7,7 +7,7 @@ import java.util.List;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.methodInvocationArguments;
 
-public record MethodAgentInvoker(Method method, String name, String description, String outputName, List<AgentUtil.AgentArgument> arguments) implements AgentInvoker {
+public record MethodAgentInvoker(Method method, String name, String description, String outputName, boolean async, List<AgentUtil.AgentArgument> arguments) implements AgentInvoker {
 
     @Override
     public String toCard() {

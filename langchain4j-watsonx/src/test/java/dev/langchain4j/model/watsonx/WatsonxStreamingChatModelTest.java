@@ -18,6 +18,7 @@ import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
@@ -83,7 +84,6 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         chatResponse = new ChatResponse();
@@ -189,7 +189,9 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void testDoChatWithThinking() {
+    void testDoChatWithThinking() throws Exception {
+
+        var extractionTags = ExtractionTags.of("think", "response");
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
@@ -197,6 +199,11 @@ public class WatsonxStreamingChatModelTest {
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+
+        var field = ChatResponse.class.getDeclaredField("extractionTags");
+        field.setAccessible(true);
+        field.set(chatResponse, extractionTags);
+
         chatResponse.setChoices(List.of(resultChoice));
 
         doAnswer(invocation -> {
@@ -217,7 +224,7 @@ public class WatsonxStreamingChatModelTest {
                     .projectId("projectId")
                     .spaceId("spaceId")
                     .apiKey("api-key")
-                    .thinking(ExtractionTags.of("think", "response"))
+                    .thinking(extractionTags)
                     .build();
 
             ChatRequest chatRequest =
@@ -363,11 +370,11 @@ public class WatsonxStreamingChatModelTest {
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
-                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
-                            0, null, "name", "{"));
-                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall(
-                            0, "id", "name", "}"));
-                    handler.onCompleteToolCall(toolCall);
+                    handler.onPartialToolCall(
+                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, null, "name", "{"));
+                    handler.onPartialToolCall(
+                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, "id", "name", "}"));
+                    handler.onCompleteToolCall(new CompletedToolCall("completion-id", toolCall));
                     handler.onCompleteResponse(chatResponse);
                     return CompletableFuture.completedFuture(null);
                 })

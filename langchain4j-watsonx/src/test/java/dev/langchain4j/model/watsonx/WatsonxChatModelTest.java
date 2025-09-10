@@ -40,7 +40,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +80,6 @@ public class WatsonxChatModelTest {
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         chatResponse = new ChatResponse();
@@ -113,7 +111,6 @@ public class WatsonxChatModelTest {
                 .version("my-version")
                 .logRequests(true)
                 .logResponses(true)
-                .httpClient(HttpClient.newHttpClient())
                 .build();
 
         var defaultRequestParameters =
@@ -194,12 +191,18 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testDoChatWithThinking() {
+    void testDoChatWithThinking() throws Exception {
 
         // --- TEST 1 ---
+
+        var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+
+        var field = ChatResponse.class.getDeclaredField("extractionTags");
+        field.setAccessible(true);
+        field.set(chatResponse, extractionTags);
         chatResponse.setChoices(List.of(resultChoice));
 
         when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
@@ -210,7 +213,7 @@ public class WatsonxChatModelTest {
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
-                    .thinking(ExtractionTags.of("think", "response"))
+                    .thinking(extractionTags)
                     .build();
 
             var result = chatModel.chat(ChatRequest.builder()

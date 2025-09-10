@@ -60,6 +60,12 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
+        super.should_respect_user_message(
+                createStreamingChatModel("mistralai/mistral-medium-2505").build());
+    }
+
+    @Override
     protected void should_respect_user_message(StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(
@@ -92,7 +98,8 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\"city\": \""));
         io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich\"}"));
+        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich"));
+        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
@@ -100,7 +107,8 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
         io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"country\": \""));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "France\"}"));
+        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "France"));
+        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
@@ -110,6 +118,7 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .timeLimit(Duration.ofSeconds(30));

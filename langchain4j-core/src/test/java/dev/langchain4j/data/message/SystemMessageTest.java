@@ -1,10 +1,9 @@
 package dev.langchain4j.data.message;
 
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.Collections;
 import java.util.List;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class SystemMessageTest implements WithAssertions {
     @Test
@@ -45,14 +44,11 @@ class SystemMessageTest implements WithAssertions {
 
     @Test
     void find_with_null_list() {
-        assertThatThrownBy(() -> SystemMessage.findFirst(null))
-                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> SystemMessage.findFirst(null)).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> SystemMessage.findLast(null))
-                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> SystemMessage.findLast(null)).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> SystemMessage.findAll(null))
-                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> SystemMessage.findAll(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -68,17 +64,11 @@ class SystemMessageTest implements WithAssertions {
         SystemMessage systemMessage = new SystemMessage("system text");
         List<ChatMessage> messages = List.of(systemMessage);
 
-        assertThat(SystemMessage.findFirst(messages))
-                .isPresent()
-                .contains(systemMessage);
+        assertThat(SystemMessage.findFirst(messages)).isPresent().contains(systemMessage);
 
-        assertThat(SystemMessage.findLast(messages))
-                .isPresent()
-                .contains(systemMessage);
+        assertThat(SystemMessage.findLast(messages)).isPresent().contains(systemMessage);
 
-        assertThat(SystemMessage.findAll(messages))
-                .hasSize(1)
-                .containsExactly(systemMessage);
+        assertThat(SystemMessage.findAll(messages)).hasSize(1).containsExactly(systemMessage);
     }
 
     @Test
@@ -101,20 +91,12 @@ class SystemMessageTest implements WithAssertions {
         AiMessage ai2 = new AiMessage("ai 2");
         SystemMessage system3 = new SystemMessage("system 3");
 
-        List<ChatMessage> messages = List.of(
-                user1, system1, ai1, system2, user2, ai2, system3
-        );
+        List<ChatMessage> messages = List.of(user1, system1, ai1, system2, user2, ai2, system3);
 
-        assertThat(SystemMessage.findFirst(messages))
-                .isPresent()
-                .contains(system1);
+        assertThat(SystemMessage.findFirst(messages)).isPresent().contains(system1);
 
-        assertThat(SystemMessage.findLast(messages))
-                .isPresent()
-                .contains(system3);
+        assertThat(SystemMessage.findLast(messages)).isPresent().contains(system3);
 
-        assertThat(SystemMessage.findAll(messages))
-                .hasSize(3)
-                .containsExactly(system1, system2, system3);
+        assertThat(SystemMessage.findAll(messages)).hasSize(3).containsExactly(system1, system2, system3);
     }
 }

@@ -10,10 +10,10 @@ import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
+import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
+import com.ibm.watsonx.ai.chat.model.PartialToolCall;
 import com.ibm.watsonx.ai.chat.model.Tool;
-import com.ibm.watsonx.ai.chat.model.ToolCall;
-import com.ibm.watsonx.ai.chat.util.StreamingToolFetcher.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ContentFilteredException;
@@ -71,15 +71,19 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) messages.add(THINKING);
+        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+
+        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
+            messages.add(THINKING);
+            watsonxChatRequest.thinking(tags);
+        }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
         chatService.chatStreaming(
-                com.ibm.watsonx.ai.chat.ChatRequest.builder()
+                watsonxChatRequest
                         .messages(messages)
                         .tools(tools)
                         .parameters(parameters)
-                        .thinking(tags)
                         .build(),
                 new ChatHandler() {
                     @Override
@@ -99,8 +103,8 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                             handler.onError(new ContentFilteredException(assistantMessage.refusal()));
 
                         if (nonNull(tags)) {
-                            aiMessage.thinking(completeResponse.toTextByTag(tags.think()));
-                            aiMessage.text(completeResponse.toTextByTag(tags.response()));
+                            aiMessage.thinking(completeResponse.extractThinking());
+                            aiMessage.text(completeResponse.extractContent());
                         } else {
                             aiMessage.text(assistantMessage.content());
                         }
@@ -137,8 +141,8 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                     }
 
                     @Override
-                    public void onCompleteToolCall(ToolCall completeToolCall) {
-                        handler.onCompleteToolCall(Converter.toCompleteToolCall(completeToolCall));
+                    public void onCompleteToolCall(CompletedToolCall completedToolCall) {
+                        handler.onCompleteToolCall(Converter.toCompleteToolCall(completedToolCall.toolCall()));
                     }
 
                     @Override
@@ -200,6 +204,8 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
      * Builder class for constructing {@link WatsonxStreamingChatModel} instances with configurable parameters.
      */
     public static class Builder extends WatsonxChat.Builder<Builder> {
+
+        private Builder() {}
 
         public WatsonxStreamingChatModel build() {
             return new WatsonxStreamingChatModel(this);

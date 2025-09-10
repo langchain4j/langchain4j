@@ -151,11 +151,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+
+                        if (method.isDefault()) {
+                            return InvocationHandler.invokeDefault(proxy, method, args);
+                        }
 
                         if (method.getDeclaringClass() == Object.class) {
-                            // methods like equals(), hashCode() and toString() should not be handled by this proxy
-                            return method.invoke(this, args);
+                            switch (method.getName()) {
+                                case "equals":
+                                    return proxy == args[0];
+                                case "hashCode":
+                                    return System.identityHashCode(proxy);
+                                case "toString":
+                                    return context.aiServiceClass.getName() + "@" +
+                                            Integer.toHexString(System.identityHashCode(proxy));
+                                default:
+                                    throw new IllegalStateException("Unexpected Object method: " + method);
+                            }
                         }
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
