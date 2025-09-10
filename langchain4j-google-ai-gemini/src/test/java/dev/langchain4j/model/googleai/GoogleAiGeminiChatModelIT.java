@@ -229,8 +229,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
         ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"),
-                TextContent.from("Give a summary of the video")));
+                VideoContent.from(base64Data, "video/mp4"), TextContent.from("Give a summary of the video")));
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
@@ -803,7 +802,7 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response).isNotEmpty();
     }
 
-    @Test  
+    @Test
     void should_generate_image() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
@@ -813,25 +812,28 @@ class GoogleAiGeminiChatModelIT {
 
         // when
         ChatResponse response = gemini.chat(ChatRequest.builder()
-                .messages(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
+                .messages(
+                        UserMessage.from(
+                                "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
                 .build());
 
         // then
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage).isNotNull();
-        
+
         // Check if images were generated using GeneratedImageHelper
         if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
             List<dev.langchain4j.data.image.Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
             assertThat(generatedImages).isNotEmpty();
-            
+
             for (dev.langchain4j.data.image.Image image : generatedImages) {
                 assertThat(image.base64Data()).isNotEmpty();
                 assertThat(image.mimeType()).startsWith("image/");
             }
         }
-        
+
         // Should have either text response or generated images (or both)
-        assertThat(aiMessage.text() != null || GeneratedImageHelper.hasGeneratedImages(aiMessage)).isTrue();
+        assertThat(aiMessage.text() != null || GeneratedImageHelper.hasGeneratedImages(aiMessage))
+                .isTrue();
     }
 }

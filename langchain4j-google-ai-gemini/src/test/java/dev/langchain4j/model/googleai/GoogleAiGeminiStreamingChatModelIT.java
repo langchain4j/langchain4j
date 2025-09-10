@@ -727,7 +727,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
     @Test
     void should_generate_image_streaming() {
-        // given  
+        // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-image-preview")
@@ -738,7 +738,9 @@ class GoogleAiGeminiStreamingChatModelIT {
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         gemini.chat(
                 ChatRequest.builder()
-                        .messages(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
+                        .messages(
+                                UserMessage.from(
+                                        "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
                         .build(),
                 handler);
         ChatResponse response = handler.get();
