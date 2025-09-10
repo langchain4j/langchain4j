@@ -104,7 +104,7 @@ public class JdkHttpClient implements HttpClient {
                 builder.version(java.net.http.HttpClient.Version.HTTP_1_1);
             } else if (request.version() == HttpVersion.HTTP_2) {
                 builder.version(java.net.http.HttpClient.Version.HTTP_2);
-            }else {
+            } else {
                 throw new IllegalArgumentException("Unsupported HTTP version: " + request.version());
             }
         }
