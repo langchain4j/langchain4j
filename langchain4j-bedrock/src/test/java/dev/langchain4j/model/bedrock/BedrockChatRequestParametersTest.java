@@ -1,0 +1,173 @@
+package dev.langchain4j.model.bedrock;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class BedrockChatRequestParametersTest {
+
+    @Test
+    void should_enable_prompt_caching() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .enablePromptCaching(true)
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsKey("promptCaching")
+                .containsEntry("cachePointPlacement", "AFTER_SYSTEM")
+                .containsKey("cachePointData");
+
+        Map<String, Object> promptCaching =
+                (Map<String, Object>) params.additionalModelRequestFields().get("promptCaching");
+        assertThat(promptCaching).containsEntry("enabled", true);
+
+        Map<String, Object> cachePointData =
+                (Map<String, Object>) params.additionalModelRequestFields().get("cachePointData");
+        assertThat(cachePointData).containsKey("cachePoint");
+        Map<String, Object> cachePoint = (Map<String, Object>) cachePointData.get("cachePoint");
+        assertThat(cachePoint).containsEntry("type", "default");
+    }
+
+    @Test
+    void should_build_without_prompt_caching() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .temperature(0.7)
+                .maxOutputTokens(100)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
+        assertThat(params.temperature()).isEqualTo(0.7);
+        assertThat(params.maxOutputTokens()).isEqualTo(100);
+    }
+
+    @Test
+    void should_enable_prompt_caching_without_cache_point() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().enablePromptCaching(true).build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsKey("promptCaching")
+                .doesNotContainKey("cachePointPlacement")
+                .doesNotContainKey("cachePointData");
+    }
+
+    @Test
+    void should_set_cache_point_without_enabling() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsEntry("cachePointPlacement", "AFTER_USER_MESSAGE")
+                .containsKey("cachePointData")
+                .doesNotContainKey("promptCaching");
+    }
+
+    @Test
+    void should_set_different_cache_point_placements() {
+        // Test AFTER_TOOLS
+        BedrockChatRequestParameters paramsAfterTools = BedrockChatRequestParameters.builder()
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_TOOLS)
+                .build();
+
+        assertThat(paramsAfterTools.additionalModelRequestFields()).containsEntry("cachePointPlacement", "AFTER_TOOLS");
+
+        // Test AFTER_USER_MESSAGE
+        BedrockChatRequestParameters paramsAfterUser = BedrockChatRequestParameters.builder()
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_USER_MESSAGE)
+                .build();
+
+        assertThat(paramsAfterUser.additionalModelRequestFields())
+                .containsEntry("cachePointPlacement", "AFTER_USER_MESSAGE");
+    }
+
+    @Test
+    void should_combine_with_other_additional_fields() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .additionalModelRequestField("customField", "customValue")
+                .enablePromptCaching(true)
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsEntry("customField", "customValue")
+                .containsKey("promptCaching")
+                .containsEntry("cachePointPlacement", "AFTER_SYSTEM")
+                .containsKey("cachePointData");
+    }
+
+    @Test
+    void should_combine_with_reasoning() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .enableReasoning(1000)
+                .enablePromptCaching(true)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsKey("reasoning_config")
+                .containsKey("promptCaching");
+    }
+
+    @Test
+    void should_not_enable_prompt_caching_when_false() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .enablePromptCaching(false)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
+    }
+
+    @Test
+    void should_handle_null_cache_point_placement() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().cachePoint(null).build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
+    }
+
+    @Test
+    void should_override_with_bedrock_parameters() {
+        // Given
+        BedrockChatRequestParameters original = BedrockChatRequestParameters.builder()
+                .temperature(0.5)
+                .enablePromptCaching(true)
+                .build();
+
+        BedrockChatRequestParameters override = BedrockChatRequestParameters.builder()
+                .temperature(0.8)
+                .cachePoint(BedrockChatRequestParameters.CachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        // When
+        BedrockChatRequestParameters merged = original.overrideWith(override);
+
+        // Then
+        assertThat(merged.temperature()).isEqualTo(0.8);
+        assertThat(merged.additionalModelRequestFields())
+                .containsKey("cachePointPlacement")
+                .containsKey("cachePointData");
+    }
+}
