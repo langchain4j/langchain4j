@@ -167,9 +167,7 @@ public class ToolService {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
-    public ToolServiceContext createContext(Object memoryId,
-                                            UserMessage userMessage,
-                                            InvocationContext invocationContext) {
+    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty() ?
                     ToolServiceContext.Empty.INSTANCE :
@@ -179,9 +177,8 @@ public class ToolService {
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecs = new HashMap<>(this.toolExecutors);
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
-                .chatMemoryId(memoryId) // TODO memoryId inside the invocation context?
-                .userMessage(userMessage)
                 .invocationContext(invocationContext)
+                .userMessage(userMessage)
                 .build();
         ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
         if (toolProviderResult != null) {
@@ -380,18 +377,19 @@ public class ToolService {
         } catch (Exception e) {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
-                    .memoryId(invocationContext.chatMemoryId()) // TODO pass whole context?
+                    .invocationContext(invocationContext)
                     .build();
+
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
                 errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
             } else {
                 errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
             }
+
             return ToolExecutionResult.builder()
-                    .isError(true) // TODO?
-                    .result(null) // TODO?
-                    .resultText(errorHandlerResult.text()) // TODO
+                    .isError(true)
+                    .resultText(errorHandlerResult.text())
                     .build();
         }
     }

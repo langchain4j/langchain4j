@@ -102,7 +102,7 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
-        String illegalChat7(String userMessage, ExtraParameters extraParameters); // TODO should be allowed?
+        String illegalChat7(String userMessage, ExtraParameters extraParameters);
 
         // TODO more tests with @UserName, @V, @MemoryId
     }

@@ -789,7 +789,6 @@ class AiServicesWithToolsIT {
         ).hasMessageContaining("xyz");
     }
 
-    // TODO test propagating from toolprovider to tool to etc
 
     @Test
     void should_propagate_extra_parameters_into_tool() { // TODO name

@@ -2,43 +2,42 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.InvocationContext;
+import dev.langchain4j.data.message.UserMessage;
 
 public class ToolProviderRequest {
 
-    private final Object chatMemoryId;
+    private final InvocationContext invocationContext;
     private final UserMessage userMessage;
-    private final InvocationContext invocationContext; // TODO name
 
     /**
      * @since 1.5.0
      */
     public ToolProviderRequest(Builder builder) {
-        this.chatMemoryId = ensureNotNull(builder.chatMemoryId, "chatMemoryId");
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
         this.userMessage = ensureNotNull(builder.userMessage, "userMessage");
-        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext"); // TODO name
     }
 
     public ToolProviderRequest(Object chatMemoryId, UserMessage userMessage) {
-        this.chatMemoryId = ensureNotNull(chatMemoryId, "chatMemoryId");
+        this.invocationContext = InvocationContext.builder()
+                .chatMemoryId(chatMemoryId)
+                .build();
         this.userMessage = ensureNotNull(userMessage, "userMessage");
-        this.invocationContext = null; // TODO
     }
 
-    public Object chatMemoryId() {
-        return chatMemoryId;
+    /**
+     * @since 1.5.0
+     */
+    public InvocationContext invocationContext() {
+        return invocationContext;
     }
 
     public UserMessage userMessage() {
         return userMessage;
     }
 
-    /**
-     * @since 1.5.0
-     */
-    public InvocationContext invocationContext() { // TODO name
-        return invocationContext;
+    public Object chatMemoryId() {
+        return invocationContext.chatMemoryId();
     }
 
     public static Builder builder() {
@@ -47,22 +46,16 @@ public class ToolProviderRequest {
 
     public static class Builder {
 
-        private Object chatMemoryId;
+        private InvocationContext invocationContext;
         private UserMessage userMessage;
-        private InvocationContext invocationContext; // TODO name
 
-        public Builder chatMemoryId(Object chatMemoryId) {
-            this.chatMemoryId = chatMemoryId;
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 
         public Builder userMessage(UserMessage userMessage) {
             this.userMessage = userMessage;
-            return this;
-        }
-
-        public Builder invocationContext(InvocationContext invocationContext) { // TODO names
-            this.invocationContext = invocationContext;
             return this;
         }
 

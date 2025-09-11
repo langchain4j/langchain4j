@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**
@@ -11,19 +12,23 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 public class ToolErrorContext {
 
     private final ToolExecutionRequest toolExecutionRequest;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
 
     public ToolErrorContext(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
-        this.memoryId = builder.memoryId;
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     public ToolExecutionRequest toolExecutionRequest() {
         return toolExecutionRequest;
     }
 
+    public InvocationContext invocationContext() {
+        return invocationContext;
+    }
+
     public Object memoryId() {
-        return memoryId;
+        return invocationContext.chatMemoryId();
     }
 
     @Override
@@ -32,19 +37,19 @@ public class ToolErrorContext {
         if (object == null || getClass() != object.getClass()) return false;
         ToolErrorContext that = (ToolErrorContext) object;
         return Objects.equals(toolExecutionRequest, that.toolExecutionRequest)
-                && Objects.equals(memoryId, that.memoryId);
+                && Objects.equals(invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolExecutionRequest, memoryId);
+        return Objects.hash(toolExecutionRequest, invocationContext);
     }
 
     @Override
     public String toString() {
         return "ToolErrorContext{" +
                 "toolExecutionRequest=" + toolExecutionRequest +
-                ", memoryId=" + memoryId +
+                ", invocationContext=" + invocationContext +
                 '}';
     }
 
@@ -55,15 +60,26 @@ public class ToolErrorContext {
     public static class Builder {
 
         private ToolExecutionRequest toolExecutionRequest;
-        private Object memoryId;
+        private InvocationContext invocationContext;
 
         public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
             this.toolExecutionRequest = toolExecutionRequest;
             return this;
         }
 
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
+            return this;
+        }
+
+        /**
+         * @deprecated Please set {@link #invocationContext(InvocationContext)} instead
+         */
+        @Deprecated(since = "1.5.0")
         public Builder memoryId(Object memoryId) {
-            this.memoryId = memoryId;
+            this.invocationContext = InvocationContext.builder()
+                    .chatMemoryId(memoryId)
+                    .build();
             return this;
         }
 
