@@ -270,7 +270,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(chatMemoryId, userMessage, invocationContext);
+                                context.toolService.createContext(invocationContext, userMessage);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
@@ -376,7 +376,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private Optional<ExtraParameters> findExtraParameters(Object[] args) { // TODO name
+                    private Optional<ExtraParameters> findExtraParameters(Object[] args) {
                         if (args == null) {
                             return Optional.empty();
                         }

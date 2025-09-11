@@ -58,7 +58,7 @@ public class Metadata {
         return chatMemory;
     }
 
-    public InvocationContext invocationContext() { // TODO test
+    public InvocationContext invocationContext() {
         return invocationContext;
     }
 

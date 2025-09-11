@@ -156,7 +156,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 .build();
     }
 
-    private String toText(Object result) { // TODO should this be here?
+    private String toText(Object result) {
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";

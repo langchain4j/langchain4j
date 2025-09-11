@@ -1,5 +1,7 @@
 package dev.langchain4j;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,21 +13,17 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ExtraParameters { // TODO name, module, package
 
-    private final ConcurrentHashMap<String, Object> map; // mutable on purpose
+    private final Map<String, Object> map;
 
     public ExtraParameters() {
         this(new ConcurrentHashMap<>());
     }
 
     public ExtraParameters(Map<String, Object> map) {
-        if (map instanceof ConcurrentHashMap<String, Object> concurrentHashMap) {
-            this.map = concurrentHashMap; // TODO make a copy anyway?
-        } else {
-            this.map = new ConcurrentHashMap<>(map);
-        }
+        this.map = ensureNotNull(map, "map");
     }
 
-    public Map<String, Object> asMap() { // TODO name
+    public Map<String, Object> asMap() {
         return map;
     }
 
@@ -60,7 +58,7 @@ public class ExtraParameters { // TODO name, module, package
 
     @Override
     public String toString() {
-        return "ExtraParameters{" + // TODO names
+        return "ExtraParameters{" +
                 "map=" + map +
                 '}';
     }

@@ -12,7 +12,10 @@ class ExtraParametersTest {
     void test1() {
         ExtraParameters extraParameters = new ExtraParameters();
         extraParameters.put("key", "value");
-        assertThat((Object) extraParameters.get("key")).isEqualTo("value"); // TODO casting
+
+        String value = extraParameters.get("key");
+
+        assertThat((Object) value).isEqualTo("value");
     }
 
     @Test

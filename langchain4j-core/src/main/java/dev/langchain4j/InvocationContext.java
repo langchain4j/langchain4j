@@ -12,7 +12,7 @@ import java.util.Objects;
 public class InvocationContext { // TODO name (AiServiceInvocationContext?), module, package
 
     private final Object chatMemoryId;
-    private final ExtraParameters extraParameters; // TODO name
+    private final ExtraParameters extraParameters;
 
     public InvocationContext(Builder builder) {
         this.chatMemoryId = ensureNotNull(builder.chatMemoryId, "chatMemoryId");
@@ -23,7 +23,7 @@ public class InvocationContext { // TODO name (AiServiceInvocationContext?), mod
         return chatMemoryId;
     }
 
-    public ExtraParameters extraParameters() { // TODO name
+    public ExtraParameters extraParameters() {
         return extraParameters;
     }
 
@@ -43,7 +43,7 @@ public class InvocationContext { // TODO name (AiServiceInvocationContext?), mod
 
     @Override
     public String toString() {
-        return "InvocationContext{" + // TODO name
+        return "InvocationContext{" +
                 "chatMemoryId=" + chatMemoryId +
                 ", extraParameters=" + extraParameters +
                 '}';
