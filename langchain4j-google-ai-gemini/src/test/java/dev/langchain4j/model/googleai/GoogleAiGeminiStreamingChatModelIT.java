@@ -391,7 +391,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -426,7 +426,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text().trim())
-                .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
+                .isEqualToIgnoringWhitespace("{\"name\": \"Tommy Skybridge\", \"address\": {\"city\": \"Liverpool\"}}");
     }
 
     @Test

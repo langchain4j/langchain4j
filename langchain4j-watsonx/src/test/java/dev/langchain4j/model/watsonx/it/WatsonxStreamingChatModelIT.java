@@ -60,6 +60,12 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
+        super.should_respect_user_message(
+                createStreamingChatModel("mistralai/mistral-medium-2505").build());
+    }
+
+    @Override
     protected void should_respect_user_message(StreamingChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(
@@ -112,9 +118,9 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .temperature(0.0)
                 .timeLimit(Duration.ofSeconds(30));
     }
 }

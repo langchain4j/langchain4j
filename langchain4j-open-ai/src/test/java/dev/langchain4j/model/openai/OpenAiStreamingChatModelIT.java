@@ -40,6 +40,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -608,10 +609,13 @@ class OpenAiStreamingChatModelIT {
         // given
         String city = "Munich";
 
-        Map<String, Object> customParameters = Map.of("web_search_options", Map.of("user_location", Map.of(
-                "type", "approximate",
-                "approximate", Map.of("city", city)
-        )));
+        Map<String, Object> customParameters = Map.of("web_search_options", Map.of("user_location", new LinkedHashMap() {
+                    {
+                        put("type", "approximate");
+                        put("approximate", Map.of("city", city));
+                    }
+                }
+        ));
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Where can I buy good coffee?"))
@@ -655,10 +659,10 @@ class OpenAiStreamingChatModelIT {
                   },
                   "web_search_options" : {
                     "user_location" : {
+                      "type" : "approximate",
                       "approximate" : {
                         "city" : "Munich"
-                      },
-                      "type" : "approximate"
+                      }
                     }
                   }
                 }

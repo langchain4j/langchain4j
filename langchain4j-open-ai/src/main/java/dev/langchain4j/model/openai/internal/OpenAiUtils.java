@@ -402,7 +402,7 @@ public class OpenAiUtils {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema =

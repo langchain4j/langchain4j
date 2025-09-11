@@ -236,7 +236,13 @@ public class AgenticServices {
      * @param agentServiceClass the class of the agent service
      */
     public static <T> T createAgenticSystem(Class<T> agentServiceClass) {
-        return createAgenticSystem(agentServiceClass, null);
+        ChatModel chatModel = selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatModelSupplier.class) &&
+                method.getReturnType() == ChatModel.class &&
+                method.getParameterCount() == 0)
+                .map(method -> (ChatModel) invokeStatic(method))
+                .orElse(null);
+
+        return createAgenticSystem(agentServiceClass, chatModel);
     }
 
     /**
@@ -247,6 +253,12 @@ public class AgenticServices {
      */
     public static <T> T createAgenticSystem(Class<T> agentServiceClass, ChatModel chatModel) {
         T agent = createComposedAgent(agentServiceClass, chatModel);
+
+        if (agent == null) {
+            var agentBuilder = agentBuilder(agentServiceClass);
+            configureAgent(agentServiceClass, chatModel, agentBuilder);
+            agent = agentBuilder.build();
+        }
 
         if (agent == null) {
             throw new IllegalArgumentException("Provided class " + agentServiceClass.getName() + " is not an agent.");
@@ -460,7 +472,17 @@ public class AgenticServices {
         AgentBuilder<?> agentBuilder = agentBuilder(subagent.type())
                 .outputName(subagent.outputName());
 
-        getAnnotatedMethodOnClass(subagent.type(), ToolsSupplier.class)
+        configureAgent(subagent.type(), chatModel, agentBuilder);
+
+        if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
+            agentBuilder.summarizedContext(subagent.summarizedContext());
+        }
+
+        return agentToExecutor((AgentSpecification) agentBuilder.build());
+    }
+
+    private static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?> agentBuilder) {
+        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
                     Object tools = invokeStatic(method);
@@ -471,42 +493,42 @@ public class AgenticServices {
                     }
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), ToolProviderSupplier.class)
+        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
                     checkReturnType(method, ToolProvider.class);
                     agentBuilder.toolProvider(invokeStatic(method));
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), ContentRetrieverSupplier.class)
+        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
                     checkReturnType(method, ContentRetriever.class);
                     agentBuilder.contentRetriever(invokeStatic(method));
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), RetrievalAugmentorSupplier.class)
+        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
                     checkReturnType(method, RetrievalAugmentor.class);
                     agentBuilder.retrievalAugmentor(invokeStatic(method));
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), ChatMemoryProviderSupplier.class)
+        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method, Object.class);
                     checkReturnType(method, ChatMemory.class);
                     agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), ChatMemorySupplier.class)
+        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
                     checkReturnType(method, ChatMemory.class);
                     agentBuilder.chatMemory(invokeStatic(method));
                 });
 
-        getAnnotatedMethodOnClass(subagent.type(), ChatModelSupplier.class)
+        getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
                 .ifPresentOrElse(method -> {
                             checkArguments(method);
                             checkReturnType(method, ChatModel.class);
@@ -514,18 +536,12 @@ public class AgenticServices {
                         },
                         () -> {
                             if (chatModel == null) {
-                                throw new IllegalArgumentException("ChatModel not provided for subagent " + subagent.type().getName() +
+                                throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
                                         ". Please provide a ChatModel either through the @ChatModelSupplier annotation on a static method " +
                                         "or through the parent agent's chatModel parameter.");
                             }
                             agentBuilder.chatModel(chatModel);
                         });
-
-        if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
-            agentBuilder.summarizedContext(subagent.summarizedContext());
-        }
-
-        return agentToExecutor((AgentSpecification) agentBuilder.build());
     }
 
     private static <T> T invokeStatic(Method method, Object... args) {
@@ -591,5 +607,69 @@ public class AgenticServices {
         }
 
         return null;
+    }
+
+    /**
+     * Wraps a runnable into an agent action that can be executed within the context of an agent.
+     *
+     * @param runnable the runnable to be executed
+     * @return an AgentAction that encapsulates the runnable
+     */
+    public static AgentAction agentAction(AgentAction.NonThrowingRunnable runnable) {
+        return new AgentAction(runnable);
+    }
+
+    public static class AgentAction {
+        private final NonThrowingRunnable runnable;
+
+        @FunctionalInterface
+        public interface NonThrowingRunnable {
+            void run() throws Exception;
+        }
+
+        private AgentAction(NonThrowingRunnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Agent
+        public void run() {
+            try {
+                runnable.run();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Wraps a consumer of the AgenticScope into an agent action that can be executed within the context of an agent.
+     *
+     * @param consumer the consumer to be executed
+     * @return an AgentAction that encapsulates the consumer
+     */
+    public static AgenticScopeAction agentAction(AgenticScopeAction.NonThrowingConsumer<AgenticScope> consumer) {
+        return new AgenticScopeAction(consumer);
+    }
+
+    public static class AgenticScopeAction {
+        private final NonThrowingConsumer<AgenticScope> consumer;
+
+        @FunctionalInterface
+        public interface NonThrowingConsumer<T> {
+            void accept(T arg) throws Exception;
+        }
+
+        private AgenticScopeAction(NonThrowingConsumer<AgenticScope> consumer) {
+            this.consumer = consumer;
+        }
+
+        @Agent
+        public void accept(AgenticScope agenticScope) {
+            try {
+                consumer.accept(agenticScope);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
