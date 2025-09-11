@@ -16,7 +16,7 @@ import java.nio.file.Path;
 public class GPULlama3StreamingChatModel implements StreamingChatModel {
     private final Path modelPath;
     private final float temperature;
-    private final float topp;
+    private final float topP;
     private final long seed;
     private final int maxTokens;
     private final boolean onGPU;
@@ -26,13 +26,13 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
     private GPULlama3StreamingChatModel(Builder builder) {
         this.modelPath = builder.modelPath;
         this.temperature = builder.temperature;
-        this.topp = builder.topp;
+        this.topP = builder.topP;
         this.seed = builder.seed;
         this.maxTokens = builder.maxTokens;
         this.onGPU = builder.onGPU;
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true);
-            this.sampler = LlamaApp.selectSampler(model.configuration().vocabularySize(), temperature, topp, seed);
+            this.sampler = LlamaApp.selectSampler(model.configuration().vocabularySize(), temperature, topP, seed);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load model from " + modelPath, e);
         }
@@ -75,7 +75,7 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
     public static class Builder {
         private Path modelPath;
         private float temperature = 0.7f;
-        private float topp = 1.0f;
+        private float topP = 1.0f;
         private long seed = 42;
         private int maxTokens = 1024;
         private boolean onGPU = true;
@@ -90,8 +90,8 @@ public class GPULlama3StreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder topp(float topp) {
-            this.topp = topp;
+        public Builder topP(float topP) {
+            this.topP = topP;
             return this;
         }
 
