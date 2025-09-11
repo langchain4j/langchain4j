@@ -188,28 +188,30 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        final ChatMemory chatMemory = context.hasChatMemory()
-                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                        Object chatMemoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
+                        ChatMemory chatMemory = context.hasChatMemory()
+                                ? context.chatMemoryService.getOrCreateChatMemory(chatMemoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(chatMemoryId, method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         ExtraParameters extraParameters = findExtraParameters(args)
-                                .orElseGet(ExtraParameters::new);
-                        InvocationContext invocationContext = new InvocationContext(extraParameters);
-                        // TODO what if user passed null?
+                                .orElseGet(ExtraParameters::new); // TODO what if user passed null?
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .chatMemoryId(chatMemoryId)
+                                .extraParameters(extraParameters)
+                                .build();
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
                                     .chatMessage(userMessage)
-                                    .chatMemoryId(memoryId)
+                                    .chatMemoryId(chatMemoryId)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
@@ -268,10 +270,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(memoryId, userMessage, invocationContext);
+                                context.toolService.createContext(chatMemoryId, userMessage, invocationContext);
 
                         if (streaming) {
-                            // TODO pass invocationContext, test
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
                                     .toolSpecifications(toolServiceContext.toolSpecifications())
@@ -282,10 +283,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
-                                    .memoryId(memoryId)
+                                    .memoryId(chatMemoryId)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
-                                    .invocationContext(invocationContext)
+                                    .invocationContext(invocationContext) // TODO test
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
@@ -314,7 +315,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .apply(ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
-                                        .build(), memoryId);
+                                        .build(), chatMemoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
@@ -332,7 +333,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 context.chatModel,
                                 chatMemory,
-                                memoryId,
+                                chatMemoryId,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult,
                                 invocationContext);

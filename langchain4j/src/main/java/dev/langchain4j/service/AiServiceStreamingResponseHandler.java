@@ -25,7 +25,6 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -280,8 +279,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
         // TODO applyToolHallucinationStrategy
         handleBeforeTool(toolRequest);
-        ToolExecutionContext toolContext = new ToolExecutionContext(memoryId, invocationContext);
-        ToolExecutionResult toolResult = executeWithErrorHandling(toolRequest, toolExecutor, toolContext,
+        ToolExecutionResult toolResult = executeWithErrorHandling(toolRequest, toolExecutor, invocationContext,
                 toolArgumentsErrorHandler, toolExecutionErrorHandler);
         handleAfterTool(toolRequest, toolResult);
         return toolResult;

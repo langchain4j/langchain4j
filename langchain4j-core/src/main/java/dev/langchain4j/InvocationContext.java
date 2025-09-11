@@ -9,12 +9,18 @@ import java.util.Objects;
  *
  * @since 1.5.0
  */
-public class InvocationContext { // TODO name, module, package
+public class InvocationContext { // TODO name (AiServiceInvocationContext?), module, package
 
+    private final Object chatMemoryId;
     private final ExtraParameters extraParameters; // TODO name
 
-    public InvocationContext(ExtraParameters extraParameters) {
-        this.extraParameters = ensureNotNull(extraParameters, "extraParameters");
+    public InvocationContext(Builder builder) {
+        this.chatMemoryId = ensureNotNull(builder.chatMemoryId, "chatMemoryId");
+        this.extraParameters = builder.extraParameters;
+    }
+
+    public Object chatMemoryId() {
+        return chatMemoryId;
     }
 
     public ExtraParameters extraParameters() { // TODO name
@@ -22,22 +28,48 @@ public class InvocationContext { // TODO name, module, package
     }
 
     @Override
-    public boolean equals(Object object) {
+    public boolean equals(final Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         InvocationContext that = (InvocationContext) object;
-        return Objects.equals(extraParameters, that.extraParameters);
+        return Objects.equals(chatMemoryId, that.chatMemoryId)
+                && Objects.equals(extraParameters, that.extraParameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(extraParameters);
+        return Objects.hash(chatMemoryId, extraParameters);
     }
 
     @Override
     public String toString() {
-        return "InvocationContext{" + // TODO names
-                "extraParameters=" + extraParameters +
+        return "InvocationContext{" + // TODO name
+                "chatMemoryId=" + chatMemoryId +
+                ", extraParameters=" + extraParameters +
                 '}';
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Object chatMemoryId;
+        private ExtraParameters extraParameters;
+
+        public Builder chatMemoryId(Object chatMemoryId) {
+            this.chatMemoryId = chatMemoryId;
+            return this;
+        }
+
+        public Builder extraParameters(ExtraParameters extraParameters) {
+            this.extraParameters = extraParameters;
+            return this;
+        }
+
+        public InvocationContext build() {
+            return new InvocationContext(this);
+        }
     }
 }

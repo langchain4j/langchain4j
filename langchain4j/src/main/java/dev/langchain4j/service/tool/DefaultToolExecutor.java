@@ -89,7 +89,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+    public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
         Object[] arguments = prepareArguments(request, context);
 
         try {
@@ -124,11 +124,17 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
-        ToolExecutionResult result = execute(request, new ToolExecutionContext(memoryId, null));
+        InvocationContext invocationContext = InvocationContext.builder()
+                .chatMemoryId(memoryId)
+                .extraParameters(null)
+                .build();
+
+        ToolExecutionResult result = execute(request, invocationContext);
+
         return result.resultText();
     }
 
-    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, ToolExecutionContext context) {
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
             return prepareArguments(originalMethod, argumentsMap, context);
@@ -161,7 +167,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, ToolExecutionContext context) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -174,15 +180,15 @@ public class DefaultToolExecutor implements ToolExecutor {
                 continue;
             }
 
-            if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
-                // TODO test extending from AiServiceInvocationContext
-                arguments[i] = context.invocationContext();
+            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
+                // TODO test extending from ExtraParameters
+                arguments[i] = context.extraParameters();
                 continue;
             }
 
-            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
-                // TODO test extending from AiServiceInvocationContext
-                arguments[i] = context.invocationContext().extraParameters();
+            if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
+                // TODO test extending from InvocationContext
+                arguments[i] = context;
                 continue;
             }
 

@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -41,7 +42,6 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -477,7 +477,7 @@ class StreamingAiServicesWithToolsIT {
         assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
-        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
 

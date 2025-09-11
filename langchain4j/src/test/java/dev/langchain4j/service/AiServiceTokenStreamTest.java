@@ -186,7 +186,10 @@ class AiServiceTokenStreamTest {
                     throw new RuntimeException(e);
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
-                .invocationContext(new InvocationContext(new ExtraParameters()))
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId("default")
+                        .extraParameters(new ExtraParameters())
+                        .build())
                 .build());
     }
 }

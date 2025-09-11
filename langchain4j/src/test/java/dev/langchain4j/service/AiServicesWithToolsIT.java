@@ -44,7 +44,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -706,7 +705,7 @@ class AiServicesWithToolsIT {
 
         Result<String> result = assistant.chat("When does my booking 123-456 starts?");
         assertThat(result.content()).contains("2027");
-        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -752,7 +751,7 @@ class AiServicesWithToolsIT {
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
 
-        verify(toolExecutor).execute(any(), any(ToolExecutionContext.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -911,8 +910,8 @@ class AiServicesWithToolsIT {
                         .add(toolSpecification, new ToolExecutor() {
 
                             @Override
-                            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
-                                assertThat((boolean) context.invocationContext().extraParameters().get(includeToolsKey)).isEqualTo(true);
+                            public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
+                                assertThat((boolean) context.extraParameters().get(includeToolsKey)).isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
                                 return ToolExecutionResult.builder()

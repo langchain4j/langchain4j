@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.service.MemoryId;
 
@@ -16,7 +17,7 @@ public interface ToolExecutor {
      * @param context TODO
      * @return TODO
      */
-    default ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionContext context) {
+    default ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
         String result = execute(request, context.chatMemoryId());
         return ToolExecutionResult.builder()
                 .resultText(result)
