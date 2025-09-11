@@ -231,7 +231,12 @@ public class AgenticServices {
         return A2AService.get().a2aBuilder(a2aServerUrl, agentServiceClass);
     }
 
-    public record DeclarativeAgentCreationContext(Class<?> agentServiceClass, AgentBuilder<?> agentBuilder) { }
+    public interface DeclarativeAgentCreationContext<T> {
+            Class<T> agentServiceClass();
+            AgentBuilder<T> agentBuilder();
+    }
+
+    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T> agentBuilder) implements DeclarativeAgentCreationContext<T> { }
 
     /**
      * Creates an instance of an agentic system defined through the declarative API.
@@ -569,7 +574,7 @@ public class AgenticServices {
                             agentBuilder.chatModel(chatModel);
                         });
 
-        agentConfigurator.accept(new DeclarativeAgentCreationContext(agentType, agentBuilder));
+        agentConfigurator.accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 
     private static <T> T invokeStatic(Method method, Object... args) {
