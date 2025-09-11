@@ -90,6 +90,37 @@ public class DeclarativeAgentIT {
         System.out.println(story);
     }
 
+    public interface StoryCreatorWithConfigurableStyleEditor {
+
+        @SequenceAgent(outputName = "styledStory", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = StyleEditor.class)
+        })
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_sequence_without_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNull();
+    }
+
+    @Test
+    void declarative_sequence_with_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
+            if (ctx.agentServiceClass() == StyleEditor.class) {
+                ctx.agentBuilder().outputName("styledStory");
+            }
+        });
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
+        System.out.println(story);
+    }
+
     public interface StoryCreatorWithModel extends StoryCreator {
 
         @ChatModelSupplier
