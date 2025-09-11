@@ -157,10 +157,10 @@ To enable prompt caching, use the `promptCaching()` method in `BedrockChatReques
 
 ```java
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
-import dev.langchain4j.model.bedrock.BedrockChatRequestParameters.CachePointPlacement;
+import dev.langchain4j.model.bedrock.BedrockCachePointPlacement;
 
 BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-        .promptCaching(CachePointPlacement.AFTER_SYSTEM)
+        .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
         .temperature(0.7)
         .maxOutputTokens(500)
         .build();
@@ -174,7 +174,7 @@ ChatModel model = BedrockChatModel.builder()
 
 ### Cache Point Placement Options
 
-The `CachePointPlacement` enum provides three options for where to place the cache point in your conversation:
+The `BedrockCachePointPlacement` enum provides three options for where to place the cache point in your conversation:
 
 - **`AFTER_SYSTEM`**: Places the cache point after the system message. This is ideal when you have a consistent system prompt that you want to reuse across multiple conversations.
 - **`AFTER_USER_MESSAGE`**: Places the cache point after the user message. Useful when you have a standard user prompt or context that remains the same.
@@ -187,7 +187,7 @@ The `CachePointPlacement` enum provides three options for where to place the cac
 ```java
 // Configure prompt caching to cache after system message
 BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-        .promptCaching(CachePointPlacement.AFTER_SYSTEM)
+        .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
         .build();
 
 ChatModel model = BedrockChatModel.builder()
@@ -222,7 +222,7 @@ Prompt caching can be combined with other Bedrock features like reasoning:
 
 ```java
 BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-        .promptCaching(CachePointPlacement.AFTER_SYSTEM)
+        .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
         .enableReasoning(1000)  // Enable reasoning with 1000 token budget
         .temperature(0.3)
         .maxOutputTokens(2000)

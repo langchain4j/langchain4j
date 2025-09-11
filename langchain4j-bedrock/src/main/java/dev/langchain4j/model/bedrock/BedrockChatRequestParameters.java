@@ -15,16 +15,6 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Map<String, Object> additionalModelRequestFields;
 
-    /**
-     * Enum representing where to place cache points in the conversation.
-     * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
-     */
-    public enum CachePointPlacement {
-        AFTER_SYSTEM,
-        AFTER_USER_MESSAGE,
-        AFTER_TOOLS
-    }
-
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
         this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
@@ -102,7 +92,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          * @return this builder
          * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
          */
-        public Builder promptCaching(CachePointPlacement placement) {
+        public Builder promptCaching(BedrockCachePointPlacement placement) {
             if (placement != null) {
                 if (additionalModelRequestFields == null) {
                     additionalModelRequestFields = new HashMap<>();
