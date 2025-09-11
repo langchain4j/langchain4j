@@ -69,7 +69,7 @@ public class DeclarativeAgentIT {
         CreativeWriter creativeWriter = AgenticServices.createAgenticSystem(CreativeWriter.class, baseModel());
 
         String story = creativeWriter.generateStory("dragons and wizards");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
     }
 
     public interface StoryCreator {
@@ -87,7 +87,37 @@ public class DeclarativeAgentIT {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithConfigurableStyleEditor {
+
+        @SequenceAgent(outputName = "styledStory", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = StyleEditor.class)
+        })
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_sequence_without_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNull();
+    }
+
+    @Test
+    void declarative_sequence_with_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
+            if (ctx.agentServiceClass() == StyleEditor.class) {
+                ctx.agentBuilder().outputName("styledStory");
+            }
+        });
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
     }
 
     public interface StoryCreatorWithModel extends StoryCreator {
@@ -103,7 +133,7 @@ public class DeclarativeAgentIT {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithModel.class);
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
     }
 
     @Test
@@ -141,7 +171,7 @@ public class DeclarativeAgentIT {
         StoryCreatorWithErrorRecovery storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithErrorRecovery.class, baseModel());
 
         String story = storyCreator.write(null, "fantasy", "young adults");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
     }
 
     public interface StyleReviewLoopAgent {
@@ -177,7 +207,7 @@ public class DeclarativeAgentIT {
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
-        System.out.println(story);
+        assertThat(story).isNotBlank();
 
         AgenticScope agenticScope = result.agenticScope();
         assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
@@ -226,7 +256,7 @@ public class DeclarativeAgentIT {
 
         ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
-        System.out.println(response);
+        assertThat(response).isNotBlank();
 
         AgenticScope agenticScope = result.agenticScope();
         assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
@@ -262,7 +292,6 @@ public class DeclarativeAgentIT {
     void declarative_parallel_tests() {
         EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
-        System.out.println(plans);
         assertThat(plans).hasSize(3);
     }
 
@@ -291,7 +320,7 @@ public class DeclarativeAgentIT {
         ResultWithAgenticScope<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
-        System.out.println(story);
+        assertThat(story).isNotBlank();
 
         DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
         assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
@@ -303,7 +332,6 @@ public class DeclarativeAgentIT {
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
-        System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 
@@ -423,7 +451,6 @@ public class DeclarativeAgentIT {
         AgenticScopePersister.setStore(store);
 
         String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
-        System.out.println(response1);
 
         AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("1");
         assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
@@ -431,7 +458,6 @@ public class DeclarativeAgentIT {
         assertThat(store.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
-        System.out.println(response2);
 
         AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
@@ -444,10 +470,8 @@ public class DeclarativeAgentIT {
         assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
 
         String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
-        System.out.println(legalResponse1);
 
         String legalResponse2 = expertRouterAgent.ask("2", "Should I sue my neighbor who caused this damage?");
-        System.out.println(legalResponse2);
 
         assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
 
@@ -524,8 +548,7 @@ public class DeclarativeAgentIT {
 
         SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
-
-        System.out.println(result);
+        assertThat(result).isNotBlank();
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
