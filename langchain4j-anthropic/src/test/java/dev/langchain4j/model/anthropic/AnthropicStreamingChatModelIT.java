@@ -35,7 +35,6 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -126,9 +125,11 @@ class AnthropicStreamingChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-    })
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = EXCLUDE,
+            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+            })
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -530,6 +531,27 @@ class AnthropicStreamingChatModelIT {
         Throwable error = futureError.get(5, SECONDS);
 
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_work_with_userId() {
+        // given
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .userId("test-user-12345")
+                .maxTokens(10)
+                .build();
+
+        String userMessage = "Say hello";
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     private static void assertTokenUsage(@NotNull TokenUsage tokenUsage) {
