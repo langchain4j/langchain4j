@@ -1,7 +1,7 @@
 package dev.langchain4j.service.tool;
 
 /**
- * @since 1.4.0
+ * @since 1.5.0
  */
 public class ToolExecutionResult { // TODO name, location
 

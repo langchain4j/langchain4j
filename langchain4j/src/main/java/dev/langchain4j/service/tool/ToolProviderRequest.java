@@ -12,7 +12,7 @@ public class ToolProviderRequest {
     private final InvocationContext invocationContext; // TODO name
 
     /**
-     * @since 1.4.0
+     * @since 1.5.0
      */
     public ToolProviderRequest(Builder builder) {
         this.chatMemoryId = ensureNotNull(builder.chatMemoryId, "chatMemoryId");
@@ -35,7 +35,7 @@ public class ToolProviderRequest {
     }
 
     /**
-     * @since 1.4.0
+     * @since 1.5.0
      */
     public InvocationContext invocationContext() { // TODO name
         return invocationContext;

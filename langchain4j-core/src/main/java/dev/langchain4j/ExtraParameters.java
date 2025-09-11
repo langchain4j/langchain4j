@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * TODO
  *
- * @since 1.4.0
+ * @since 1.5.0
  */
 public class ExtraParameters { // TODO name, module, package
 
@@ -19,7 +19,7 @@ public class ExtraParameters { // TODO name, module, package
 
     public ExtraParameters(Map<String, Object> map) {
         if (map instanceof ConcurrentHashMap<String, Object> concurrentHashMap) {
-            this.map = concurrentHashMap;
+            this.map = concurrentHashMap; // TODO make a copy anyway?
         } else {
             this.map = new ConcurrentHashMap<>(map);
         }

@@ -93,7 +93,7 @@ public class ToolExecution {
         /**
          * @deprecated Please use {@link #result(ToolExecutionResult)} instead
          */
-        @Deprecated(since = "1.4.0")
+        @Deprecated(since = "1.5.0")
         public Builder result(String result) {
             this.result = ToolExecutionResult.builder()
                     .result(result)
