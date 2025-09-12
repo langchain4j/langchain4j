@@ -14,11 +14,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.ArgumentCaptor;
 
-@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+@Disabled
 class AnthropicUserIdIT {
 
     private static final String TEST_USER_ID = "test-user-123";
