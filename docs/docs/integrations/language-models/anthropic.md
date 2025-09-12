@@ -56,6 +56,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .logResponses(...)
     .listeners(...)
     .defaultRequestParameters(...)
+    .userId(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
