@@ -1,7 +1,5 @@
 package dev.langchain4j;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import java.util.Objects;
 
 /**
@@ -15,7 +13,7 @@ public class InvocationContext { // TODO name (AiServiceInvocationContext?), mod
     private final ExtraParameters extraParameters;
 
     public InvocationContext(Builder builder) {
-        this.chatMemoryId = ensureNotNull(builder.chatMemoryId, "chatMemoryId");
+        this.chatMemoryId = builder.chatMemoryId;
         this.extraParameters = builder.extraParameters;
     }
 

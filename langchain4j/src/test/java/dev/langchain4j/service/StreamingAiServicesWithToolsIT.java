@@ -477,7 +477,7 @@ class StreamingAiServicesWithToolsIT {
         assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
-        verify(toolExecutor).execute(any(), any(InvocationContext.class));
+        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
 

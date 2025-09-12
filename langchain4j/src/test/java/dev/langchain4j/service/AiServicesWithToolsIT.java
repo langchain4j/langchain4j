@@ -705,7 +705,7 @@ class AiServicesWithToolsIT {
 
         Result<String> result = assistant.chat("When does my booking 123-456 starts?");
         assertThat(result.content()).contains("2027");
-        verify(toolExecutor).execute(any(), any(InvocationContext.class));
+        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -751,7 +751,7 @@ class AiServicesWithToolsIT {
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
 
-        verify(toolExecutor).execute(any(), any(InvocationContext.class));
+        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -909,7 +909,7 @@ class AiServicesWithToolsIT {
                         .add(toolSpecification, new ToolExecutor() {
 
                             @Override
-                            public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
+                            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
                                 assertThat((boolean) context.extraParameters().get(includeToolsKey)).isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));

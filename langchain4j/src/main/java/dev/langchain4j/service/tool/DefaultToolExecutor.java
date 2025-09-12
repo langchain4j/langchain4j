@@ -89,7 +89,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
+    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
         Object[] arguments = prepareArguments(request, context);
 
         try {
@@ -126,10 +126,9 @@ public class DefaultToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest request, Object memoryId) {
         InvocationContext invocationContext = InvocationContext.builder()
                 .chatMemoryId(memoryId)
-                .extraParameters(null)
                 .build();
 
-        ToolExecutionResult result = execute(request, invocationContext);
+        ToolExecutionResult result = executeWithContext(request, invocationContext);
 
         return result.resultText();
     }

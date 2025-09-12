@@ -373,7 +373,7 @@ public class ToolService {
                                                                ToolArgumentsErrorHandler argumentsErrorHandler,
                                                                ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            return toolExecutor.execute(toolRequest, invocationContext);
+            return toolExecutor.executeWithContext(toolRequest, invocationContext);
         } catch (Exception e) {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)

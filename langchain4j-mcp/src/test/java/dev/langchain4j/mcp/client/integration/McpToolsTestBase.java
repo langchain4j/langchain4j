@@ -73,7 +73,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("echoString")
                 .arguments("{\"input\": \"abc\"}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, (Object) null);
+        String toolExecutionResultString = executor.execute(toolExecutionRequest,null);
         assertThat(toolExecutionResultString).isEqualTo("abc");
     }
 
@@ -85,7 +85,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("echoString")
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+        assertThatThrownBy(() -> executor.executeWithContext(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class) // TODO should be ToolArgumentsException
                 .hasMessage("Internal error")
                 .hasFieldOrPropertyWithValue("errorCode", -32603); // TODO should be -32602
@@ -100,7 +100,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("THIS-TOOL-DOES-NOT-EXIST")
                 .arguments("{\"input\": 1}")
                 .build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+        assertThatThrownBy(() -> executor.executeWithContext(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolArgumentsException.class)
                 .hasMessage("Invalid tool name: THIS-TOOL-DOES-NOT-EXIST")
                 .hasFieldOrPropertyWithValue("errorCode", -32602);
@@ -112,7 +112,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolExecutor executor = toolProviderResult.toolExecutorByName("error");
         ToolExecutionRequest toolExecutionRequest =
                 ToolExecutionRequest.builder().name("error").arguments("{}").build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+        assertThatThrownBy(() -> executor.executeWithContext(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("Internal error")
                 .hasFieldOrPropertyWithValue("errorCode", -32603);
@@ -126,7 +126,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("errorResponse")
                 .arguments("{}")
                 .build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
+        assertThatThrownBy(() -> executor.executeWithContext(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("This is an actual error");
     }
@@ -139,7 +139,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .name("longOperation")
                 .arguments("{}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, (Object) null);
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
     }
 

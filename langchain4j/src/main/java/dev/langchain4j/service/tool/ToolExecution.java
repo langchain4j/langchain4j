@@ -9,7 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 public class ToolExecution {
 
     private final ToolExecutionRequest request;
-    private final ToolExecutionResult result; // TODO document
+    private final ToolExecutionResult result;
 
     private ToolExecution(Builder builder) {
         this.request = builder.request; // TODO
@@ -42,7 +42,7 @@ public class ToolExecution {
      * @return the result of the tool execution.
      * @see #result()
      */
-    public Object resultObject() {
+    public Object resultObject() { // TODO document
         return result.result();
     }
 
