@@ -6,12 +6,10 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GeminiThinkingConfig {
-
-    @JsonProperty
+    @JsonProperty("includeThoughts")
     private Boolean includeThoughts;
-    @JsonProperty
+    @JsonProperty("thinkingBudget")
     private Integer thinkingBudget;
 
     private GeminiThinkingConfig(Builder builder) {
