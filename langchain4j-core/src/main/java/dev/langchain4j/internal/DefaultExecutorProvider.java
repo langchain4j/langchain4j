@@ -22,7 +22,12 @@ public class DefaultExecutorProvider {
                 createVirtualThreadExecutor(Holder::createPlatformThreadExecutorService);
 
         private static ExecutorService createPlatformThreadExecutorService() {
-            return new ThreadPoolExecutor(0, Integer.MAX_VALUE, 1, TimeUnit.SECONDS, new SynchronousQueue<>());
+            return new ThreadPoolExecutor(0, Integer.MAX_VALUE, 1, TimeUnit.SECONDS, new SynchronousQueue<>(),
+                    runnable -> {
+                        Thread thread = new Thread(runnable);
+                        thread.setDaemon(true);
+                        return thread;
+                    });
         }
     }
 }
