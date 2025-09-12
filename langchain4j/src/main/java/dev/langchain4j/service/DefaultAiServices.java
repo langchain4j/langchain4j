@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -46,7 +47,6 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -74,13 +74,23 @@ class DefaultAiServices<T> extends AiServices<T> {
             return;
         }
 
+        int extraParametersCount = 0;
+
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
             dev.langchain4j.service.UserMessage userMessage =
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
+
             boolean isExtraParameters = parameter.getType() == ExtraParameters.class;
+            if (isExtraParameters) {
+                extraParametersCount++;
+                if (extraParametersCount > 1) {
+                    throw illegalConfiguration("There can be at most one parameter of type ExtraParameters");
+                }
+            }
+
             if (v == null && userMessage == null && memoryId == null && userName == null && !isExtraParameters) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
@@ -199,7 +209,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        ExtraParameters extraParameters = findExtraParameters(args)
+                        ExtraParameters extraParameters = findExtraParameters(args, method.getParameters())
                                 .orElseGet(ExtraParameters::new); // TODO what if user passed null?
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .chatMemoryId(chatMemoryId)
@@ -376,15 +386,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private Optional<ExtraParameters> findExtraParameters(Object[] args) {
-                        if (args == null) {
+                    private Optional<ExtraParameters> findExtraParameters(Object[] arguments, Parameter[] parameters) {
+                        if (arguments == null) {
                             return Optional.empty();
                         }
-                        return Arrays.stream(args)
-                                .filter(arg -> arg instanceof ExtraParameters)
-                                .map(it -> (ExtraParameters) it)
-                                .findFirst();
-                        // TODO validate that there is only one ExtraParameters arg
+                        for (int i = 0; i < parameters.length; i++) {
+                            Parameter parameter = parameters[i];
+                            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
+                                ExtraParameters extraParameters = (ExtraParameters) arguments[i];
+                                ensureNotNull(extraParameters, "ExtraParameters");
+                                return Optional.of(extraParameters);
+                            }
+                        }
+                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

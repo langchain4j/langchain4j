@@ -104,6 +104,8 @@ class AiServicesUserMessageConfigTest {
 
         String illegalChat7(String userMessage, ExtraParameters extraParameters);
 
+        String illegalChat8(@UserMessage String userMessage, ExtraParameters ep1, ExtraParameters ep2);
+
         // TODO more tests with @UserName, @V, @MemoryId
     }
 
@@ -163,6 +165,22 @@ class AiServicesUserMessageConfigTest {
                 .containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_2_1_when_extraParameters_is_null() {
+
+        // given
+        ExtraParameters extraParameters = null;
+
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> aiService.chat2_1("does not matter", extraParameters))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("ExtraParameters cannot be null");
     }
 
     @Test
@@ -476,6 +494,22 @@ class AiServicesUserMessageConfigTest {
                         "dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, " +
                         "or dev.langchain4j.service.UserName, or it should be of type " +
                         "dev.langchain4j.InvocationContext");
+    }
+
+    @Test
+    void illegal_user_message_configuration_8() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        ExtraParameters extraParameters = new ExtraParameters();
+
+        // when-then
+        assertThatThrownBy(() -> aiService.illegalChat8("Hello", extraParameters, extraParameters))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("There can be at most one parameter of type ExtraParameters");
     }
 
     interface AssistantHallucinatedTool {
