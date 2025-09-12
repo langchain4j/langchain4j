@@ -13,7 +13,6 @@ import org.beehive.gpullama3.model.loader.ModelLoader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 
 abstract class GPULlama3BaseModel {
     private Path modelPath;
@@ -112,11 +111,7 @@ abstract class GPULlama3BaseModel {
         String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
         return responseText;
     }
-
-
-
     // @formatter:on
-
 
     public void printLastMetrics() {
         LastRunMetrics.printMetrics();
