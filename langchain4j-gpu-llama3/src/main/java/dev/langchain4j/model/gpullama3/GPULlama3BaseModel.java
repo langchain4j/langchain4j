@@ -12,6 +12,8 @@ import org.beehive.gpullama3.model.loader.ModelLoader;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 abstract class GPULlama3BaseModel {
     private Path modelPath;
@@ -92,6 +94,27 @@ abstract class GPULlama3BaseModel {
         // Create and return chat response
         return ChatResponse.builder().aiMessage(aiMessage).build();
     }
+
+    public String modelStringResponse(ChatRequest request, Consumer<String> tokeCallBack) {
+        Options options = new Options(modelPath,
+                extractUserPrompt(request),
+                extractSystemPrompt(request),
+                null, // suffix
+                false, // interactive
+                temperature.floatValue(),
+                topP.floatValue(),
+                seed,
+                maxTokens,
+                stream, // streaming
+                false, // echo
+                onGPU);
+
+        String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
+        return responseText;
+    }
+
+
+
     // @formatter:on
 
 
