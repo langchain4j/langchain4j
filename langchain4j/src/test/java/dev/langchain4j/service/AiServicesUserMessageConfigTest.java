@@ -493,7 +493,7 @@ class AiServicesUserMessageConfigTest {
                         "must be annotated with either dev.langchain4j.service.UserMessage, " +
                         "dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, " +
                         "or dev.langchain4j.service.UserName, or it should be of type " +
-                        "dev.langchain4j.InvocationContext");
+                        "dev.langchain4j.InvocationParameters");
     }
 
     @Test
@@ -509,7 +509,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("There can be at most one parameter of type InvocationParameters");
+                .hasMessage("There can be at most one parameter of type dev.langchain4j.InvocationParameters");
     }
 
     interface AssistantHallucinatedTool {

@@ -57,6 +57,9 @@ public class Metadata {
         return chatMemory;
     }
 
+    /**
+     * @since 1.5.0
+     */
     public InvocationContext invocationContext() {
         return invocationContext;
     }

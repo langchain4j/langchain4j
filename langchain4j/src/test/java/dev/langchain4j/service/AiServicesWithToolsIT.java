@@ -791,7 +791,7 @@ class AiServicesWithToolsIT {
 
 
     @Test
-    void should_propagate_invocation_parameters_into_tool() { // TODO name
+    void should_propagate_invocation_parameters_into_tool() {
 
         // given
         class Tools {
@@ -839,7 +839,61 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_propagate_invocation_parameters_between_tools() { // TODO name
+    void should_propagate_invocation_context_into_tool() {
+
+        // given
+        class Tools {
+
+            @Tool
+            String getWeather(InvocationContext invocationContext) {
+                String city = invocationContext.invocationParameters().get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        InvocationParameters invocationParameters1 = InvocationParameters.from("city", "Munich");
+
+        // when
+        String answer1 = assistant.chat("What is the weather?", invocationParameters1);
+
+        // then
+        assertThat(answer1).contains("rain");
+        verify(spyTools).getWeather(InvocationContext.builder()
+                .chatMemoryId("default")
+                .invocationParameters(invocationParameters1)
+                .build());
+
+        // given
+        InvocationParameters invocationParameters2 = InvocationParameters.from("city", "Paris");
+
+        // when
+        String answer2 = assistant.chat("What is the weather?", invocationParameters2);
+
+        // then
+        assertThat(answer2).contains("sun");
+        verify(spyTools).getWeather(InvocationContext.builder()
+                .chatMemoryId("default")
+                .invocationParameters(invocationParameters2)
+                .build());
+    }
+
+    @Test
+    void should_propagate_invocation_parameters_between_tools() {
 
         // given
         class Tools {
@@ -885,7 +939,7 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_propagate_invocation_parameters_into_tool_provider() { // TODO name
+    void should_propagate_invocation_parameters_into_tool_provider() {
 
         // given
         interface Assistant {
@@ -955,8 +1009,6 @@ class AiServicesWithToolsIT {
         // then
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().size() == 1));
     }
-
-    // TODO search for invocationContext and invocationParameters everywhere
 
     private static Map<String, Object> toMap(String arguments) {
         try {

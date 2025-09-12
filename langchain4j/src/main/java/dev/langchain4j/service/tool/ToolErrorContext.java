@@ -23,6 +23,9 @@ public class ToolErrorContext {
         return toolExecutionRequest;
     }
 
+    /**
+     * @since 1.5.0
+     */
     public InvocationContext invocationContext() {
         return invocationContext;
     }
