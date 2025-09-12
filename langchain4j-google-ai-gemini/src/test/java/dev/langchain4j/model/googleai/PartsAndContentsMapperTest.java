@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -135,5 +136,54 @@ class PartsAndContentsMapperTest {
     void fromMessageToGContent_emptyMessageListReturnsEmpty() {
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false);
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void fromGPartsToAiMessage_handlesGeneratedImages() {
+        // Given
+        GeminiBlob imageBlob = GeminiBlob.builder()
+                .mimeType("image/png")
+                .data(
+                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")
+                .build();
+
+        GeminiPart textPart =
+                GeminiPart.builder().text("Here's your generated image:").build();
+        GeminiPart imagePart = GeminiPart.builder().inlineData(imageBlob).build();
+        List<GeminiPart> parts = List.of(textPart, imagePart);
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.text()).isEqualTo("Here's your generated image:");
+        assertThat(result.toolExecutionRequests()).isEmpty();
+
+        // Verify generated images are stored in attributes
+        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        assertThat(generatedImages).hasSize(1);
+        assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.getData());
+        assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void fromGPartsToAiMessage_ignoresNonImageInlineData() {
+        // Given
+        GeminiBlob audioBlob = GeminiBlob.builder()
+                .mimeType("audio/mp3")
+                .data("base64audiodata")
+                .build();
+
+        GeminiPart audioPart = GeminiPart.builder().inlineData(audioBlob).build();
+        List<GeminiPart> parts = List.of(audioPart);
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result).isNotNull();
+        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        assertThat(generatedImages).isEmpty(); // Should ignore non-image data
     }
 }
