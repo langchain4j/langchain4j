@@ -11,19 +11,20 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.InteractionSource;
+import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
@@ -50,8 +51,8 @@ public class ToolService {
             throw new RuntimeException(error);
         }
     };
-    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) ->
-            ToolErrorHandlerResult.text(error.getMessage());
+    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER =
+            (error, context) -> ToolErrorHandlerResult.text(error.getMessage());
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -87,7 +88,8 @@ public class ToolService {
             }
 
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class).ifPresent( toolMethod -> processToolMethod(objectWithTool, toolMethod) );
+                getAnnotatedMethod(method, Tool.class)
+                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
             }
         }
     }
@@ -95,8 +97,7 @@ public class ToolService {
     private void processToolMethod(Object object, Method method) {
         ToolSpecification toolSpecification = toolSpecificationFrom(method);
         if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException(
-                    "Duplicated definition for tool: " + toolSpecification.name());
+            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
         }
         toolSpecifications.add(toolSpecification);
 
@@ -170,9 +171,9 @@ public class ToolService {
 
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
-            return this.toolSpecifications.isEmpty() ?
-                    ToolServiceContext.Empty.INSTANCE :
-                    new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
+            return this.toolSpecifications.isEmpty()
+                    ? ToolServiceContext.Empty.INSTANCE
+                    : new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
@@ -201,7 +202,8 @@ public class ToolService {
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors,
-            boolean isReturnTypeResult) {
+            boolean isReturnTypeResult,
+            InteractionSource auditInteractionSource) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -243,6 +245,14 @@ public class ToolService {
                         .build();
                 toolExecutions.add(toolExecution);
 
+                // Fire audit events
+                LLMInteractionEventListenerRegistrar.getInstance()
+                        .fireEvent(ToolExecutedEvent.builder()
+                                .interactionSource(auditInteractionSource)
+                                .request(toolExecutionRequest)
+                                .result(toolExecution.result())
+                                .build());
+
                 if (chatMemory != null) {
                     chatMemory.add(toolExecutionResultMessage);
                 } else {
@@ -283,7 +293,8 @@ public class ToolService {
                     .build();
 
             chatResponse = chatModel.chat(chatRequest);
-            aggregateTokenUsage = TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
+            aggregateTokenUsage =
+                    TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
         return ToolServiceResult.builder()
@@ -313,20 +324,27 @@ public class ToolService {
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> futures = new LinkedHashMap<>();
 
         for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
-                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                if (toolExecutor == null) {
-                    return applyToolHallucinationStrategy(toolExecutionRequest);
-                } else {
-                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId,
-                            argumentsErrorHandler(), executionErrorHandler());
-                }
-            }, executor);
+            CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(
+                    () -> {
+                        ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+                        if (toolExecutor == null) {
+                            return applyToolHallucinationStrategy(toolExecutionRequest);
+                        } else {
+                            return executeWithErrorHandling(
+                                    toolExecutionRequest,
+                                    toolExecutor,
+                                    memoryId,
+                                    argumentsErrorHandler(),
+                                    executionErrorHandler());
+                        }
+                    },
+                    executor);
             futures.put(toolExecutionRequest, future);
         }
 
         Map<ToolExecutionRequest, ToolExecutionResultMessage> results = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> entry : futures.entrySet()) {
+        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> entry :
+                futures.entrySet()) {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
             } catch (ExecutionException e) {
@@ -355,19 +373,20 @@ public class ToolService {
             if (executor == null) {
                 toolExecutionResultMessage = applyToolHallucinationStrategy(request);
             } else {
-                toolExecutionResultMessage = executeWithErrorHandling(request, executor, memoryId,
-                        argumentsErrorHandler(), executionErrorHandler());
+                toolExecutionResultMessage = executeWithErrorHandling(
+                        request, executor, memoryId, argumentsErrorHandler(), executionErrorHandler());
             }
             toolResults.put(request, toolExecutionResultMessage);
         }
         return toolResults;
     }
 
-    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolRequest,
-                                                                      ToolExecutor executor,
-                                                                      Object memoryId,
-                                                                      ToolArgumentsErrorHandler argumentsErrorHandler,
-                                                                      ToolExecutionErrorHandler executionErrorHandler) {
+    public static ToolExecutionResultMessage executeWithErrorHandling(
+            ToolExecutionRequest toolRequest,
+            ToolExecutor executor,
+            Object memoryId,
+            ToolArgumentsErrorHandler argumentsErrorHandler,
+            ToolExecutionErrorHandler executionErrorHandler) {
         String toolResult;
         try {
             toolResult = executor.execute(toolRequest, memoryId);
