@@ -8,23 +8,24 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.beehive.gpullama3.Options;
 
 import java.io.IOException;
+
 import java.nio.file.Path;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
-    private GPULlama3Provider gpuLlama3Provider;
 
 
     private GPULlama3StreamingChatModel(Builder builder) {
         init(
                 getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
-                getOrDefault(builder.temperature, Options.getDefaultOptions().temperature()),
-                getOrDefault(builder.topP, Options.getDefaultOptions().topp()),
-                getOrDefault(builder.seed, Options.getDefaultOptions().seed()),
+                getOrDefault(builder.temperature,  Double.valueOf(Options.getDefaultOptions().temperature())),
+                getOrDefault(builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
+                getOrDefault(builder.seed, Integer.valueOf((int) Options.getDefaultOptions().seed())),
                 getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
-                getOrDefault(builder.onGPU, true)
+                getOrDefault(builder.onGPU, true),
+                true
         );
 
 
@@ -37,17 +38,17 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
     }
 
 
-    public void chat(String userMessage, StreamingChatResponseHandler handler) {
-        Options opts = getOptions(userMessage);
-
-        String finalResponse = model.runInstructOnceLangChain4J(
-                sampler,
-                opts,
-                token -> handler.onPartialResponse(token));
-
-        ChatResponse chatResponse  = ChatResponse.builder().aiMessage(AiMessage.from(finalResponse)).build();
-        handler.onCompleteResponse(chatResponse);
-    }
+//    public void chat(String userMessage, StreamingChatResponseHandler handler) {
+//        Options opts = getOptions(userMessage);
+//
+//        String finalResponse = model.runInstructOnceLangChain4J(
+//                sampler,
+//                opts,
+//                token -> handler.onPartialResponse(token));
+//
+//        ChatResponse chatResponse  = ChatResponse.builder().aiMessage(AiMessage.from(finalResponse)).build();
+//        handler.onCompleteResponse(chatResponse);
+//    }
 
     public static Builder builder() {
         return new Builder();
@@ -62,6 +63,7 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         protected Integer maxTokens;
         protected Boolean onGPU;
         protected String modelName;
+        protected Boolean stream;
 
         public Builder() {
             // This is public so it can be extended
@@ -77,6 +79,10 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
             return this;
         }
 
+        public Builder stream (Boolean stream) {
+            this.stream = stream;
+            return this;
+        }
 
         public Builder onGPU (Boolean onGPU) {
             this.onGPU = onGPU;

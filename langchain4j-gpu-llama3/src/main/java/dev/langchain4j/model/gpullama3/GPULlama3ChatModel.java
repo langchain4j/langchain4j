@@ -28,83 +28,26 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
 
 
-    private GPULlama3Provider gpuLlama3Provider;
-
     private GPULlama3ChatModel(Builder builder) {
         init(
             getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
-            getOrDefault(builder.temperature, Options.getDefaultOptions().temperature()),
-            getOrDefault(builder.topP, Options.getDefaultOptions().topp()),
-            getOrDefault(builder.seed, Options.getDefaultOptions().seed()),
+            getOrDefault(builder.temperature,  Double.valueOf(Options.getDefaultOptions().temperature())),
+            getOrDefault(builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
+            getOrDefault(builder.seed, Integer.valueOf((int) Options.getDefaultOptions().seed())),
             getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
-            getOrDefault(builder.onGPU, true)
+            getOrDefault(builder.onGPU, Boolean.valueOf(true)),
+            false        );
 
-        );
 
 
     }
-
-    @Override
-    public String chat(String userMessage) {
-        Options defaultOptions = Options.getDefaultOptions();
-        Options opts = new Options(modelPath,
-                userMessage,
-               defaultOptions.systemPrompt(),
-                defaultOptions.suffix(),
-                false /* interactive */,
-                defaultOptions.temperature(),
-                defaultOptions.topp(),
-                defaultOptions.seed(),
-                defaultOptions.maxTokens(),
-                false,
-                defaultOptions.echo(),
-                onGPU);
-
-        return gpuLlama3Provider.getModel().runInstructOnce(gpuLlama3Provider.getSampler(), opts);
-    }
-
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        // Extract and validate parameters
-        ChatRequestParameters params = chatRequest.parameters();
-
-        // Convert messages to a single prompt string
-        String prompt = chatRequest.messages().getFirst().toString();
-
-        String prompt = convertMessagesToPrompt(chatRequest.messages());
-
-        // Extract parameters with fallbacks to instance defaults
-        double requestTemperature = params.temperature() != null ? params.temperature() : this.temperature;
-        float requestTopP = params.topP() != null ? params.topP().floatValue() : this.topP;
-        int requestMaxTokens = params.maxOutputTokens() != null ? params.maxOutputTokens() : this.maxTokens;
-
-        // Get system prompt from messages or use default
-        String effectiveSystemPrompt = extractSystemPrompt(chatRequest.messages());
-        if (effectiveSystemPrompt == null) {
-            effectiveSystemPrompt = getOrDefault(this.systemPrompt, Options.getDefaultOptions().systemPrompt());
-        }
-
-        // Create options for the underlying library
-        Options defaultOptions = Options.getDefaultOptions();
-        Options opts = new Options(
-                modelPath,
-                prompt,
-                effectiveSystemPrompt,
-                defaultOptions.suffix(),
-                false, /* interactive */
-                requestTemperature,
-                requestTopP,
-                seed,
-                requestMaxTokens,
-                false,
-                defaultOptions.echo(),
-                onGPU
-        );
 
         try {
             // Generate response using the model
-            String responseText = model.runInstructOnce(sampler, opts);
+            String responseText = this.modelResponse(chatRequest);
 
             // Create AI message from response
             AiMessage aiMessage = AiMessage.from(responseText);
@@ -135,6 +78,7 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
         protected Integer seed;
         protected Integer maxTokens;
         protected Boolean onGPU;
+        protected Boolean stream;
         protected String modelName;
 
         public Builder() {
@@ -154,6 +98,11 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
 
         public Builder onGPU (Boolean onGPU) {
             this.onGPU = onGPU;
+            return this;
+        }
+
+        public Builder stream (Boolean stream) {
+            this.stream = stream;
             return this;
         }
 
