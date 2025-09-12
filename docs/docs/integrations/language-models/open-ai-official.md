@@ -60,12 +60,14 @@ import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 
+import static com.openai.models.ChatModel.GPT_5_MINI;
+
 // ....
 
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -76,7 +78,7 @@ The OpenAI `baseUrl` (`https://api.openai.com/v1`) is the default, so you can om
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -90,7 +92,7 @@ For Azure OpenAI, setting a `baseUrl` is mandatory, and Azure OpenAI will be aut
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -101,7 +103,7 @@ ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .isAzure(true)
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -147,7 +149,7 @@ For GitHub Models, you can use the default `baseUrl` (`https://models.inference.
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl("https://models.inference.ai.azure.com")
         .apiKey(System.getenv("GITHUB_TOKEN"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -156,7 +158,7 @@ Or you can use the `isGitHubModels()` method to force the usage of GitHub Models
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("GITHUB_TOKEN"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .isGitHubModels(true)
         .build();
 ```
@@ -165,7 +167,7 @@ As GitHub Models are usually configured using the `GITHUB_TOKEN` environment var
 
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .isGitHubModels(true)
         .build();
 ```
@@ -247,7 +249,7 @@ This is similar to the non-streaming mode, but you need to use the `OpenAiOffici
 StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
