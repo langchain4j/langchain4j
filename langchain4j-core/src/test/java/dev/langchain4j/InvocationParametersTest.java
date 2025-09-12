@@ -33,15 +33,15 @@ class InvocationParametersTest {
     @Test
     void test4() {
         Map<String, Object> seedMap = new HashMap<>();
-        seedMap.put("key", "value");
+        seedMap.put("key1", "value1");
 
         InvocationParameters invocationParameters = InvocationParameters.from(seedMap);
-        assertThat(invocationParameters.asMap()).containsOnly(Map.entry("key", "value"));
+        assertThat(invocationParameters.asMap()).containsOnly(Map.entry("key1", "value1"));
 
         seedMap.put("key2", "value2");
         invocationParameters.put("key3", "value3");
 
-        assertThat(seedMap).containsOnly(Map.entry("key", "value"), Map.entry("key2", "value2"));
-        assertThat(invocationParameters.asMap()).containsOnly(Map.entry("key", "value"), Map.entry("key3", "value3"));
+        assertThat(seedMap).containsOnlyKeys("key1", "key2", "key3");
+        assertThat(invocationParameters.asMap()).isSameAs(seedMap);
     }
 }
