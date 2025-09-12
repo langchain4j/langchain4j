@@ -53,12 +53,14 @@ import com.openai.models.images.ImageModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
 
+import static com.openai.models.images.ImageModel.DALL_E_3;
+
 // ....
 
 ImageModel model = OpenAiOfficialImageModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ImageModel.DALL_E_3)
+        .modelName(DALL_E_3)
         .build();
 ```
 
@@ -73,7 +75,7 @@ Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` met
 ImageModel model = OpenAiOfficialImageModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(ImageModel.DALL_E_3)
+        .modelName(DALL_E_3)
         .isAzure(true) // Not necessary if the base URL ends with `openai.azure.com`
         .build();
 ```
@@ -84,7 +86,7 @@ You can also use "passwordless" authentication, as described in the [OpenAI Offi
 
 ```java
 ImageModel model = OpenAiOfficialImageModel.builder()
-        .modelName(ImageModel.DALL_E_3)
+        .modelName(DALL_E_3)
         .isGitHubModels(true)
         .build();
 ```
