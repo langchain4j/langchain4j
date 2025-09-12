@@ -1,5 +1,6 @@
 package dev.langchain4j.spi.guardrail;
 
+import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -18,4 +19,5 @@ public non-sealed interface InputGuardrailExecutorBuilderFactory
                 InputGuardrailResult,
                 InputGuardrailRequest,
                 InputGuardrail,
+                InputGuardrailExecutedEvent,
                 InputGuardrailExecutor.InputGuardrailExecutorBuilder> {}

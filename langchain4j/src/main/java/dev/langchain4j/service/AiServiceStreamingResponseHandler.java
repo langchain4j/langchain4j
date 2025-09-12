@@ -7,6 +7,10 @@ import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.InteractionSource;
+import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
+import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -22,15 +26,14 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -69,10 +72,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
-    private final Queue<CompletableFuture<ToolExecutionResultMessage>> toolResultFutures = new ConcurrentLinkedQueue<>();
+    private final Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> toolResultFutures =
+            new ConcurrentHashMap<>();
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
+    private final InteractionSource auditInteractionSource;
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -93,7 +98,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey) {
+            Object methodKey,
+            InteractionSource auditInteractionSource) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
@@ -118,6 +124,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
+        this.auditInteractionSource = ensureNotNull(auditInteractionSource, "auditInteractionSource");
     }
 
     @Override
@@ -140,16 +147,34 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
-            CompletableFuture<ToolExecutionResultMessage> future = CompletableFuture.supplyAsync(() -> {
-                ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-                return execute(toolExecutionRequest);
-            }, toolExecutor);
-            toolResultFutures.add(future);
+            final ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
+            CompletableFuture<ToolExecutionResultMessage> future =
+                    CompletableFuture.supplyAsync(() -> execute(toolExecutionRequest), toolExecutor);
+            toolResultFutures.put(toolExecutionRequest, future);
         }
+    }
+
+    private void fireToolExecutedEvent(
+            ToolExecutionRequest toolExecutionRequest, ToolExecutionResultMessage toolExecutionResultMessage) {
+        LLMInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(ToolExecutedEvent.builder()
+                        .interactionSource(auditInteractionSource)
+                        .request(toolExecutionRequest)
+                        .result(toolExecutionResultMessage.text())
+                        .build());
+    }
+
+    private void fireResponseReceivedEvent(ChatResponse chatResponse) {
+        LLMInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(LLMResponseReceivedEvent.builder()
+                        .interactionSource(auditInteractionSource)
+                        .response(chatResponse)
+                        .build());
     }
 
     @Override
     public void onCompleteResponse(ChatResponse chatResponse) {
+        fireResponseReceivedEvent(chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
 
@@ -158,15 +183,19 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (intermediateResponseHandler != null) {
                 intermediateResponseHandler.accept(chatResponse);
             }
-          
+
             boolean immediateToolReturn = true;
 
             if (toolExecutor != null) {
-                for (CompletableFuture<ToolExecutionResultMessage> toolResultFuture : toolResultFutures) {
+                for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> toolResultFuture :
+                        toolResultFutures.entrySet()) {
                     try {
-                        ToolExecutionResultMessage toolExecutionResultMessage = toolResultFuture.get();
+                        ToolExecutionResultMessage toolExecutionResultMessage =
+                                toolResultFuture.getValue().get();
+                        fireToolExecutedEvent(toolResultFuture.getKey(), toolExecutionResultMessage);
                         addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
+                        immediateToolReturn = immediateToolReturn
+                                && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -181,8 +210,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } else {
                 for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                     ToolExecutionResultMessage toolExecutionResultMessage = execute(toolExecutionRequest);
+                    fireToolExecutedEvent(toolExecutionRequest, toolExecutionResultMessage);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn = immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
+                    immediateToolReturn =
+                            immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
                 }
             }
 
@@ -218,7 +249,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey);
+                    methodKey,
+                    auditInteractionSource);
 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
@@ -241,8 +273,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .requestParams(newCommonParams)
                                 .build();
 
-                        finalChatResponse =
-                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
+                        finalChatResponse = context.guardrailService()
+                                .executeGuardrails(methodKey, outputGuardrailParams, auditInteractionSource);
                     }
 
                     // If we have output guardrails, we should process all of the partial responses first before
@@ -260,8 +292,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(completeResponse.metadata().toBuilder()
-                        .tokenUsage(tokenUsage.add(
-                                completeResponse.metadata().tokenUsage()))
+                        .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                         .build())
                 .build();
     }
@@ -270,17 +301,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
         // TODO applyToolHallucinationStrategy
         handleBeforeTool(toolRequest);
-        ToolExecutionResultMessage toolResult = executeWithErrorHandling(toolRequest, toolExecutor, memoryId,
-                toolArgumentsErrorHandler, toolExecutionErrorHandler);
+        ToolExecutionResultMessage toolResult = executeWithErrorHandling(
+                toolRequest, toolExecutor, memoryId, toolArgumentsErrorHandler, toolExecutionErrorHandler);
         handleAfterTool(toolRequest, toolResult);
         return toolResult;
     }
 
     private void handleBeforeTool(ToolExecutionRequest toolExecutionRequest) {
         if (beforeToolExecutionHandler != null) {
-            BeforeToolExecution beforeToolExecution = BeforeToolExecution.builder()
-                    .request(toolExecutionRequest)
-                    .build();
+            BeforeToolExecution beforeToolExecution =
+                    BeforeToolExecution.builder().request(toolExecutionRequest).build();
             beforeToolExecutionHandler.accept(beforeToolExecution);
         }
     }

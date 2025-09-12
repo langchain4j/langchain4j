@@ -1,5 +1,6 @@
 package dev.langchain4j.service.guardrail;
 
+import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -30,12 +31,14 @@ public interface GuardrailService {
      * Executes the input guardrails associated with a given {@link Method}
      *
      * @param method The method whose input guardrails are to be executed.
-     * @param params The parameters to validate against the input guardrails. Must not be null.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
+     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The result of executing the input guardrails, encapsulated in an {@code InputGuardrailResult}.
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params);
+    <MethodKey> InputGuardrailResult executeInputGuardrails(
+            MethodKey method, InputGuardrailRequest request, InteractionSource auditInteractionSource);
 
     /**
      * Executes the input guardrails associated with the given method and parameters,
@@ -43,26 +46,30 @@ public interface GuardrailService {
      *
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @param method The method whose input guardrails are to be executed. Nullable.
-     * @param params The parameters to validate against the input guardrails. Must not be null.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
+     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return A {@link UserMessage} derived from the provided parameters and the result
      *         of the input guardrails execution. If guardrails are applied successfully,
      *         a potentially rewritten user message is returned. If no guardrails are
      *         associated with the method, the original user message is returned.
      */
-    default <MethodKey> UserMessage executeGuardrails(MethodKey method, InputGuardrailRequest params) {
-        return executeInputGuardrails(method, params).userMessage(params);
+    default <MethodKey> UserMessage executeGuardrails(
+            MethodKey method, InputGuardrailRequest request, InteractionSource auditInteractionSource) {
+        return executeInputGuardrails(method, request, auditInteractionSource).userMessage(request);
     }
 
     /**
      * Executes the output guardrails associated with a given {@code Method}.
      *
      * @param method The method whose output guardrails are to be executed.
-     * @param params The parameters to validate against the output guardrails. Must not be null.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
+     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The result of executing the output guardrails, encapsulated in an {@code OutputGuardrailResult}.
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params);
+    <MethodKey> OutputGuardrailResult executeOutputGuardrails(
+            MethodKey method, OutputGuardrailRequest request, InteractionSource auditInteractionSource);
 
     /**
      * Whether or not a method has any input guardrails associated with it
@@ -86,11 +93,13 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @param <T> The type of response to produce
      * @param method The method whose output guardrails are to be executed. Nullable.
-     * @param params The parameters to validate against the output guardrails. Must not be null.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
+     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return A {@link ChatResponse} that encapsulates the output of executing the guardrails based on the provided parameters.
      */
-    default <MethodKey, T> T executeGuardrails(MethodKey method, OutputGuardrailRequest params) {
-        return executeOutputGuardrails(method, params).response(params);
+    default <MethodKey, T> T executeGuardrails(
+            MethodKey method, OutputGuardrailRequest request, InteractionSource auditInteractionSource) {
+        return executeOutputGuardrails(method, request, auditInteractionSource).response(request);
     }
 
     /**
