@@ -210,7 +210,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         ExtraParameters extraParameters = findExtraParameters(args, method.getParameters())
-                                .orElseGet(ExtraParameters::new); // TODO what if user passed null?
+                                .orElseGet(ExtraParameters::new);
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .chatMemoryId(chatMemoryId)
                                 .extraParameters(extraParameters)
@@ -221,7 +221,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
                                     .chatMessage(userMessage)
-                                    .chatMemoryId(chatMemoryId)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
@@ -296,7 +295,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .memoryId(chatMemoryId)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
-                                    .invocationContext(invocationContext) // TODO test
+                                    .invocationContext(invocationContext)
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);

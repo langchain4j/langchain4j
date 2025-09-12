@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.ExtraParameters;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -52,8 +53,10 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -1073,6 +1076,64 @@ class StreamingAiServicesWithToolsIT {
 
         verify(handler).beforeToolExecution(any());
         verify(handler, never()).onToolExecuted(any());
+    }
+
+    @Test
+    void should_propagate_extra_parameters_into_tool() throws Exception { // TODO name
+
+        // given
+        class Tools {
+
+            @Tool
+            String getWeather(ExtraParameters extraParameters) {
+                String city = extraParameters.get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            TokenStream chat(@dev.langchain4j.service.UserMessage String userMessage, ExtraParameters extraParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        ExtraParameters extraParameters1 = ExtraParameters.from("city", "Munich");
+        CompletableFuture<ChatResponse> futureResponse1 = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather?", extraParameters1)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(futureResponse1::complete)
+                .onError(futureResponse1::completeExceptionally)
+                .start();
+
+        // then
+        assertThat(futureResponse1.get(30, SECONDS).aiMessage().text()).contains("rain");
+        verify(spyTools).getWeather(extraParameters1);
+
+        // given
+        ExtraParameters extraParameters2 = ExtraParameters.from("city", "Paris");
+        CompletableFuture<ChatResponse> futureResponse2 = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the weather?", extraParameters2)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(futureResponse2::complete)
+                .onError(futureResponse2::completeExceptionally)
+                .start();
+
+        // then
+        assertThat(futureResponse2.get(30, SECONDS).aiMessage().text()).contains("sun");
+        verify(spyTools).getWeather(extraParameters2);
     }
 
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {

@@ -17,22 +17,21 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 public class Metadata {
 
     private final ChatMessage chatMessage;
-    private final Object chatMemoryId;
     private final List<ChatMessage> chatMemory;
     private final InvocationContext invocationContext;
 
     public Metadata(Builder builder) {
         this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
-        this.chatMemoryId = builder.chatMemoryId;
         this.chatMemory = copy(builder.chatMemory);
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
-        this.chatMemoryId = chatMemoryId;
         this.chatMemory = copy(chatMemory);
-        this.invocationContext = null;
+        this.invocationContext = InvocationContext.builder()
+                .chatMemoryId(chatMemoryId)
+                .build();
     }
 
     /**
@@ -47,7 +46,7 @@ public class Metadata {
      * See {@code @dev.langchain4j.service.MemoryId} annotation from a {@code dev.langchain4j:langchain4j} module.
      */
     public Object chatMemoryId() {
-        return chatMemoryId;
+        return invocationContext.chatMemoryId();
     }
 
     /**
@@ -68,21 +67,19 @@ public class Metadata {
         if (o == null || getClass() != o.getClass()) return false;
         Metadata that = (Metadata) o;
         return Objects.equals(this.chatMessage, that.chatMessage)
-                && Objects.equals(this.chatMemoryId, that.chatMemoryId)
                 && Objects.equals(this.chatMemory, that.chatMemory)
                 && Objects.equals(this.invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(chatMessage, chatMemoryId, chatMemory, invocationContext);
+        return Objects.hash(chatMessage, chatMemory, invocationContext);
     }
 
     @Override
     public String toString() {
         return "Metadata {" +
                 " chatMessage = " + chatMessage +
-                ", chatMemoryId = " + chatMemoryId +
                 ", chatMemory = " + chatMemory +
                 ", invocationContext = " + invocationContext +
                 " }";
@@ -99,17 +96,11 @@ public class Metadata {
     public static class Builder {
 
         private ChatMessage chatMessage;
-        private Object chatMemoryId;
         private List<ChatMessage> chatMemory;
         private InvocationContext invocationContext;
 
         public Builder chatMessage(ChatMessage chatMessage) {
             this.chatMessage = chatMessage;
-            return this;
-        }
-
-        public Builder chatMemoryId(Object chatMemoryId) {
-            this.chatMemoryId = chatMemoryId;
             return this;
         }
 
