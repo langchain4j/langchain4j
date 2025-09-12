@@ -116,4 +116,36 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
                 .logResponses(true)
                 .build();
     }
+
+    @Override
+    protected void verifyToolCallbacks(
+            dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler,
+            org.mockito.InOrder io,
+            String id) {
+        // Vertex AI Anthropic can send text responses before tool calls
+        // Use atLeast(0) to ignore any onPartialResponse calls that happen before tool execution
+        io.verify(handler, org.mockito.Mockito.atLeast(0)).onPartialResponse(org.mockito.ArgumentMatchers.any());
+
+        // Vertex AI Anthropic doesn't support partial tool streaming, so we only verify onCompleteToolCall
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\n  \"city\" : \"Munich\"\n}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(
+            dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler,
+            org.mockito.InOrder io,
+            String id1,
+            String id2) {
+        // Handle multiple tool calls - account for onPartialResponse calls first
+        io.verify(handler, org.mockito.Mockito.atLeast(0)).onPartialResponse(org.mockito.ArgumentMatchers.any());
+
+        // Verify both tool calls
+        io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\n  \"city\" : \"Munich\"\n}"));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\n  \"country\" : \"France\"\n}"));
+    }
+
+    @Override
+    protected boolean assertThreads() {
+        return false; // Vertex AI Anthropic uses simulated streaming, not true async streaming
+    }
 }

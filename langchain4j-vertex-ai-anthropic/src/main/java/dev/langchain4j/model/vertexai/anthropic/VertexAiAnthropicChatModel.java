@@ -9,10 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -25,7 +22,6 @@ import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRespons
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,23 +88,25 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         List<ChatMessage> messages = chatRequest.messages();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
 
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(chatRequest, provider(), new ConcurrentHashMap<>());
-
-        ConcurrentHashMap<Object, Object> attributes = new ConcurrentHashMap<>();
-        requestContext.attributes().putAll(attributes);
-
-        notifyListenersOnRequest(requestContext);
-
         try {
+            String requestModelName = getOrDefault(parameters.modelName(), modelName);
+
+            if (logRequests) {
+                logger.debug(
+                        "Using model name: {} (from parameters: {}, default: {})",
+                        requestModelName,
+                        parameters.modelName(),
+                        modelName);
+            }
+
             AnthropicRequest anthropicRequest = AnthropicRequestMapper.toRequest(
-                    modelName,
+                    requestModelName,
                     messages,
                     toolSpecifications,
                     parameters.toolChoice(),
@@ -126,32 +124,21 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                 logger.debug("Anthropic request: {}", anthropicRequest);
             }
 
-            AnthropicResponse anthropicResponse = client.generateContent(anthropicRequest);
+            AnthropicResponse anthropicResponse = client.generateContent(anthropicRequest, requestModelName);
 
             if (logResponses) {
                 logger.debug("Anthropic response: {}", anthropicResponse);
             }
 
-            ChatResponse chatResponse = AnthropicResponseMapper.toChatResponse(anthropicResponse);
-
-            ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(chatResponse, chatRequest, provider(), attributes);
-
-            notifyListenersOnResponse(responseContext);
-
-            return chatResponse;
-
-        } catch (Exception e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(e, chatRequest, provider(), attributes);
-
-            notifyListenersOnError(errorContext);
-
-            if (e instanceof RuntimeException) {
-                throw (RuntimeException) e;
-            } else {
-                throw new RuntimeException("Failed to generate response", e);
-            }
+            return AnthropicResponseMapper.toChatResponse(anthropicResponse);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate response", e);
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     @Override
@@ -164,18 +151,6 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         if (client != null) {
             client.close();
         }
-    }
-
-    private void notifyListenersOnRequest(ChatModelRequestContext requestContext) {
-        ValidationUtils.notifyListenersOnRequest(listeners, requestContext);
-    }
-
-    private void notifyListenersOnResponse(ChatModelResponseContext responseContext) {
-        ValidationUtils.notifyListenersOnResponse(listeners, responseContext);
-    }
-
-    private void notifyListenersOnError(ChatModelErrorContext errorContext) {
-        ValidationUtils.notifyListenersOnError(listeners, errorContext);
     }
 
     public static VertexAiAnthropicChatModelBuilder builder() {

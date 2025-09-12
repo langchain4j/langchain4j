@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.3.0-beta9-SNAPSHOT</version>
+        <version>1.5.0-beta11-SNAPSHOT</version>
         <relativePath>../langchain4j-parent</relativePath>
     </parent>
 
@@ -25,6 +25,12 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Fix dependency convergence issue -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.38.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -33,12 +39,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-vertexai</artifactId>
+            <version>1.5.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -63,7 +64,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.5.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -80,14 +81,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.5.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.5.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

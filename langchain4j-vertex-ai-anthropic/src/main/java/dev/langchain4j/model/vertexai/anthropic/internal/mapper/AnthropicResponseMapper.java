@@ -25,9 +25,12 @@ public class AnthropicResponseMapper {
         TokenUsage tokenUsage = toTokenUsage(anthropicResponse);
         FinishReason finishReason = toFinishReason(anthropicResponse.stopReason);
 
+        // Normalize model name back to the format expected by users (- back to @)
+        String normalizedModelName = normalizeModelName(anthropicResponse.model);
+
         ChatResponseMetadata metadata = ChatResponseMetadata.builder()
                 .id(anthropicResponse.id)
-                .modelName(anthropicResponse.model)
+                .modelName(normalizedModelName)
                 .tokenUsage(tokenUsage)
                 .finishReason(finishReason)
                 .build();
@@ -94,5 +97,29 @@ public class AnthropicResponseMapper {
             case "tool_use" -> FinishReason.TOOL_EXECUTION;
             default -> FinishReason.OTHER;
         };
+    }
+
+    /**
+     * Normalizes the model name returned by Vertex AI back to the format expected by users.
+     * Vertex AI transforms '@' to '-' in model names in responses, so we convert it back.
+     */
+    private static String normalizeModelName(String vertexAiModelName) {
+        if (vertexAiModelName == null) {
+            return null;
+        }
+
+        // Convert claude-3-5-sonnet-v2-20241022 back to claude-3-5-sonnet-v2@20241022
+        // This specifically handles the date format at the end
+        if (vertexAiModelName.matches(".*-\\d{8}$")) {
+            // Find the last occurrence of a dash followed by 8 digits (date format)
+            int lastDashIndex = vertexAiModelName.lastIndexOf('-');
+            if (lastDashIndex > 0
+                    && vertexAiModelName.substring(lastDashIndex + 1).matches("\\d{8}")) {
+                return vertexAiModelName.substring(0, lastDashIndex) + "@"
+                        + vertexAiModelName.substring(lastDashIndex + 1);
+            }
+        }
+
+        return vertexAiModelName;
     }
 }

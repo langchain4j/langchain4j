@@ -75,14 +75,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-anthropic</artifactId>
-  <version>1.2.0-beta8-SNAPSHOT</version>
+  <version>1.5.0-beta11</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.2.0-beta8-SNAPSHOT'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.5.0-beta11'
 ```
 
 ### Try out an example code
@@ -178,16 +178,8 @@ model.chat(ChatRequest.builder()
 
 ### Available models
 
-| Model name                         | Description                                                                                    | Inputs        | Properties                                                |
-|------------------------------------|------------------------------------------------------------------------------------------------|---------------|-----------------------------------------------------------|
-| `claude-opus-4@20250514`          | Most powerful model for complex reasoning and analysis                                        | Text, images  | Max input tokens: 200,000, Max output tokens: 4,096     |
-| `claude-sonnet-4@20250514`        | Balanced model for speed and capability                                                       | Text, images  | Max input tokens: 200,000, Max output tokens: 4,096     |
-| `claude-3-5-sonnet-v2@20241022`   | Latest generation with improved reasoning and coding capabilities                             | Text, images  | Max input tokens: 200,000, Max output tokens: 8,192     |
-| `claude-3-5-haiku@20241022`       | Fastest model for simple tasks and quick responses                                           | Text, images  | Max input tokens: 200,000, Max output tokens: 8,192     |
-| `claude-3-opus@20240229`          | Most capable model for complex tasks requiring deep understanding                            | Text, images  | Max input tokens: 200,000, Max output tokens: 4,096     |
-| `claude-3-7-sonnet@20250219`      | Balanced model with strong performance across various tasks                                  | Text, images  | Max input tokens: 200,000, Max output tokens: 4,096     |
-
-You can learn more about the models in the [Claude model documentation](https://docs.anthropic.com/en/docs/about-claude/models).
+List of available models for [Vertex AI](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude).
+You can learn about the models in the [Claude model documentation](https://docs.anthropic.com/en/docs/about-claude/models).
 
 ## Configuration
 
