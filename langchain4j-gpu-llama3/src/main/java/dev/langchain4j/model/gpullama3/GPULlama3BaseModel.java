@@ -20,7 +20,7 @@ abstract class GPULlama3BaseModel {
     private Double topP;
     private Integer seed;
     private Integer maxTokens;
-    private boolean onGPU;
+    private Boolean onGPU;
     private Model model;
     private Sampler sampler;
     private Boolean stream;
@@ -42,8 +42,8 @@ abstract class GPULlama3BaseModel {
                         Double topP,
                         Integer seed,
                         Integer maxTokens,
-                        boolean onGPU,
-                        boolean stream) {
+                        Boolean onGPU,
+                        Boolean stream) {
         this.maxTokens = maxTokens;
         this.onGPU = onGPU;
         this.modelPath = modelPath;
@@ -53,7 +53,7 @@ abstract class GPULlama3BaseModel {
         this.stream = stream;
 
         try {
-            this.model = ModelLoader.loadModel(modelPath, maxTokens, true);
+            this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
             this.sampler = LlamaApp.selectSampler(
                     model.configuration().vocabularySize(),
                     temperature.floatValue(), topP.floatValue(), seed
