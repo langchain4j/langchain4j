@@ -5,12 +5,43 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.rag.query.Query;
 
 /**
- * TODO
- * TODO scope
- * TODO mutable
- * TODO ConcurrentHashMap
+ * Represents arbitrary parameters available during a single AI Service invocation.
+ * {@code InvocationParameters} can be specified when invoking the AI Service:
+ *
+ * <pre>
+ * interface Assistant {
+ *     String chat(@UserMessage String userMessage, InvocationParameters parameters)
+ * }
+ *
+ * InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+ * </pre>
+ * <p>
+ * {@code InvocationParameters} can be accessed within the {@link Tool}-annotated method:
+ * <pre>
+ * class Tools {
+ *     <code>@Tool</code>
+ *     String getUserInformation(InvocationParameters parameters) {
+ *         String userId = parameters.get("userId");
+ *         return userService.getUserInformation(userId);
+ *     }
+ * }
+ * </pre>
+ * <p>
+ * In this case, the LLM is not aware of these parameters; they are only visible to the user code.
+ * <p>
+ * {@code InvocationParameters} can also be accessed within other components, such as:
+ * <pre>
+ * - ToolProvider: inside the ToolProviderRequest
+ * - RAG components: inside the {@link Query} -> {@link Metadata}
+ * - ToolArgumentsErrorHandler and ToolExecutionErrorHandler: inside the ToolErrorContext
+ * </pre>
+ * <p>
+ * Parameters are stored in a mutable, thread safe {@link Map}.
  *
  * @since 1.5.0
  */

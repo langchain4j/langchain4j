@@ -1,10 +1,13 @@
 package dev.langchain4j.invocation;
 
 import java.util.Objects;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * TODO
- * TODO scope
+ * Represents the context of a single AI Service invocation.
+ * A new instance is created each time an AI Service method is invoked,
+ * and it exists until the end of the AI Service invocation,
+ * potentially spanning multiple calls to the {@link ChatModel}.
  *
  * @since 1.5.0
  */
