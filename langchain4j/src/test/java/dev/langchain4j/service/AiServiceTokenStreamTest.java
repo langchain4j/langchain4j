@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
@@ -184,6 +186,10 @@ class AiServiceTokenStreamTest {
                     throw new RuntimeException(e);
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId("default")
+                        .invocationParameters(new InvocationParameters())
+                        .build())
                 .build());
     }
 }
