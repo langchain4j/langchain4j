@@ -330,6 +330,7 @@ class ToolExecutorTest {
         ToolExecutor toolExecutor = (request, memoryId) -> "result";
 
         assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
@@ -338,6 +339,7 @@ class ToolExecutorTest {
         ToolExecutor toolExecutor = (ToolExecutionRequest request, Object memoryId) -> "result";
 
         assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
@@ -355,6 +357,7 @@ class ToolExecutorTest {
         };
 
         assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
@@ -375,6 +378,7 @@ class ToolExecutorTest {
             }
         };
 
+        assertThat(toolExecutor.execute(null, null)).isNull();
         assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
     }
 }
