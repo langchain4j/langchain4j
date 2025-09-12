@@ -3,6 +3,7 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -53,18 +54,20 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params) {
+    public <MethodKey> InputGuardrailResult executeInputGuardrails(
+            MethodKey method, InputGuardrailRequest request, InteractionSource auditInteractionSource) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
-                .map(executor -> executor.execute(params))
+                .map(executor -> executor.execute(request, auditInteractionSource))
                 .orElseGet(InputGuardrailResult::success);
     }
 
     @Override
-    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params) {
+    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(
+            MethodKey method, OutputGuardrailRequest request, InteractionSource auditInteractionSource) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
-                .map(executor -> executor.execute(params))
+                .map(executor -> executor.execute(request, auditInteractionSource))
                 .orElseGet(OutputGuardrailResult::success);
     }
 

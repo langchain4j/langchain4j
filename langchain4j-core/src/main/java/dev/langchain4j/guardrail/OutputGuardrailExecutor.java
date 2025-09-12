@@ -1,5 +1,9 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
+
+import dev.langchain4j.audit.api.event.InteractionSource;
+import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
@@ -21,7 +25,12 @@ import java.util.stream.Collectors;
  */
 public non-sealed class OutputGuardrailExecutor
         extends AbstractGuardrailExecutor<
-                OutputGuardrailsConfig, OutputGuardrailRequest, OutputGuardrailResult, OutputGuardrail, Failure> {
+                OutputGuardrailsConfig,
+                OutputGuardrailRequest,
+                OutputGuardrailResult,
+                OutputGuardrail,
+                OutputGuardrailExecutedEvent,
+                Failure> {
 
     public static final String MAX_RETRIES_MESSAGE_TEMPLATE =
             """
@@ -38,13 +47,14 @@ public non-sealed class OutputGuardrailExecutor
     /**
      * Executes the {@link OutputGuardrail}s on the given {@link OutputGuardrailRequest}.
      *
-     * @param params     The {@link OutputGuardrailRequest} to validate
+     * @param request     The {@link OutputGuardrailRequest} to validate
+     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The {@link OutputGuardrailResult} of the validation
      */
     @Override
-    public OutputGuardrailResult execute(OutputGuardrailRequest params) {
+    public OutputGuardrailResult execute(OutputGuardrailRequest request, InteractionSource auditInteractionSource) {
         OutputGuardrailResult result = null;
-        var accumulatedParams = params;
+        var accumulatedRequest = request;
         var attempt = 0;
         var maxAttempts = config().maxRetries();
 
@@ -55,7 +65,7 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = executeGuardrails(accumulatedParams);
+            result = executeGuardrails(accumulatedRequest, auditInteractionSource);
 
             if (result.isSuccess()) {
                 return result;
@@ -71,18 +81,18 @@ public non-sealed class OutputGuardrailExecutor
                 // If we get here we know it is some kind of retry
                 // We don't want to add intermediary UserMessages to the memory
                 var chatMessages = Optional.ofNullable(
-                                accumulatedParams.requestParams().chatMemory())
+                                accumulatedRequest.requestParams().chatMemory())
                         .map(ChatMemory::messages)
                         .orElseGet(ArrayList::new);
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
                 // Re-execute the request with the appended message
                 // But don't add it or the resulting message to the memory
-                var response = accumulatedParams.chatExecutor().execute(chatMessages);
-                accumulatedParams = OutputGuardrailRequest.builder()
+                var response = accumulatedRequest.chatExecutor().execute(chatMessages);
+                accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(response)
-                        .chatExecutor(accumulatedParams.chatExecutor())
-                        .requestParams(accumulatedParams.requestParams())
+                        .chatExecutor(accumulatedRequest.chatExecutor())
+                        .requestParams(accumulatedRequest.requestParams())
                         .build();
             }
         }
@@ -128,6 +138,11 @@ public non-sealed class OutputGuardrailExecutor
         return accumulatedResult.hasRewrittenResult() ? result.blockRetry() : result;
     }
 
+    @Override
+    protected OutputGuardrailExecutedEventBuilder createEmptyAuditEventBuilderInstance() {
+        return OutputGuardrailExecutedEvent.builder();
+    }
+
     /**
      * Creates a new instance of {@link OutputGuardrailExecutorBuilder}.
      * The builder is used to construct and configure instances of {@link OutputGuardrailExecutorBuilder}.
@@ -160,6 +175,7 @@ public non-sealed class OutputGuardrailExecutor
                     OutputGuardrailResult,
                     OutputGuardrailRequest,
                     OutputGuardrail,
+                    OutputGuardrailExecutedEvent,
                     OutputGuardrailExecutorBuilder> {
 
         protected OutputGuardrailExecutorBuilder() {

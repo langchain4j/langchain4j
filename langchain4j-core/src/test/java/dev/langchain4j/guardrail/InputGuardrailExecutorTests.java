@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import java.util.Map;
@@ -22,6 +23,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 class InputGuardrailExecutorTests {
+    private static final InteractionSource DEFAULT_INTERACTION_SOURCE = InteractionSource.builder()
+            .interfaceName("SomeInterface")
+            .methodName("someMethod")
+            .methodArgument("one")
+            .methodArgument("two")
+            .memoryId("one")
+            .build();
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("successGuardrails")
     void allSuccessfulGuardrails(
@@ -30,10 +39,10 @@ class InputGuardrailExecutorTests {
             @AggregateWith(InputGuardrailAggregator.class) InputGuardrail... guardrails) {
 
         var spiedGuardrails = Stream.of(guardrails).map(Mockito::spy).toArray(InputGuardrail[]::new);
-        var params = from(UserMessage.from("test"));
+        var request = from(UserMessage.from("test"));
         var executor =
                 InputGuardrailExecutor.builder().guardrails(spiedGuardrails).build();
-        var result = executor.execute(params);
+        var result = executor.execute(request, DEFAULT_INTERACTION_SOURCE);
 
         assertThat(result).isSuccessful();
 
@@ -41,22 +50,22 @@ class InputGuardrailExecutorTests {
                 .mapToObj(i -> (SuccessInputGuardrail) spiedGuardrails[i])
                 .forEach(guardrail -> {
                     assertThat(guardrail.shouldBeExecuted).isTrue();
-                    verify(guardrail).validate(params);
+                    verify(guardrail).validate(request);
                 });
 
         IntStream.range(howManyShouldExecute, spiedGuardrails.length)
                 .mapToObj(i -> (SuccessInputGuardrail) spiedGuardrails[i])
                 .forEach(guardrail -> {
                     assertThat(guardrail.shouldBeExecuted).isFalse();
-                    verify(guardrail, never()).validate(params);
+                    verify(guardrail, never()).validate(request);
                 });
     }
 
     @Test
     void noGuardrails() {
-        var params = from(UserMessage.from("test"));
+        var request = from(UserMessage.from("test"));
         var executor = InputGuardrailExecutor.builder().build();
-        var result = executor.execute(params);
+        var result = executor.execute(request, DEFAULT_INTERACTION_SOURCE);
 
         assertThat(result).isSuccessful();
     }
@@ -70,14 +79,14 @@ class InputGuardrailExecutorTests {
             @AggregateWith(InputGuardrailAggregator.class) InputGuardrail... guardrails) {
 
         var spiedGuardrails = Stream.of(guardrails).map(Mockito::spy).toArray(InputGuardrail[]::new);
-        var params = from(UserMessage.from("test"));
+        var request = from(UserMessage.from("test"));
         var executor = InputGuardrailExecutor.builder()
                 .guardrails(spiedGuardrails)
                 .config(InputGuardrailsConfig.builder().build())
                 .build();
 
         assertThatExceptionOfType(InputGuardrailException.class)
-                .isThrownBy(() -> executor.execute(params))
+                .isThrownBy(() -> executor.execute(request, DEFAULT_INTERACTION_SOURCE))
                 .withMessageMatching("The guardrail " + getClass().getName()
                         + "\\$.+Guardrail failed with this message: failure \\d");
 
@@ -89,7 +98,7 @@ class InputGuardrailExecutorTests {
                             : ((FailureInputGuardrail) guardrail).shouldBeExecuted;
 
                     assertThat(shouldBeExecuted).isTrue();
-                    verify(guardrail).validate(params);
+                    verify(guardrail).validate(request);
                 });
 
         IntStream.range(howManyShouldExecute, spiedGuardrails.length)
@@ -100,7 +109,7 @@ class InputGuardrailExecutorTests {
                             : ((FailureInputGuardrail) guardrail).shouldBeExecuted;
 
                     assertThat(shouldBeExecuted).isFalse();
-                    verify(guardrail, never()).validate(params);
+                    verify(guardrail, never()).validate(request);
                 });
 
         var numFailedGuardrails = Stream.of(spiedGuardrails)
