@@ -13,10 +13,13 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationHandler;
@@ -24,6 +27,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -442,5 +447,80 @@ class UtilsTest {
 
         assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
         assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("readInputStreamAndCloseData")
+    void readInputStreamAndClose_shouldReadCorrectly(byte[] bytes, Charset charset, String expected) {
+        InputStream inputStream = new ByteArrayInputStream(bytes);
+
+        String result = Utils.readInputStreamAndClose(inputStream, charset);
+
+        assertThat(result).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> readInputStreamAndCloseData() {
+        return Stream.of(
+                Arguments.of("hello".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8, "hello"),
+                Arguments.of("café".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8, "café"),
+                Arguments.of("café".getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.ISO_8859_1, "café"),
+                Arguments.of("".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8, ""),
+                Arguments.of("こんにちは".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8, "こんにちは"),
+                Arguments.of("こんにちは".getBytes(StandardCharsets.UTF_8), null, "こんにちは") // charset null defaults to UTF-8
+                );
+    }
+
+    @Test
+    void readInputStreamAndClose_shouldThrowRuntimeException_whenIOExceptionOccurs() {
+        InputStream failingInputStream = new InputStream() {
+            @Override
+            public int read() {
+                throw new RuntimeException("fail");
+            }
+        };
+
+        assertThatThrownBy(() -> Utils.readInputStreamAndClose(failingInputStream, StandardCharsets.UTF_8))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("fail");
+    }
+
+    @Test
+    void readInputStreamAndClose_shouldThrowNullPointerException_whenInputStreamIsNull() {
+        assertThatThrownBy(() -> Utils.readInputStreamAndClose(null, StandardCharsets.UTF_8))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("inputStream cannot be null");
+    }
+
+    @Test
+    void readInputStreamAndClose_shouldCloseTheStream() {
+        byte[] data = "test".getBytes(StandardCharsets.UTF_8);
+        CloseTrackingInputStream stream = new CloseTrackingInputStream(data);
+
+        String result = Utils.readInputStreamAndClose(stream, StandardCharsets.UTF_8);
+
+        assertThat(result).isEqualTo("test");
+        assertThat(stream.isClosed()).isTrue();
+    }
+
+    class CloseTrackingInputStream extends ByteArrayInputStream {
+        private boolean closed = false;
+
+        CloseTrackingInputStream(byte[] buf) {
+            super(buf);
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+            try {
+                super.close();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        boolean isClosed() {
+            return closed;
+        }
     }
 }
