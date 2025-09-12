@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
@@ -52,7 +52,7 @@ class AiServicesUserMessageConfigTest {
 
         String chat2(@UserMessage String userMessage);
 
-        String chat2_1(@UserMessage String userMessage, ExtraParameters extraParameters);
+        String chat2_1(@UserMessage String userMessage, InvocationParameters invocationParameters);
 
         String chat3(@UserMessage String userMessage, @V("country") String country);
 
@@ -102,9 +102,9 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
-        String illegalChat7(String userMessage, ExtraParameters extraParameters);
+        String illegalChat7(String userMessage, InvocationParameters invocationParameters);
 
-        String illegalChat8(@UserMessage String userMessage, ExtraParameters ep1, ExtraParameters ep2);
+        String illegalChat8(@UserMessage String userMessage, InvocationParameters ep1, InvocationParameters ep2);
 
         // TODO more tests with @UserName, @V, @MemoryId
     }
@@ -161,26 +161,26 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat2_1("What is the capital of Germany?", new ExtraParameters()))
+        assertThat(aiService.chat2_1("What is the capital of Germany?", new InvocationParameters()))
                 .containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
     }
 
     @Test
-    void user_message_configuration_2_1_when_extraParameters_is_null() {
+    void user_message_configuration_2_1_when_invocation_parameters_are_null() {
 
         // given
-        ExtraParameters extraParameters = null;
+        InvocationParameters invocationParameters = null;
 
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(chatModel)
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> aiService.chat2_1("does not matter", extraParameters))
+        assertThatThrownBy(() -> aiService.chat2_1("does not matter", invocationParameters))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("ExtraParameters cannot be null");
+                .hasMessage("InvocationParameters cannot be null");
     }
 
     @Test
@@ -486,7 +486,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new ExtraParameters()))
+        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new InvocationParameters()))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The parameter 'arg0' in the method 'illegalChat7' " +
                         "of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService " +
@@ -504,12 +504,12 @@ class AiServicesUserMessageConfigTest {
                 .chatModel(chatModel)
                 .build();
 
-        ExtraParameters extraParameters = new ExtraParameters();
+        InvocationParameters invocationParameters = new InvocationParameters();
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat8("Hello", extraParameters, extraParameters))
+        assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("There can be at most one parameter of type ExtraParameters");
+                .hasMessage("There can be at most one parameter of type InvocationParameters");
     }
 
     interface AssistantHallucinatedTool {

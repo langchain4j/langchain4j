@@ -22,7 +22,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -53,10 +53,8 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -1079,14 +1077,14 @@ class StreamingAiServicesWithToolsIT {
     }
 
     @Test
-    void should_propagate_extra_parameters_into_tool() throws Exception { // TODO name
+    void should_propagate_invocation_parameters_into_tool() throws Exception { // TODO name
 
         // given
         class Tools {
 
             @Tool
-            String getWeather(ExtraParameters extraParameters) {
-                String city = extraParameters.get("city");
+            String getWeather(InvocationParameters invocationParameters) {
+                String city = invocationParameters.get("city");
                 return switch (city) {
                     case "Munich" -> "rainy";
                     default -> "sunny";
@@ -1096,7 +1094,7 @@ class StreamingAiServicesWithToolsIT {
 
         interface Assistant {
 
-            TokenStream chat(@dev.langchain4j.service.UserMessage String userMessage, ExtraParameters extraParameters);
+            TokenStream chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
         }
 
         Tools spyTools = spy(new Tools());
@@ -1106,11 +1104,11 @@ class StreamingAiServicesWithToolsIT {
                 .tools(spyTools)
                 .build();
 
-        ExtraParameters extraParameters1 = ExtraParameters.from("city", "Munich");
+        InvocationParameters invocationParameters1 = InvocationParameters.from("city", "Munich");
         CompletableFuture<ChatResponse> futureResponse1 = new CompletableFuture<>();
 
         // when
-        assistant.chat("What is the weather?", extraParameters1)
+        assistant.chat("What is the weather?", invocationParameters1)
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(futureResponse1::complete)
                 .onError(futureResponse1::completeExceptionally)
@@ -1118,14 +1116,14 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         assertThat(futureResponse1.get(30, SECONDS).aiMessage().text()).contains("rain");
-        verify(spyTools).getWeather(extraParameters1);
+        verify(spyTools).getWeather(invocationParameters1);
 
         // given
-        ExtraParameters extraParameters2 = ExtraParameters.from("city", "Paris");
+        InvocationParameters invocationParameters2 = InvocationParameters.from("city", "Paris");
         CompletableFuture<ChatResponse> futureResponse2 = new CompletableFuture<>();
 
         // when
-        assistant.chat("What is the weather?", extraParameters2)
+        assistant.chat("What is the weather?", invocationParameters2)
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(futureResponse2::complete)
                 .onError(futureResponse2::completeExceptionally)
@@ -1133,7 +1131,7 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         assertThat(futureResponse2.get(30, SECONDS).aiMessage().text()).contains("sun");
-        verify(spyTools).getWeather(extraParameters2);
+        verify(spyTools).getWeather(invocationParameters2);
     }
 
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {

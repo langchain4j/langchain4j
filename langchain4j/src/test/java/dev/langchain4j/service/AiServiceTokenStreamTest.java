@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -188,7 +188,7 @@ class AiServiceTokenStreamTest {
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .invocationContext(InvocationContext.builder()
                         .chatMemoryId("default")
-                        .extraParameters(new ExtraParameters())
+                        .invocationParameters(new InvocationParameters())
                         .build())
                 .build());
     }

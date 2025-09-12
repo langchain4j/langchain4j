@@ -2,7 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
@@ -34,7 +34,7 @@ public class InternalReflectionVariableResolver {
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
             Parameter parameter = parameters[i];
-            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
+            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
                 continue;
             }
             String variableName = getVariableName(parameter);

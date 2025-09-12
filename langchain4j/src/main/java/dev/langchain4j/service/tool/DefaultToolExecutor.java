@@ -1,6 +1,6 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -179,9 +179,9 @@ public class DefaultToolExecutor implements ToolExecutor {
                 continue;
             }
 
-            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
-                // TODO test extending from ExtraParameters
-                arguments[i] = context.extraParameters();
+            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
+                // TODO test extending from InvocationParameters
+                arguments[i] = context.invocationParameters();
                 continue;
             }
 

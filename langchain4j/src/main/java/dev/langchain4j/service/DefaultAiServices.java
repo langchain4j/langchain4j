@@ -10,7 +10,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.ExtraParameters;
+import dev.langchain4j.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
@@ -74,7 +74,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return;
         }
 
-        int extraParametersCount = 0;
+        int invocationParametersCount = 0;
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
@@ -83,15 +83,16 @@ class DefaultAiServices<T> extends AiServices<T> {
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
 
-            boolean isExtraParameters = parameter.getType() == ExtraParameters.class;
-            if (isExtraParameters) {
-                extraParametersCount++;
-                if (extraParametersCount > 1) {
-                    throw illegalConfiguration("There can be at most one parameter of type ExtraParameters");
+            boolean isInvocationParameters = parameter.getType() == InvocationParameters.class;
+            if (isInvocationParameters) {
+                invocationParametersCount++;
+                if (invocationParametersCount > 1) {
+                    throw illegalConfiguration("There can be at most one parameter of type %s",
+                            InvocationParameters.class.getName());
                 }
             }
 
-            if (v == null && userMessage == null && memoryId == null && userName == null && !isExtraParameters) {
+            if (v == null && userMessage == null && memoryId == null && userName == null && !isInvocationParameters) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
                                 "%s, %s, %s, or %s, or it should be of type %s",
@@ -100,7 +101,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
-                        ExtraParameters.class.getName()
+                        InvocationParameters.class.getName()
                 );
             }
         }
@@ -209,11 +210,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        ExtraParameters extraParameters = findExtraParameters(args, method.getParameters())
-                                .orElseGet(ExtraParameters::new);
+                        InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
+                                .orElseGet(InvocationParameters::new);
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .chatMemoryId(chatMemoryId)
-                                .extraParameters(extraParameters)
+                                .invocationParameters(invocationParameters)
                                 .build();
 
                         AugmentationResult augmentationResult = null;
@@ -385,16 +386,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private Optional<ExtraParameters> findExtraParameters(Object[] arguments, Parameter[] parameters) {
+                    private Optional<InvocationParameters> findInvocationParameters(Object[] arguments, Parameter[] parameters) {
                         if (arguments == null) {
                             return Optional.empty();
                         }
                         for (int i = 0; i < parameters.length; i++) {
                             Parameter parameter = parameters[i];
-                            if (parameter.getType().isAssignableFrom(ExtraParameters.class)) {
-                                ExtraParameters extraParameters = (ExtraParameters) arguments[i];
-                                ensureNotNull(extraParameters, "ExtraParameters");
-                                return Optional.of(extraParameters);
+                            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
+                                InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
+                                ensureNotNull(invocationParameters, "InvocationParameters");
+                                return Optional.of(invocationParameters);
                             }
                         }
                         return Optional.empty();

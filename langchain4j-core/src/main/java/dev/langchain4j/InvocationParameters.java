@@ -8,18 +8,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TODO
+ * TODO scope
+ * TODO mutable
+ * TODO ConcurrentHashMap
  *
  * @since 1.5.0
  */
-public class ExtraParameters { // TODO name, module, package
+public class InvocationParameters { // TODO name, module, package
 
     private final Map<String, Object> map;
 
-    public ExtraParameters() {
+    public InvocationParameters() {
         this(new ConcurrentHashMap<>());
     }
 
-    public ExtraParameters(Map<String, Object> map) {
+    public InvocationParameters(Map<String, Object> map) {
         this.map = ensureNotNull(map, "map");
     }
 
@@ -47,7 +50,7 @@ public class ExtraParameters { // TODO name, module, package
     public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
-        ExtraParameters that = (ExtraParameters) object;
+        InvocationParameters that = (InvocationParameters) object;
         return Objects.equals(map, that.map);
     }
 
@@ -58,16 +61,16 @@ public class ExtraParameters { // TODO name, module, package
 
     @Override
     public String toString() {
-        return "ExtraParameters{" +
+        return "InvocationParameters{" +
                 "map=" + map +
                 '}';
     }
 
-    public static ExtraParameters from(String key, Object value) {
-        return new ExtraParameters(Map.of(key, value));
+    public static InvocationParameters from(String key, Object value) {
+        return new InvocationParameters(Map.of(key, value));
     }
 
-    public static ExtraParameters from(Map<String, Object> map) {
-        return new ExtraParameters(map);
+    public static InvocationParameters from(Map<String, Object> map) {
+        return new InvocationParameters(map);
     }
 }
