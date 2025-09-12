@@ -41,14 +41,4 @@ class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
     }
-
-    @Override
-    protected boolean supportsRemoveAllByFilter() {
-        return false;
-    }
-
-    @Override
-    protected boolean supportsRemoveAll() {
-        return false;
-    }
 }
