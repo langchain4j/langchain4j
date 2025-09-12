@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -16,10 +17,13 @@ import static java.time.Duration.ofSeconds;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
@@ -27,6 +31,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -90,6 +95,17 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
     }
 
+    GeminiCachedContent createCachedContent(String modelName, GeminiCachedContent cachedContent) {
+        cachedContent.setModel("models/" + modelName);
+        String url = baseUrl + "/cachedContents";
+        return sendRequest(url, apiKey, cachedContent, GeminiCachedContent.class);
+    }
+
+    GoogleAiListCachedContentsResponse listCachedContents(GoogleAiListCachedContentsRequest request) {
+        String url = baseUrl + "/cachedContents?pageSize=" + request.getPageSize() + (request.getPageToken() != null ? "&pageToken=" + request.getPageToken() : "");
+        return sendGetRequest(url, apiKey, GoogleAiListCachedContentsResponse.class);
+    }
+
     void generateContentStream(
             String modelName,
             GeminiGenerateContentRequest request,
@@ -102,7 +118,15 @@ class GeminiService {
 
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
         String jsonBody = Json.toJson(requestBody);
-        HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
+        HttpRequest request = buildHttpRequest(POST, url, apiKey, jsonBody);
+
+        SuccessfulHttpResponse response = httpClient.execute(request);
+
+        return fromJson(response.body(), responseType);
+    }
+
+    private <T> T sendGetRequest(String url, String apiKey, Class<T> responseType) {
+        HttpRequest request = buildHttpRequest(GET, url, apiKey, null);
 
         SuccessfulHttpResponse response = httpClient.execute(request);
 
@@ -117,7 +141,7 @@ class GeminiService {
             Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String jsonBody = Json.toJson(requestBody);
-        HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
+        HttpRequest httpRequest = buildHttpRequest(POST, url, apiKey, jsonBody);
 
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
@@ -173,9 +197,9 @@ class GeminiService {
         });
     }
 
-    private HttpRequest buildHttpRequest(String url, String apiKey, String jsonBody) {
+    private HttpRequest buildHttpRequest(HttpMethod method, String url, String apiKey, String jsonBody) {
         return HttpRequest.builder()
-                .method(POST)
+                .method(method)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "LangChain4j")
@@ -183,4 +207,5 @@ class GeminiService {
                 .body(jsonBody)
                 .build();
     }
+
 }

@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
     protected final GeminiService geminiService;
+    protected final GeminiCacheManager cacheManager;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean includeCodeExecutionOutput;
@@ -41,6 +42,7 @@ class BaseGeminiChatModel {
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
     protected final boolean useNativeJsonSchema;
+    protected final CachingConfig cachingConfig;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -61,6 +63,13 @@ class BaseGeminiChatModel {
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
         this.logprobs = builder.logprobs;
         this.useNativeJsonSchema = builder.useNativeJsonSchema;
+        this.cachingConfig = builder.cachingConfig;
+
+        if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
+            this.cacheManager = new GeminiCacheManager(geminiService);
+        } else {
+            this.cacheManager = null;
+        }
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -102,6 +111,14 @@ class BaseGeminiChatModel {
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
                 fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+        String cachedContent = null;
+        if (systemInstruction.getParts().isEmpty()) {
+            systemInstruction = null;
+        } else if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
+            cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(),
+                    systemInstruction.getParts().get(0), chatRequest.modelName());
+            systemInstruction = null;
+        }
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -116,7 +133,7 @@ class BaseGeminiChatModel {
 
         return GeminiGenerateContentRequest.builder()
                 .contents(geminiContentList)
-                .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
+                .systemInstruction(systemInstruction)
                 .generationConfig(GeminiGenerationConfig.builder()
                         .candidateCount(1) // Multiple candidates aren't supported by langchain4j
                         .maxOutputTokens(parameters.maxOutputTokens())
@@ -134,6 +151,7 @@ class BaseGeminiChatModel {
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .build())
+                .cachedContent(cachedContent)
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
@@ -229,6 +247,7 @@ class BaseGeminiChatModel {
         protected Boolean sendThinking;
         protected Integer logprobs;
         protected boolean useNativeJsonSchema;
+        protected CachingConfig cachingConfig;
         protected List<ChatModelListener> listeners;
 
         @SuppressWarnings("unchecked")
@@ -541,6 +560,14 @@ class BaseGeminiChatModel {
          */
         public B enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return builder();
+        }
+
+        /**
+         * Sets caching config
+         */
+        public B cachingConfig(CachingConfig cachingConfig) {
+            this.cachingConfig = cachingConfig;
             return builder();
         }
     }
