@@ -316,6 +316,12 @@ public class WorkflowAgentsIT {
         AgenticScope agenticScope = result.agenticScope();
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(agenticScope.contextAsConversation("editStory"))
+                .isNotBlank()
+                .isEqualTo(agenticScope.contextAsConversation(styleEditor));
+        assertThat(agenticScope.contextAsConversation("notExistingAgent"))
+                .isBlank();
     }
 
     @Test
