@@ -1,6 +1,6 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.junit.jupiter.api.Test;

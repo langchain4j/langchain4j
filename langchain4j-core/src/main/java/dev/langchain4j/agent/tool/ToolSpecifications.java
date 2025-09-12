@@ -1,7 +1,7 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.InvocationContext;
-import dev.langchain4j.InvocationParameters;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;

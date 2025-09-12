@@ -2,7 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import dev.langchain4j.InvocationParameters;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;

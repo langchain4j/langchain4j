@@ -5,7 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.List;
 import java.util.Objects;
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;

@@ -1,4 +1,4 @@
-package dev.langchain4j;
+package dev.langchain4j.invocation;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @since 1.5.0
  */
-public class InvocationParameters { // TODO name, module, package
+public class InvocationParameters {
 
     private final Map<String, Object> map;
 

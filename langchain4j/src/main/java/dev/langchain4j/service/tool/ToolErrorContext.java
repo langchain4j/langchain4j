@@ -3,7 +3,7 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**

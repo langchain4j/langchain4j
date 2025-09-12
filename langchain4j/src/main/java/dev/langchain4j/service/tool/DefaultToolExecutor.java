@@ -1,12 +1,12 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.InvocationParameters;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.invocation.InvocationContext;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -180,13 +180,11 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
 
             if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
-                // TODO test extending from InvocationParameters
                 arguments[i] = context.invocationParameters();
                 continue;
             }
 
             if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
-                // TODO test extending from InvocationContext
                 arguments[i] = context;
                 continue;
             }

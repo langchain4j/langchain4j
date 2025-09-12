@@ -22,8 +22,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.InvocationParameters;
-import dev.langchain4j.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -1077,7 +1077,7 @@ class StreamingAiServicesWithToolsIT {
     }
 
     @Test
-    void should_propagate_invocation_parameters_into_tool() throws Exception { // TODO name
+    void should_propagate_invocation_parameters_into_tool() throws Exception {
 
         // given
         class Tools {

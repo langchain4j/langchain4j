@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
+import dev.langchain4j.invocation.InvocationParameters;
 import org.junit.jupiter.api.Test;
 
 class InvocationParametersTest {

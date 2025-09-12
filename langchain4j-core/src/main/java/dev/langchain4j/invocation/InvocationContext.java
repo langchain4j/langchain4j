@@ -1,4 +1,4 @@
-package dev.langchain4j;
+package dev.langchain4j.invocation;
 
 import java.util.Objects;
 
@@ -8,7 +8,7 @@ import java.util.Objects;
  *
  * @since 1.5.0
  */
-public class InvocationContext { // TODO name (AiServiceInvocationContext?), module, package
+public class InvocationContext {
 
     private final Object chatMemoryId;
     private final InvocationParameters invocationParameters;
