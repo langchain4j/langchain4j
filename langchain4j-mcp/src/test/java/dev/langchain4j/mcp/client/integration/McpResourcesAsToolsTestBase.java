@@ -92,7 +92,7 @@ public abstract class McpResourcesAsToolsTestBase {
         String out = toolProvider
                 .provideTools(null)
                 .toolExecutorByName("list_resources")
-                .execute(request,null);
+                .execute(request, null);
         System.out.println(out);
 
         String aliceResponse = service.chat("When was Alice born?");
