@@ -1,8 +1,11 @@
 package dev.langchain4j.model.gpullama3;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.beehive.gpullama3.LlamaApp;
 import org.beehive.gpullama3.Options;
+import org.beehive.gpullama3.auxiliary.LastRunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
 import org.beehive.gpullama3.model.Model;
 import org.beehive.gpullama3.model.loader.ModelLoader;
@@ -20,8 +23,26 @@ abstract class GPULlama3BaseModel {
     private Model model;
     private Sampler sampler;
     private Boolean stream;
-    //
-    public void init(Path modelPath, Double temperature, Double topP, Integer seed, Integer maxTokens, boolean onGPU, boolean stream) {
+
+    private static String extractSystemPrompt(ChatRequest request) {
+        return request.messages().stream().filter(m -> m instanceof dev.langchain4j.data.message.SystemMessage).map(m -> ((dev.langchain4j.data.message.SystemMessage) m).text()).findFirst()
+                .orElse(null); // systemPrompt is optional
+    }
+
+    private static String extractUserPrompt(ChatRequest request) {
+        return request.messages().stream().filter(m -> m instanceof dev.langchain4j.data.message.UserMessage).map(m -> ((dev.langchain4j.data.message.UserMessage) m).singleText())
+                .reduce((first, second) -> second) // take the last user message
+                .orElseThrow(() -> new IllegalArgumentException("ChatRequest has no UserMessage"));
+    }
+
+    // @formatter:off
+    public void init(Path modelPath,
+                        Double temperature,
+                        Double topP,
+                        Integer seed,
+                        Integer maxTokens,
+                        boolean onGPU,
+                        boolean stream) {
         this.maxTokens = maxTokens;
         this.onGPU = onGPU;
         this.modelPath = modelPath;
@@ -49,9 +70,9 @@ abstract class GPULlama3BaseModel {
         return sampler;
     }
 
-    public String modelResponse(ChatRequest request) {
-        Options options = new Options(
-                modelPath,
+    public ChatResponse modelResponse(ChatRequest request) {
+
+        Options options = new Options(modelPath,
                 extractUserPrompt(request),
                 extractSystemPrompt(request),
                 null, // suffix
@@ -62,44 +83,19 @@ abstract class GPULlama3BaseModel {
                 maxTokens,
                 stream, // streaming
                 false, // echo
-                onGPU       );
+                onGPU);
 
+        String responseText = model.runInstructOnce(sampler, options);
+        // Create AI message from response
+        AiMessage aiMessage = AiMessage.from(responseText);
 
-        return model.runInstructOnce(sampler, options);
+        // Create and return chat response
+        return ChatResponse.builder().aiMessage(aiMessage).build();
     }
+    // @formatter:on
 
-    private static String extractSystemPrompt(ChatRequest request) {
-        return request.messages().stream()
-                .filter(m -> m instanceof dev.langchain4j.data.message.SystemMessage)
-                .map(m -> ((dev.langchain4j.data.message.SystemMessage) m).text())
-                .findFirst()
-                .orElse(null); // systemPrompt is optional
+
+    public void printLastMetrics() {
+        LastRunMetrics.printMetrics();
     }
-
-    private static String extractUserPrompt(ChatRequest request) {
-        return request.messages().stream()
-                .filter(m -> m instanceof dev.langchain4j.data.message.UserMessage)
-                .map(m -> ((dev.langchain4j.data.message.UserMessage) m).singleText())
-                .reduce((first, second) -> second) // take the last user message
-                .orElseThrow(() -> new IllegalArgumentException("ChatRequest has no UserMessage"));
-    }
-
-
-//    public static Options getOptions(String userMessage) {
-//        Options defaultOptions = Options.getDefaultOptions();
-//        Options opts = new Options(modelPath, userMessage,
-//                defaultOptions.systemPrompt(),
-//                defaultOptions.suffix(),
-//                false /* interactive */,
-//                defaultOptions.temperature(),
-//                defaultOptions.topp(),
-//                defaultOptions.seed(),
-//                defaultOptions.maxTokens(),
-//                true,
-//                defaultOptions.echo(),
-//                onGPU
-//        );
-//        return opts;
-//    }
-
 }
