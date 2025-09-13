@@ -65,10 +65,17 @@ class BedrockPromptCachingIT {
                 .defaultRequestParameters(afterUserParams)
                 .build();
 
-        ChatResponse responseAfterUser = modelAfterUser.chat(UserMessage.from("Explain caching in one sentence."));
+        ChatRequest requestAfterUser = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("Explain caching in one sentence.")))
+                .build();
+
+        ChatResponse responseAfterUser = modelAfterUser.chat(requestAfterUser);
 
         assertThat(responseAfterUser).isNotNull();
         assertThat(responseAfterUser.aiMessage().text()).isNotBlank();
+        assertThat(responseAfterUser.metadata().tokenUsage()).isNotNull();
 
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
@@ -80,10 +87,17 @@ class BedrockPromptCachingIT {
                 .defaultRequestParameters(afterToolsParams)
                 .build();
 
-        ChatResponse responseAfterTools = modelAfterTools.chat(UserMessage.from("What are the benefits of caching?"));
+        ChatRequest requestAfterTools = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("What are the benefits of caching?")))
+                .build();
+
+        ChatResponse responseAfterTools = modelAfterTools.chat(requestAfterTools);
 
         assertThat(responseAfterTools).isNotNull();
         assertThat(responseAfterTools.aiMessage().text()).isNotBlank();
+        assertThat(responseAfterTools.metadata().tokenUsage()).isNotNull();
     }
 
     @Test

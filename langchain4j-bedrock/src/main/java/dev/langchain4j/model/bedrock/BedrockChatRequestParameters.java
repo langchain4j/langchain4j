@@ -14,10 +14,12 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
             BedrockChatRequestParameters.builder().build();
 
     private final Map<String, Object> additionalModelRequestFields;
+    private final BedrockCachePointPlacement cachePointPlacement;
 
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
         this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
+        this.cachePointPlacement = builder.cachePointPlacement;
     }
 
     @Override
@@ -36,9 +38,14 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return additionalModelRequestFields;
     }
 
+    public BedrockCachePointPlacement cachePointPlacement() {
+        return cachePointPlacement;
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Object> additionalModelRequestFields;
+        private BedrockCachePointPlacement cachePointPlacement;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -46,6 +53,8 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
             if (parameters instanceof BedrockChatRequestParameters bedrockRequestParameters) {
                 additionalModelRequestFields(getOrDefault(
                         bedrockRequestParameters.additionalModelRequestFields, additionalModelRequestFields));
+                this.cachePointPlacement =
+                        getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
             }
             return this;
         }
@@ -93,19 +102,9 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
          */
         public Builder promptCaching(BedrockCachePointPlacement placement) {
-            if (placement != null) {
-                if (additionalModelRequestFields == null) {
-                    additionalModelRequestFields = new HashMap<>();
-                }
-
-                // Enable caching
-                additionalModelRequestFields.put("promptCaching", Map.of("enabled", true));
-
-                // Set cache point placement
-                Map<String, Object> cachePoint = Map.of("cachePoint", Map.of("type", "default"));
-                additionalModelRequestFields.put("cachePointPlacement", placement.name());
-                additionalModelRequestFields.put("cachePointData", cachePoint);
-            }
+            this.cachePointPlacement = placement;
+            // Note: We don't add anything to additionalModelRequestFields
+            // The cache points are injected directly into the message structure
             return this;
         }
 
