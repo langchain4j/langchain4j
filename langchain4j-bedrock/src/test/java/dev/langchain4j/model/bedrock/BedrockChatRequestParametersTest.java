@@ -15,13 +15,10 @@ class BedrockChatRequestParametersTest {
                 .build();
 
         // Then
-        assertThat(params.additionalModelRequestFields()).isNotNull().containsKey("promptCaching");
-
-        Map<String, Object> promptCaching =
-                (Map<String, Object>) params.additionalModelRequestFields().get("promptCaching");
-        assertThat(promptCaching).containsEntry("enabled", true);
-
         assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
+        // Note: promptCaching is NOT added to additionalModelRequestFields
+        // Cache points are injected directly into message structure
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
     }
 
     @Test
@@ -56,9 +53,8 @@ class BedrockChatRequestParametersTest {
                 .build();
 
         // Then
-        assertThat(params.additionalModelRequestFields()).isNotNull().containsKey("promptCaching");
-
         assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_USER_MESSAGE);
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
     }
 
     @Test
@@ -68,16 +64,16 @@ class BedrockChatRequestParametersTest {
                 .promptCaching(BedrockCachePointPlacement.AFTER_TOOLS)
                 .build();
 
-        assertThat(paramsAfterTools.additionalModelRequestFields()).containsKey("promptCaching");
         assertThat(paramsAfterTools.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_TOOLS);
+        assertThat(paramsAfterTools.additionalModelRequestFields()).isNullOrEmpty();
 
         // Test AFTER_USER_MESSAGE
         BedrockChatRequestParameters paramsAfterUser = BedrockChatRequestParameters.builder()
                 .promptCaching(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
                 .build();
 
-        assertThat(paramsAfterUser.additionalModelRequestFields()).containsKey("promptCaching");
         assertThat(paramsAfterUser.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_USER_MESSAGE);
+        assertThat(paramsAfterUser.additionalModelRequestFields()).isNullOrEmpty();
     }
 
     @Test
@@ -92,7 +88,7 @@ class BedrockChatRequestParametersTest {
         assertThat(params.additionalModelRequestFields())
                 .isNotNull()
                 .containsEntry("customField", "customValue")
-                .containsKey("promptCaching");
+                .doesNotContainKey("promptCaching"); // promptCaching should NOT be in additionalFields
         assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
     }
 
@@ -108,7 +104,8 @@ class BedrockChatRequestParametersTest {
         assertThat(params.additionalModelRequestFields())
                 .isNotNull()
                 .containsKey("reasoning_config")
-                .containsKey("promptCaching");
+                .doesNotContainKey("promptCaching"); // promptCaching should NOT be in additionalFields
+        assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
     }
 
     @Test
@@ -129,7 +126,7 @@ class BedrockChatRequestParametersTest {
 
         // Then
         assertThat(merged.temperature()).isEqualTo(0.8);
-        assertThat(merged.additionalModelRequestFields()).containsKey("promptCaching");
         assertThat(merged.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
+        assertThat(merged.additionalModelRequestFields()).isNullOrEmpty();
     }
 }
