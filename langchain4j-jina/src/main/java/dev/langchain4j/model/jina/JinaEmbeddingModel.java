@@ -84,9 +84,12 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         JinaEmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
 
-        List<Embedding> embeddings = response.data.stream()
-                .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
-                .collect(toList());
+        List<Embedding> embeddings = response.data == null
+        	    ? List.of()
+        	    : response.data.stream()
+        	        .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
+        	        .collect(toList());
+
 
         TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(embeddings, tokenUsage);
@@ -160,7 +163,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
