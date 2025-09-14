@@ -185,6 +185,8 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
         private String spaceId;
         private Duration timeout;
 
+        private Builder() {}
+
         public Builder url(CloudRegion cloudRegion) {
             return super.url(cloudRegion.getMlEndpoint());
         }

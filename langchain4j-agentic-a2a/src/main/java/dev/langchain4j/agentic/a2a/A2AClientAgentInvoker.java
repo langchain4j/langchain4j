@@ -12,6 +12,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final String[] inputNames;
     private final String outputName;
+    private final boolean async;
     private final AgentCard agentCard;
     private final Method method;
 
@@ -20,6 +21,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.agentCard = a2AClientInstance.agentCard();
         this.inputNames = inputNames(a2AClientInstance);
         this.outputName = a2AClientInstance.outputName();
+        this.async = a2AClientInstance.async();
     }
 
     private String[] inputNames(A2AClientSpecification a2AClientInstance) {
@@ -41,6 +43,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public String outputName() {
         return outputName;
+    }
+
+    @Override
+    public boolean async() {
+        return async;
     }
 
     @Override

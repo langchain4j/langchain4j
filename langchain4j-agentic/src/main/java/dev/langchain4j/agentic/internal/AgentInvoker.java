@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -18,6 +17,7 @@ public interface AgentInvoker {
     String name();
     String description();
     String outputName();
+    boolean async();
     Method method();
 
     String toCard();
@@ -33,15 +33,15 @@ public interface AgentInvoker {
     }
 
     static AgentInvoker fromMethod(AgentSpecification agent, Method method) {
-        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName());
+        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName(), agent.async());
     }
 
-    static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName) {
+    static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName, boolean async) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
-            return new UntypedAgentInvoker(method, name, description, outputName);
+            return new UntypedAgentInvoker(method, name, description, outputName, async);
         }
 
-        return new MethodAgentInvoker(method, name, description, outputName, argumentsFromMethod(method));
+        return new MethodAgentInvoker(method, name, description, outputName, async, argumentsFromMethod(method));
     }
 
     static String parameterName(Parameter parameter) {
