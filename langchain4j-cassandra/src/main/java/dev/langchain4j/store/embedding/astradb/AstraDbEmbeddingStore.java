@@ -1,6 +1,15 @@
 package dev.langchain4j.store.embedding.astradb;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.dtsx.astra.sdk.AstraDBCollection;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -15,15 +24,6 @@ import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
-import org.slf4j.Logger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -42,7 +42,6 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Metadata used for similarity.
      */
     public static final String KEY_SIMILARITY = "$similarity";
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AstraDbEmbeddingStore.class);
 
     /**
      * Client to work with an Astra Collection
