@@ -90,6 +90,15 @@
       "allPublicFields": true
     },
     {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMessage",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
