@@ -197,7 +197,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_run_without_running_any_tools() {
+    void test_toolChoice_none() {
         // given
         UserMessage userMessage = userMessage("What's the weather in SF and NYC, and what time is it there?");
         ToolSpecification getWeather = ToolSpecification.builder()

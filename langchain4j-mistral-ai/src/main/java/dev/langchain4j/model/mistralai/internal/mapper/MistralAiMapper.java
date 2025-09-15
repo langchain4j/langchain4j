@@ -186,7 +186,6 @@ public class MistralAiMapper {
             case AUTO -> MistralAiToolChoiceName.AUTO;
             case REQUIRED -> MistralAiToolChoiceName.ANY;
             case NONE -> MistralAiToolChoiceName.NONE;
-            default -> null;
         };
     }
 
