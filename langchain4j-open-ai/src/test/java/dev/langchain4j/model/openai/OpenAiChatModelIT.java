@@ -35,6 +35,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -196,7 +197,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_execute_a_tool_with_parallel_tools() {
+    void should_run_without_running_any_tools() {
         // given
         UserMessage userMessage = userMessage("What's the weather in SF and NYC, and what time is it there?");
         ToolSpecification getWeather = ToolSpecification.builder()
@@ -219,6 +220,7 @@ class OpenAiChatModelIT {
         ChatRequest request = ChatRequest.builder()
                 .messages(userMessage)
                 .toolSpecifications(getTime, getWeather)
+                .toolChoice(ToolChoice.NONE)
                 .build();
 
         ChatModel model = OpenAiChatModel.builder()
@@ -227,7 +229,6 @@ class OpenAiChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
                 .temperature(0.0)
-                .parallelToolCalls(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -236,8 +237,8 @@ class OpenAiChatModelIT {
         ChatResponse response = model.chat(request);
         // then
         AiMessage aiMessage = response.aiMessage();
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(4);
+
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test
