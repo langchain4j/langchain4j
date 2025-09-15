@@ -588,8 +588,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
                 <configuration>
-                    <annotationProcessorPaths>
-                    </annotationProcessorPaths>
+                    <annotationProcessorPaths/>
                 </configuration>
                 <executions>
                     <!-- Replacing default-compile as it is treated specially by Maven -->
@@ -838,6 +837,10 @@
                                 <license>
                                     <name>Apache 2.0</name>
                                     <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+                                </license>
+                                <license>
+                                    <name>(The MIT License|MIT License|MIT)</name>
+                                    <url>(https?://opensource.org/licenses/MIT)</url>
                                 </license>
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
