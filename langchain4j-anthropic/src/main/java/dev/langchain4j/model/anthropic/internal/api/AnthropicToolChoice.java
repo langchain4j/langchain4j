@@ -24,7 +24,7 @@ public class AnthropicToolChoice {
     private AnthropicToolChoice(Builder builder) {
         this.type = builder.type;
         this.name = builder.name;
-        this.disableParallelToolUse = builder.type != null ? builder.disableParallelToolUse : null;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
     }
 
     public static AnthropicToolChoice from(AnthropicToolChoiceType type) {
