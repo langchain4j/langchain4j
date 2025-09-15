@@ -225,7 +225,7 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder toolNameChoice(String toolNameChoice) {
+        public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
             this.toolNameChoice = toolNameChoice;
             return this;
         }
