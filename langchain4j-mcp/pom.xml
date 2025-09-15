@@ -46,6 +46,7 @@
             <version>1.5.0-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>
+
         <!-- test dependencies -->
 
         <dependency>
