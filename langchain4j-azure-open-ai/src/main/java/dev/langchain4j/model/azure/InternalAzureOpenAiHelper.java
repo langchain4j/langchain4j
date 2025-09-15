@@ -321,7 +321,6 @@ class InternalAzureOpenAiHelper {
                     case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
                     case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
                     case NONE -> ChatCompletionsToolSelectionPreset.NONE;
-                    default -> null;
                 };
         return new ChatCompletionsToolSelection(preset);
     }
