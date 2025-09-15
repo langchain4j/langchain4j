@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
@@ -187,16 +188,17 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
-        AiServiceContext context = new AiServiceContext(aiService);
+        AiServiceContext context = AiServiceContext.create(aiService);
         return builder(context);
+    }
+
+    private static class FactoryHolder {
+        private static final AiServicesFactory aiServicesFactory = loadFactory(AiServicesFactory.class);
     }
 
     @Internal
     public static <T> AiServices<T> builder(AiServiceContext context) {
-        for (AiServicesFactory factory : loadFactories(AiServicesFactory.class)) {
-            return factory.create(context);
-        }
-        return new DefaultAiServices<>(context);
+        return FactoryHolder.aiServicesFactory != null ? FactoryHolder.aiServicesFactory.create(context) : new DefaultAiServices<>(context);
     }
 
     /**

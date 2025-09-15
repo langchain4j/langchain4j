@@ -20,6 +20,18 @@ public class ServiceHelper {
     }
 
     /**
+     * Load the first available services of a given type.
+     *
+     * @param clazz the type of service
+     * @param <T>   the type of service
+     * @return the list of services, empty if none
+     */
+    public static <T> T loadFactory(Class<T> clazz) {
+        Collection<T> factories = loadFactories(clazz, null);
+        return factories.isEmpty() ? null : factories.iterator().next();
+    }
+
+    /**
      * Load all the services of a given type.
      *
      * @param clazz the type of service
