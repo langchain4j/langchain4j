@@ -44,7 +44,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .stopSequences(...)
     .toolSpecifications(...)
     .toolChoice(...)
-    .toolNameChoice(...)
+    .toolChoiceName(...)
     .disableParallelToolUse(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
@@ -102,12 +102,14 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 
 ## Tool Choice
 
-Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use) feature is available for both streaming and non-streaming interactions by setting `toolNameChoice("myTool")`. It provides multiple options for implementing tool use.
+Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use)
+feature is available for both streaming and non-streaming interactions
+by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
 
+## Parallel Tool Use
 
-## Parallel tool use
-
-By default, Anthropic Claude may use multiple tools to answer a user query, but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#parallel-tool-use) by setting `disableParallelToolUse(true)`.
+By default, Anthropic Claude may use multiple tools to answer a user query,
+but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#parallel-tool-use) by setting `disableParallelToolUse(true)`.
 
 ## Caching
 

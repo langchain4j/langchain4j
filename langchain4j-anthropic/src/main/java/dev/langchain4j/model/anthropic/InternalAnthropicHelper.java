@@ -50,7 +50,7 @@ class InternalAnthropicHelper {
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
             boolean stream,
-            String toolNameChoice,
+            String toolChoiceName,
             Boolean disableParallelToolUse,
             String userId) {
 
@@ -70,7 +70,7 @@ class InternalAnthropicHelper {
         }
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(
-                    toAnthropicToolChoice(chatRequest.toolChoice(), toolNameChoice, disableParallelToolUse));
+                    toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
         }
 
         if (!isNullOrEmpty(userId)) {

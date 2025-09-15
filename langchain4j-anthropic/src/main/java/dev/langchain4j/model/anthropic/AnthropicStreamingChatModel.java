@@ -63,7 +63,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
-    private final String toolNameChoice;
+    private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
 
@@ -104,7 +104,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
-        this.toolNameChoice = builder.toolNameChoice;
+        this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
     }
@@ -139,7 +139,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Logger logger;
         private List<ChatModelListener> listeners;
         private ToolChoice toolChoice;
-        private String toolNameChoice;
+        private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private String userId;
 
@@ -308,8 +308,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder toolNameChoice(String toolNameChoice) {
-            this.toolNameChoice = toolNameChoice;
+        public AnthropicStreamingChatModelBuilder toolChoiceName(String toolChoiceName) {
+            this.toolChoiceName = toolChoiceName;
             return this;
         }
 
@@ -348,7 +348,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true,
-                toolNameChoice,
+                toolChoiceName,
                 disableParallelToolUse,
                 userId);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);

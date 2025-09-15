@@ -275,7 +275,7 @@ public class AnthropicMapper {
     }
 
     public static AnthropicToolChoice toAnthropicToolChoice(
-            ToolChoice toolChoice, String toolNameChoice, Boolean disableParallelToolUse) {
+            ToolChoice toolChoice, String toolChoiceName, Boolean disableParallelToolUse) {
         if (toolChoice == null) {
             return null;
         }
@@ -287,8 +287,8 @@ public class AnthropicMapper {
                     case NONE -> AnthropicToolChoiceType.NONE;
                 };
 
-        if (toolNameChoice != null) {
-            return AnthropicToolChoice.from(toolNameChoice, disableParallelToolUse);
+        if (toolChoiceName != null) {
+            return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
         }
 
         return AnthropicToolChoice.from(toolChoiceType, disableParallelToolUse);

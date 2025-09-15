@@ -67,7 +67,7 @@ public class AnthropicChatModel implements ChatModel {
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
-    private final String toolNameChoice;
+    private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
 
@@ -92,7 +92,7 @@ public class AnthropicChatModel implements ChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
-        this.toolNameChoice = builder.toolNameChoice;
+        this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
 
@@ -136,7 +136,7 @@ public class AnthropicChatModel implements ChatModel {
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
-        private String toolNameChoice;
+        private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
@@ -228,7 +228,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
-            this.toolNameChoice = toolNameChoice;
+            this.toolChoiceName = this.toolChoiceName;
             return this;
         }
 
@@ -367,7 +367,7 @@ public class AnthropicChatModel implements ChatModel {
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 false,
-                toolNameChoice,
+                toolChoiceName,
                 disableParallelToolUse,
                 userId);
 
