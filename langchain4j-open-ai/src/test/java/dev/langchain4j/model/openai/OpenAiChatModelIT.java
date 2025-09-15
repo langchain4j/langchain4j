@@ -75,7 +75,6 @@ class OpenAiChatModelIT {
             .temperature(0.0)
             .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
-            .parallelToolCalls(false)
             .build();
 
     @Test
@@ -590,7 +589,8 @@ class OpenAiChatModelIT {
 
         SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                 .statusCode(200)
-                .body("""
+                .body(
+                        """
                         {
                           "id": "chatcmpl-C9QWFjhlUn7vBERtBTMFbbgoKqTDh",
                           "object": "chat.completion",
@@ -640,7 +640,9 @@ class OpenAiChatModelIT {
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(mockHttpClient.request().body()).isEqualToIgnoringWhitespace("""
+        assertThat(mockHttpClient.request().body())
+                .isEqualToIgnoringWhitespace(
+                        """
                 {
                   "messages" : [ {
                     "role" : "user",
