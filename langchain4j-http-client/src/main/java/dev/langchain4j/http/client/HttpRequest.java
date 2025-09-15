@@ -8,10 +8,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class HttpRequest {
 
@@ -116,5 +114,4 @@ public class HttpRequest {
             return new HttpRequest(this);
         }
     }
-
 }

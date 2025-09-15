@@ -61,5 +61,4 @@ public class SuccessfulHttpResponse {
             return new SuccessfulHttpResponse(this);
         }
     }
-
 }

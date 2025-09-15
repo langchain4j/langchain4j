@@ -443,7 +443,7 @@ The registry client
 lives in the `dev.langchain4j.mcp.registryclient` package and can be initialized like this:
 
 ```java
-McpRegistryClient client = new DefaultMcpRegistryClient.Builder()
+McpRegistryClient client = DefaultMcpRegistryClient.builder()
         .baseUrl("URL-OF-THE-REGISTRY")
         .build();
 ```
