@@ -180,6 +180,7 @@
                                         <exclude>dev.langchain4j.model.chat.request.json</exclude>
                                         <exclude>dev.langchain4j.model.chat.response</exclude>
                                         <exclude>dev.langchain4j.model.listener</exclude>
+                                        <exclude>dev.langchain4j.spi</exclude>
                                         <exclude>dev.langchain4j.store.embedding</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>
