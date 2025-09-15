@@ -69,7 +69,6 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     }
 
     private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
-        // Get cache point placement from parameters if available
         BedrockCachePointPlacement cachePointPlacement = null;
         if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
             cachePointPlacement = bedrockParams.cachePointPlacement();

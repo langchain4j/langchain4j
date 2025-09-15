@@ -15,8 +15,6 @@ class BedrockChatRequestParametersTest {
 
         // Then
         assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
-        // Note: promptCaching is NOT added to additionalModelRequestFields
-        // Cache points are injected directly into message structure
         assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
     }
 

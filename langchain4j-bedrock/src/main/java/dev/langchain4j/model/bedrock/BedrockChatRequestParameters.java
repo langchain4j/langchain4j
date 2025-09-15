@@ -103,8 +103,6 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder promptCaching(BedrockCachePointPlacement placement) {
             this.cachePointPlacement = placement;
-            // Note: We don't add anything to additionalModelRequestFields
-            // The cache points are injected directly into the message structure
             return this;
         }
 

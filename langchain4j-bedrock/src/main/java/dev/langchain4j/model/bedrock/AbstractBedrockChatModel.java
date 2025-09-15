@@ -137,9 +137,7 @@ abstract class AbstractBedrockChatModel {
             }
         }
 
-        // Add cache point after system messages if placement is AFTER_SYSTEM
         if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
-            // Create cache point as a SystemContentBlock
             systemBlocks.add(SystemContentBlock.builder()
                     .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
                             .type("default")
@@ -167,12 +165,10 @@ abstract class AbstractBedrockChatModel {
             } else if (!(msg instanceof SystemMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
-                // Add cache point after first user message if placement is AFTER_USER_MESSAGE
                 if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
                         && msg instanceof UserMessage
                         && !firstUserMessageProcessed) {
 
-                    // Add cache point to the user message content
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
                             .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
@@ -358,7 +354,6 @@ abstract class AbstractBedrockChatModel {
 
             allTools.addAll(tools);
 
-            // Add cache point after tools if placement is AFTER_TOOLS
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
                 allTools.add(Tool.builder()
                         .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
