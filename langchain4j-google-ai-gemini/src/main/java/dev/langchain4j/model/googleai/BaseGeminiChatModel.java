@@ -191,7 +191,6 @@ abstract class BaseGeminiChatModel {
             case AUTO -> GeminiMode.AUTO;
             case REQUIRED -> GeminiMode.ANY;
             case NONE -> GeminiMode.NONE;
-            default -> null;
         };
     }
 
