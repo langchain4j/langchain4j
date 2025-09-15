@@ -1,29 +1,27 @@
 package dev.langchain4j.model.googleai;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import dev.langchain4j.exception.HttpException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-class GeminiCacheManager {
+public class GeminiCacheManager {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiCacheManager.class);
 
     private final GeminiService geminiService;
     private final Map<String, CachedContentMetadata> cachedContents;
 
-    GeminiCacheManager(GeminiService geminiService) {
+    public GeminiCacheManager(GeminiService geminiService) {
         this.geminiService = geminiService;
 
         GoogleAiListCachedContentsRequest listCachedContentsRequest = new GoogleAiListCachedContentsRequest();
@@ -35,7 +33,7 @@ class GeminiCacheManager {
         log.debug("Loaded existing cached contents: {}", cachedContents);
     }
 
-    public String getOrCreateCached(String key, Duration ttl, GeminiPart content, String model) {
+    public String getOrCreateCached(String key, Duration ttl, GeminiContent content, String model) {
         return cachedContents.compute(key, (__, cachedContent) -> {
             if (cachedContent != null) {
                 if (cachedContent.isExpired()) {
@@ -76,9 +74,9 @@ class GeminiCacheManager {
         }
     }
 
-    private CachedContentMetadata createCachedContent(String key, Duration ttl, GeminiPart content, String model) {
+    private CachedContentMetadata createCachedContent(String key, Duration ttl, GeminiContent content, String model) {
         GeminiCachedContent cachedContent = GeminiCachedContent.builder()
-                .contents(List.of(new GeminiContent(List.of(content), GeminiRole.MODEL.toString())))
+                .systemInstruction(content)
                 .ttl(ttl.toSeconds() + "s")
                 .displayName(key + ":" + getChecksum(content))
                 .build();
@@ -90,8 +88,10 @@ class GeminiCacheManager {
         return newCachedContent;
     }
 
-    private static String getChecksum(GeminiPart content) {
-        return DigestUtils.sha256Hex(content.getText());
+    private static String getChecksum(GeminiContent content) {
+        return DigestUtils.sha256Hex(content.getParts().stream()
+                .map(GeminiPart::getText)
+                .collect(Collectors.joining(System.lineSeparator())));
     }
 
     private static class CachedContentMetadata {
@@ -142,19 +142,19 @@ class GeminiCacheManager {
             return expirationTime.isBefore(Instant.now());
         }
 
-        public boolean checksumMatches(GeminiPart content) {
+        public boolean checksumMatches(GeminiContent content) {
             return this.checksum.equals(GeminiCacheManager.getChecksum(content));
         }
 
         @Override
         public String toString() {
             return "CachedContentMetadata{" +
-                   "id='" + id + '\'' +
-                   ", key='" + key + '\'' +
-                   ", checksum='" + checksum + '\'' +
-                   ", expirationTime=" + expirationTime +
-                   ", checksumVerified=" + checksumVerified +
-                   '}';
+                    "id='" + id + '\'' +
+                    ", key='" + key + '\'' +
+                    ", checksum='" + checksum + '\'' +
+                    ", expirationTime=" + expirationTime +
+                    ", checksumVerified=" + checksumVerified +
+                    '}';
         }
 
     }

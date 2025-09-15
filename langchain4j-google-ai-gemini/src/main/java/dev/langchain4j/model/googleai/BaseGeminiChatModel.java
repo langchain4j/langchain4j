@@ -42,7 +42,7 @@ class BaseGeminiChatModel {
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
     protected final boolean useNativeJsonSchema;
-    protected final CachingConfig cachingConfig;
+    protected final GeminiCachingConfig cachingConfig;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -66,7 +66,11 @@ class BaseGeminiChatModel {
         this.cachingConfig = builder.cachingConfig;
 
         if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
-            this.cacheManager = new GeminiCacheManager(geminiService);
+            if (cachingConfig.getCacheManagerProvider() != null) {
+                this.cacheManager = cachingConfig.getCacheManagerProvider().apply(geminiService);
+            } else {
+                this.cacheManager = new GeminiCacheManager(geminiService);
+            }
         } else {
             this.cacheManager = null;
         }
@@ -115,8 +119,7 @@ class BaseGeminiChatModel {
         if (systemInstruction.getParts().isEmpty()) {
             systemInstruction = null;
         } else if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
-            cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(),
-                    systemInstruction.getParts().get(0), chatRequest.modelName());
+            cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(), systemInstruction, chatRequest.modelName());
             systemInstruction = null;
         }
 
@@ -247,7 +250,7 @@ class BaseGeminiChatModel {
         protected Boolean sendThinking;
         protected Integer logprobs;
         protected boolean useNativeJsonSchema;
-        protected CachingConfig cachingConfig;
+        protected GeminiCachingConfig cachingConfig;
         protected List<ChatModelListener> listeners;
 
         @SuppressWarnings("unchecked")
@@ -566,7 +569,7 @@ class BaseGeminiChatModel {
         /**
          * Sets caching config
          */
-        public B cachingConfig(CachingConfig cachingConfig) {
+        public B cachingConfig(GeminiCachingConfig cachingConfig) {
             this.cachingConfig = cachingConfig;
             return builder();
         }

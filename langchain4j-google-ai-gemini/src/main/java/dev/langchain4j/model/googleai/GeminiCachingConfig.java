@@ -1,12 +1,14 @@
 package dev.langchain4j.model.googleai;
 
 import java.time.Duration;
+import java.util.function.Function;
 
-public class CachingConfig {
+public class GeminiCachingConfig {
 
     private boolean cacheSystemMessages;
     private String cacheKey;
     private Duration ttl;
+    private Function<GeminiService, GeminiCacheManager> cacheManagerProvider;
 
     public boolean isCacheSystemMessages() {
         return cacheSystemMessages;
@@ -32,6 +34,14 @@ public class CachingConfig {
         this.ttl = ttl;
     }
 
+    public Function<GeminiService, GeminiCacheManager> getCacheManagerProvider() {
+        return cacheManagerProvider;
+    }
+
+    public void setCacheManagerProvider(final Function<GeminiService, GeminiCacheManager> cacheManagerProvider) {
+        this.cacheManagerProvider = cacheManagerProvider;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -41,6 +51,7 @@ public class CachingConfig {
         private boolean cacheSystemMessages;
         private String cacheKey;
         private Duration ttl;
+        private Function<GeminiService, GeminiCacheManager> cacheManagerProvider;
 
         public Builder cacheSystemMessages(boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
@@ -57,11 +68,17 @@ public class CachingConfig {
             return this;
         }
 
-        public CachingConfig build() {
-            CachingConfig config = new CachingConfig();
+        public Builder cacheManagerProvider(Function<GeminiService, GeminiCacheManager> cacheManagerProvider) {
+            this.cacheManagerProvider = cacheManagerProvider;
+            return this;
+        }
+
+        public GeminiCachingConfig build() {
+            GeminiCachingConfig config = new GeminiCachingConfig();
             config.setCacheSystemMessages(cacheSystemMessages);
             config.setCacheKey(cacheKey);
             config.setTtl(ttl);
+            config.setCacheManagerProvider(cacheManagerProvider);
             return config;
         }
 

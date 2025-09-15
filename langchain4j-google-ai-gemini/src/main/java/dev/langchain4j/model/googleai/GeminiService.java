@@ -57,7 +57,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-class GeminiService {
+public class GeminiService {
 
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
