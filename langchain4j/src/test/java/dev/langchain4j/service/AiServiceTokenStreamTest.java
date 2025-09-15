@@ -165,7 +165,7 @@ class AiServiceTokenStreamTest {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         ChatModel chatModel = mock(ChatModel.class);
 
-        AiServiceContext context = new AiServiceContext(getClass());
+        AiServiceContext context = AiServiceContext.create(getClass());
         context.streamingChatModel = streamingModel;
         context.chatModel = chatModel;
 

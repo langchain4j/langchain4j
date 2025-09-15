@@ -93,7 +93,7 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
-        AiServiceContext context = new AiServiceContext(agentServiceClass);
+        AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
             aiServices.chatModel(model);

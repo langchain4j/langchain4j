@@ -11,10 +11,14 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
+import dev.langchain4j.spi.services.AiServiceContextFactory;
+import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 @Internal
 public class AiServiceContext {
@@ -41,9 +45,17 @@ public class AiServiceContext {
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 
-    public AiServiceContext(Class<?> aiServiceClass) {
+    protected AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
         this.guardrailServiceBuilder = GuardrailService.builder(aiServiceClass);
+    }
+
+    private static class FactoryHolder {
+        private static final AiServiceContextFactory contextFactory = loadFactory(AiServiceContextFactory.class);
+    }
+
+    public static AiServiceContext create(Class<?> aiServiceClass) {
+        return FactoryHolder.contextFactory != null ? FactoryHolder.contextFactory.create(aiServiceClass) : new AiServiceContext(aiServiceClass);
     }
 
     public boolean hasChatMemory() {
