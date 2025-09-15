@@ -29,7 +29,7 @@ public class McpPackage {
     private List<McpPackageArgument> packageArguments;
 
     @JsonProperty("environment_variables")
-    private McpEnvironmentVariable[] environmentVariables;
+    private List<McpEnvironmentVariable> environmentVariables;
 
     public String getFileSha256() {
         return fileSha256;
@@ -67,7 +67,7 @@ public class McpPackage {
         return packageArguments;
     }
 
-    public McpEnvironmentVariable[] getEnvironmentVariables() {
+    public List<McpEnvironmentVariable> getEnvironmentVariables() {
         return environmentVariables;
     }
 }

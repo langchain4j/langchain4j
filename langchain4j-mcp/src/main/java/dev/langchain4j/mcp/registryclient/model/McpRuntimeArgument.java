@@ -29,7 +29,7 @@ public class McpRuntimeArgument {
     @JsonProperty("value_hint")
     private String valueHint;
 
-    private McpVariable[] variables;
+    private List<McpVariable> variables;
 
     public List<String> getChoices() {
         return choices;
@@ -75,7 +75,7 @@ public class McpRuntimeArgument {
         return valueHint;
     }
 
-    public McpVariable[] getVariables() {
+    public List<McpVariable> getVariables() {
         return variables;
     }
 }
