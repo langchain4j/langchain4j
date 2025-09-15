@@ -7,7 +7,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import dev.langchain4j.model.gpullama3.GPULlama3StreamingChatModel;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -17,14 +17,13 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("Requires TornadoVM locally configured with GPU support")
-public class GPULlama3CStreamingChatModelT {
+public class GPULlama3CStreamingChatModelIT {
     static GPULlama3StreamingChatModel model;
 
     @BeforeAll
     static void setup() {
         // @formatter:off
-        Path modelPath = Paths.get("Phi-3-mini-4k-instruct-fp16.gguf");
+        Path modelPath = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
          model = GPULlama3StreamingChatModel.builder()
                 .modelPath(modelPath)
                 .onGPU(Boolean.TRUE) //if false, runs on CPU though a lightweight implementation of llama3.java
@@ -32,6 +31,7 @@ public class GPULlama3CStreamingChatModelT {
         // @formatter:on
     }
 
+    @Tag("gpu")
     @Test
     void should_stream_answer_and_return_response() throws Exception {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
