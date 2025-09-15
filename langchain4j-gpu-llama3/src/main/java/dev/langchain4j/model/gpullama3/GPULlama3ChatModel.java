@@ -1,27 +1,29 @@
 package dev.langchain4j.model.gpullama3;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.beehive.gpullama3.Options;
-
 import java.nio.file.Path;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import org.beehive.gpullama3.Options;
 
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
 
     // @formatter:off
     private GPULlama3ChatModel(Builder builder) {
         init(
-            getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
-            getOrDefault(builder.temperature,  Double.valueOf(Options.getDefaultOptions().temperature())),
-            getOrDefault(builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
-            getOrDefault(builder.seed, Integer.valueOf((int) Options.getDefaultOptions().seed())),
-            getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
-            getOrDefault(builder.onGPU, Boolean.TRUE),
-            Boolean.FALSE
-        );
+                getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
+                getOrDefault(
+                        builder.temperature,
+                        Double.valueOf(Options.getDefaultOptions().temperature())),
+                getOrDefault(
+                        builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
+                getOrDefault(builder.seed, Integer.valueOf((int)
+                        Options.getDefaultOptions().seed())),
+                getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
+                getOrDefault(builder.onGPU, Boolean.TRUE),
+                Boolean.FALSE);
     }
     // @formatter:on
 
@@ -98,5 +100,4 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
             return new GPULlama3ChatModel(this);
         }
     }
-
 }

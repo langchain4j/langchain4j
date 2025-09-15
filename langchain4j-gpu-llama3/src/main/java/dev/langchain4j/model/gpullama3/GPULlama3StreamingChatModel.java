@@ -1,5 +1,7 @@
 package dev.langchain4j.model.gpullama3;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -7,25 +9,25 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.beehive.gpullama3.Options;
-
 import java.nio.file.Path;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import org.beehive.gpullama3.Options;
 
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
     // @formatter:off
     private GPULlama3StreamingChatModel(Builder builder) {
         init(
-            getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
-            getOrDefault(builder.temperature,  Double.valueOf(Options.getDefaultOptions().temperature())),
-            getOrDefault(builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
-            getOrDefault(builder.seed, Integer.valueOf((int) Options.getDefaultOptions().seed())),
-            getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
-            getOrDefault(builder.onGPU, Boolean.TRUE),
-            Boolean.TRUE
-        );
+                getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
+                getOrDefault(
+                        builder.temperature,
+                        Double.valueOf(Options.getDefaultOptions().temperature())),
+                getOrDefault(
+                        builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
+                getOrDefault(builder.seed, Integer.valueOf((int)
+                        Options.getDefaultOptions().seed())),
+                getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
+                getOrDefault(builder.onGPU, Boolean.TRUE),
+                Boolean.TRUE);
     }
     // @formatter:on
 
@@ -44,12 +46,12 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         try {
             StreamingChatResponseHandler finalHandler = handler;
             String response = modelStringResponse(chatRequest, token -> finalHandler.onPartialResponse(token));
-            ChatResponse chatResponse = ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
+            ChatResponse chatResponse =
+                    ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
             handler.onCompleteResponse(chatResponse);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate response from GPULlama3", e);
         }
-
     }
 
     public static class Builder {
@@ -111,5 +113,4 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
             return new GPULlama3StreamingChatModel(this);
         }
     }
-
 }

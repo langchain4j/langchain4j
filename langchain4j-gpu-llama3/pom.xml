@@ -13,7 +13,6 @@
     <name>LangChain4j :: Integration :: GPULlama3.java</name>
     <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM- Requires Java 21+</description>
 
-
     <properties>
         <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
         <test.class>GPULlama3ChatModelIT</test.class>
@@ -105,21 +104,6 @@
 
     </dependencies>
 
-    <profiles>
-        <profile>
-            <id>run-tests</id>
-            <properties>
-                <maven.test.skip>false</maven.test.skip>  <!-- Override to enable -->
-                <maven.compiler.testSkip>false</maven.compiler.testSkip>  <!-- Override to enable -->
-                <skipTests>false</skipTests>  <!-- Override to enable -->
-                <skipITs>false</skipITs>  <!-- Override to enable -->
-            </properties>
-            <build>
-                <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
-            </build>
-        </profile>
-    </profiles>
-
     <build>
         <plugins>
             <plugin>
@@ -128,10 +112,10 @@
                 <executions>
                     <execution>
                         <id>build-test-classpath</id>
-                        <phase>generate-test-resources</phase>
                         <goals>
                             <goal>build-classpath</goal>
                         </goals>
+                        <phase>generate-test-resources</phase>
                         <configuration>
                             <includeScope>test</includeScope>
                             <outputProperty>test.classpath</outputProperty>
@@ -155,10 +139,10 @@
                 <executions>
                     <execution>
                         <id>default-testCompile</id>
-                        <phase>test-compile</phase>
                         <goals>
                             <goal>testCompile</goal>
                         </goals>
+                        <phase>test-compile</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -219,4 +203,23 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>run-tests</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <!-- Override to enable -->
+                <maven.compiler.testSkip>false</maven.compiler.testSkip>
+                <!-- Override to enable -->
+                <skipTests>false</skipTests>
+                <!-- Override to enable -->
+                <skipITs>false</skipITs>
+                <!-- Override to enable -->
+            </properties>
+            <build>
+                <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
+            </build>
+        </profile>
+    </profiles>
 </project>
