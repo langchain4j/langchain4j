@@ -10,6 +10,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -50,7 +51,8 @@ class InternalAnthropicHelper {
             AnthropicCacheType toolsCacheType,
             boolean stream,
             String toolNameChoice,
-            Boolean disableParallelToolUse) {
+            Boolean disableParallelToolUse,
+            String userId) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -69,6 +71,10 @@ class InternalAnthropicHelper {
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(
                     toAnthropicToolChoice(chatRequest.toolChoice(), toolNameChoice, disableParallelToolUse));
+        }
+
+        if (!isNullOrEmpty(userId)) {
+            requestBuilder.metadata(AnthropicMetadata.builder().userId(userId).build());
         }
 
         return requestBuilder.build();

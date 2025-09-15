@@ -31,10 +31,9 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -66,6 +65,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolNameChoice;
     private final Boolean disableParallelToolUse;
+    private final String userId;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -106,6 +106,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.toolNameChoice = builder.toolNameChoice;
         this.disableParallelToolUse = builder.disableParallelToolUse;
+        this.userId = builder.userId;
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -140,6 +141,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private ToolChoice toolChoice;
         private String toolNameChoice;
         private Boolean disableParallelToolUse;
+        private String userId;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -316,6 +318,20 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the user ID for the requests.
+         * This should be a uuid, hash value, or other opaque identifier.
+         * Anthropic may use this id to help detect abuse.
+         * Do not include any identifying information such as name, email address, or phone number.
+         *
+         * @param userId the user identifier
+         * @return this builder
+         */
+        public AnthropicStreamingChatModelBuilder userId(String userId) {
+            this.userId = userId;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(this);
         }
@@ -333,7 +349,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true,
                 toolNameChoice,
-                disableParallelToolUse);
+                disableParallelToolUse,
+                userId);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
