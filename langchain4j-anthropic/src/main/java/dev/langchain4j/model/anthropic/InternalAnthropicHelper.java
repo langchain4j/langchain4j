@@ -50,6 +50,8 @@ class InternalAnthropicHelper {
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
             boolean stream,
+            String toolNameChoice,
+            Boolean disableParallelToolUse,
             String userId) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
@@ -67,7 +69,8 @@ class InternalAnthropicHelper {
             requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));
         }
         if (chatRequest.toolChoice() != null) {
-            requestBuilder.toolChoice(toAnthropicToolChoice(chatRequest.toolChoice()));
+            requestBuilder.toolChoice(
+                    toAnthropicToolChoice(chatRequest.toolChoice(), toolNameChoice, disableParallelToolUse));
         }
 
         if (!isNullOrEmpty(userId)) {

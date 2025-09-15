@@ -28,6 +28,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
@@ -62,6 +63,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final String toolNameChoice;
+    private final Boolean disableParallelToolUse;
     private final String userId;
 
     /**
@@ -91,7 +94,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                         getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
-                .toolChoice(commonParameters.toolChoice())
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .build();
 
         this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
@@ -101,6 +104,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
+        this.toolNameChoice = builder.toolNameChoice;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
     }
 
@@ -133,6 +138,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private Logger logger;
         private List<ChatModelListener> listeners;
+        private ToolChoice toolChoice;
+        private String toolNameChoice;
+        private Boolean disableParallelToolUse;
         private String userId;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -295,6 +303,21 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolNameChoice(String toolNameChoice) {
+            this.toolNameChoice = toolNameChoice;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
+            this.disableParallelToolUse = disableParallelToolUse;
+            return this;
+        }
+
         /**
          * Sets the user ID for the requests.
          * This should be a uuid, hash value, or other opaque identifier.
@@ -325,6 +348,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true,
+                toolNameChoice,
+                disableParallelToolUse,
                 userId);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }

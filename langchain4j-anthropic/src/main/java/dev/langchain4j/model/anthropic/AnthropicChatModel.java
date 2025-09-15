@@ -67,6 +67,8 @@ public class AnthropicChatModel implements ChatModel {
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final String toolNameChoice;
+    private final Boolean disableParallelToolUse;
     private final String userId;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
@@ -90,6 +92,8 @@ public class AnthropicChatModel implements ChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
+        this.toolNameChoice = builder.toolNameChoice;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
 
         ChatRequestParameters commonParameters;
@@ -132,6 +136,8 @@ public class AnthropicChatModel implements ChatModel {
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
+        private String toolNameChoice;
+        private Boolean disableParallelToolUse;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -218,6 +224,16 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
+            this.toolNameChoice = toolNameChoice;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
+            this.disableParallelToolUse = disableParallelToolUse;
             return this;
         }
 
@@ -351,6 +367,8 @@ public class AnthropicChatModel implements ChatModel {
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 false,
+                toolNameChoice,
+                disableParallelToolUse,
                 userId);
 
         AnthropicCreateMessageResponse response =
