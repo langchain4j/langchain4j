@@ -51,7 +51,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     public BedrockStreamingChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false), builder.logger)
+                ? createClient(
+                        getOrDefault(builder.logRequests, false),
+                        getOrDefault(builder.logResponses, false),
+                        builder.logger)
                 : builder.client;
         this.logResponses = getOrDefault(builder.logResponses, false);
     }
@@ -81,7 +84,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
                                 toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                                 toolCallBuilder.updateId(event.start().toolUse().toolUseId());
-                                toolCallBuilder.updateName(event.start().toolUse().name());
+                                toolCallBuilder.updateName(
+                                        event.start().toolUse().name());
                             }
                             responseBuilder.append(event);
                         })
@@ -127,18 +131,19 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 log.debug("onMetadata: {}", event);
                             }
                             responseBuilder.append(event);
-                            ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
+                            ChatResponse response =
+                                    responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
                             onCompleteResponse(handler, response);
                         })
                         .build())
                 .build();
-            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler)
-                    .exceptionally(ex->{
-                        RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
-                        withLoggingExceptions(() -> handler.onError(mappedError));
-                        return null;
-                    });
-
+        this.client
+                .converseStream(converseStreamRequest, converseStreamResponseHandler)
+                .exceptionally(ex -> {
+                    RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
+                    withLoggingExceptions(() -> handler.onError(mappedError));
+                    return null;
+                });
     }
 
     @Override
@@ -147,12 +152,19 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
+        BedrockCachePointPlacement cachePointPlacement = null;
+        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
+            cachePointPlacement = bedrockParams.cachePointPlacement();
+        } else if (defaultRequestParameters != null) {
+            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
+        }
+
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages()))
-                .messages(extractRegularMessages(chatRequest.messages()))
-                .toolConfig(extractToolConfigurationFrom(chatRequest))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }
