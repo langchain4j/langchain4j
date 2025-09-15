@@ -401,7 +401,11 @@ Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
 
 ## Multimodality
 
-Gemini is a multimodal model, which means it outputs text, but in input, it accepts other _modalities_ besides text, like:
+Gemini is a multimodal model, which means it can both accept and generate different _modalities_ besides text.
+
+### Input Modalities
+
+In input, Gemini accepts:
 * pictures (`ImageContent`)
 * videos (`VideoContent`)
 * audio files (`AudioContent`)
@@ -428,6 +432,40 @@ ChatResponse response = gemini.chat(
             """)
     )
 );
+```
+
+### Image Generation Output
+
+Some Gemini models (such as `gemini-2.5-flash-image-preview`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey("Your API Key")
+    .modelName("gemini-2.5-flash-image-preview")
+    .build();
+
+ChatResponse response = gemini.chat(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"));
+
+// Extract generated images from the response
+AiMessage aiMessage = response.aiMessage();
+List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
+
+if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
+    System.out.println("Generated " + generatedImages.size() + " image(s)");
+    System.out.println("Text response: " + aiMessage.text());
+
+    for (Image image : generatedImages) {
+        String base64Data = image.base64Data();
+        String mimeType = image.mimeType();
+        
+        // You can now save the image, display it, or process it further
+        // For example, save to file:
+        byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+        Files.write(Paths.get("generated_image.png"), imageBytes);
+    }
+} else {
+    System.out.println("Text response: " + aiMessage.text());
+}
 ```
 
 ## Thinking
