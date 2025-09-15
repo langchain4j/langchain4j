@@ -17,6 +17,7 @@ import org.mockito.InOrder;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
@@ -38,13 +39,23 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 defaultStreamingModelBuilder()
                         .build(),
                 defaultStreamingModelBuilder()
-                        .strictTools(true)
-                        .build(),
-                defaultStreamingModelBuilder()
                         .responseFormat("json_schema")
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
+        );
+    }
+
+    @Override
+    protected List<StreamingChatModel> modelsSupportingTools() {
+        return List.of(
+                defaultStreamingModelBuilder()
+                        .modelName(GPT_5_NANO)
+                        .build(),
+                defaultStreamingModelBuilder()
+                        .modelName(GPT_5_NANO)
+                        .strictTools(true)
+                        .build()
         );
     }
 

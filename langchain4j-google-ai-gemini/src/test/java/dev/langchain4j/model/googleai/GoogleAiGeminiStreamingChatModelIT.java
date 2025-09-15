@@ -725,6 +725,46 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
+    @Test
+    void should_generate_image_streaming() {
+        // given
+        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-image-preview")
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
+                ChatRequest.builder()
+                        .messages(
+                                UserMessage.from(
+                                        "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
+                        .build(),
+                handler);
+        ChatResponse response = handler.get();
+
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(aiMessage).isNotNull();
+
+        // Check if images were generated using GeneratedImageHelper
+        if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
+            List<dev.langchain4j.data.image.Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
+            assertThat(generatedImages).isNotEmpty();
+
+            for (dev.langchain4j.data.image.Image image : generatedImages) {
+                assertThat(image.base64Data()).isNotEmpty();
+                assertThat(image.mimeType()).startsWith("image/");
+            }
+        }
+
+        // Should have either text response or generated images (or both)
+        assertThat(aiMessage.text() != null || GeneratedImageHelper.hasGeneratedImages(aiMessage))
+                .isTrue();
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");

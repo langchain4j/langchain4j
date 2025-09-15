@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
@@ -116,19 +117,22 @@ public class AgentBuilder<T> {
         setupGuardrails(aiServices);
         setupTools(aiServices);
 
+        UserMessageRecorder messageRecorder = new UserMessageRecorder();
         boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
+                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider).andThen(messageRecorder));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
             }
+        } else {
+            aiServices.chatRequestTransformer(messageRecorder);
         }
 
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class, ChatMessagesAccess.class},
+                new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
 
     private void setupGuardrails(AiServices<T> aiServices) {
