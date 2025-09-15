@@ -20,11 +20,11 @@ public class ServiceHelper {
     }
 
     /**
-     * Load the first available services of a given type.
+     * Load the first available service of a given type.
      *
      * @param clazz the type of service
      * @param <T>   the type of service
-     * @return the list of services, empty if none
+     * @return the first service, null if none
      */
     public static <T> T loadFactory(Class<T> clazz) {
         Collection<T> factories = loadFactories(clazz, null);
