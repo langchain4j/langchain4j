@@ -51,6 +51,10 @@ public enum OpenAiChatModelName {
 
     GPT_4_1_NANO("gpt-4.1-nano"), // alias
     GPT_4_1_NANO_2025_04_14("gpt-4.1-nano-2025-04-14"),
+
+    GPT_5("gpt-5"),
+    GPT_5_MINI("gpt-5-mini"),
+    GPT_5_NANO("gpt-5-nano")
     ;
 
     private final String stringValue;

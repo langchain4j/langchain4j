@@ -427,3 +427,29 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .cacheToolList(false)
     .build();
 ```
+
+## MCP Registry client
+
+LangChain4j also offers a separate client implementation that can talk to 
+[MCP registries](https://registry.modelcontextprotocol.io/docs#/). Right now, only
+read-only operations are implemented (you can search for MCP servers, but managing and adding servers
+is not supported - please use the 
+[official tools](https://github.com/modelcontextprotocol/registry/blob/main/docs/guides/publishing/publish-server.md) for that).
+
+**_WARNING:_** Discovering MCP servers and using them (especially running locally) may present serious security risks. Before
+running any MCP server that you locate in a public registry, make sure you can trust it.
+
+The registry client
+lives in the `dev.langchain4j.mcp.registryclient` package and can be initialized like this:
+
+```java
+McpRegistryClient client = DefaultMcpRegistryClient.builder()
+        .baseUrl("URL-OF-THE-REGISTRY")
+        .build();
+```
+
+If no base URL is provided, the official registry will be used as the default (https://registry.modelcontextprotocol.io).
+Then, to search for MCP servers, use the `registry.listServers(McpServerListRequest)` method. A `McpServerListRequest`
+object can be built using the `McpServerListRequest.Builder` class. The Java API in LangChain4j
+closely mirrors the REST API of MCP registries as described in the official
+[MCP Registry Reference](https://registry.modelcontextprotocol.io/docs).
