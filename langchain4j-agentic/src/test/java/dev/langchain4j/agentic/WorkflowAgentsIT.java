@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
@@ -12,8 +14,11 @@ import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
@@ -579,5 +584,78 @@ public class WorkflowAgentsIT {
         List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         System.out.println(plans);
         assertThat(plans).hasSize(3);
+    }
+
+    static class NotificationTool {
+
+        private final AtomicBoolean done;
+
+        NotificationTool(final AtomicBoolean done) {
+            this.done = done;
+        }
+
+        @Tool("notify that you are done")
+        void done() {
+            done.set(true);
+        }
+    }
+
+    public interface FoodExpertWithNotification {
+
+        @UserMessage("""
+            You are a great evening planner.
+            Propose a list of 3 meals matching the given mood.
+            The mood is {{mood}}.
+            For each meal, just give the name of the meal.
+            Provide a list with the 3 items and nothing else.
+
+            When you are done and immediately before returning also call the provided tool,
+            to notify that you have completed your task.
+            """)
+        @Agent
+        List<String> findMeal(@V("mood") String mood);
+    }
+
+    public interface MovieExperttWithNotification {
+
+        @UserMessage("""
+            You are a great evening planner.
+            Propose a list of 3 movies matching the given mood.
+            The mood is {{mood}}.
+            Provide a list with the 3 items and nothing else.
+
+            When you are done and immediately before returning also call the provided tool,
+            to notify that you have completed your task.
+            """)
+        @Agent
+        List<String> findMovie(@V("mood") String mood);
+    }
+
+    @Test
+    void async_untyped_agents_tests() {
+        AtomicBoolean foodDone = new AtomicBoolean(false);
+        AtomicBoolean moviesDone = new AtomicBoolean(false);
+
+        FoodExpertWithNotification foodExpert = AgenticServices.agentBuilder(FoodExpertWithNotification.class)
+                .chatModel(baseModel())
+                .tools(new NotificationTool(foodDone))
+                .async(true)
+                .outputName("meals")
+                .build();
+
+        MovieExperttWithNotification movieExpert = AgenticServices.agentBuilder(MovieExperttWithNotification.class)
+                .chatModel(baseModel())
+                .tools(new NotificationTool(moviesDone))
+                .async(true)
+                .outputName("movies")
+                .build();
+
+        UntypedAgent eveningPlannerAgent = AgenticServices.sequenceBuilder()
+                .subAgents(foodExpert, movieExpert)
+                .build();
+
+        eveningPlannerAgent.invoke(Map.of("mood", "romantic"));
+        assertThat(foodDone).isTrue();
+        assertThat(moviesDone).isTrue();
     }
 }
