@@ -1,18 +1,17 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StringSetOutputParserTest {
 
@@ -63,8 +62,7 @@ class StringSetOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\",\"CAT\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG"))
-        );
+                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG")));
     }
 
     @ParameterizedTest
@@ -80,13 +78,14 @@ class StringSetOutputParserTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {
-            "{\"values\": \"\"}",
-            "{\"values\": false}",
-            "{\"values\":\"banana\"}",
-            "{\"values\":{\"name\":\"Klaus\"}}",
-            "{\"banana\":[{\"name\":\"Klaus\"}]}",
-    })
+    @ValueSource(
+            strings = {
+                "{\"values\": \"\"}",
+                "{\"values\": false}",
+                "{\"values\":\"banana\"}",
+                "{\"values\":{\"name\":\"Klaus\"}}",
+                "{\"banana\":[{\"name\":\"Klaus\"}]}",
+            })
     void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new StringSetOutputParser().parse(input))
