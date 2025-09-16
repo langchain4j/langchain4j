@@ -49,7 +49,7 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
                 for (AgentExecutor agentExecutor : agentExecutors()) {
                     agentExecutor.execute(agenticScope);
                     if (exitCondition.test(agenticScope)) {
-                        return agenticScope.state();
+                        return result(agenticScope, output.apply(agenticScope));
                     }
                 }
             }
