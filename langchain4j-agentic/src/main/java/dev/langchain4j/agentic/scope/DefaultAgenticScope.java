@@ -19,10 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -141,6 +139,9 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     public void rootCallEnded(AgenticScopeRegistry registry) {
+        // ensure that all pending async operations are completed before ending the root call
+        state.replaceAll(this::readStateBlocking);
+
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId);
