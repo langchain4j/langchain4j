@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.5.0-beta11-SNAPSHOT</version>
+    <version>1.5.0-beta11</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -105,7 +105,6 @@
         <module>langchain4j-agentic-a2a</module>
 
         <!-- integration tests -->
-        <module>integration-tests</module>
 
     </modules>
 
