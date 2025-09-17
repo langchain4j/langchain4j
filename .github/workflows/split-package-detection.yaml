@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: '25-ea'
 
       - name: Build with Maven
         run: mvn package -Dmaven.javadoc.skip=true -DskipTests -DskipITs
