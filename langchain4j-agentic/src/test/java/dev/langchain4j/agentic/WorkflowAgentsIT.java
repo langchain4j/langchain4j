@@ -379,6 +379,33 @@ public class WorkflowAgentsIT {
     }
 
     @Test
+    void untyped_loop_with_output_tests() {
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputName("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputName("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .output(agenticScope -> agenticScope.readState("score", 0.0))
+                .build();
+
+        double score = (double) styleReviewLoop.invoke(Map.of(
+                "story", "Once upon a time there were a wizard and a dragon",
+                "style", "fantasy"
+        ));
+
+        assertThat(score).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
     void conditional_agents_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(baseModel())
