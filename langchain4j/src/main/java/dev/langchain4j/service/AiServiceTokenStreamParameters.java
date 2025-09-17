@@ -1,8 +1,5 @@
 package dev.langchain4j.service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executor;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,6 +8,9 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.

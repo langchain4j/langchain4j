@@ -9,7 +9,8 @@ import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
  * allowing it to specifically listen for completion events.
  */
 @FunctionalInterface
-public interface AiServiceInteractionCompletedEventListener extends AiServiceInteractionEventListener<AiServiceInteractionCompletedEvent> {
+public interface AiServiceInteractionCompletedEventListener
+        extends AiServiceInteractionEventListener<AiServiceInteractionCompletedEvent> {
 
     @Override
     default Class<AiServiceInteractionCompletedEvent> getEventClass() {

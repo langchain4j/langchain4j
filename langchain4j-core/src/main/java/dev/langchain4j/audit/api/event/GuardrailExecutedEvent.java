@@ -84,7 +84,8 @@ public interface GuardrailExecutedEvent<
             return this;
         }
 
-        public GuardrailExecutedEventBuilder<P, R, G, T> invocationContext(AiServiceInvocationContext invocationContext) {
+        public GuardrailExecutedEventBuilder<P, R, G, T> invocationContext(
+                AiServiceInvocationContext invocationContext) {
             return (GuardrailExecutedEventBuilder<P, R, G, T>) super.invocationContext(invocationContext);
         }
 

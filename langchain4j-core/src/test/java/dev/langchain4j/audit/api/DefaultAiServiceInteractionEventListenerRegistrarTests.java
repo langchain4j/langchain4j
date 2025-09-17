@@ -2,10 +2,6 @@ package dev.langchain4j.audit.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
@@ -36,6 +32,10 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceInteractionEventListenerRegistrarTests {
@@ -47,26 +47,30 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
             .memoryId("one")
             .build();
 
-    private static final AiServiceResponseReceivedEvent LLM_RESPONSE_RECEIVED_EVENT = AiServiceResponseReceivedEvent.builder()
-            .invocationContext(DEFAULT_INTERACTION_SOURCE)
-            .response(
-                    ChatResponse.builder().aiMessage(AiMessage.from("Message!")).build())
-            .build();
+    private static final AiServiceResponseReceivedEvent LLM_RESPONSE_RECEIVED_EVENT =
+            AiServiceResponseReceivedEvent.builder()
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .response(ChatResponse.builder()
+                            .aiMessage(AiMessage.from("Message!"))
+                            .build())
+                    .build();
 
-    private static final AiServiceInteractionErrorEvent LLM_INTERACTION_ERROR_EVENT = AiServiceInteractionErrorEvent.builder()
-            .invocationContext(DEFAULT_INTERACTION_SOURCE)
-            .error(new RuntimeException("Some error"))
-            .build();
+    private static final AiServiceInteractionErrorEvent LLM_INTERACTION_ERROR_EVENT =
+            AiServiceInteractionErrorEvent.builder()
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .error(new RuntimeException("Some error"))
+                    .build();
 
     private static final AiServiceInteractionCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
             AiServiceInteractionCompletedEvent.builder()
                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .build();
 
-    private static final AiServiceInteractionStartedEvent LLM_INTERACTION_STARTED_EVENT = AiServiceInteractionStartedEvent.builder()
-            .invocationContext(DEFAULT_INTERACTION_SOURCE)
-            .userMessage(UserMessage.from("Hello, world!"))
-            .build();
+    private static final AiServiceInteractionStartedEvent LLM_INTERACTION_STARTED_EVENT =
+            AiServiceInteractionStartedEvent.builder()
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .userMessage(UserMessage.from("Hello, world!"))
+                    .build();
 
     private static final OutputGuardrailExecutedEvent OUTPUT_GUARDRAIL_EXECUTED_EVENT =
             OutputGuardrailExecutedEvent.builder()
@@ -219,17 +223,20 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
     private static class TestOutputGuardrailListener extends AbstractTestEventListener<OutputGuardrailExecutedEvent>
             implements OutputGuardrailExecutedEventListener {}
 
-    private static class TestLLMInteractionStartedListener extends AbstractTestEventListener<AiServiceInteractionStartedEvent>
+    private static class TestLLMInteractionStartedListener
+            extends AbstractTestEventListener<AiServiceInteractionStartedEvent>
             implements AiServiceInteractionStartedEventListener {}
 
     private static class TestLLMInteractionCompletedListener
             extends AbstractTestEventListener<AiServiceInteractionCompletedEvent>
             implements AiServiceInteractionCompletedEventListener {}
 
-    private static class TestLLMInteractionErrorListener extends AbstractTestEventListener<AiServiceInteractionErrorEvent>
+    private static class TestLLMInteractionErrorListener
+            extends AbstractTestEventListener<AiServiceInteractionErrorEvent>
             implements LLMInteractionErrorEventListener {}
 
-    private static class TestLLMResponseReceivedListener extends AbstractTestEventListener<AiServiceResponseReceivedEvent>
+    private static class TestLLMResponseReceivedListener
+            extends AbstractTestEventListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedEventListener {}
 
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>

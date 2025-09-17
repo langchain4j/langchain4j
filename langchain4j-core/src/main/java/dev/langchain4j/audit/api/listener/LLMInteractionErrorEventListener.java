@@ -13,7 +13,8 @@ import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
  * processing the associated error details encapsulated within the event.
  */
 @FunctionalInterface
-public interface LLMInteractionErrorEventListener extends AiServiceInteractionEventListener<AiServiceInteractionErrorEvent> {
+public interface LLMInteractionErrorEventListener
+        extends AiServiceInteractionEventListener<AiServiceInteractionErrorEvent> {
     @Override
     default Class<AiServiceInteractionErrorEvent> getEventClass() {
         return AiServiceInteractionErrorEvent.class;

@@ -7,7 +7,8 @@ import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
 /**
  * Default implementation of {@link AiServiceInteractionErrorEvent}.
  */
-public class DefaultAiServiceInteractionErrorEvent extends AbstractAiServiceInteractionEvent implements AiServiceInteractionErrorEvent {
+public class DefaultAiServiceInteractionErrorEvent extends AbstractAiServiceInteractionEvent
+        implements AiServiceInteractionErrorEvent {
     private final Throwable error;
 
     public DefaultAiServiceInteractionErrorEvent(AiServiceInteractionErrorEventBuilder builder) {

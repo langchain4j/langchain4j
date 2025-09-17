@@ -2,13 +2,13 @@ package dev.langchain4j.audit.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -23,8 +23,8 @@ public class DefaultAiServiceInteractionEventListenerRegistrar implements AiServ
     private static final AiServiceInteractionEventListenerRegistrar INSTANCE =
             new DefaultAiServiceInteractionEventListenerRegistrar();
 
-    private final Map<Class<? extends AiServiceInteractionEvent>, EventListeners<? extends AiServiceInteractionEvent>> listeners =
-            new ConcurrentHashMap<>();
+    private final Map<Class<? extends AiServiceInteractionEvent>, EventListeners<? extends AiServiceInteractionEvent>>
+            listeners = new ConcurrentHashMap<>();
 
     private DefaultAiServiceInteractionEventListenerRegistrar() {
         super();
@@ -112,15 +112,13 @@ public class DefaultAiServiceInteractionEventListenerRegistrar implements AiServ
             this.listeners.forEach(listener -> {
                 try {
                     listener.onEvent(event);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     LOG.warn(
                             "An error occurred while firing event (%s) to listener (%s): %s"
                                     .formatted(
                                             event.getClass().getName(),
                                             listener.getClass().getName(),
-                                            e.getMessage()
-                                    ),
+                                            e.getMessage()),
                             e);
                 }
             });

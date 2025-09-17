@@ -10,17 +10,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import dev.langchain4j.agent.tool.Tool;
@@ -57,6 +46,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -205,7 +205,10 @@ class AiServicesAuditingTests {
                                 "The guardrail %s failed with this message: LLM response is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
-                List.of(AiServiceInteractionCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
+                List.of(
+                        AiServiceInteractionCompletedEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
                         AiServiceInteractionStartedEvent.class,
@@ -537,7 +540,8 @@ class AiServicesAuditingTests {
     public static class MyLLMInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
             implements LLMInteractionErrorEventListener {}
 
-    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<AiServiceInteractionCompletedEvent>
+    public static class MyLLMInteractionCompletedEventListener
+            extends MyEventListener<AiServiceInteractionCompletedEvent>
             implements AiServiceInteractionCompletedEventListener {}
 
     public static class MyInputGuardrailExecutedEventListener extends MyEventListener<InputGuardrailExecutedEvent>

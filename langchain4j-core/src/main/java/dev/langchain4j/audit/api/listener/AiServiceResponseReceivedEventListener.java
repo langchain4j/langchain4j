@@ -13,7 +13,8 @@ import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
  * if the LLM interaction involves tools or guardrails.
  */
 @FunctionalInterface
-public interface AiServiceResponseReceivedEventListener extends AiServiceInteractionEventListener<AiServiceResponseReceivedEvent> {
+public interface AiServiceResponseReceivedEventListener
+        extends AiServiceInteractionEventListener<AiServiceResponseReceivedEvent> {
     @Override
     default Class<AiServiceResponseReceivedEvent> getEventClass() {
         return AiServiceResponseReceivedEvent.class;

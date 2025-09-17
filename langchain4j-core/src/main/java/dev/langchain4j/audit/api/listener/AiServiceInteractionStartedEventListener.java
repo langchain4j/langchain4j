@@ -13,7 +13,8 @@ import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
  * start of the interaction.
  */
 @FunctionalInterface
-public interface AiServiceInteractionStartedEventListener extends AiServiceInteractionEventListener<AiServiceInteractionStartedEvent> {
+public interface AiServiceInteractionStartedEventListener
+        extends AiServiceInteractionEventListener<AiServiceInteractionStartedEvent> {
     @Override
     default Class<AiServiceInteractionStartedEvent> getEventClass() {
         return AiServiceInteractionStartedEvent.class;

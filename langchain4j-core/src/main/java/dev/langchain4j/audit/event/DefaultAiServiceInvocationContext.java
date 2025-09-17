@@ -3,13 +3,13 @@ package dev.langchain4j.audit.event;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 
 /**
  * Default implementation of the {@link AiServiceInvocationContext} interface used to represent

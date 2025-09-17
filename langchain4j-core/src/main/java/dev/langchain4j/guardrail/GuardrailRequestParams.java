@@ -2,10 +2,10 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Map;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
+import java.util.Map;
 
 /**
  * Represents the common parameters shared across guardrail checks when validating interactions

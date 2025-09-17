@@ -1,7 +1,7 @@
 package dev.langchain4j.audit.api.event;
 
-import java.util.Optional;
 import dev.langchain4j.audit.event.DefaultAiServiceInteractionCompletedEvent;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,7 +55,8 @@ public interface AiServiceInteractionCompletedEvent extends AiServiceInteraction
         /**
          * Sets the interaction source.
          */
-        public AiServiceInteractionCompletedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+        public AiServiceInteractionCompletedEventBuilder invocationContext(
+                AiServiceInvocationContext invocationContext) {
             return (AiServiceInteractionCompletedEventBuilder) super.invocationContext(invocationContext);
         }
 

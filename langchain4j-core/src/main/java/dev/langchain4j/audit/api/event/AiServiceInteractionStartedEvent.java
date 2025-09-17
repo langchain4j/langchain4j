@@ -1,9 +1,9 @@
 package dev.langchain4j.audit.api.event;
 
-import java.util.Optional;
 import dev.langchain4j.audit.event.DefaultAiServiceInteractionStartedEvent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
