@@ -60,6 +60,7 @@ public class AgentInvocationHandler implements InvocationHandler {
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
                 case "name" -> builder.name;
+                case "uniqueName" -> builder.uniqueName;
                 case "description" -> builder.description;
                 case "outputName" -> builder.outputName;
                 case "async" -> builder.async;

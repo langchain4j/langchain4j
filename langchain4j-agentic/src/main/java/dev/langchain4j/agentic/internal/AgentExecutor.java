@@ -10,10 +10,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
-    public String agentName() {
-        return agentInvoker.name();
-    }
-
     public Object execute(DefaultAgenticScope agenticScope) {
         return execute(agenticScope, agentInvoker.async());
     }
@@ -55,7 +51,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
             if (outputName != null && !outputName.isBlank()) {
                 agenticScope.writeState(outputName, response);
             }
-            agenticScope.registerAgentCall(agentInvoker.name(), invokedAgent, args, response);
+            agenticScope.registerAgentCall(agentInvoker, invokedAgent, args, response);
             return response;
         } catch (AgentInvocationException e) {
             return handleAgentFailure(e, agenticScope, invokedAgent);
