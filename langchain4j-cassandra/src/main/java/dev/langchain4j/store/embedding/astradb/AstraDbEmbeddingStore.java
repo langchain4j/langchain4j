@@ -40,7 +40,6 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Metadata used for similarity.
      */
     public static final String KEY_SIMILARITY = "$similarity";
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AstraDbEmbeddingStore.class);
 
     /**
      * Client to work with an Astra Collection

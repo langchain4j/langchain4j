@@ -299,9 +299,13 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-        if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
-            throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
+    	if (ids == null || embeddingList == null || textSegmentList == null) {
+            throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must not be null");
         }
+        if (ids.size() != embeddingList.size() || ids.size() != textSegmentList.size()) {
+            throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must all have the same size");
+        }
+        
         // Looping on both list with an index
         for (int i = 0; i < embeddingList.size(); i++) {
             addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));
