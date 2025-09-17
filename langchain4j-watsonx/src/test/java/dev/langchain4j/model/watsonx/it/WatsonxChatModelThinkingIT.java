@@ -31,7 +31,9 @@ public class WatsonxChatModelThinkingIT {
         var chatResponse = chatModel.chat(UserMessage.from("Why the sky is blue?"));
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
+        assertThat(aiMessage.thinking()).doesNotContain("<think>", "</think>");
         assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.text()).doesNotContain("<response>", "</response>");
     }
 
     @Test

@@ -2,6 +2,9 @@ package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.Thinking;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.time.Duration;
@@ -14,6 +17,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
     private final String projectId;
     private final String spaceId;
+    private final Thinking thinking;
     private final Map<String, Integer> logitBias;
     private final Boolean logprobs;
     private final Integer topLogprobs;
@@ -31,6 +35,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         this.seed = builder.seed;
         this.toolChoiceName = builder.toolChoiceName;
         this.timeLimit = builder.timeLimit;
+        this.thinking = builder.thinking;
     }
 
     public String projectId() {
@@ -65,6 +70,10 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return timeLimit;
     }
 
+    public Thinking thinking() {
+        return thinking;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -86,6 +95,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private Integer seed;
         private String toolChoiceName;
         private Duration timeLimit;
+        private Thinking thinking;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -99,6 +109,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 seed(getOrDefault(watsonxParameters.seed(), seed));
                 toolChoiceName(getOrDefault(watsonxParameters.toolChoiceName(), toolChoiceName));
                 timeLimit(getOrDefault(watsonxParameters.timeLimit(), timeLimit));
+                thinking(getOrDefault(watsonxParameters.thinking(), thinking));
             }
             return this;
         }
@@ -140,6 +151,23 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder timeLimit(Duration timeLimit) {
             this.timeLimit = timeLimit;
+            return this;
+        }
+
+        public Builder thinking(boolean enabled) {
+            return enabled ? thinking(Thinking.builder().build()) : this;
+        }
+
+        public Builder thinking(ExtractionTags tags) {
+            return thinking(Thinking.of(tags));
+        }
+
+        public Builder thinking(ThinkingEffort thinkingEffort) {
+            return thinking(Thinking.of(thinkingEffort));
+        }
+
+        public Builder thinking(Thinking thinking) {
+            this.thinking = thinking;
             return this;
         }
 

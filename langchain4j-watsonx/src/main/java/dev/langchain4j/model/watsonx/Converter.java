@@ -6,6 +6,7 @@ import static java.util.Objects.requireNonNull;
 
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
+import com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoiceOption;
 import com.ibm.watsonx.ai.chat.model.Image.Detail;
 import com.ibm.watsonx.ai.chat.model.ImageContent;
 import com.ibm.watsonx.ai.chat.model.TextContent;
@@ -147,14 +148,15 @@ class Converter {
 
             } else if (nonNull(toolChoice)) {
                 switch (toolChoice) {
-                    case AUTO -> builder.toolChoiceOption(com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoice.AUTO);
+                    case AUTO -> builder.toolChoiceOption(ToolChoiceOption.AUTO);
                     case REQUIRED -> {
                         if (toolSpecifications.isEmpty())
                             throw new IllegalArgumentException(
                                     "If tool-choice is 'REQUIRED', at least one tool must be specified.");
 
-                        builder.toolChoiceOption(com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoice.REQUIRED);
+                        builder.toolChoiceOption(ToolChoiceOption.REQUIRED);
                     }
+                    case NONE -> builder.toolChoiceOption(ToolChoiceOption.NONE);
                 }
             }
         }
@@ -177,7 +179,7 @@ class Converter {
                     .map(Converter::toToolCall)
                     .toList();
         }
-        return new AssistantMessage(AssistantMessage.ROLE, aiMessage.text(), null, null, toolCalls);
+        return new AssistantMessage(AssistantMessage.ROLE, aiMessage.text(), null, null, null, toolCalls);
     }
 
     private static com.ibm.watsonx.ai.chat.model.UserMessage toUserMessage(UserMessage userMessage) {

@@ -19,7 +19,6 @@ import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
-import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
@@ -77,7 +76,7 @@ public class WatsonxStreamingChatModelTest {
     void setUp() {
 
         when(mockChatServiceBuilder.modelId(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.url(any(URI.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.projectId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
@@ -112,7 +111,7 @@ public class WatsonxStreamingChatModelTest {
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null);
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null, null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
                     chatResponse.setChoices(List.of(resultChoice));
                     handler.onCompleteResponse(chatResponse);
@@ -189,13 +188,14 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void testDoChatWithThinking() throws Exception {
+    void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
 
         var extractionTags = ExtractionTags.of("think", "response");
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
+                "I'm thinking",
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -264,9 +264,92 @@ public class WatsonxStreamingChatModelTest {
                 assertEquals(
                         com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
                         chatRequestCaptor.getValue().getMessages().get(0));
+                assertNotNull(chatRequestCaptor.getValue().getThinking());
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
+
+        var extractionTags = ExtractionTags.of("think", "response");
+        var resultMessage = new ResultMessage(
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>This is the response</response>",
+                "I'm thinking",
+                null,
+                null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        var field = ChatResponse.class.getDeclaredField("extractionTags");
+        field.setAccessible(true);
+        field.set(chatResponse, extractionTags);
+        chatResponse.setChoices(List.of(resultChoice));
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+                    handler.onPartialThinking("I'm thinking", null);
+                    handler.onPartialResponse("This is", null);
+                    handler.onPartialResponse("the response", null);
+                    handler.onCompleteResponse(chatResponse);
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .spaceId("spaceId")
+                    .apiKey("api-key")
+                    .build();
+
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(ExtractionTags.of("think", "response"))
+                            .build())
+                    .build();
+
+            CountDownLatch latch = new CountDownLatch(1);
+            StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
+                    assertEquals(
+                            "This is the response", completeResponse.aiMessage().text());
+                    latch.countDown();
+                }
+
+                @Override
+                public void onPartialThinking(PartialThinking partialThinking) {
+                    assertEquals("I'm thinking", partialThinking.text());
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                boolean completed = latch.await(2, TimeUnit.SECONDS);
+                assertTrue(completed, "Handler did not complete in time");
                 assertEquals(
-                        ControlMessage.of("thinking"),
-                        chatRequestCaptor.getValue().getMessages().get(1));
+                        com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
+                        chatRequestCaptor.getValue().getMessages().get(0));
+                assertNotNull(chatRequestCaptor.getValue().getThinking());
             } catch (Exception e) {
                 fail(e);
             }
@@ -282,7 +365,7 @@ public class WatsonxStreamingChatModelTest {
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", "refusal", null);
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, "refusal", null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
                     chatResponse.setChoices(List.of(resultChoice));
                     handler.onCompleteResponse(chatResponse);
@@ -364,7 +447,7 @@ public class WatsonxStreamingChatModelTest {
     public void testDoChatWithTool() throws Exception {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, List.of(toolCall));
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "tool_calls");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -492,7 +575,7 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void testJsonSchema() throws Exception {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 
