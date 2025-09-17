@@ -3,21 +3,21 @@ package dev.langchain4j.audit.event;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.event.InteractionSource;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 
 /**
- * Default implementation of the {@link InteractionSource} interface used to represent
+ * Default implementation of the {@link AiServiceInvocationContext} interface used to represent
  * information about the source of an interaction, including details such as the unique
  * interaction ID, interface name, method name, method arguments, and optional memory ID.
  * Instances of this class are immutable and can be constructed using the nested {@link Builder}.
  */
-public class DefaultInteractionSource implements InteractionSource {
+public class DefaultAiServiceInvocationContext implements AiServiceInvocationContext {
     private final UUID interactionId = UUID.randomUUID();
     private final String interfaceName;
     private final String methodName;
@@ -25,7 +25,7 @@ public class DefaultInteractionSource implements InteractionSource {
     private final Object memoryId;
     private final Instant timestamp;
 
-    public DefaultInteractionSource(Builder builder) {
+    public DefaultAiServiceInvocationContext(Builder builder) {
         ensureNotNull(builder, "builder");
         this.interfaceName = ensureNotBlank(builder.getInterfaceName(), "interfaceName");
         this.methodName = ensureNotBlank(builder.getMethodName(), "methodName");

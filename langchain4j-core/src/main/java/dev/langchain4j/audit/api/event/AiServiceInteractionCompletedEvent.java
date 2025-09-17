@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * of the interaction process, a returned value, a processed value, or
  * {@code null} if no meaningful result exists.
  */
-public interface AiServiceInvocationCompletedEvent extends AiServiceInteractionEvent {
+public interface AiServiceInteractionCompletedEvent extends AiServiceInteractionEvent {
     /**
      * Retrieves the result of the interaction process. The result could be the outcome
      * of the interaction, a processed value, or {@code null} if no result exists.
@@ -23,8 +23,8 @@ public interface AiServiceInvocationCompletedEvent extends AiServiceInteractionE
     Optional<Object> result();
 
     @Override
-    default Class<AiServiceInvocationCompletedEvent> eventClass() {
-        return AiServiceInvocationCompletedEvent.class;
+    default Class<AiServiceInteractionCompletedEvent> eventClass() {
+        return AiServiceInteractionCompletedEvent.class;
     }
 
     static AiServiceInteractionCompletedEventBuilder builder() {
@@ -39,15 +39,15 @@ public interface AiServiceInvocationCompletedEvent extends AiServiceInteractionE
     /**
      * Builder for {@link DefaultAiServiceInteractionCompletedEvent} instances.
      */
-    class AiServiceInteractionCompletedEventBuilder extends Builder<AiServiceInvocationCompletedEvent> {
+    class AiServiceInteractionCompletedEventBuilder extends Builder<AiServiceInteractionCompletedEvent> {
         private @Nullable Object result;
 
         protected AiServiceInteractionCompletedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link AiServiceInvocationCompletedEvent}.
+         * Creates a builder initialized from an existing {@link AiServiceInteractionCompletedEvent}.
          */
-        protected AiServiceInteractionCompletedEventBuilder(AiServiceInvocationCompletedEvent src) {
+        protected AiServiceInteractionCompletedEventBuilder(AiServiceInteractionCompletedEvent src) {
             super(src);
             result(src.result());
         }
@@ -55,8 +55,8 @@ public interface AiServiceInvocationCompletedEvent extends AiServiceInteractionE
         /**
          * Sets the interaction source.
          */
-        public AiServiceInteractionCompletedEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (AiServiceInteractionCompletedEventBuilder) super.interactionSource(interactionSource);
+        public AiServiceInteractionCompletedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceInteractionCompletedEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**
@@ -68,9 +68,9 @@ public interface AiServiceInvocationCompletedEvent extends AiServiceInteractionE
         }
 
         /**
-         * Builds a {@link AiServiceInvocationCompletedEvent}.
+         * Builds a {@link AiServiceInteractionCompletedEvent}.
          */
-        public AiServiceInvocationCompletedEvent build() {
+        public AiServiceInteractionCompletedEvent build() {
             return new DefaultAiServiceInteractionCompletedEvent(this);
         }
 

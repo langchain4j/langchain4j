@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.audit.api.event.InteractionSource;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
@@ -14,10 +18,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
-    private static final InteractionSource DEFAULT_INTERACTION_SOURCE = InteractionSource.builder()
+    private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
@@ -187,13 +187,12 @@ class AiServiceTokenStreamTest {
                         .augmentationResult(null)
                         .userMessageTemplate("")
                         .variables(Map.of())
-                        .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                        .invocationContext(DEFAULT_INTERACTION_SOURCE)
                         .build())
                 .toolArgumentsErrorHandler((e, c) -> {
                     throw new RuntimeException(e);
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
-                .auditInteractionSource(DEFAULT_INTERACTION_SOURCE)
                 .build());
     }
 }

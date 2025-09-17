@@ -2,10 +2,10 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.event.InteractionSource;
+import java.util.Map;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
-import java.util.Map;
 
 /**
  * Represents the common parameters shared across guardrail checks when validating interactions
@@ -17,14 +17,14 @@ public final class GuardrailRequestParams {
     private final AugmentationResult augmentationResult;
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
-    private final InteractionSource interactionSource;
+    private final AiServiceInvocationContext invocationContext;
 
     private GuardrailRequestParams(Builder builder) {
         this.chatMemory = builder.chatMemory;
         this.augmentationResult = builder.augmentationResult;
         this.userMessageTemplate = ensureNotNull(builder.userMessageTemplate, "userMessageTemplate");
         this.variables = ensureNotNull(builder.variables, "variables");
-        this.interactionSource = builder.interactionSource;
+        this.invocationContext = builder.invocationContext;
     }
 
     /**
@@ -64,12 +64,22 @@ public final class GuardrailRequestParams {
     }
 
     /**
-     * Returns the {@link InteractionSource}, which contains general information about the source of the interaction.
+     * Returns the {@link AiServiceInvocationContext}, which contains general information about the source of the interaction.
      *
      * @return the interaction source
      */
-    public InteractionSource interactionSource() {
-        return interactionSource;
+    public AiServiceInvocationContext invocationContext() {
+        return invocationContext;
+    }
+
+    /**
+     * Converts the current {@link GuardrailRequestParams} instance to a builder,
+     * allowing modifications to the current state or creation of a new modified object.
+     *
+     * @return a {@link Builder} pre-populated with the current state's values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     /**
@@ -89,7 +99,17 @@ public final class GuardrailRequestParams {
         private AugmentationResult augmentationResult;
         private String userMessageTemplate;
         private Map<String, Object> variables;
-        private InteractionSource interactionSource;
+        private AiServiceInvocationContext invocationContext;
+
+        public Builder() {}
+
+        public Builder(GuardrailRequestParams src) {
+            this.chatMemory = src.chatMemory;
+            this.augmentationResult = src.augmentationResult;
+            this.userMessageTemplate = src.userMessageTemplate;
+            this.variables = src.variables;
+            this.invocationContext = src.invocationContext;
+        }
 
         /**
          * Sets the chat memory.
@@ -138,12 +158,12 @@ public final class GuardrailRequestParams {
         /**
          * Sets the interaction source for the builder.
          *
-         * @param interactionSource the source of the interaction, containing details such as the method name,
+         * @param invocationContext the source of the interaction, containing details such as the method name,
          *                          interface name, and timestamp of the interaction
          * @return this builder instance, to allow for method chaining
          */
-        public Builder interactionSource(InteractionSource interactionSource) {
-            this.interactionSource = interactionSource;
+        public Builder invocationContext(AiServiceInvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 

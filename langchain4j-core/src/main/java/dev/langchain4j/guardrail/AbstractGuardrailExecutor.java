@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Optional;
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 
@@ -116,10 +116,10 @@ public abstract sealed class AbstractGuardrailExecutor<
         return result;
     }
 
-    protected void fireAuditEvent(InteractionSource auditInteractionSource, P request, R result, G guardrail) {
+    protected void fireAuditEvent(AiServiceInvocationContext auditInteractionSource, P request, R result, G guardrail) {
         AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(createEmptyAuditEventBuilderInstance()
-                        .interactionSource(auditInteractionSource)
+                        .invocationContext(auditInteractionSource)
                         .request(request)
                         .result(result)
                         .guardrailClass((Class<G>) guardrail.getClass())
@@ -135,7 +135,7 @@ public abstract sealed class AbstractGuardrailExecutor<
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
                 var result = validate(accumulatedRequest, guardrail);
-                fireAuditEvent(request.requestParams().interactionSource(), accumulatedRequest, result, guardrail);
+                fireAuditEvent(request.requestParams().invocationContext(), accumulatedRequest, result, guardrail);
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing

@@ -49,8 +49,8 @@ public interface AiServiceInteractionErrorEvent extends AiServiceInteractionEven
         /**
          * Sets the interaction source.
          */
-        public AiServiceInteractionErrorEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (AiServiceInteractionErrorEventBuilder) super.interactionSource(interactionSource);
+        public AiServiceInteractionErrorEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceInteractionErrorEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**

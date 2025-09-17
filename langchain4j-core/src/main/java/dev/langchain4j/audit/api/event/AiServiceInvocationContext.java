@@ -1,17 +1,17 @@
 package dev.langchain4j.audit.api.event;
 
-import dev.langchain4j.audit.event.DefaultInteractionSource;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import dev.langchain4j.audit.event.DefaultAiServiceInvocationContext;
 import org.jspecify.annotations.NonNull;
 
 /**
  * Contains general information about the source of the interaction.
  */
-public interface InteractionSource {
+public interface AiServiceInvocationContext {
     /**
      * Unique identifier for an entire interaction with the LLM
      */
@@ -44,7 +44,7 @@ public interface InteractionSource {
     Instant timestamp();
 
     /**
-     * Converts the current instance of {@code DefaultInteractionSource} into a {@code Builder},
+     * Converts the current instance of {@code DefaultAiServiceInvocationContext} into a {@code Builder},
      * pre-populated with the current values of the instance.
      */
     default Builder toBuilder() {
@@ -53,14 +53,14 @@ public interface InteractionSource {
 
     /**
      * Creates a new instance of the {@code Builder} class for constructing
-     * instances of {@code DefaultInteractionSource}.
+     * instances of {@code DefaultAiServiceInvocationContext}.
      */
     static Builder builder() {
         return new Builder();
     }
 
     /**
-     * A builder class to create {@link InteractionSource} instances.
+     * A builder class to create {@link AiServiceInvocationContext} instances.
      */
     class Builder {
         private String interfaceName;
@@ -71,7 +71,7 @@ public interface InteractionSource {
 
         protected Builder() {}
 
-        protected Builder(InteractionSource interactionSource) {
+        protected Builder(AiServiceInvocationContext interactionSource) {
             interfaceName(interactionSource.interfaceName());
             methodName(interactionSource.methodName());
             methodArguments(interactionSource.methodArguments());
@@ -145,10 +145,10 @@ public interface InteractionSource {
         }
 
         /**
-         * Constructs an instance of {@link InteractionSource} using the current state of the builder.
+         * Constructs an instance of {@link AiServiceInvocationContext} using the current state of the builder.
          */
-        public <T extends InteractionSource> T build() {
-            return (T) new DefaultInteractionSource(this);
+        public <T extends AiServiceInvocationContext> T build() {
+            return (T) new DefaultAiServiceInvocationContext(this);
         }
 
         public String getInterfaceName() {

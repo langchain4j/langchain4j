@@ -62,8 +62,8 @@ public interface AiServiceInteractionStartedEvent extends AiServiceInteractionEv
         /**
          * Sets the interaction source.
          */
-        public AiServiceInteractionStartedEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (AiServiceInteractionStartedEventBuilder) super.interactionSource(interactionSource);
+        public AiServiceInteractionStartedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceInteractionStartedEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**

@@ -60,8 +60,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
 
 public class MyAiServiceInteractionCompletedEventListener implements AiServiceInteractionCompletedEventListener {

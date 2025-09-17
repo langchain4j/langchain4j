@@ -17,7 +17,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -77,7 +76,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
-    private final InteractionSource auditInteractionSource;
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -98,8 +96,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey,
-            InteractionSource auditInteractionSource) {
+            Object methodKey) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
@@ -124,7 +121,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
-        this.auditInteractionSource = ensureNotNull(auditInteractionSource, "auditInteractionSource");
     }
 
     @Override
@@ -158,7 +154,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionRequest toolExecutionRequest, ToolExecutionResultMessage toolExecutionResultMessage) {
         AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(ToolExecutedEvent.builder()
-                        .interactionSource(auditInteractionSource)
+                        .invocationContext(commonGuardrailParams.invocationContext())
                         .request(toolExecutionRequest)
                         .result(toolExecutionResultMessage.text())
                         .build());
@@ -167,7 +163,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
         AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(AiServiceResponseReceivedEvent.builder()
-                        .interactionSource(auditInteractionSource)
+                        .invocationContext(commonGuardrailParams.invocationContext())
                         .response(chatResponse)
                         .build());
     }
@@ -249,8 +245,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey,
-                    auditInteractionSource);
+                    methodKey);
 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
@@ -260,12 +255,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
                     if (commonGuardrailParams != null) {
-                        var newCommonParams = GuardrailRequestParams.builder()
+                        var newCommonParams = commonGuardrailParams.toBuilder()
                                 .chatMemory(getMemory())
-                                .augmentationResult(commonGuardrailParams.augmentationResult())
-                                .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
-                                .variables(commonGuardrailParams.variables())
-                                .interactionSource(auditInteractionSource)
                                 .build();
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()

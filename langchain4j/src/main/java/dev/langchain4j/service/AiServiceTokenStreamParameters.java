@@ -1,17 +1,16 @@
 package dev.langchain4j.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executor;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -30,7 +29,6 @@ public class AiServiceTokenStreamParameters {
     private final Object memoryId;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final InteractionSource auditInteractionSource;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -44,7 +42,6 @@ public class AiServiceTokenStreamParameters {
         this.memoryId = builder.memoryId;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
-        this.auditInteractionSource = builder.auditInteractionSource;
     }
 
     /**
@@ -131,17 +128,6 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * Retrieves the InteractionSource that contains general information about the
-     * source of the interaction with the LLM, such as interface name, method name,
-     * arguments, and timestamp.
-     *
-     * @return the InteractionSource providing details about the interaction source
-     */
-    public InteractionSource auditInteractionSource() {
-        return auditInteractionSource;
-    }
-
-    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -166,7 +152,6 @@ public class AiServiceTokenStreamParameters {
         private Object memoryId;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
-        private InteractionSource auditInteractionSource;
 
         protected Builder() {}
 
@@ -281,17 +266,6 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
-            return this;
-        }
-
-        /**
-         * Sets the audit interaction source associated with this builder.
-         *
-         * @param auditInteractionSource the source of the interaction to be audited
-         * @return this builder instance
-         */
-        public Builder auditInteractionSource(InteractionSource auditInteractionSource) {
-            this.auditInteractionSource = auditInteractionSource;
             return this;
         }
 

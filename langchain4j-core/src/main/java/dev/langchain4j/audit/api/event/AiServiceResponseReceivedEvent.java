@@ -52,8 +52,8 @@ public interface AiServiceResponseReceivedEvent extends AiServiceInteractionEven
         /**
          * Sets the interaction source.
          */
-        public AiServiceResponseReceivedEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (AiServiceResponseReceivedEventBuilder) super.interactionSource(interactionSource);
+        public AiServiceResponseReceivedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceResponseReceivedEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**

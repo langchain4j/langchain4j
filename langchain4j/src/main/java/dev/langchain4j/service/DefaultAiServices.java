@@ -30,11 +30,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -186,7 +186,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         var methodArgs = (args != null) ? Arrays.asList(args) : Collections.emptyList();
                         var memoryIdOpt = findMemoryId(method, args);
-                        var interactionSource = InteractionSource.builder()
+                        var interactionSource = AiServiceInvocationContext.builder()
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(methodArgs)
@@ -198,7 +198,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } catch (Exception ex) {
                             AiServiceInteractionEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInteractionErrorEvent.builder()
-                                            .interactionSource(interactionSource)
+                                            .invocationContext(interactionSource)
                                             .error(ex)
                                             .build());
 
@@ -206,7 +206,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    public Object invoke(Method method, Object[] args, InteractionSource interactionSource) {
+                    public Object invoke(Method method, Object[] args, AiServiceInvocationContext interactionSource) {
 
                         var memoryIdOpt = findMemoryId(method, args);
                         Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
@@ -223,7 +223,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInteractionEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInteractionStartedEvent.builder()
-                                        .interactionSource(interactionSource)
+                                        .invocationContext(interactionSource)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
                                         .build());
@@ -241,7 +241,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
-                                .interactionSource(interactionSource)
+                                .invocationContext(interactionSource)
                                 .variables(variables)
                                 .build();
 
@@ -305,7 +305,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .memoryId(memoryId)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
-                                    .auditInteractionSource(interactionSource)
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
@@ -345,7 +344,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInteractionEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceResponseReceivedEvent.builder()
-                                        .interactionSource(interactionSource)
+                                        .invocationContext(interactionSource)
                                         .response(chatResponse)
                                         .build());
 
@@ -376,8 +375,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
 
                             AiServiceInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .interactionSource(interactionSource)
+                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                            .invocationContext(interactionSource)
                                             .result(result)
                                             .build());
 
@@ -396,8 +395,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             // fire an interaction complete event
                             AiServiceInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .interactionSource(interactionSource)
+                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                            .invocationContext(interactionSource)
                                             .result(response)
                                             .build());
 
@@ -421,8 +420,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // fire an interaction complete event
                         AiServiceInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                        .interactionSource(interactionSource)
+                                .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                        .invocationContext(interactionSource)
                                         .result(actualResponse)
                                         .build());
 

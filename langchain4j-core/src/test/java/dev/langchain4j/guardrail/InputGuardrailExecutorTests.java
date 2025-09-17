@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,7 +23,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 class InputGuardrailExecutorTests {
-    private static final InteractionSource DEFAULT_INTERACTION_SOURCE = InteractionSource.builder()
+    private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
@@ -200,7 +200,7 @@ class InputGuardrailExecutorTests {
                 .augmentationResult(null)
                 .userMessageTemplate("")
                 .variables(Map.of())
-                .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                .invocationContext(DEFAULT_INTERACTION_SOURCE)
                 .build();
 
         return InputGuardrailRequest.builder()

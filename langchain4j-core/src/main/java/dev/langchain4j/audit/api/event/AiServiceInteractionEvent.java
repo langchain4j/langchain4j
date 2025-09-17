@@ -5,7 +5,7 @@ public interface AiServiceInteractionEvent {
      * Retrieves the source of the interaction, containing general information
      * about where and how the interaction originated.
      */
-    InteractionSource interactionSource();
+    AiServiceInvocationContext invocationContext();
 
     /**
      * Retrieves the class type of the event, representing the specific category
@@ -30,20 +30,20 @@ public interface AiServiceInteractionEvent {
      * @param <T> the specific type of {@link AiServiceInteractionEvent} being built
      */
     abstract class Builder<T extends AiServiceInteractionEvent> {
-        private InteractionSource interactionSource;
+        private AiServiceInvocationContext invocationContext;
 
         protected Builder() {}
 
         protected Builder(T src) {
-            this.interactionSource = src.interactionSource();
+            this.invocationContext = src.invocationContext();
         }
 
-        public InteractionSource getInteractionSource() {
-            return this.interactionSource;
+        public AiServiceInvocationContext getInvocationContext() {
+            return this.invocationContext;
         }
 
-        public Builder<T> interactionSource(InteractionSource interactionSource) {
-            this.interactionSource = interactionSource;
+        public Builder<T> invocationContext(AiServiceInvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 

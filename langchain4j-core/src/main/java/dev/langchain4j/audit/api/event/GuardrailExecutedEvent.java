@@ -84,8 +84,8 @@ public interface GuardrailExecutedEvent<
             return this;
         }
 
-        public GuardrailExecutedEventBuilder<P, R, G, T> interactionSource(InteractionSource interactionSource) {
-            return (GuardrailExecutedEventBuilder<P, R, G, T>) super.interactionSource(interactionSource);
+        public GuardrailExecutedEventBuilder<P, R, G, T> invocationContext(AiServiceInvocationContext invocationContext) {
+            return (GuardrailExecutedEventBuilder<P, R, G, T>) super.invocationContext(invocationContext);
         }
 
         public <C extends G> GuardrailExecutedEventBuilder<P, R, G, T> guardrailClass(Class<C> guardrailClass) {

@@ -25,14 +25,14 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
@@ -124,7 +124,7 @@ class AiServicesAuditingTests {
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
                 "chat",
                 List.of(
-                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class,
@@ -147,7 +147,7 @@ class AiServicesAuditingTests {
                 "Hello!",
                 List.of(
                         AiServiceInteractionStartedEvent.class,
-                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
 
@@ -168,7 +168,7 @@ class AiServicesAuditingTests {
                 TOOL_USER_MESSAGE,
                 List.of(
                         AiServiceInteractionStartedEvent.class,
-                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
     }
@@ -184,7 +184,7 @@ class AiServicesAuditingTests {
                                 FailureInputGuardrail.class.getName()),
                 "chatWithInputGuardrails",
                 List.of(
-                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class),
@@ -205,7 +205,7 @@ class AiServicesAuditingTests {
                                 "The guardrail %s failed with this message: LLM response is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
-                List.of(AiServiceInvocationCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
+                List.of(AiServiceInteractionCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
                         AiServiceInteractionStartedEvent.class,
@@ -251,25 +251,25 @@ class AiServicesAuditingTests {
 
         var firstInteractionSource = listeners.stream()
                 .map(MyEventListener::event)
-                .map(AiServiceInteractionEvent::interactionSource)
+                .map(AiServiceInteractionEvent::invocationContext)
                 .findFirst();
 
         var is = assertThat(firstInteractionSource).get().actual();
 
-        // Verify that all the listeners have the same interactionSource()
+        // Verify that all the listeners have the same invocationContext()
         assertThat(listeners)
-                .extracting(l -> l.event().interactionSource())
+                .extracting(l -> l.event().invocationContext())
                 .usingRecursiveFieldByFieldElementComparator()
                 .containsOnly(is);
 
-        // And because all the interactionSource() is the same, verify that it has the correct information
+        // And because all the invocationContext() is the same, verify that it has the correct information
         assertThat(is)
                 .isNotNull()
                 .extracting(
-                        InteractionSource::interfaceName,
-                        InteractionSource::methodName,
-                        InteractionSource::methodArguments,
-                        InteractionSource::memoryId)
+                        AiServiceInvocationContext::interfaceName,
+                        AiServiceInvocationContext::methodName,
+                        AiServiceInvocationContext::methodArguments,
+                        AiServiceInvocationContext::memoryId)
                 .containsExactly(
                         Assistant.class.getName(), expectedMethodName, List.of(expectedUserMessage), Optional.empty());
 
@@ -537,7 +537,7 @@ class AiServicesAuditingTests {
     public static class MyLLMInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
             implements LLMInteractionErrorEventListener {}
 
-    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<AiServiceInvocationCompletedEvent>
+    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<AiServiceInteractionCompletedEvent>
             implements AiServiceInteractionCompletedEventListener {}
 
     public static class MyInputGuardrailExecutedEventListener extends MyEventListener<InputGuardrailExecutedEvent>

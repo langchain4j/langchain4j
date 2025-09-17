@@ -7,13 +7,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
@@ -39,7 +39,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceInteractionEventListenerRegistrarTests {
-    private static final InteractionSource DEFAULT_INTERACTION_SOURCE = InteractionSource.builder()
+    private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
@@ -48,29 +48,29 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
             .build();
 
     private static final AiServiceResponseReceivedEvent LLM_RESPONSE_RECEIVED_EVENT = AiServiceResponseReceivedEvent.builder()
-            .interactionSource(DEFAULT_INTERACTION_SOURCE)
+            .invocationContext(DEFAULT_INTERACTION_SOURCE)
             .response(
                     ChatResponse.builder().aiMessage(AiMessage.from("Message!")).build())
             .build();
 
     private static final AiServiceInteractionErrorEvent LLM_INTERACTION_ERROR_EVENT = AiServiceInteractionErrorEvent.builder()
-            .interactionSource(DEFAULT_INTERACTION_SOURCE)
+            .invocationContext(DEFAULT_INTERACTION_SOURCE)
             .error(new RuntimeException("Some error"))
             .build();
 
-    private static final AiServiceInvocationCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
-            AiServiceInvocationCompletedEvent.builder()
-                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
+    private static final AiServiceInteractionCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
+            AiServiceInteractionCompletedEvent.builder()
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .build();
 
     private static final AiServiceInteractionStartedEvent LLM_INTERACTION_STARTED_EVENT = AiServiceInteractionStartedEvent.builder()
-            .interactionSource(DEFAULT_INTERACTION_SOURCE)
+            .invocationContext(DEFAULT_INTERACTION_SOURCE)
             .userMessage(UserMessage.from("Hello, world!"))
             .build();
 
     private static final OutputGuardrailExecutedEvent OUTPUT_GUARDRAIL_EXECUTED_EVENT =
             OutputGuardrailExecutedEvent.builder()
-                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .guardrailClass(OG.class)
                     .request(OutputGuardrailRequest.builder()
                             .responseFromLLM(ChatResponse.builder()
@@ -79,7 +79,7 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
                             .requestParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
-                                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
                                     .build())
                             .chatExecutor(new ChatExecutor() {
                                 @Override
@@ -100,21 +100,21 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
 
     private static final InputGuardrailExecutedEvent INPUT_GUARDRAIL_EXECUTED_EVENT =
             InputGuardrailExecutedEvent.builder()
-                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .guardrailClass(IG.class)
                     .request(InputGuardrailRequest.builder()
                             .userMessage(UserMessage.from("Hello, world!"))
                             .commonParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
-                                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
+                                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
                                     .build())
                             .build())
                     .result(InputGuardrailResult.success())
                     .build();
 
     private static final ToolExecutedEvent TOOL_EXECUTED_EVENT = ToolExecutedEvent.builder()
-            .interactionSource(DEFAULT_INTERACTION_SOURCE)
+            .invocationContext(DEFAULT_INTERACTION_SOURCE)
             .request(ToolExecutionRequest.builder().build())
             .result("Success!")
             .build();
@@ -163,7 +163,7 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
                 .isNotNull()
                 .satisfies(el -> assertThat(el.count()).isOne(), el -> assertThat(el.lastEvent())
                         .isNotNull()
-                        .extracting(AiServiceInteractionEvent::interactionSource)
+                        .extracting(AiServiceInteractionEvent::invocationContext)
                         .usingRecursiveComparison()
                         .isEqualTo(DEFAULT_INTERACTION_SOURCE)));
 
@@ -223,7 +223,7 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
             implements AiServiceInteractionStartedEventListener {}
 
     private static class TestLLMInteractionCompletedListener
-            extends AbstractTestEventListener<AiServiceInvocationCompletedEvent>
+            extends AbstractTestEventListener<AiServiceInteractionCompletedEvent>
             implements AiServiceInteractionCompletedEventListener {}
 
     private static class TestLLMInteractionErrorListener extends AbstractTestEventListener<AiServiceInteractionErrorEvent>

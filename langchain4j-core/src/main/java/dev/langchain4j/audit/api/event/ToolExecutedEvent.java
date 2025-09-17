@@ -74,8 +74,8 @@ public interface ToolExecutedEvent extends AiServiceInteractionEvent {
         }
 
         @Override
-        public ToolExecutedEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (ToolExecutedEventBuilder) super.interactionSource(interactionSource);
+        public ToolExecutedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (ToolExecutedEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**

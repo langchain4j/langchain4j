@@ -25,7 +25,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.InteractionSource;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -203,7 +203,7 @@ public class ToolService {
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors,
             boolean isReturnTypeResult,
-            InteractionSource auditInteractionSource) {
+            AiServiceInvocationContext auditInteractionSource) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -248,7 +248,7 @@ public class ToolService {
                 // Fire audit events
                 AiServiceInteractionEventListenerRegistrar.getInstance()
                         .fireEvent(ToolExecutedEvent.builder()
-                                .interactionSource(auditInteractionSource)
+                                .invocationContext(auditInteractionSource)
                                 .request(toolExecutionRequest)
                                 .result(toolExecution.result())
                                 .build());
