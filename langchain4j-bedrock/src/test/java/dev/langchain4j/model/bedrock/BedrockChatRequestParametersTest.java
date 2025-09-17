@@ -128,4 +128,66 @@ class BedrockChatRequestParametersTest {
         assertThat(merged.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
         assertThat(merged.additionalModelRequestFields()).isNullOrEmpty();
     }
+
+    @Test
+    void should_support_multiple_cache_points() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .addCachePoint(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_TOOLS)
+                .build();
+
+        // Then
+        assertThat(params.cachePointPlacements())
+                .containsExactlyInAnyOrder(
+                        BedrockCachePointPlacement.AFTER_SYSTEM,
+                        BedrockCachePointPlacement.AFTER_USER_MESSAGE,
+                        BedrockCachePointPlacement.AFTER_TOOLS);
+        assertThat(params.additionalModelRequestFields()).isNullOrEmpty();
+    }
+
+    @Test
+    void should_combine_addCachePoint_with_other_parameters() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .temperature(0.8)
+                .maxOutputTokens(200)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .build();
+
+        // Then
+        assertThat(params.temperature()).isEqualTo(0.8);
+        assertThat(params.maxOutputTokens()).isEqualTo(200);
+        assertThat(params.cachePointPlacements())
+                .containsExactlyInAnyOrder(
+                        BedrockCachePointPlacement.AFTER_SYSTEM, BedrockCachePointPlacement.AFTER_USER_MESSAGE);
+    }
+
+    @Test
+    void should_handle_backward_compatibility_with_promptCaching() {
+        // Given & When - using old API
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        // Then - should still work and populate the set
+        assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
+        assertThat(params.cachePointPlacements()).containsExactly(BedrockCachePointPlacement.AFTER_SYSTEM);
+    }
+
+    @Test
+    void should_replace_all_cache_points_when_using_promptCaching() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .addCachePoint(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .promptCaching(BedrockCachePointPlacement.AFTER_TOOLS) // This should replace all previous
+                .build();
+
+        // Then
+        assertThat(params.cachePointPlacements()).containsExactly(BedrockCachePointPlacement.AFTER_TOOLS);
+        assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_TOOLS);
+    }
 }

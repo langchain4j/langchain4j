@@ -32,8 +32,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
-                .region(Region.US_EAST_1)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(requestParams)
                 .build();
 
@@ -61,7 +61,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel modelAfterUser = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(afterUserParams)
                 .build();
 
@@ -83,7 +84,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel modelAfterTools = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(afterToolsParams)
                 .build();
 
@@ -103,7 +105,10 @@ class BedrockPromptCachingIT {
     @Test
     void should_chat_without_prompt_caching() {
         // Given - model without prompt caching
-        ChatModel model = BedrockChatModel.builder().modelId(NOVA_MODEL).build();
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
+                .build();
 
         // When
         ChatResponse response = model.chat(UserMessage.from("Hello, how are you?"));
@@ -122,7 +127,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(defaultParams)
                 .build();
 
@@ -152,7 +158,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(params)
                 .build();
 
@@ -191,12 +198,44 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
-                .modelId(NOVA_MODEL)
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
                 .defaultRequestParameters(params)
                 .build();
 
         // When
         ChatResponse response = model.chat(UserMessage.from("Write a short poem about caching. End with 'END'"));
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata().tokenUsage()).isNotNull();
+    }
+
+    @Test
+    void should_handle_multiple_cache_points_simultaneously() {
+        // Given - enable multiple cache points
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .addCachePoint(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .addCachePoint(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .temperature(0.5)
+                .maxOutputTokens(200)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(CLAUDE_MODEL)
+                .region(Region.EU_CENTRAL_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        // When
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant with expertise in caching."),
+                        UserMessage.from("Explain the benefits of caching at multiple points in a conversation.")))
+                .build();
+
+        ChatResponse response = model.chat(request);
 
         // Then
         assertThat(response).isNotNull();

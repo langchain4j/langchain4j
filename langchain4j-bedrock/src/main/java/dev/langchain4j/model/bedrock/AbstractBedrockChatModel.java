@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -122,11 +123,18 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
-        return extractSystemMessages(messages, null);
+        return extractSystemMessages(messages, (Set<BedrockCachePointPlacement>) null);
     }
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        // Convert single placement to set for backward compatibility
+        Set<BedrockCachePointPlacement> placements = cachePointPlacement != null ? Set.of(cachePointPlacement) : null;
+        return extractSystemMessages(messages, placements);
+    }
+
+    protected List<SystemContentBlock> extractSystemMessages(
+            List<ChatMessage> messages, Set<BedrockCachePointPlacement> cachePointPlacements) {
         List<SystemContentBlock> systemBlocks = new ArrayList<>();
 
         for (ChatMessage message : messages) {
@@ -137,8 +145,10 @@ abstract class AbstractBedrockChatModel {
             }
         }
 
-        // Add cache point after system messages if placement is AFTER_SYSTEM
-        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
+        // Add cache point after system messages if placement contains AFTER_SYSTEM
+        if (cachePointPlacements != null
+                && cachePointPlacements.contains(BedrockCachePointPlacement.AFTER_SYSTEM)
+                && !systemBlocks.isEmpty()) {
             // Create cache point as a SystemContentBlock
             systemBlocks.add(SystemContentBlock.builder()
                     .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
@@ -151,11 +161,18 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<Message> extractRegularMessages(List<ChatMessage> messages) {
-        return extractRegularMessages(messages, null);
+        return extractRegularMessages(messages, (Set<BedrockCachePointPlacement>) null);
     }
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        // Convert single placement to set for backward compatibility
+        Set<BedrockCachePointPlacement> placements = cachePointPlacement != null ? Set.of(cachePointPlacement) : null;
+        return extractRegularMessages(messages, placements);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages, Set<BedrockCachePointPlacement> cachePointPlacements) {
         List<Message> bedrockMessages = new ArrayList<>();
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
@@ -167,8 +184,9 @@ abstract class AbstractBedrockChatModel {
             } else if (!(msg instanceof SystemMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
-                // Add cache point after first user message if placement is AFTER_USER_MESSAGE
-                if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
+                // Add cache point after first user message if placement contains AFTER_USER_MESSAGE
+                if (cachePointPlacements != null
+                        && cachePointPlacements.contains(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
                         && msg instanceof UserMessage
                         && !firstUserMessageProcessed) {
 
@@ -329,11 +347,18 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
-        return extractToolConfigurationFrom(chatRequest, null);
+        return extractToolConfigurationFrom(chatRequest, (Set<BedrockCachePointPlacement>) null);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement) {
+        // Convert single placement to set for backward compatibility
+        Set<BedrockCachePointPlacement> placements = cachePointPlacement != null ? Set.of(cachePointPlacement) : null;
+        return extractToolConfigurationFrom(chatRequest, placements);
+    }
+
+    protected ToolConfiguration extractToolConfigurationFrom(
+            ChatRequest chatRequest, Set<BedrockCachePointPlacement> cachePointPlacements) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -358,8 +383,8 @@ abstract class AbstractBedrockChatModel {
 
             allTools.addAll(tools);
 
-            // Add cache point after tools if placement is AFTER_TOOLS
-            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
+            // Add cache point after tools if placement contains AFTER_TOOLS
+            if (cachePointPlacements != null && cachePointPlacements.contains(BedrockCachePointPlacement.AFTER_TOOLS)) {
                 allTools.add(Tool.builder()
                         .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
                                 .type("default")

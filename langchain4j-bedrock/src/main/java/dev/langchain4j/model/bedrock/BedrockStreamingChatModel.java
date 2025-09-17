@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
@@ -152,20 +153,20 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
-        // Get cache point placement from parameters if available
-        BedrockCachePointPlacement cachePointPlacement = null;
+        // Get cache point placements from parameters if available
+        Set<BedrockCachePointPlacement> cachePointPlacements = null;
         if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            cachePointPlacement = bedrockParams.cachePointPlacement();
+            cachePointPlacements = bedrockParams.cachePointPlacements();
         } else if (defaultRequestParameters != null) {
-            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
+            cachePointPlacements = defaultRequestParameters.cachePointPlacements();
         }
 
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacements))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacements))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacements))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }

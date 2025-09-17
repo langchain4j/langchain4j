@@ -6,7 +6,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -14,12 +16,19 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
             BedrockChatRequestParameters.builder().build();
 
     private final Map<String, Object> additionalModelRequestFields;
-    private final BedrockCachePointPlacement cachePointPlacement;
+    private final BedrockCachePointPlacement cachePointPlacement; // Deprecated, kept for backward compatibility
+    private final Set<BedrockCachePointPlacement> cachePointPlacements;
 
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
         this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
         this.cachePointPlacement = builder.cachePointPlacement;
+        this.cachePointPlacements =
+                builder.cachePointPlacements != null ? new HashSet<>(builder.cachePointPlacements) : new HashSet<>();
+        // If old API was used, add the single placement to the set
+        if (cachePointPlacement != null && cachePointPlacements.isEmpty()) {
+            cachePointPlacements.add(cachePointPlacement);
+        }
     }
 
     @Override
@@ -38,14 +47,27 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return additionalModelRequestFields;
     }
 
+    /**
+     * @deprecated Use {@link #cachePointPlacements()} instead
+     */
+    @Deprecated
     public BedrockCachePointPlacement cachePointPlacement() {
         return cachePointPlacement;
+    }
+
+    /**
+     * Returns the set of cache point placements.
+     * @return set of cache point placements, never null
+     */
+    public Set<BedrockCachePointPlacement> cachePointPlacements() {
+        return new HashSet<>(cachePointPlacements);
     }
 
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Object> additionalModelRequestFields;
-        private BedrockCachePointPlacement cachePointPlacement;
+        private BedrockCachePointPlacement cachePointPlacement; // Deprecated, kept for backward compatibility
+        private Set<BedrockCachePointPlacement> cachePointPlacements;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -55,6 +77,10 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                         bedrockRequestParameters.additionalModelRequestFields, additionalModelRequestFields));
                 this.cachePointPlacement =
                         getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
+                if (bedrockRequestParameters.cachePointPlacements != null
+                        && !bedrockRequestParameters.cachePointPlacements.isEmpty()) {
+                    this.cachePointPlacements = new HashSet<>(bedrockRequestParameters.cachePointPlacements);
+                }
             }
             return this;
         }
@@ -99,12 +125,41 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          *
          * @param placement where to place the cache point (null disables caching)
          * @return this builder
+         * @deprecated Use {@link #addCachePoint(BedrockCachePointPlacement)} for multiple cache points
          * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
          */
+        @Deprecated
         public Builder promptCaching(BedrockCachePointPlacement placement) {
             this.cachePointPlacement = placement;
+            if (placement != null) {
+                if (this.cachePointPlacements == null) {
+                    this.cachePointPlacements = new HashSet<>();
+                }
+                this.cachePointPlacements.clear();
+                this.cachePointPlacements.add(placement);
+            }
             // Note: We don't add anything to additionalModelRequestFields
             // The cache points are injected directly into the message structure
+            return this;
+        }
+
+        /**
+         * Adds a cache point placement to the conversation.
+         * Multiple cache points can be added to cache different segments of the conversation.
+         * Cache points mark where to cache content for reuse across API calls.
+         * The cache has a 5-minute TTL which resets on each cache hit.
+         *
+         * @param placement where to place a cache point
+         * @return this builder
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
+         */
+        public Builder addCachePoint(BedrockCachePointPlacement placement) {
+            if (placement != null) {
+                if (this.cachePointPlacements == null) {
+                    this.cachePointPlacements = new HashSet<>();
+                }
+                this.cachePointPlacements.add(placement);
+            }
             return this;
         }
 

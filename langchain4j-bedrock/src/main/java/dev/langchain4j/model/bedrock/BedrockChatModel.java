@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
@@ -69,20 +70,20 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     }
 
     private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
-        // Get cache point placement from parameters if available
-        BedrockCachePointPlacement cachePointPlacement = null;
+        // Get cache point placements from parameters if available
+        Set<BedrockCachePointPlacement> cachePointPlacements = null;
         if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            cachePointPlacement = bedrockParams.cachePointPlacement();
+            cachePointPlacements = bedrockParams.cachePointPlacements();
         } else if (defaultRequestParameters != null) {
-            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
+            cachePointPlacements = defaultRequestParameters.cachePointPlacements();
         }
 
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacements))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacements))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacements))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }
