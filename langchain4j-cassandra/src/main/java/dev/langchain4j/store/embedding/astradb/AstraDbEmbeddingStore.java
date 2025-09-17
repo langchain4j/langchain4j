@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.astradb;
 
 import com.dtsx.astra.sdk.AstraDBCollection;
-
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
-
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
