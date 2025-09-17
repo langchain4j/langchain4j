@@ -20,7 +20,6 @@ public class AnthropicImageContentSource {
 
     private AnthropicImageContentSource() {}
 
-    @Deprecated
     public AnthropicImageContentSource(String type, String mediaType, String data) {
         this.type = type;
         this.mediaType = mediaType;

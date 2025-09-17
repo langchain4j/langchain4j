@@ -15,12 +15,11 @@ public class AnthropicImageContent extends AnthropicMessageContent {
 
     public AnthropicImageContentSource source;
 
-    private AnthropicImageContent(AnthropicImageContentSource source) {
+    public AnthropicImageContent(AnthropicImageContentSource source) {
         super("image");
         this.source = source;
     }
 
-    @Deprecated
     public AnthropicImageContent(String mediaType, String data) {
         super("image");
         this.source = new AnthropicImageContentSource("base64", mediaType, data);
