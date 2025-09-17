@@ -2,13 +2,13 @@ package dev.langchain4j.audit.event;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionEvent;
 
-public abstract class AbstractLLMInteractionEvent implements LLMInteractionEvent {
+public abstract class AbstractAiServiceInteractionEvent implements AiServiceInteractionEvent {
     private final InteractionSource interactionSource;
 
-    protected AbstractLLMInteractionEvent(Builder<?> builder) {
+    protected AbstractAiServiceInteractionEvent(Builder<?> builder) {
         ensureNotNull(builder, "builder");
         this.interactionSource = ensureNotNull(builder.getInteractionSource(), "interactionSource");
     }

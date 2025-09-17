@@ -4,12 +4,20 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -29,14 +37,6 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,7 +156,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void fireToolExecutedEvent(
             ToolExecutionRequest toolExecutionRequest, ToolExecutionResultMessage toolExecutionResultMessage) {
-        LLMInteractionEventListenerRegistrar.getInstance()
+        AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(ToolExecutedEvent.builder()
                         .interactionSource(auditInteractionSource)
                         .request(toolExecutionRequest)
@@ -165,8 +165,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
-        LLMInteractionEventListenerRegistrar.getInstance()
-                .fireEvent(LLMResponseReceivedEvent.builder()
+        AiServiceInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceResponseReceivedEvent.builder()
                         .interactionSource(auditInteractionSource)
                         .response(chatResponse)
                         .build());

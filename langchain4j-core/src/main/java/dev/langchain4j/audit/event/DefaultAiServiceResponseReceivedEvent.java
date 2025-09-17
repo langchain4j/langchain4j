@@ -2,16 +2,16 @@ package dev.langchain4j.audit.event;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * Default implementation of {@link LLMResponseReceivedEvent}.
+ * Default implementation of {@link AiServiceResponseReceivedEvent}.
  */
-public class DefaultLLMResponseReceivedEvent extends AbstractLLMInteractionEvent implements LLMResponseReceivedEvent {
+public class DefaultAiServiceResponseReceivedEvent extends AbstractAiServiceInteractionEvent implements AiServiceResponseReceivedEvent {
     private final ChatResponse response;
 
-    public DefaultLLMResponseReceivedEvent(LLMResponseReceivedEventBuilder builder) {
+    public DefaultAiServiceResponseReceivedEvent(AiServiceResponseReceivedEventBuilder builder) {
         super(builder);
         this.response = ensureNotNull(builder.getResponse(), "response");
     }

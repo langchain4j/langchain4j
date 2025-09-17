@@ -2,16 +2,16 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
 import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -117,7 +117,7 @@ public abstract sealed class AbstractGuardrailExecutor<
     }
 
     protected void fireAuditEvent(InteractionSource auditInteractionSource, P request, R result, G guardrail) {
-        LLMInteractionEventListenerRegistrar.getInstance()
+        AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(createEmptyAuditEventBuilderInstance()
                         .interactionSource(auditInteractionSource)
                         .request(request)

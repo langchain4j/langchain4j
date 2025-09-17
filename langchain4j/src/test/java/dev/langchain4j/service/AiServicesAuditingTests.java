@@ -10,26 +10,37 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionStartedEvent;
-import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
+import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInteractionStartedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.InputGuardrailExecutedEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionCompletedEventListener;
 import dev.langchain4j.audit.api.listener.LLMInteractionErrorEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionStartedEventListener;
-import dev.langchain4j.audit.api.listener.LLMResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.OutputGuardrailExecutedEventListener;
 import dev.langchain4j.audit.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.data.message.AiMessage;
@@ -46,17 +57,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,7 +71,7 @@ class AiServicesAuditingTests {
     private static final String TOOL_EXPECTED_RESPONSE =
             "The square root of 485,906,798,473,894,056 in scientific notation is approximately 6.97070153193991E8.";
 
-    Map<Class<? extends LLMInteractionEvent>, MyEventListener<? extends LLMInteractionEvent>> listeners =
+    Map<Class<? extends AiServiceInteractionEvent>, MyEventListener<? extends AiServiceInteractionEvent>> listeners =
             createListeners();
     private WireMockServer wireMock;
 
@@ -79,9 +79,9 @@ class AiServicesAuditingTests {
             Supplier<Assistant> assistantCreator,
             Consumer<Assistant> chatAssertion,
             String expectedMethodName,
-            List<Class<? extends LLMInteractionEvent>> noEventsReceivedClasses,
+            List<Class<? extends AiServiceInteractionEvent>> noEventsReceivedClasses,
             String expectedUserMessage,
-            List<Class<? extends LLMInteractionEvent>> expectedEventsReceivedClasses) {
+            List<Class<? extends AiServiceInteractionEvent>> expectedEventsReceivedClasses) {
 
         // Create the assistant
         var assistant = assistantCreator.get();
@@ -124,13 +124,13 @@ class AiServicesAuditingTests {
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
                 "chat",
                 List.of(
-                        LLMInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
-                        LLMResponseReceivedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(LLMInteractionStartedEvent.class, LLMInteractionErrorEvent.class));
+                List.of(AiServiceInteractionStartedEvent.class, AiServiceInteractionErrorEvent.class));
     }
 
     @Test
@@ -140,15 +140,15 @@ class AiServicesAuditingTests {
                 assistant -> assertThat(assistant.chat("Hello!")).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
                 "chat",
                 List.of(
-                        LLMInteractionErrorEvent.class,
+                        AiServiceInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        LLMInteractionStartedEvent.class,
-                        LLMInteractionCompletedEvent.class,
-                        LLMResponseReceivedEvent.class));
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class));
     }
 
     @Test
@@ -162,14 +162,14 @@ class AiServicesAuditingTests {
                 },
                 "chat",
                 List.of(
-                        LLMInteractionErrorEvent.class,
+                        AiServiceInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class),
                 TOOL_USER_MESSAGE,
                 List.of(
-                        LLMInteractionStartedEvent.class,
-                        LLMInteractionCompletedEvent.class,
-                        LLMResponseReceivedEvent.class,
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
     }
 
@@ -184,14 +184,14 @@ class AiServicesAuditingTests {
                                 FailureInputGuardrail.class.getName()),
                 "chatWithInputGuardrails",
                 List.of(
-                        LLMInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
-                        LLMResponseReceivedEvent.class),
+                        AiServiceResponseReceivedEvent.class),
                 "Hello!",
                 List.of(
-                        LLMInteractionStartedEvent.class,
-                        LLMInteractionErrorEvent.class,
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class));
     }
 
@@ -205,28 +205,28 @@ class AiServicesAuditingTests {
                                 "The guardrail %s failed with this message: LLM response is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
-                List.of(LLMInteractionCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
+                List.of(AiServiceInvocationCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        LLMInteractionStartedEvent.class,
-                        LLMInteractionErrorEvent.class,
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
-                        LLMResponseReceivedEvent.class));
+                        AiServiceResponseReceivedEvent.class));
     }
 
     private void registerAllListeners() {
-        listeners.values().forEach(LLMInteractionEventListenerRegistrar.getInstance()::register);
+        listeners.values().forEach(AiServiceInteractionEventListenerRegistrar.getInstance()::register);
     }
 
     private void unregisterAllListeners() {
         listeners.values().forEach(listener -> {
-            LLMInteractionEventListenerRegistrar.getInstance().unregister(listener);
+            AiServiceInteractionEventListenerRegistrar.getInstance().unregister(listener);
             listener.reset();
         });
     }
 
     private static void assertNoEventsReceived(
-            int expectedSize, Collection<? extends MyEventListener<? extends LLMInteractionEvent>> listeners) {
+            int expectedSize, Collection<? extends MyEventListener<? extends AiServiceInteractionEvent>> listeners) {
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
                 .isNotNull()
                 .extracting(MyEventListener::count, MyEventListener::event)
@@ -237,7 +237,7 @@ class AiServicesAuditingTests {
             int expectedSize,
             String expectedUserMessage,
             String expectedMethodName,
-            Collection<? extends MyEventListener<? extends LLMInteractionEvent>> listeners) {
+            Collection<? extends MyEventListener<? extends AiServiceInteractionEvent>> listeners) {
 
         // All the events have the correct number of invocations & non-null events
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> {
@@ -251,7 +251,7 @@ class AiServicesAuditingTests {
 
         var firstInteractionSource = listeners.stream()
                 .map(MyEventListener::event)
-                .map(LLMInteractionEvent::interactionSource)
+                .map(AiServiceInteractionEvent::interactionSource)
                 .findFirst();
 
         var is = assertThat(firstInteractionSource).get().actual();
@@ -277,7 +277,7 @@ class AiServicesAuditingTests {
         assertThat(is.timestamp()).isNotNull();
     }
 
-    private static Map<Class<? extends LLMInteractionEvent>, MyEventListener<? extends LLMInteractionEvent>>
+    private static Map<Class<? extends AiServiceInteractionEvent>, MyEventListener<? extends AiServiceInteractionEvent>>
             createListeners() {
 
         return Stream.of(
@@ -288,7 +288,7 @@ class AiServicesAuditingTests {
                         new MyLLMResponseReceivedEventListener(),
                         new MyOutputGuardrailExecutedEventListener(),
                         new MyToolExecutedEventListener())
-                .collect(Collectors.toMap(LLMInteractionEventListener::getEventClass, Function.identity()));
+                .collect(Collectors.toMap(AiServiceInteractionEventListener::getEventClass, Function.identity()));
     }
 
     @BeforeEach
@@ -493,8 +493,8 @@ class AiServicesAuditingTests {
         }
     }
 
-    public abstract static class MyEventListener<T extends LLMInteractionEvent>
-            implements LLMInteractionEventListener<T> {
+    public abstract static class MyEventListener<T extends AiServiceInteractionEvent>
+            implements AiServiceInteractionEventListener<T> {
         private final AtomicInteger count = new AtomicInteger();
         private T event;
 
@@ -528,17 +528,17 @@ class AiServicesAuditingTests {
     public static class MyOutputGuardrailExecutedEventListener extends MyEventListener<OutputGuardrailExecutedEvent>
             implements OutputGuardrailExecutedEventListener {}
 
-    public static class MyLLMResponseReceivedEventListener extends MyEventListener<LLMResponseReceivedEvent>
-            implements LLMResponseReceivedEventListener {}
+    public static class MyLLMResponseReceivedEventListener extends MyEventListener<AiServiceResponseReceivedEvent>
+            implements AiServiceResponseReceivedEventListener {}
 
-    public static class MyLLMInteractionStartedEventListener extends MyEventListener<LLMInteractionStartedEvent>
-            implements LLMInteractionStartedEventListener {}
+    public static class MyLLMInteractionStartedEventListener extends MyEventListener<AiServiceInteractionStartedEvent>
+            implements AiServiceInteractionStartedEventListener {}
 
-    public static class MyLLMInteractionErrorEventListener extends MyEventListener<LLMInteractionErrorEvent>
+    public static class MyLLMInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
             implements LLMInteractionErrorEventListener {}
 
-    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<LLMInteractionCompletedEvent>
-            implements LLMInteractionCompletedEventListener {}
+    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<AiServiceInvocationCompletedEvent>
+            implements AiServiceInteractionCompletedEventListener {}
 
     public static class MyInputGuardrailExecutedEventListener extends MyEventListener<InputGuardrailExecutedEvent>
             implements InputGuardrailExecutedEventListener {}

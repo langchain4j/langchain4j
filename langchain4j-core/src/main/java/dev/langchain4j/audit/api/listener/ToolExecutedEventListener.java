@@ -5,7 +5,7 @@ import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 /**
  * A listener for {@link ToolExecutedEvent}, which represents an event
  * that occurs when a tool execution is triggered within a large language model (LLM) interaction.
- * This interface extends {@link LLMInteractionEventListener}, specializing it
+ * This interface extends {@link AiServiceInteractionEventListener}, specializing it
  * for handling events specifically related to tool executions.
  *
  * Classes implementing this interface should handle scenarios where a tool
@@ -14,7 +14,7 @@ import dev.langchain4j.audit.api.event.ToolExecutedEvent;
  * request and the corresponding execution result.
  */
 @FunctionalInterface
-public interface ToolExecutedEventListener extends LLMInteractionEventListener<ToolExecutedEvent> {
+public interface ToolExecutedEventListener extends AiServiceInteractionEventListener<ToolExecutedEvent> {
     @Override
     default Class<ToolExecutedEvent> getEventClass() {
         return ToolExecutedEvent.class;

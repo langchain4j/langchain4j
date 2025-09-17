@@ -9,13 +9,32 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import java.io.InputStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionStartedEvent;
-import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -43,25 +62,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-import java.io.InputStream;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -196,8 +196,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         try {
                             return invoke(method, args, interactionSource);
                         } catch (Exception ex) {
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionErrorEvent.builder()
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInteractionErrorEvent.builder()
                                             .interactionSource(interactionSource)
                                             .error(ex)
                                             .build());
@@ -221,8 +221,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        LLMInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(LLMInteractionStartedEvent.builder()
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInteractionStartedEvent.builder()
                                         .interactionSource(interactionSource)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
@@ -343,8 +343,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = chatExecutor.execute();
 
-                        LLMInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(LLMResponseReceivedEvent.builder()
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceResponseReceivedEvent.builder()
                                         .interactionSource(interactionSource)
                                         .response(chatResponse)
                                         .build());
@@ -375,8 +375,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionCompletedEvent.builder()
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                             .interactionSource(interactionSource)
                                             .result(result)
                                             .build());
@@ -395,8 +395,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             // fire an interaction complete event
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionCompletedEvent.builder()
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                             .interactionSource(interactionSource)
                                             .result(response)
                                             .build());
@@ -420,8 +420,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : parsedResponse;
 
                         // fire an interaction complete event
-                        LLMInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(LLMInteractionCompletedEvent.builder()
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                         .interactionSource(interactionSource)
                                         .result(actualResponse)
                                         .build());

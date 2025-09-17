@@ -15,7 +15,7 @@ import dev.langchain4j.guardrail.GuardrailResult;
  */
 public interface GuardrailExecutedEvent<
                 P extends GuardrailRequest<P>, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
-        extends LLMInteractionEvent {
+        extends AiServiceInteractionEvent {
 
     /**
      * Retrieves the request used for input guardrail validation.
