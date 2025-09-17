@@ -393,7 +393,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            // fire an interaction complete event
                             AiServiceInteractionEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInteractionCompletedEvent.builder()
                                             .invocationContext(interactionSource)
@@ -418,7 +417,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
-                        // fire an interaction complete event
                         AiServiceInteractionEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInteractionCompletedEvent.builder()
                                         .invocationContext(interactionSource)

@@ -245,7 +245,6 @@ public class ToolService {
                         .build();
                 toolExecutions.add(toolExecution);
 
-                // Fire audit events
                 AiServiceInteractionEventListenerRegistrar.getInstance()
                         .fireEvent(ToolExecutedEvent.builder()
                                 .invocationContext(auditInteractionSource)
