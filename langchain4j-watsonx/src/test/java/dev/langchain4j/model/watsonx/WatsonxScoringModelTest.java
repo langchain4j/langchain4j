@@ -50,7 +50,7 @@ public class WatsonxScoringModelTest {
     @BeforeEach
     void setUp() {
         when(mockRerankServiceBuilder.modelId(any())).thenReturn(mockRerankServiceBuilder);
-        when(mockRerankServiceBuilder.url(any(URI.class))).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.projectId(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.spaceId(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.timeout(any())).thenReturn(mockRerankServiceBuilder);

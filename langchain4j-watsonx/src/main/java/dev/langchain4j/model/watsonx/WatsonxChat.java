@@ -98,7 +98,7 @@ abstract class WatsonxChat {
         }
 
         chatService = chatServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.url)
                 .modelId(modelName)
                 .version(builder.version)
                 .projectId(projectId)

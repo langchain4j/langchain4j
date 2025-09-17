@@ -62,7 +62,7 @@ public class WatsonxTokenCountEstimatorTest {
     @BeforeEach
     void setUp() {
         when(mockTokenizationServiceBuilder.modelId(any())).thenReturn(mockTokenizationServiceBuilder);
-        when(mockTokenizationServiceBuilder.url(any(URI.class))).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.projectId(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.spaceId(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.timeout(any())).thenReturn(mockTokenizationServiceBuilder);

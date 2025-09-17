@@ -49,7 +49,7 @@ public class WatsonxEmbeddingModelTest {
     @BeforeEach
     void setUp() {
         when(mockEmbeddingServiceBuilder.modelId(any())).thenReturn(mockEmbeddingServiceBuilder);
-        when(mockEmbeddingServiceBuilder.url(any(URI.class))).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.projectId(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.spaceId(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.timeout(any())).thenReturn(mockEmbeddingServiceBuilder);

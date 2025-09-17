@@ -73,7 +73,7 @@ public class WatsonxChatModelTest {
     void setUp() {
 
         when(mockChatServiceBuilder.modelId(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.url(any(URI.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.projectId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
@@ -148,7 +148,7 @@ public class WatsonxChatModelTest {
     @Test
     void testDoChat() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -172,7 +172,7 @@ public class WatsonxChatModelTest {
     @Test
     void testDoChatWithRefusal() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", "refusal", null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, "refusal", null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -197,7 +197,11 @@ public class WatsonxChatModelTest {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
-                AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null);
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
 
         var field = ChatResponse.class.getDeclaredField("extractionTags");
@@ -276,7 +280,7 @@ public class WatsonxChatModelTest {
     void testDoChatWithTool() {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, List.of(toolCall));
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
         when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
@@ -325,7 +329,7 @@ public class WatsonxChatModelTest {
     @Test
     void testChatRequest() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -377,7 +381,7 @@ public class WatsonxChatModelTest {
     @Test
     void testChatRequestParameter() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 
