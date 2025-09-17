@@ -79,7 +79,7 @@ public class ChatModelMock implements ChatModel {
                 .build();
     }
 
-    private AiMessage getAiMessage(ChatRequest chatRequest) {
+    protected AiMessage getAiMessage(ChatRequest chatRequest) {
         return aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
     }
 
