@@ -77,7 +77,7 @@ public class WatsonxStreamingChatModelTest {
     void setUp() {
 
         when(mockChatServiceBuilder.modelId(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.url(any(URI.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.projectId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
@@ -112,7 +112,7 @@ public class WatsonxStreamingChatModelTest {
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null);
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null, null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
                     chatResponse.setChoices(List.of(resultChoice));
                     handler.onCompleteResponse(chatResponse);
@@ -196,6 +196,7 @@ public class WatsonxStreamingChatModelTest {
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
+                "I'm thinking",
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -282,7 +283,7 @@ public class WatsonxStreamingChatModelTest {
 
                     for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
 
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", "refusal", null);
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, "refusal", null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
                     chatResponse.setChoices(List.of(resultChoice));
                     handler.onCompleteResponse(chatResponse);
@@ -364,7 +365,7 @@ public class WatsonxStreamingChatModelTest {
     public void testDoChatWithTool() throws Exception {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, List.of(toolCall));
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "tool_calls");
         chatResponse.setChoices(List.of(resultChoice));
 
@@ -492,7 +493,7 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void testJsonSchema() throws Exception {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.setChoices(List.of(resultChoice));
 

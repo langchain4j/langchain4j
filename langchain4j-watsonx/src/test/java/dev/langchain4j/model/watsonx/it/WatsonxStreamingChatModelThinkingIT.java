@@ -67,7 +67,9 @@ public class WatsonxStreamingChatModelThinkingIT {
 
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
+        assertThat(aiMessage.thinking()).doesNotContain("<think>", "</think>");
         assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.text()).doesNotContain("<response>", "</response>");
         assertThat(thinking).isNotBlank();
         assertEquals(thinking, aiMessage.thinking());
     }
