@@ -31,10 +31,12 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,11 +73,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
-    private final Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> toolResultFutures =
-            new ConcurrentHashMap<>();
+    private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
+
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResultMessage result) {}
+    ;
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -144,19 +148,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             final ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-            CompletableFuture<ToolExecutionResultMessage> future =
-                    CompletableFuture.supplyAsync(() -> execute(toolExecutionRequest), toolExecutor);
-            toolResultFutures.put(toolExecutionRequest, future);
+            var future = CompletableFuture.supplyAsync(() -> execute(toolExecutionRequest), toolExecutor)
+                    .thenApplyAsync(r -> new ToolRequestResult(toolExecutionRequest, r), toolExecutor);
+            toolExecutionFutures.add(future);
         }
     }
 
-    private void fireToolExecutedEvent(
-            ToolExecutionRequest toolExecutionRequest, ToolExecutionResultMessage toolExecutionResultMessage) {
+    private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
         AiServiceInteractionEventListenerRegistrar.getInstance()
                 .fireEvent(ToolExecutedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
-                        .request(toolExecutionRequest)
-                        .result(toolExecutionResultMessage.text())
+                        .request(toolRequestResult.request())
+                        .result(toolRequestResult.result().text())
                         .build());
     }
 
@@ -183,12 +186,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             boolean immediateToolReturn = true;
 
             if (toolExecutor != null) {
-                for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> toolResultFuture :
-                        toolResultFutures.entrySet()) {
+                for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
-                        ToolExecutionResultMessage toolExecutionResultMessage =
-                                toolResultFuture.getValue().get();
-                        fireToolExecutedEvent(toolResultFuture.getKey(), toolExecutionResultMessage);
+                        ToolRequestResult toolExecutionRequestResult = toolExecutionFuture.get();
+                        fireToolExecutedEvent(toolExecutionRequestResult);
+                        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionRequestResult.result();
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn
                                 && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
@@ -206,7 +208,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } else {
                 for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                     ToolExecutionResultMessage toolExecutionResultMessage = execute(toolExecutionRequest);
-                    fireToolExecutedEvent(toolExecutionRequest, toolExecutionResultMessage);
+                    ToolRequestResult toolExecutionRequestResult =
+                            new ToolRequestResult(toolExecutionRequest, toolExecutionResultMessage);
+                    fireToolExecutedEvent(toolExecutionRequestResult);
                     addToMemory(toolExecutionResultMessage);
                     immediateToolReturn =
                             immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
