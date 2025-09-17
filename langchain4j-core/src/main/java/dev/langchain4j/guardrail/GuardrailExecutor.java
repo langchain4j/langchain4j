@@ -1,7 +1,6 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import java.util.List;
 
@@ -43,8 +42,7 @@ public sealed interface GuardrailExecutor<
     /**
      * Executes the provided guardrails on the given parameters.
      * @param request The {@link GuardrailRequest} to validate
-     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The {@link GuardrailResult} of the validation
      */
-    R execute(P request, InteractionSource auditInteractionSource);
+    R execute(P request);
 }

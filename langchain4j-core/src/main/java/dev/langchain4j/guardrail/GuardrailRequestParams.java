@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
 import java.util.Map;
@@ -16,12 +17,14 @@ public final class GuardrailRequestParams {
     private final AugmentationResult augmentationResult;
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
+    private final InteractionSource interactionSource;
 
     private GuardrailRequestParams(Builder builder) {
         this.chatMemory = builder.chatMemory;
         this.augmentationResult = builder.augmentationResult;
         this.userMessageTemplate = ensureNotNull(builder.userMessageTemplate, "userMessageTemplate");
         this.variables = ensureNotNull(builder.variables, "variables");
+        this.interactionSource = builder.interactionSource;
     }
 
     /**
@@ -61,6 +64,15 @@ public final class GuardrailRequestParams {
     }
 
     /**
+     * Returns the {@link InteractionSource}, which contains general information about the source of the interaction.
+     *
+     * @return the interaction source
+     */
+    public InteractionSource interactionSource() {
+        return interactionSource;
+    }
+
+    /**
      * Creates a new builder for {@link GuardrailRequestParams}.
      *
      * @return a new builder
@@ -77,6 +89,7 @@ public final class GuardrailRequestParams {
         private AugmentationResult augmentationResult;
         private String userMessageTemplate;
         private Map<String, Object> variables;
+        private InteractionSource interactionSource;
 
         /**
          * Sets the chat memory.
@@ -119,6 +132,18 @@ public final class GuardrailRequestParams {
          */
         public Builder variables(Map<String, Object> variables) {
             this.variables = variables;
+            return this;
+        }
+
+        /**
+         * Sets the interaction source for the builder.
+         *
+         * @param interactionSource the source of the interaction, containing details such as the method name,
+         *                          interface name, and timestamp of the interaction
+         * @return this builder instance, to allow for method chaining
+         */
+        public Builder interactionSource(InteractionSource interactionSource) {
+            this.interactionSource = interactionSource;
             return this;
         }
 

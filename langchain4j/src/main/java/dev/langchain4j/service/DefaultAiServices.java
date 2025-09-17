@@ -230,11 +230,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
-                            List<ChatMessage> chatMemoryMessages =
-                                    chatMemory != null ? chatMemory.messages() : null;
+                            List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
-                            AugmentationRequest augmentationRequest =
-                                    new AugmentationRequest(userMessage, metadata);
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
@@ -243,16 +241,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
+                                .interactionSource(interactionSource)
                                 .variables(variables)
                                 .build();
 
                         // Invoke input guardrails
                         userMessage = invokeInputGuardrails(
-                                context.guardrailService(),
-                                method,
-                                userMessage,
-                                commonGuardrailParam,
-                                interactionSource);
+                                context.guardrailService(), method, userMessage, commonGuardrailParam);
 
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
@@ -396,8 +391,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 method,
                                 aggregateResponse,
                                 chatExecutor,
-                                commonGuardrailParam,
-                                interactionSource);
+                                commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             // fire an interaction complete event
@@ -413,16 +407,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
-                                .content(parsedResponse)
-                                .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                .finishReason(toolServiceResult
-                                        .finalResponse()
-                                        .finishReason())
-                                .toolExecutions(toolServiceResult.toolExecutions())
-                                .intermediateResponses(toolServiceResult.intermediateResponses())
-                                .finalResponse(toolServiceResult.finalResponse())
-                                .build()
+                                        .content(parsedResponse)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(toolServiceResult
+                                                .finalResponse()
+                                                .finishReason())
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build()
                                 : parsedResponse;
 
                         // fire an interaction complete event
@@ -489,8 +483,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             GuardrailService guardrailService,
             Method method,
             UserMessage userMessage,
-            GuardrailRequestParams commonGuardrailParams,
-            InteractionSource auditInteractionSource) {
+            GuardrailRequestParams commonGuardrailParams) {
 
         // NOTE: This check is cached, so it really only needs to be computed the first time for each method
         if (guardrailService.hasInputGuardrails(method)) {
@@ -498,7 +491,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     .userMessage(userMessage)
                     .commonParams(commonGuardrailParams)
                     .build();
-            return guardrailService.executeGuardrails(method, inputGuardrailRequest, auditInteractionSource);
+            return guardrailService.executeGuardrails(method, inputGuardrailRequest);
         }
 
         return userMessage;
@@ -509,8 +502,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             Method method,
             ChatResponse responseFromLLM,
             ChatExecutor chatExecutor,
-            GuardrailRequestParams commonGuardrailParams,
-            InteractionSource auditInteractionSource) {
+            GuardrailRequestParams commonGuardrailParams) {
 
         if (guardrailService.hasOutputGuardrails(method)) {
             var outputGuardrailRequest = OutputGuardrailRequest.builder()
@@ -518,7 +510,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     .chatExecutor(chatExecutor)
                     .requestParams(commonGuardrailParams)
                     .build();
-            return guardrailService.executeGuardrails(method, outputGuardrailRequest, auditInteractionSource);
+            return guardrailService.executeGuardrails(method, outputGuardrailRequest);
         }
 
         return (T) responseFromLLM;

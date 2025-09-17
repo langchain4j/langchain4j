@@ -2,7 +2,6 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
@@ -48,11 +47,10 @@ public non-sealed class OutputGuardrailExecutor
      * Executes the {@link OutputGuardrail}s on the given {@link OutputGuardrailRequest}.
      *
      * @param request     The {@link OutputGuardrailRequest} to validate
-     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The {@link OutputGuardrailResult} of the validation
      */
     @Override
-    public OutputGuardrailResult execute(OutputGuardrailRequest request, InteractionSource auditInteractionSource) {
+    public OutputGuardrailResult execute(OutputGuardrailRequest request) {
         OutputGuardrailResult result = null;
         var accumulatedRequest = request;
         var attempt = 0;
@@ -65,7 +63,7 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = executeGuardrails(accumulatedRequest, auditInteractionSource);
+            result = executeGuardrails(accumulatedRequest);
 
             if (result.isSuccess()) {
                 return result;

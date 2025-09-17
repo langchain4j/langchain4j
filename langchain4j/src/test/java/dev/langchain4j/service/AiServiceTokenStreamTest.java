@@ -187,6 +187,7 @@ class AiServiceTokenStreamTest {
                         .augmentationResult(null)
                         .userMessageTemplate("")
                         .variables(Map.of())
+                        .interactionSource(DEFAULT_INTERACTION_SOURCE)
                         .build())
                 .toolArgumentsErrorHandler((e, c) -> {
                     throw new RuntimeException(e);

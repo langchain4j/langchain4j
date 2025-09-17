@@ -126,9 +126,8 @@ public abstract sealed class AbstractGuardrailExecutor<
                         .build());
     }
 
-    protected R executeGuardrails(P request, InteractionSource auditInteractionSource) {
+    protected R executeGuardrails(P request) {
         ensureNotNull(request, "request");
-        ensureNotNull(auditInteractionSource, "auditInteractionSource");
 
         var accumulatedRequest = request;
         var accumulatedResult = createSuccess();
@@ -136,7 +135,7 @@ public abstract sealed class AbstractGuardrailExecutor<
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
                 var result = validate(accumulatedRequest, guardrail);
-                fireAuditEvent(auditInteractionSource, accumulatedRequest, result, guardrail);
+                fireAuditEvent(request.requestParams().interactionSource(), accumulatedRequest, result, guardrail);
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing

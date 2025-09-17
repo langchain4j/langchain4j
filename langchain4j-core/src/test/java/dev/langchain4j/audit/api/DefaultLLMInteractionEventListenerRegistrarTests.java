@@ -79,6 +79,7 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
                             .requestParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
+                                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
                                     .build())
                             .chatExecutor(new ChatExecutor() {
                                 @Override
@@ -106,6 +107,7 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
                             .commonParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
+                                    .interactionSource(DEFAULT_INTERACTION_SOURCE)
                                     .build())
                             .build())
                     .result(InputGuardrailResult.success())

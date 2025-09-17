@@ -265,6 +265,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .augmentationResult(commonGuardrailParams.augmentationResult())
                                 .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
                                 .variables(commonGuardrailParams.variables())
+                                .interactionSource(auditInteractionSource)
                                 .build();
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()
@@ -273,8 +274,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .requestParams(newCommonParams)
                                 .build();
 
-                        finalChatResponse = context.guardrailService()
-                                .executeGuardrails(methodKey, outputGuardrailParams, auditInteractionSource);
+                        finalChatResponse =
+                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
                     }
 
                     // If we have output guardrails, we should process all of the partial responses first before

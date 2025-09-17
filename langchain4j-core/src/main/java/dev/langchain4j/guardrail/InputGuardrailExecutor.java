@@ -3,7 +3,6 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
 
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
-import dev.langchain4j.audit.api.event.InteractionSource;
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
@@ -59,12 +58,11 @@ public non-sealed class InputGuardrailExecutor
      * Execeutes the {@link InputGuardrail}s on the given {@link InputGuardrailRequest}.
      *
      * @param request     The {@link InputGuardrailRequest} to validate
-     * @param auditInteractionSource The {@link InteractionSource} to be used for auditing the interaction.
      * @return The {@link InputGuardrailResult} of the validation
      */
     @Override
-    public InputGuardrailResult execute(InputGuardrailRequest request, InteractionSource auditInteractionSource) {
-        var result = executeGuardrails(request, auditInteractionSource);
+    public InputGuardrailResult execute(InputGuardrailRequest request) {
+        var result = executeGuardrails(request);
 
         if (!result.isSuccess()) {
             throw new InputGuardrailException(result.toString(), result.getFirstFailureException());

@@ -42,7 +42,7 @@ class InputGuardrailExecutorTests {
         var request = from(UserMessage.from("test"));
         var executor =
                 InputGuardrailExecutor.builder().guardrails(spiedGuardrails).build();
-        var result = executor.execute(request, DEFAULT_INTERACTION_SOURCE);
+        var result = executor.execute(request);
 
         assertThat(result).isSuccessful();
 
@@ -65,7 +65,7 @@ class InputGuardrailExecutorTests {
     void noGuardrails() {
         var request = from(UserMessage.from("test"));
         var executor = InputGuardrailExecutor.builder().build();
-        var result = executor.execute(request, DEFAULT_INTERACTION_SOURCE);
+        var result = executor.execute(request);
 
         assertThat(result).isSuccessful();
     }
@@ -86,7 +86,7 @@ class InputGuardrailExecutorTests {
                 .build();
 
         assertThatExceptionOfType(InputGuardrailException.class)
-                .isThrownBy(() -> executor.execute(request, DEFAULT_INTERACTION_SOURCE))
+                .isThrownBy(() -> executor.execute(request))
                 .withMessageMatching("The guardrail " + getClass().getName()
                         + "\\$.+Guardrail failed with this message: failure \\d");
 
@@ -200,6 +200,7 @@ class InputGuardrailExecutorTests {
                 .augmentationResult(null)
                 .userMessageTemplate("")
                 .variables(Map.of())
+                .interactionSource(DEFAULT_INTERACTION_SOURCE)
                 .build();
 
         return InputGuardrailRequest.builder()
