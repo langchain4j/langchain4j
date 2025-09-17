@@ -41,4 +41,43 @@ class AiServicesModerationTest {
     void should_do_nothing_when_no_moderation_is_provided() {
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(null));
     }
+
+    @Test
+    void should_preserve_moderation_object_in_exception() {
+        // Given
+        String flaggedText = "test content";
+        final var originalModeration = Moderation.flagged(flaggedText);
+        final var moderationFuture = CompletableFuture.completedFuture(originalModeration);
+
+        // When/Then
+        assertThatThrownBy(() -> AiServices.verifyModerationIfNeeded(moderationFuture))
+                .isInstanceOf(ModerationException.class)
+                .satisfies(exception -> {
+                    ModerationException moderationException = (ModerationException) exception;
+                    assert moderationException.moderation() == originalModeration;
+                    assert moderationException.moderation().flaggedText().equals(flaggedText);
+                });
+    }
+
+    @Test
+    void should_handle_whitespace_only_flagged_text() {
+        // Given
+        final var flaggedModeration = Moderation.flagged("   ");
+        final var moderationFuture = CompletableFuture.completedFuture(flaggedModeration);
+
+        // When/Then
+        assertThatThrownBy(() -> AiServices.verifyModerationIfNeeded(moderationFuture))
+                .isInstanceOf(ModerationException.class);
+    }
+
+    @Test
+    void should_handle_completed_future_multiple_times() {
+        // Given
+        final var safeModeration = Moderation.notFlagged();
+        final var moderationFuture = CompletableFuture.completedFuture(safeModeration);
+
+        // When/Then - same future can be checked multiple times
+        assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
+        assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
+    }
 }

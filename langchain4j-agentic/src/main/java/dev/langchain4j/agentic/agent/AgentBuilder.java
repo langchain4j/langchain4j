@@ -29,6 +29,7 @@ import java.lang.reflect.Proxy;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentBuilder<T> {
@@ -72,6 +73,8 @@ public class AgentBuilder<T> {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
 
+        configureAgent(agentServiceClass, this);
+
         if (!isNullOrBlank(agent.name())) {
             this.name = agent.name();
         } else {
@@ -93,7 +96,7 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
-        AiServiceContext context = new AiServiceContext(agentServiceClass);
+        AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
             aiServices.chatModel(model);

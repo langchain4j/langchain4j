@@ -15,9 +15,22 @@ public class AnthropicImageContent extends AnthropicMessageContent {
 
     public AnthropicImageContentSource source;
 
+    public AnthropicImageContent(AnthropicImageContentSource source) {
+        super("image");
+        this.source = source;
+    }
+
     public AnthropicImageContent(String mediaType, String data) {
         super("image");
         this.source = new AnthropicImageContentSource("base64", mediaType, data);
+    }
+
+    public static AnthropicImageContent fromBase64(String mediaType, String data) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromBase64(mediaType, data));
+    }
+
+    public static AnthropicImageContent fromUrl(String url) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url));
     }
 
     @Override
