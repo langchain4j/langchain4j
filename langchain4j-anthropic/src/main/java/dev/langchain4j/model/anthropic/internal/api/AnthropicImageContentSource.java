@@ -18,7 +18,12 @@ public class AnthropicImageContentSource {
     public String data;
     public String url;
 
-    private AnthropicImageContentSource() {}
+    public AnthropicImageContentSource(String type, String mediaType, String data, String url) {
+        this.type = type;
+        this.mediaType = mediaType;
+        this.data = data;
+        this.url = url;
+    }
 
     public AnthropicImageContentSource(String type, String mediaType, String data) {
         this.type = type;
@@ -26,19 +31,12 @@ public class AnthropicImageContentSource {
         this.data = data;
     }
 
-    public static AnthropicImageContentSource forBase64(String mediaType, String data) {
-        AnthropicImageContentSource source = new AnthropicImageContentSource();
-        source.type = "base64";
-        source.mediaType = mediaType;
-        source.data = data;
-        return source;
+    public static AnthropicImageContentSource fromBase64(String mediaType, String data) {
+        return new AnthropicImageContentSource("base64", mediaType, data, null);
     }
 
-    public static AnthropicImageContentSource forUrl(String url) {
-        AnthropicImageContentSource source = new AnthropicImageContentSource();
-        source.type = "url";
-        source.url = url;
-        return source;
+    public static AnthropicImageContentSource fromUrl(String url) {
+        return new AnthropicImageContentSource("url", null, null, url);
     }
 
     @Override

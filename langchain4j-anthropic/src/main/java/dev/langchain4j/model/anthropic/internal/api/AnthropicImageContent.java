@@ -26,11 +26,11 @@ public class AnthropicImageContent extends AnthropicMessageContent {
     }
 
     public static AnthropicImageContent fromBase64(String mediaType, String data) {
-        return new AnthropicImageContent(AnthropicImageContentSource.forBase64(mediaType, data));
+        return new AnthropicImageContent(AnthropicImageContentSource.fromBase64(mediaType, data));
     }
 
     public static AnthropicImageContent fromUrl(String url) {
-        return new AnthropicImageContent(AnthropicImageContentSource.forUrl(url));
+        return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url));
     }
 
     @Override
