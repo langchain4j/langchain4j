@@ -11,11 +11,15 @@ import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A default registrar for registering {@link AiServiceInteractionEventListener}s.
  */
 public class DefaultAiServiceInteractionEventListenerRegistrar implements AiServiceInteractionEventListenerRegistrar {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultAiServiceInteractionEventListenerRegistrar.class);
+
     private static final AiServiceInteractionEventListenerRegistrar INSTANCE =
             new DefaultAiServiceInteractionEventListenerRegistrar();
 
@@ -105,7 +109,21 @@ public class DefaultAiServiceInteractionEventListenerRegistrar implements AiServ
 
         private void fireEvent(T event) {
             ensureNotNull(event, "event");
-            this.listeners.forEach(listener -> listener.onEvent(event));
+            this.listeners.forEach(listener -> {
+                try {
+                    listener.onEvent(event);
+                }
+                catch (Exception e) {
+                    LOG.warn(
+                            "An error occurred while firing event (%s) to listener (%s): %s"
+                                    .formatted(
+                                            event.getClass().getName(),
+                                            listener.getClass().getName(),
+                                            e.getMessage()
+                                    ),
+                            e);
+                }
+            });
         }
     }
 }
