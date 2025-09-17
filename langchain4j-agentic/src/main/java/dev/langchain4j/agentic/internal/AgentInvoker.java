@@ -12,12 +12,8 @@ import java.util.Optional;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 
-public interface AgentInvoker {
+public interface AgentInvoker extends AgentSpecification {
 
-    String name();
-    String description();
-    String outputName();
-    boolean async();
     Method method();
 
     String toCard();
@@ -32,16 +28,12 @@ public interface AgentInvoker {
         }
     }
 
-    static AgentInvoker fromMethod(AgentSpecification agent, Method method) {
-        return fromMethodAndSpec(method, agent.name(), agent.description(), agent.outputName(), agent.async());
-    }
-
-    static AgentInvoker fromMethodAndSpec(Method method, String name, String description, String outputName, boolean async) {
+    static AgentInvoker fromMethod(AgentSpecification spec, Method method) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
-            return new UntypedAgentInvoker(method, name, description, outputName, async);
+            return new UntypedAgentInvoker(method, spec);
         }
 
-        return new MethodAgentInvoker(method, name, description, outputName, async, argumentsFromMethod(method));
+        return new MethodAgentInvoker(method, spec, argumentsFromMethod(method));
     }
 
     static String parameterName(Parameter parameter) {
