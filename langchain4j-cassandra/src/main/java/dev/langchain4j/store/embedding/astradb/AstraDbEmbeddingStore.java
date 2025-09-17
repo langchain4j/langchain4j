@@ -1,13 +1,5 @@
 package dev.langchain4j.store.embedding.astradb;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.dtsx.astra.sdk.AstraDBCollection;
 
 import dev.langchain4j.data.document.Metadata;
