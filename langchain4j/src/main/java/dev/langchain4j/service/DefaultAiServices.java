@@ -184,9 +184,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        var memoryIdOpt = findMemoryId(method, args);
-
                         var methodArgs = (args != null) ? Arrays.asList(args) : Collections.emptyList();
+                        var memoryIdOpt = findMemoryId(method, args);
                         var interactionSource = InteractionSource.builder()
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
@@ -194,243 +193,247 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .memoryId(memoryIdOpt.orElse(null))
                                 .build();
 
-                        final Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
-
                         try {
-                            final ChatMemory chatMemory = context.hasChatMemory()
-                                    ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
-                                    : null;
-
-                            Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                            var userMessageTemplate = getUserMessageTemplate(method, args);
-                            var variables = InternalReflectionVariableResolver.findTemplateVariables(
-                                    userMessageTemplate, method, args);
-                            UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
-
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionStartedEvent.builder()
-                                            .interactionSource(interactionSource)
-                                            .systemMessage(systemMessage)
-                                            .userMessage(userMessage)
-                                            .build());
-
-                            AugmentationResult augmentationResult = null;
-                            if (context.retrievalAugmentor != null) {
-                                List<ChatMessage> chatMemoryMessages =
-                                        chatMemory != null ? chatMemory.messages() : null;
-                                Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
-                                AugmentationRequest augmentationRequest =
-                                        new AugmentationRequest(userMessage, metadata);
-                                augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                                userMessage = (UserMessage) augmentationResult.chatMessage();
-                            }
-
-                            var commonGuardrailParam = GuardrailRequestParams.builder()
-                                    .chatMemory(chatMemory)
-                                    .augmentationResult(augmentationResult)
-                                    .userMessageTemplate(userMessageTemplate)
-                                    .variables(variables)
-                                    .build();
-
-                            // Invoke input guardrails
-                            userMessage = invokeInputGuardrails(
-                                    context.guardrailService(),
-                                    method,
-                                    userMessage,
-                                    commonGuardrailParam,
-                                    interactionSource);
-
-                            Type returnType = method.getGenericReturnType();
-                            boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
-
-                            // TODO should it be called when returnType==String?
-                            boolean supportsJsonSchema = supportsJsonSchema();
-
-                            Optional<JsonSchema> jsonSchema = Optional.empty();
-                            if (supportsJsonSchema && !streaming) {
-                                jsonSchema = serviceOutputParser.jsonSchema(returnType);
-                            }
-                            if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
-                                userMessage = appendOutputFormatInstructions(returnType, userMessage);
-                            }
-
-                            Optional<List<Content>> maybeContents = findContents(method, args);
-                            if (maybeContents.isPresent()) {
-                                List<Content> allContents = new ArrayList<>();
-                                for (Content content : maybeContents.get()) {
-                                    if (content == null) { // placeholder
-                                        allContents.addAll(userMessage.contents());
-                                    } else {
-                                        allContents.add(content);
-                                    }
-                                }
-                                userMessage = UserMessage.from(userMessage.name(), allContents);
-                            }
-
-                            List<ChatMessage> messages = new ArrayList<>();
-                            if (context.hasChatMemory()) {
-                                systemMessage.ifPresent(chatMemory::add);
-                                chatMemory.add(userMessage);
-                                messages.addAll(chatMemory.messages());
-                            } else {
-                                systemMessage.ifPresent(messages::add);
-                                messages.add(userMessage);
-                            }
-
-                            Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
-
-                            ToolServiceContext toolServiceContext =
-                                    context.toolService.createContext(memoryId, userMessage);
-
-                            if (streaming) {
-                                var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
-                                        .messages(messages)
-                                        .toolSpecifications(toolServiceContext.toolSpecifications())
-                                        .toolExecutors(toolServiceContext.toolExecutors())
-                                        .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
-                                        .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
-                                        .toolExecutor(context.toolService.executor())
-                                        .retrievedContents(
-                                                augmentationResult != null ? augmentationResult.contents() : null)
-                                        .context(context)
-                                        .memoryId(memoryId)
-                                        .commonGuardrailParams(commonGuardrailParam)
-                                        .methodKey(method)
-                                        .auditInteractionSource(interactionSource)
-                                        .build();
-
-                                TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
-                                // TODO moderation
-                                if (returnType == TokenStream.class) {
-                                    return tokenStream;
-                                } else {
-                                    return adapt(tokenStream, returnType);
-                                }
-                            }
-
-                            ResponseFormat responseFormat = null;
-                            if (supportsJsonSchema && jsonSchema.isPresent()) {
-                                responseFormat = ResponseFormat.builder()
-                                        .type(JSON)
-                                        .jsonSchema(jsonSchema.get())
-                                        .build();
-                            }
-
-                            ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                    .toolSpecifications(toolServiceContext.toolSpecifications())
-                                    .responseFormat(responseFormat)
-                                    .build();
-
-                            ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                                    ChatRequest.builder()
-                                            .messages(messages)
-                                            .parameters(parameters)
-                                            .build(),
-                                    memoryId);
-
-                            ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
-                                    .chatRequest(chatRequest)
-                                    .build();
-
-                            ChatResponse chatResponse = chatExecutor.execute();
-
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMResponseReceivedEvent.builder()
-                                            .interactionSource(interactionSource)
-                                            .response(chatResponse)
-                                            .build());
-
-                            verifyModerationIfNeeded(moderationFuture);
-
-                            boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
-
-                            ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
-                                    chatResponse,
-                                    parameters,
-                                    messages,
-                                    context.chatModel,
-                                    chatMemory,
-                                    memoryId,
-                                    toolServiceContext.toolExecutors(),
-                                    isReturnTypeResult,
-                                    interactionSource);
-
-                            if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
-                                var result = Result.builder()
-                                        .content(null)
-                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                        .finishReason(TOOL_EXECUTION)
-                                        .toolExecutions(toolServiceResult.toolExecutions())
-                                        .intermediateResponses(toolServiceResult.intermediateResponses())
-                                        .finalResponse(toolServiceResult.finalResponse())
-                                        .build();
-
-                                // fire an interaction complete event
-                                LLMInteractionEventListenerRegistrar.getInstance()
-                                        .fireEvent(LLMInteractionCompleteEvent.builder()
-                                                .interactionSource(interactionSource)
-                                                .result(result)
-                                                .build());
-
-                                return result;
-                            }
-
-                            ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
-
-                            var response = invokeOutputGuardrails(
-                                    context.guardrailService(),
-                                    method,
-                                    aggregateResponse,
-                                    chatExecutor,
-                                    commonGuardrailParam,
-                                    interactionSource);
-
-                            if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                                // fire an interaction complete event
-                                LLMInteractionEventListenerRegistrar.getInstance()
-                                        .fireEvent(LLMInteractionCompleteEvent.builder()
-                                                .interactionSource(interactionSource)
-                                                .result(response)
-                                                .build());
-
-                                return response;
-                            }
-
-                            var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
-                            var actualResponse = (isReturnTypeResult)
-                                    ? Result.builder()
-                                            .content(parsedResponse)
-                                            .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                            .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                            .finishReason(toolServiceResult
-                                                    .finalResponse()
-                                                    .finishReason())
-                                            .toolExecutions(toolServiceResult.toolExecutions())
-                                            .intermediateResponses(toolServiceResult.intermediateResponses())
-                                            .finalResponse(toolServiceResult.finalResponse())
-                                            .build()
-                                    : parsedResponse;
-
-                            // fire an interaction complete event
-                            LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionCompleteEvent.builder()
-                                            .interactionSource(interactionSource)
-                                            .result(actualResponse)
-                                            .build());
-
-                            return actualResponse;
+                            return invoke(method, args, interactionSource);
                         } catch (Exception ex) {
-                            // Fire a failed event
                             LLMInteractionEventListenerRegistrar.getInstance()
                                     .fireEvent(LLMInteractionFailureEvent.builder()
                                             .interactionSource(interactionSource)
                                             .error(ex)
                                             .build());
 
-                            // rethrow the exception
                             throw ex;
                         }
+                    }
+
+                    public Object invoke(Method method, Object[] args, InteractionSource interactionSource) {
+
+                        var memoryIdOpt = findMemoryId(method, args);
+                        Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
+
+                        ChatMemory chatMemory = context.hasChatMemory()
+                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                                : null;
+
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        var userMessageTemplate = getUserMessageTemplate(method, args);
+                        var variables = InternalReflectionVariableResolver.findTemplateVariables(
+                                userMessageTemplate, method, args);
+                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+
+                        LLMInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(LLMInteractionStartedEvent.builder()
+                                        .interactionSource(interactionSource)
+                                        .systemMessage(systemMessage)
+                                        .userMessage(userMessage)
+                                        .build());
+
+                        AugmentationResult augmentationResult = null;
+                        if (context.retrievalAugmentor != null) {
+                            List<ChatMessage> chatMemoryMessages =
+                                    chatMemory != null ? chatMemory.messages() : null;
+                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessage, metadata);
+                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            userMessage = (UserMessage) augmentationResult.chatMessage();
+                        }
+
+                        var commonGuardrailParam = GuardrailRequestParams.builder()
+                                .chatMemory(chatMemory)
+                                .augmentationResult(augmentationResult)
+                                .userMessageTemplate(userMessageTemplate)
+                                .variables(variables)
+                                .build();
+
+                        // Invoke input guardrails
+                        userMessage = invokeInputGuardrails(
+                                context.guardrailService(),
+                                method,
+                                userMessage,
+                                commonGuardrailParam,
+                                interactionSource);
+
+                        Type returnType = method.getGenericReturnType();
+                        boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
+
+                        // TODO should it be called when returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema();
+
+                        Optional<JsonSchema> jsonSchema = Optional.empty();
+                        if (supportsJsonSchema && !streaming) {
+                            jsonSchema = serviceOutputParser.jsonSchema(returnType);
+                        }
+                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
+                            userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                        }
+
+                        Optional<List<Content>> maybeContents = findContents(method, args);
+                        if (maybeContents.isPresent()) {
+                            List<Content> allContents = new ArrayList<>();
+                            for (Content content : maybeContents.get()) {
+                                if (content == null) { // placeholder
+                                    allContents.addAll(userMessage.contents());
+                                } else {
+                                    allContents.add(content);
+                                }
+                            }
+                            userMessage = UserMessage.from(userMessage.name(), allContents);
+                        }
+
+                        List<ChatMessage> messages = new ArrayList<>();
+                        if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
+                            chatMemory.add(userMessage);
+                            messages.addAll(chatMemory.messages());
+                        } else {
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                        }
+
+                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(memoryId, userMessage);
+
+                        if (streaming) {
+                            var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
+                                    .messages(messages)
+                                    .toolSpecifications(toolServiceContext.toolSpecifications())
+                                    .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                    .toolExecutor(context.toolService.executor())
+                                    .retrievedContents(
+                                            augmentationResult != null ? augmentationResult.contents() : null)
+                                    .context(context)
+                                    .memoryId(memoryId)
+                                    .commonGuardrailParams(commonGuardrailParam)
+                                    .methodKey(method)
+                                    .auditInteractionSource(interactionSource)
+                                    .build();
+
+                            TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
+                            // TODO moderation
+                            if (returnType == TokenStream.class) {
+                                return tokenStream;
+                            } else {
+                                return adapt(tokenStream, returnType);
+                            }
+                        }
+
+                        ResponseFormat responseFormat = null;
+                        if (supportsJsonSchema && jsonSchema.isPresent()) {
+                            responseFormat = ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(jsonSchema.get())
+                                    .build();
+                        }
+
+                        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
+                                .responseFormat(responseFormat)
+                                .build();
+
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(),
+                                memoryId);
+
+                        ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
+                                .chatRequest(chatRequest)
+                                .build();
+
+                        ChatResponse chatResponse = chatExecutor.execute();
+
+                        LLMInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(LLMResponseReceivedEvent.builder()
+                                        .interactionSource(interactionSource)
+                                        .response(chatResponse)
+                                        .build());
+
+                        verifyModerationIfNeeded(moderationFuture);
+
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
+
+                        ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
+                                chatResponse,
+                                parameters,
+                                messages,
+                                context.chatModel,
+                                chatMemory,
+                                memoryId,
+                                toolServiceContext.toolExecutors(),
+                                isReturnTypeResult,
+                                interactionSource);
+
+                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
+                            var result = Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(TOOL_EXECUTION)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
+                                    .build();
+
+                            // fire an interaction complete event
+                            LLMInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(LLMInteractionCompleteEvent.builder()
+                                            .interactionSource(interactionSource)
+                                            .result(result)
+                                            .build());
+
+                            return result;
+                        }
+
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
+
+                        var response = invokeOutputGuardrails(
+                                context.guardrailService(),
+                                method,
+                                aggregateResponse,
+                                chatExecutor,
+                                commonGuardrailParam,
+                                interactionSource);
+
+                        if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
+                            // fire an interaction complete event
+                            LLMInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(LLMInteractionCompleteEvent.builder()
+                                            .interactionSource(interactionSource)
+                                            .result(response)
+                                            .build());
+
+                            return response;
+                        }
+
+                        var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
+                        var actualResponse = (isReturnTypeResult)
+                                ? Result.builder()
+                                .content(parsedResponse)
+                                .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                .finishReason(toolServiceResult
+                                        .finalResponse()
+                                        .finishReason())
+                                .toolExecutions(toolServiceResult.toolExecutions())
+                                .intermediateResponses(toolServiceResult.intermediateResponses())
+                                .finalResponse(toolServiceResult.finalResponse())
+                                .build()
+                                : parsedResponse;
+
+                        // fire an interaction complete event
+                        LLMInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(LLMInteractionCompleteEvent.builder()
+                                        .interactionSource(interactionSource)
+                                        .result(actualResponse)
+                                        .build());
+
+                        return actualResponse;
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
