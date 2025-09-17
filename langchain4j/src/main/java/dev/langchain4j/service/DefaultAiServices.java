@@ -12,8 +12,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionCompleteEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionFailureEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionCompletedEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.LLMInteractionStartedEvent;
 import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -197,7 +197,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return invoke(method, args, interactionSource);
                         } catch (Exception ex) {
                             LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionFailureEvent.builder()
+                                    .fireEvent(LLMInteractionErrorEvent.builder()
                                             .interactionSource(interactionSource)
                                             .error(ex)
                                             .build());
@@ -376,7 +376,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
 
                             LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionCompleteEvent.builder()
+                                    .fireEvent(LLMInteractionCompletedEvent.builder()
                                             .interactionSource(interactionSource)
                                             .result(result)
                                             .build());
@@ -396,7 +396,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             // fire an interaction complete event
                             LLMInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(LLMInteractionCompleteEvent.builder()
+                                    .fireEvent(LLMInteractionCompletedEvent.builder()
                                             .interactionSource(interactionSource)
                                             .result(response)
                                             .build());
@@ -421,7 +421,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // fire an interaction complete event
                         LLMInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(LLMInteractionCompleteEvent.builder()
+                                .fireEvent(LLMInteractionCompletedEvent.builder()
                                         .interactionSource(interactionSource)
                                         .result(actualResponse)
                                         .build());

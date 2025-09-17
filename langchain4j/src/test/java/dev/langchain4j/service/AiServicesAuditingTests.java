@@ -17,17 +17,17 @@ import dev.langchain4j.audit.api.LLMInteractionEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionCompleteEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionCompletedEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.LLMInteractionEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionFailureEvent;
 import dev.langchain4j.audit.api.event.LLMInteractionStartedEvent;
 import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.audit.api.listener.InputGuardrailExecutedEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionCompleteEventListener;
+import dev.langchain4j.audit.api.listener.LLMInteractionCompletedEventListener;
+import dev.langchain4j.audit.api.listener.LLMInteractionErrorEventListener;
 import dev.langchain4j.audit.api.listener.LLMInteractionEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionFailureEventListener;
 import dev.langchain4j.audit.api.listener.LLMInteractionStartedEventListener;
 import dev.langchain4j.audit.api.listener.LLMResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.OutputGuardrailExecutedEventListener;
@@ -124,13 +124,13 @@ class AiServicesAuditingTests {
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
                 "chat",
                 List.of(
-                        LLMInteractionCompleteEvent.class,
+                        LLMInteractionCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         LLMResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(LLMInteractionStartedEvent.class, LLMInteractionFailureEvent.class));
+                List.of(LLMInteractionStartedEvent.class, LLMInteractionErrorEvent.class));
     }
 
     @Test
@@ -140,14 +140,14 @@ class AiServicesAuditingTests {
                 assistant -> assertThat(assistant.chat("Hello!")).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
                 "chat",
                 List.of(
-                        LLMInteractionFailureEvent.class,
+                        LLMInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
                         LLMInteractionStartedEvent.class,
-                        LLMInteractionCompleteEvent.class,
+                        LLMInteractionCompletedEvent.class,
                         LLMResponseReceivedEvent.class));
     }
 
@@ -162,13 +162,13 @@ class AiServicesAuditingTests {
                 },
                 "chat",
                 List.of(
-                        LLMInteractionFailureEvent.class,
+                        LLMInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class),
                 TOOL_USER_MESSAGE,
                 List.of(
                         LLMInteractionStartedEvent.class,
-                        LLMInteractionCompleteEvent.class,
+                        LLMInteractionCompletedEvent.class,
                         LLMResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
     }
@@ -184,14 +184,14 @@ class AiServicesAuditingTests {
                                 FailureInputGuardrail.class.getName()),
                 "chatWithInputGuardrails",
                 List.of(
-                        LLMInteractionCompleteEvent.class,
+                        LLMInteractionCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         LLMResponseReceivedEvent.class),
                 "Hello!",
                 List.of(
                         LLMInteractionStartedEvent.class,
-                        LLMInteractionFailureEvent.class,
+                        LLMInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class));
     }
 
@@ -205,11 +205,11 @@ class AiServicesAuditingTests {
                                 "The guardrail %s failed with this message: LLM response is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
-                List.of(LLMInteractionCompleteEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
+                List.of(LLMInteractionCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
                         LLMInteractionStartedEvent.class,
-                        LLMInteractionFailureEvent.class,
+                        LLMInteractionErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         LLMResponseReceivedEvent.class));
     }
@@ -282,8 +282,8 @@ class AiServicesAuditingTests {
 
         return Stream.of(
                         new MyInputGuardrailExecutedEventListener(),
-                        new MyLLMInteractionCompleteEventListener(),
-                        new MyLLMInteractionFailureEventListener(),
+                        new MyLLMInteractionCompletedEventListener(),
+                        new MyLLMInteractionErrorEventListener(),
                         new MyLLMInteractionStartedEventListener(),
                         new MyLLMResponseReceivedEventListener(),
                         new MyOutputGuardrailExecutedEventListener(),
@@ -534,11 +534,11 @@ class AiServicesAuditingTests {
     public static class MyLLMInteractionStartedEventListener extends MyEventListener<LLMInteractionStartedEvent>
             implements LLMInteractionStartedEventListener {}
 
-    public static class MyLLMInteractionFailureEventListener extends MyEventListener<LLMInteractionFailureEvent>
-            implements LLMInteractionFailureEventListener {}
+    public static class MyLLMInteractionErrorEventListener extends MyEventListener<LLMInteractionErrorEvent>
+            implements LLMInteractionErrorEventListener {}
 
-    public static class MyLLMInteractionCompleteEventListener extends MyEventListener<LLMInteractionCompleteEvent>
-            implements LLMInteractionCompleteEventListener {}
+    public static class MyLLMInteractionCompletedEventListener extends MyEventListener<LLMInteractionCompletedEvent>
+            implements LLMInteractionCompletedEventListener {}
 
     public static class MyInputGuardrailExecutedEventListener extends MyEventListener<InputGuardrailExecutedEvent>
             implements InputGuardrailExecutedEventListener {}

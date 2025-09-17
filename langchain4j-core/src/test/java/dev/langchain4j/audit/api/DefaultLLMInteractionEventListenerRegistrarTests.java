@@ -5,17 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InteractionSource;
-import dev.langchain4j.audit.api.event.LLMInteractionCompleteEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionCompletedEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.LLMInteractionEvent;
-import dev.langchain4j.audit.api.event.LLMInteractionFailureEvent;
 import dev.langchain4j.audit.api.event.LLMInteractionStartedEvent;
 import dev.langchain4j.audit.api.event.LLMResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.audit.api.listener.InputGuardrailExecutedEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionCompleteEventListener;
+import dev.langchain4j.audit.api.listener.LLMInteractionCompletedEventListener;
+import dev.langchain4j.audit.api.listener.LLMInteractionErrorEventListener;
 import dev.langchain4j.audit.api.listener.LLMInteractionEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionFailureEventListener;
 import dev.langchain4j.audit.api.listener.LLMInteractionStartedEventListener;
 import dev.langchain4j.audit.api.listener.LLMResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.OutputGuardrailExecutedEventListener;
@@ -53,13 +53,13 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
                     ChatResponse.builder().aiMessage(AiMessage.from("Message!")).build())
             .build();
 
-    private static final LLMInteractionFailureEvent LLM_INTERACTION_FAILURE_EVENT = LLMInteractionFailureEvent.builder()
+    private static final LLMInteractionErrorEvent LLM_INTERACTION_ERROR_EVENT = LLMInteractionErrorEvent.builder()
             .interactionSource(DEFAULT_INTERACTION_SOURCE)
             .error(new RuntimeException("Some error"))
             .build();
 
-    private static final LLMInteractionCompleteEvent LLM_INTERACTION_COMPLETE_EVENT =
-            LLMInteractionCompleteEvent.builder()
+    private static final LLMInteractionCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
+            LLMInteractionCompletedEvent.builder()
                     .interactionSource(DEFAULT_INTERACTION_SOURCE)
                     .build();
 
@@ -121,8 +121,8 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
 
     private static final List<LLMInteractionEvent> ALL_EVENTS = List.of(
             LLM_RESPONSE_RECEIVED_EVENT,
-            LLM_INTERACTION_FAILURE_EVENT,
-            LLM_INTERACTION_COMPLETE_EVENT,
+            LLM_INTERACTION_ERROR_EVENT,
+            LLM_INTERACTION_COMPLETED_EVENT,
             LLM_INTERACTION_STARTED_EVENT,
             OUTPUT_GUARDRAIL_EXECUTED_EVENT,
             INPUT_GUARDRAIL_EXECUTED_EVENT,
@@ -134,8 +134,8 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
                     new TestInputGuardrailListener(),
                     new TestOutputGuardrailListener(),
                     new TestLLMInteractionStartedListener(),
-                    new TestLLMInteractionCompleteListener(),
-                    new TestLLMInteractionFailureListener(),
+                    new TestLLMInteractionCompletedListener(),
+                    new TestLLMInteractionErrorListener(),
                     new TestLLMResponseReceivedListener(),
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
@@ -222,12 +222,12 @@ class DefaultLLMInteractionEventListenerRegistrarTests {
     private static class TestLLMInteractionStartedListener extends AbstractTestEventListener<LLMInteractionStartedEvent>
             implements LLMInteractionStartedEventListener {}
 
-    private static class TestLLMInteractionCompleteListener
-            extends AbstractTestEventListener<LLMInteractionCompleteEvent>
-            implements LLMInteractionCompleteEventListener {}
+    private static class TestLLMInteractionCompletedListener
+            extends AbstractTestEventListener<LLMInteractionCompletedEvent>
+            implements LLMInteractionCompletedEventListener {}
 
-    private static class TestLLMInteractionFailureListener extends AbstractTestEventListener<LLMInteractionFailureEvent>
-            implements LLMInteractionFailureEventListener {}
+    private static class TestLLMInteractionErrorListener extends AbstractTestEventListener<LLMInteractionErrorEvent>
+            implements LLMInteractionErrorEventListener {}
 
     private static class TestLLMResponseReceivedListener extends AbstractTestEventListener<LLMResponseReceivedEvent>
             implements LLMResponseReceivedEventListener {}

@@ -1,9 +1,9 @@
 package dev.langchain4j.audit.api.listener;
 
-import dev.langchain4j.audit.api.event.LLMInteractionFailureEvent;
+import dev.langchain4j.audit.api.event.LLMInteractionErrorEvent;
 
 /**
- * A listener for {@link LLMInteractionFailureEvent}, which represents an event
+ * A listener for {@link LLMInteractionErrorEvent}, which represents an event
  * that occurs when an interaction with a large language model (LLM) fails.
  * This interface extends the generic {@link LLMInteractionEventListener},
  * specializing it for handling failure events.
@@ -13,9 +13,9 @@ import dev.langchain4j.audit.api.event.LLMInteractionFailureEvent;
  * processing the associated error details encapsulated within the event.
  */
 @FunctionalInterface
-public interface LLMInteractionFailureEventListener extends LLMInteractionEventListener<LLMInteractionFailureEvent> {
+public interface LLMInteractionErrorEventListener extends LLMInteractionEventListener<LLMInteractionErrorEvent> {
     @Override
-    default Class<LLMInteractionFailureEvent> getEventClass() {
-        return LLMInteractionFailureEvent.class;
+    default Class<LLMInteractionErrorEvent> getEventClass() {
+        return LLMInteractionErrorEvent.class;
     }
 }

@@ -1,6 +1,6 @@
 package dev.langchain4j.audit.api.event;
 
-import dev.langchain4j.audit.event.DefaultLLMInteractionCompleteEvent;
+import dev.langchain4j.audit.event.DefaultLLMInteractionCompletedEvent;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * of the interaction process, a returned value, a processed value, or
  * {@code null} if no meaningful result exists.
  */
-public interface LLMInteractionCompleteEvent extends LLMInteractionEvent {
+public interface LLMInteractionCompletedEvent extends LLMInteractionEvent {
     /**
      * Retrieves the result of the interaction process. The result could be the outcome
      * of the interaction, a processed value, or {@code null} if no result exists.
@@ -23,31 +23,31 @@ public interface LLMInteractionCompleteEvent extends LLMInteractionEvent {
     Optional<Object> result();
 
     @Override
-    default Class<LLMInteractionCompleteEvent> eventClass() {
-        return LLMInteractionCompleteEvent.class;
+    default Class<LLMInteractionCompletedEvent> eventClass() {
+        return LLMInteractionCompletedEvent.class;
     }
 
-    static LLMInteractionCompleteEventBuilder builder() {
-        return new LLMInteractionCompleteEventBuilder();
+    static LLMInteractionCompletedEventBuilder builder() {
+        return new LLMInteractionCompletedEventBuilder();
     }
 
     @Override
-    default LLMInteractionCompleteEventBuilder toBuilder() {
-        return new LLMInteractionCompleteEventBuilder(this);
+    default LLMInteractionCompletedEventBuilder toBuilder() {
+        return new LLMInteractionCompletedEventBuilder(this);
     }
 
     /**
-     * Builder for {@link DefaultLLMInteractionCompleteEvent} instances.
+     * Builder for {@link DefaultLLMInteractionCompletedEvent} instances.
      */
-    class LLMInteractionCompleteEventBuilder extends Builder<LLMInteractionCompleteEvent> {
+    class LLMInteractionCompletedEventBuilder extends Builder<LLMInteractionCompletedEvent> {
         private @Nullable Object result;
 
-        protected LLMInteractionCompleteEventBuilder() {}
+        protected LLMInteractionCompletedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link LLMInteractionCompleteEvent}.
+         * Creates a builder initialized from an existing {@link LLMInteractionCompletedEvent}.
          */
-        protected LLMInteractionCompleteEventBuilder(LLMInteractionCompleteEvent src) {
+        protected LLMInteractionCompletedEventBuilder(LLMInteractionCompletedEvent src) {
             super(src);
             result(src.result());
         }
@@ -55,23 +55,23 @@ public interface LLMInteractionCompleteEvent extends LLMInteractionEvent {
         /**
          * Sets the interaction source.
          */
-        public LLMInteractionCompleteEventBuilder interactionSource(InteractionSource interactionSource) {
-            return (LLMInteractionCompleteEventBuilder) super.interactionSource(interactionSource);
+        public LLMInteractionCompletedEventBuilder interactionSource(InteractionSource interactionSource) {
+            return (LLMInteractionCompletedEventBuilder) super.interactionSource(interactionSource);
         }
 
         /**
          * Sets the result.
          */
-        public LLMInteractionCompleteEventBuilder result(@Nullable Object result) {
+        public LLMInteractionCompletedEventBuilder result(@Nullable Object result) {
             this.result = result;
             return this;
         }
 
         /**
-         * Builds a {@link LLMInteractionCompleteEvent}.
+         * Builds a {@link LLMInteractionCompletedEvent}.
          */
-        public LLMInteractionCompleteEvent build() {
-            return new DefaultLLMInteractionCompleteEvent(this);
+        public LLMInteractionCompletedEvent build() {
+            return new DefaultLLMInteractionCompletedEvent(this);
         }
 
         @Nullable
