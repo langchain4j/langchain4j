@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.3.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
@@ -44,6 +44,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .stopSequences(...)
     .toolSpecifications(...)
     .toolChoice(...)
+    .toolChoiceName(...)
+    .disableParallelToolUse(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
     .thinkingType(...)
@@ -56,6 +58,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .logResponses(...)
     .listeners(...)
     .defaultRequestParameters(...)
+    .userId(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
@@ -95,6 +98,18 @@ Identical to the `AnthropicChatModel`, see above.
 Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
+
+
+## Tool Choice
+
+Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use)
+feature is available for both streaming and non-streaming interactions
+by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
+
+## Parallel Tool Use
+
+By default, Anthropic Claude may use multiple tools to answer a user query,
+but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#parallel-tool-use) by setting `disableParallelToolUse(true)`.
 
 ## Caching
 
@@ -139,6 +154,21 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
+## AnthropicTokenCountEstimator
+
+```java
+TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
+        .modelName(CLAUDE_3_OPUS_20240229)
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+List<ChatMessage> messages = List.of(...);
+
+int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+```
+
 ## Quarkus
 
 See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
@@ -150,7 +180,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.5.0-beta11</version>
 </dependency>
 ```
 

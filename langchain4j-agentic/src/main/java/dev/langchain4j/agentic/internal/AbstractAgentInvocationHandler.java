@@ -20,6 +20,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public abstract class AbstractAgentInvocationHandler implements InvocationHandler {
+    protected String name;
+    protected String description;
     protected final String outputName;
 
     private final Class<?> agentServiceClass;
@@ -36,11 +38,13 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultAgenticScope agenticScope) {
-        this.agentServiceClass = workflowService.agentServiceClass;
-        this.outputName = workflowService.outputName;
-        this.beforeCall = workflowService.beforeCall;
-        this.errorHandler = workflowService.errorHandler;
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> service, DefaultAgenticScope agenticScope) {
+        this.agentServiceClass = service.agentServiceClass;
+        this.name = service.name;
+        this.description = service.description;
+        this.outputName = service.outputName;
+        this.beforeCall = service.beforeCall;
+        this.errorHandler = service.errorHandler;
         this.agenticScope = agenticScope;
     }
 
@@ -75,7 +79,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
 
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
+                case "name" -> name;
+                case "description" -> description;
                 case "outputName" -> outputName;
+                case "async" -> false;
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on AgentInstance class : " + method.getName());

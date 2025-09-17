@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -164,7 +165,7 @@ class AiServiceTokenStreamTest {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         ChatModel chatModel = mock(ChatModel.class);
 
-        AiServiceContext context = new AiServiceContext(getClass());
+        AiServiceContext context = AiServiceContext.create(getClass());
         context.streamingChatModel = streamingModel;
         context.chatModel = chatModel;
 
@@ -179,6 +180,10 @@ class AiServiceTokenStreamTest {
                         .userMessageTemplate("")
                         .variables(Map.of())
                         .build())
+                .toolArgumentsErrorHandler((e, c) -> {
+                    throw new RuntimeException(e);
+                })
+                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
     }
 }

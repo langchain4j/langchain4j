@@ -5,9 +5,9 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -15,36 +15,52 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
 
 @Internal
 public class ToolService {
 
+    private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
+        if (error instanceof RuntimeException re) {
+            throw re;
+        } else {
+            throw new RuntimeException(error);
+        }
+    };
+    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) ->
+            ToolErrorHandlerResult.text(error.getMessage());
+
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
+    private final Set<String> immediateReturnTools = new HashSet<>();
     private ToolProvider toolProvider;
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
-
+    private ToolArgumentsErrorHandler argumentsErrorHandler;
+    private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
@@ -76,14 +92,30 @@ public class ToolService {
         }
     }
 
-    private void processToolMethod(Object objectWithTool, Method method) {
+    private void processToolMethod(Object object, Method method) {
         ToolSpecification toolSpecification = toolSpecificationFrom(method);
         if (toolExecutors.containsKey(toolSpecification.name())) {
             throw new IllegalConfigurationException(
                     "Duplicated definition for tool: " + toolSpecification.name());
         }
-        toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
-        toolSpecifications.add(toolSpecificationFrom(method));
+        toolSpecifications.add(toolSpecification);
+
+        ToolExecutor toolExecutor = createToolExecutor(object, method);
+        toolExecutors.put(toolSpecification.name(), toolExecutor);
+
+        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
+            immediateReturnTools.add(toolSpecification.name());
+        }
+    }
+
+    private static ToolExecutor createToolExecutor(Object object, Method method) {
+        return DefaultToolExecutor.builder()
+                .object(object)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .propagateToolExecutionExceptions(true)
+                .build();
     }
 
     /**
@@ -101,29 +133,45 @@ public class ToolService {
     }
 
     private static Executor defaultExecutor() {
-        return DefaultExecutorHolder.INSTANCE;
-    }
-
-    private static class DefaultExecutorHolder {
-        private static final Executor INSTANCE = createDefaultExecutor();
-    }
-
-    private static Executor createDefaultExecutor() {
-        return new ThreadPoolExecutor(
-                0, Integer.MAX_VALUE,
-                1, SECONDS,
-                new SynchronousQueue<>()
-        );
+        return DefaultExecutorProvider.getDefaultExecutorService();
     }
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
+    /**
+     * @since 1.4.0
+     */
+    public void argumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        this.argumentsErrorHandler = handler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolArgumentsErrorHandler argumentsErrorHandler() {
+        return getOrDefault(argumentsErrorHandler, DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER);
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public void executionErrorHandler(ToolExecutionErrorHandler handler) {
+        this.executionErrorHandler = handler;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public ToolExecutionErrorHandler executionErrorHandler() {
+        return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
+    }
+
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty() ?
-                    new ToolServiceContext(null, null) :
+                    ToolServiceContext.Empty.INSTANCE :
                     new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
@@ -152,8 +200,8 @@ public class ToolService {
             ChatModel chatModel,
             ChatMemory chatMemory,
             Object memoryId,
-            Map<String, ToolExecutor> toolExecutors) {
-
+            Map<String, ToolExecutor> toolExecutors,
+            boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -184,6 +232,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolExecutors, memoryId);
 
+            boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResultMessage> entry : toolResults.entrySet()) {
                 ToolExecutionRequest toolExecutionRequest = entry.getKey();
                 ToolExecutionResultMessage toolExecutionResultMessage = entry.getValue();
@@ -199,6 +248,29 @@ public class ToolService {
                 } else {
                     messages.add(toolExecutionResultMessage);
                 }
+
+                if (immediateToolReturn) {
+                    if (isImmediateTool(toolExecutionRequest.name())) {
+                        if (!isReturnTypeResult) {
+                            throw illegalConfiguration(
+                                    "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
+                                    toolExecutionRequest.name());
+                        }
+                    } else {
+                        immediateToolReturn = false;
+                    }
+                }
+            }
+
+            if (immediateToolReturn) {
+                ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
+                return ToolServiceResult.builder()
+                        .intermediateResponses(intermediateResponses)
+                        .finalResponse(finalResponse)
+                        .toolExecutions(toolExecutions)
+                        .aggregateTokenUsage(aggregateTokenUsage)
+                        .immediateToolReturn(true)
+                        .build();
             }
 
             if (chatMemory != null) {
@@ -245,9 +317,10 @@ public class ToolService {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                 if (toolExecutor == null) {
                     return applyToolHallucinationStrategy(toolExecutionRequest);
+                } else {
+                    return executeWithErrorHandling(toolExecutionRequest, toolExecutor, memoryId,
+                            argumentsErrorHandler(), executionErrorHandler());
                 }
-                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                return ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
             }, executor);
             futures.put(toolExecutionRequest, future);
         }
@@ -256,7 +329,14 @@ public class ToolService {
         for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResultMessage>> entry : futures.entrySet()) {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof RuntimeException re) {
+                    throw re;
+                } else {
+                    throw new RuntimeException(e.getCause());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
         }
@@ -269,18 +349,42 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             Object memoryId) {
         Map<ToolExecutionRequest, ToolExecutionResultMessage> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+        for (ToolExecutionRequest request : toolExecutionRequests) {
+            ToolExecutor executor = toolExecutors.get(request.name());
             ToolExecutionResultMessage toolExecutionResultMessage;
-            if (toolExecutor == null) {
-                toolExecutionResultMessage = applyToolHallucinationStrategy(toolExecutionRequest);
+            if (executor == null) {
+                toolExecutionResultMessage = applyToolHallucinationStrategy(request);
             } else {
-                String toolResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, toolResult);
+                toolExecutionResultMessage = executeWithErrorHandling(request, executor, memoryId,
+                        argumentsErrorHandler(), executionErrorHandler());
             }
-            toolResults.put(toolExecutionRequest, toolExecutionResultMessage);
+            toolResults.put(request, toolExecutionResultMessage);
         }
         return toolResults;
+    }
+
+    public static ToolExecutionResultMessage executeWithErrorHandling(ToolExecutionRequest toolRequest,
+                                                                      ToolExecutor executor,
+                                                                      Object memoryId,
+                                                                      ToolArgumentsErrorHandler argumentsErrorHandler,
+                                                                      ToolExecutionErrorHandler executionErrorHandler) {
+        String toolResult;
+        try {
+            toolResult = executor.execute(toolRequest, memoryId);
+        } catch (Exception e) {
+            ToolErrorContext errorContext = ToolErrorContext.builder()
+                    .toolExecutionRequest(toolRequest)
+                    .memoryId(memoryId)
+                    .build();
+            ToolErrorHandlerResult errorHandlerResult;
+            if (e instanceof ToolArgumentsException) {
+                errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
+            } else {
+                errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
+            }
+            toolResult = errorHandlerResult.text();
+        }
+        return ToolExecutionResultMessage.from(toolRequest, toolResult);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
@@ -304,5 +408,9 @@ public class ToolService {
 
     public ToolProvider toolProvider() {
         return toolProvider;
+    }
+
+    public boolean isImmediateTool(String toolName) {
+        return immediateReturnTools.contains(toolName);
     }
 }

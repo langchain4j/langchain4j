@@ -29,4 +29,5 @@ public interface AgenticScope {
     Map<String, Object> state();
 
     String contextAsConversation(String... agentNames);
+    String contextAsConversation(Object... agents);
 }

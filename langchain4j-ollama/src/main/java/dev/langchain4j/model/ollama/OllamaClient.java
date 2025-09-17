@@ -37,6 +37,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,7 @@ class OllamaClient {
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -293,6 +294,7 @@ class OllamaClient {
         private Duration timeout;
         private boolean logRequests;
         private boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
 
         /**
@@ -329,6 +331,15 @@ class OllamaClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

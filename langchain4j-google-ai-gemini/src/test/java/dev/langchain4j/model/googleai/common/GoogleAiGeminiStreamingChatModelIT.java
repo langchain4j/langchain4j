@@ -22,7 +22,8 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static final StreamingChatModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.0-flash-lite")
-            .logRequestsAndResponses(false) // images are huge in logs
+            .logRequests(false) // images are huge in logs
+            .logResponses(false)
             .build();
 
     @Override
@@ -44,7 +45,8 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -70,7 +72,8 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName("gemini-2.0-flash-lite")
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .listeners(List.of(listener))
                 .build();
     }

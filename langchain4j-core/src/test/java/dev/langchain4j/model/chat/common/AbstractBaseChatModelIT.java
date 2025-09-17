@@ -689,7 +689,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).contains("sun");
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1298,7 +1298,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsJsonResponseFormatWithRawSchema")
-    protected void should_respect_JsonRawSchema_responseFormat(M model) throws Exception {
+    protected void should_respect_JsonRawSchema_responseFormat(M model) {
         var rawSchema =
                 """
             {

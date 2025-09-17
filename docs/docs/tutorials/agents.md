@@ -37,7 +37,9 @@ public interface CreativeWriter {
 }
 ```
 
-It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when to use it.
+It is a good practice to also provide with that annotation a short description of the agent's purpose, especially if it is intended to be used in pure agentic patterns, where other agents need to know the capabilities of this agent to make an informed decision on how and when to use it. This description can be also provided programmatically when building the agent, using the `description` method of the agent builder.
+
+Agents must also have a name uniquely identifying them inside the agentic system. This name can be specified either in the `@Agent` annotation or programmatically using the `name` method of the agent builder. If not specified, the name is taken from the name of the method annotated with `@Agent`.
 
 It is now possible to build an instance of this agent using the `AgenticServices.agentBuilder()` method, specifying the interface and the chat model to use. 
 
@@ -91,6 +93,20 @@ public interface AudienceEditor {
 ```
 
 and with a very similar `StyleEditor` doing the same job but for a specific style.
+
+```java
+public interface StyleEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent("Edits a story to better fit a given style")
+    String editStory(@V("story") String story, @V("style") String style);
+}
+```
 
 Note that the input arguments of this agent are annotated with a variable name. In fact the values of the arguments to be passed to the agent are not provided directly, but rather taken from the `AgenticScope` shared variables having those names. This allows the agent to access the output of previous agents in the workflow. If the agent class is compiled with the `-parameters` option enabled, thus retaining at runtime the names of the method parameters, the `@V` annotation can be omitted, and the variable names will be automatically inferred from the parameter names.
 
@@ -289,7 +305,7 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executorService(Executors.newFixedThreadPool(2))
+        .executor(Executors.newFixedThreadPool(2))
         .outputName("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -309,7 +325,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executorService` method also allows to optionally provide an `ExecutorService` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Conditional workflow
 
@@ -401,6 +417,52 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+## Asynchronous agents
+
+By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.
+
+For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
+
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
+
+```java
+FoodExpert foodExpert = AgenticServices
+        .agentBuilder(FoodExpert.class)
+        .chatModel(BASE_MODEL)
+        .async(true)
+        .outputName("meals")
+        .build();
+
+MovieExpert movieExpert = AgenticServices
+        .agentBuilder(MovieExpert.class)
+        .chatModel(BASE_MODEL)
+        .async(true)
+        .outputName("movies")
+        .build();
+
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
+        .sequenceBuilder(EveningPlannerAgent.class)
+        .subAgents(foodExpert, movieExpert)
+        .executor(Executors.newFixedThreadPool(2))
+        .outputName("plans")
+        .output(agenticScope -> {
+            List<String> movies = agenticScope.readState("movies", List.of());
+            List<String> meals = agenticScope.readState("meals", List.of());
+
+            List<EveningPlan> moviesAndMeals = new ArrayList<>();
+            for (int i = 0; i < movies.size(); i++) {
+                if (i >= meals.size()) {
+                    break;
+                }
+                moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
+            }
+            return moviesAndMeals;
+        })
+        .build();
+
+List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
+```
+
 ## Error handling
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
@@ -473,8 +535,8 @@ public interface EveningPlannerAgent {
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
-    @ExecutorService
-    static ExecutorService executor() {
+    @ParallelExecutor
+    static Executor executor() {
         return Executors.newFixedThreadPool(2);
     }
 
@@ -502,7 +564,39 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Note that one limitation of this approach is that the same `ChatModel` will be implicitly used to create all subagents, so it is not possible to mix agents using different chat models in the same workflow. This is a limitation of the current implementation, but it can be overcome in future releases.
+In this case the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
+
+```java
+public interface FoodExpert {
+
+    @UserMessage("""
+        You are a great evening planner.
+        Propose a list of 3 meals matching the given mood.
+        The mood is {{mood}}.
+        For each meal, just give the name of the meal.
+        Provide a list with the 3 items and nothing else.
+        """)
+    @Agent
+    List<String> findMeal(@V("mood") String mood);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return FOOD_MODEL;
+    }
+}
+```
+
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments except for the one annotated with `@ChatMemoryProviderSupplier`. The list of annotations available to this purpose follows:
+
+| Annotation Name               | Description                                                                                                                                               |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                         |
+| `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                        |
+| `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
+| `@ContentRetrieverSupplier` | Returns the `ContentRetriever` to be used by this agent.                                                                                                  |
+| `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                |
+| `@ToolsSupplier` | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                         |
+| `@ToolProviderSupplier` | Returns the `ToolProvider` to be used by this agent.                                        |
 
 To give another example of this declarative API, let's redefine through it the `ExpertsAgent` demonstrated in the conditional workflow section.
 
@@ -969,6 +1063,17 @@ SupervisorAgent bankSupervisor = AgenticServices
 
 In essence an agent in `langchain4j-agentic` can be any Java class having one and only one method annotated with the `@Agent` annotation.
 
+Finally, non-AI agents can also be useful to read the state of the `AgenticScope` or execute small operations on it, and for this reason the `AgenticServices` provides an `agentAction` factory method to create a simple agent from a `Consumer<AgenticServices>`. For instance suppose to have a `scorer` agent that produces a `score` as a `String` value, and a subsequent `reviewer` agent that needs to consume that `score` as a `double`. In this case the two agents would be incompatible, but it is possible to adapt the output of the first in the format required by the second using an `agentAction`, rewriting the `score` state of the `AgenticScope` like it follows:
+
+```java
+UntypedAgent editor = AgenticServices.sequenceBuilder()
+        .subAgents(
+                scorer,
+                AgenticServices.agentAction(agenticScope -> agenticScope.writeState("score", Double.parseDouble(agenticScope.readState("score", "0.0")))),
+                reviewer)
+        .build();
+```
+
 ### Human-in-the-loop
 
 Another common need when building agentic systems is to have a human in the loop, allowing the system to ask user's input for missing information or approval before proceeding with certain actions. This human-in-the-loop capability can be also seen as a special non-AI agent and thus implemented as such.
@@ -1044,6 +1149,8 @@ What is your zodiac sign?
 
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
+Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer. Note however that the supervisor always enforces blocking execution for all agents in order to allow the planning of the next action to take into account the complete state of the `AgenticScope`. For this reason configuring the `HumanInTheLoop` agent in asynchronous mode wouldn't have any effect in the former example.
+
 ## A2A Integration
 
 The additional `langchain4j-agentic-a2a` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
@@ -1080,3 +1187,5 @@ A2ACreativeWriter creativeWriter = AgenticServices
 ```
 
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
+
+The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
