@@ -380,7 +380,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            // fire an interaction complete event
                             LLMInteractionEventListenerRegistrar.getInstance()
                                     .fireEvent(LLMInteractionCompleteEvent.builder()
                                             .interactionSource(interactionSource)
