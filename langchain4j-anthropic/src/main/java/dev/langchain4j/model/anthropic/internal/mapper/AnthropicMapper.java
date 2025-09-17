@@ -33,7 +33,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -118,10 +117,9 @@ public class AnthropicMapper {
                     } else if (content instanceof ImageContent imageContent) {
                         Image image = imageContent.image();
                         if (image.url() != null) {
-                            throw new UnsupportedFeatureException(
-                                    "Anthropic does not support images as URLs, only as Base64-encoded strings");
+                            return AnthropicImageContent.fromUrl(image.url().toString());
                         }
-                        return new AnthropicImageContent(
+                        return AnthropicImageContent.fromBase64(
                                 ensureNotBlank(image.mimeType(), "mimeType"),
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
