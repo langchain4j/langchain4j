@@ -1,18 +1,17 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StringSetOutputParserTest {
 
@@ -63,8 +62,7 @@ class StringSetOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\",\"CAT\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG"))
-        );
+                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG")));
     }
 
     @ParameterizedTest
@@ -80,18 +78,89 @@ class StringSetOutputParserTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {
-            "{\"values\": \"\"}",
-            "{\"values\": false}",
-            "{\"values\":\"banana\"}",
-            "{\"values\":{\"name\":\"Klaus\"}}",
-            "{\"banana\":[{\"name\":\"Klaus\"}]}",
-    })
+    @ValueSource(
+            strings = {
+                "{\"values\": \"\"}",
+                "{\"values\": false}",
+                "{\"values\":\"banana\"}",
+                "{\"values\":{\"name\":\"Klaus\"}}",
+                "{\"banana\":[{\"name\":\"Klaus\"}]}",
+            })
     void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new StringSetOutputParser().parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("java.util.Set<java.lang.String>");
+    }
+
+    @Test
+    void should_handle_json_with_escaped_quotes() {
+        // Given
+        String toParse = "{\"values\":[\"He said \\\"hello\\\"\",\"Quote: \\\"test\\\"\"]}";
+
+        // When
+        Set<String> parsedSet = sut.parse(toParse);
+
+        // Then
+        assertThat(parsedSet).containsExactlyInAnyOrder("He said \"hello\"", "Quote: \"test\"");
+    }
+
+    @Test
+    void should_handle_single_line_with_multiple_separators() {
+        // Given
+        String toParse = "one\n\ntwo\n\n\nthree\n";
+
+        // When
+        Set<String> parsedSet = sut.parse(toParse);
+
+        // Then
+        assertThat(parsedSet).containsExactlyInAnyOrder("one", "two", "three");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"values\":[\"test\", \"duplicate\", \"test\"]}",
+                "{\"values\":[\"A\", \"B\", \"A\", \"C\", \"B\"]}",
+                "duplicate\nvalue\nduplicate\nvalue\nunique"
+            })
+    void should_handle_duplicates_correctly(String input) {
+        // When
+        Set<String> parsedSet = sut.parse(input);
+
+        // Then
+        if (input.startsWith("{")) {
+            if (input.contains("test")) {
+                assertThat(parsedSet).containsExactlyInAnyOrder("test", "duplicate");
+            } else {
+                assertThat(parsedSet).containsExactlyInAnyOrder("A", "B", "C");
+            }
+        } else {
+            assertThat(parsedSet).containsExactlyInAnyOrder("duplicate", "value", "unique");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"values\":[]}", "{\n  \"values\": [\n  ]\n}", "{ \"values\" : [ ] }"})
+    void should_handle_empty_json_arrays(String input) {
+        // When
+        Set<String> parsedSet = sut.parse(input);
+
+        // Then
+        assertThat(parsedSet).isEmpty();
+    }
+
+    @Test
+    void should_preserve_internal_spaces_in_plain_text() {
+        // Given
+        String toParse = "hello world\ntest  value\n  leading space\ntrailing space  ";
+
+        // When
+        Set<String> parsedSet = sut.parse(toParse);
+
+        // Then
+        assertThat(parsedSet)
+                .containsExactlyInAnyOrder("hello world", "test  value", "leading space", "trailing space");
     }
 }
