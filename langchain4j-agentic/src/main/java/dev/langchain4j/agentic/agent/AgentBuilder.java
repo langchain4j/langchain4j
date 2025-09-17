@@ -29,6 +29,7 @@ import java.lang.reflect.Proxy;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentBuilder<T> {
@@ -71,6 +72,8 @@ public class AgentBuilder<T> {
         if (agent == null) {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
+
+        configureAgent(agentServiceClass, this);
 
         if (!isNullOrBlank(agent.name())) {
             this.name = agent.name();

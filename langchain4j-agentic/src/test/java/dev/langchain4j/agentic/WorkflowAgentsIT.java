@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
@@ -14,11 +14,11 @@ import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
@@ -58,12 +58,32 @@ import static org.mockito.Mockito.verify;
 
 public class WorkflowAgentsIT {
 
+    public interface CreativeWriterWithModel extends CreativeWriter {
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
     @Test
     void sequential_agents_tests() {
-        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(baseModel())
-                .outputName("story")
-                .build());
+        check_sequential_agents(false);
+    }
+
+    @Test
+    void sequential_agents_using_declrative_api_tests() {
+        check_sequential_agents(true);
+    }
+
+    void check_sequential_agents(boolean useDeclarativeAPI) {
+        CreativeWriter creativeWriter = useDeclarativeAPI ?
+                spy(AgenticServices.agentBuilder(CreativeWriterWithModel.class)
+                        .outputName("story")
+                        .build()) :
+                spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                        .chatModel(baseModel())
+                        .outputName("story")
+                        .build());
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
