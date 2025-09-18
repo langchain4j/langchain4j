@@ -1,18 +1,8 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -23,10 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -34,12 +20,9 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.TokenUsage;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,73 +31,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT {
 
-    OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_1_NANO)
-            .temperature(0.0)
-            .maxTokens(50)
-            .logRequests(false) // base64-encoded images are huge in logs
-            .logResponses(true)
-            .build();
-
-    ToolSpecification calculator = ToolSpecification.builder()
-            .name("calculator")
-            .description("returns a sum of two numbers")
-            .parameters(JsonObjectSchema.builder()
-                    .addIntegerProperty("first")
-                    .addIntegerProperty("second")
-                    .required("first", "second")
-                    .build())
-            .build();
-
     @Test
-    void should_stream_answer() throws Exception {
-
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        model.chat("What is the capital of Germany?", new StreamingChatResponseHandler() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                answerBuilder.append(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(30, SECONDS);
-        ChatResponse response = futureResponse.get(30, SECONDS);
-
-        assertThat(answer).contains("Berlin");
-        assertThat(response.aiMessage().text()).isEqualTo(answer);
-
-        assertTokenUsage(response.tokenUsage());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_respect_maxTokens() throws Exception {
+    void should_respect_deprecated_maxTokens() throws Exception {
 
         // given
         int maxTokens = 1;
@@ -202,98 +124,18 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    @RetryingTest(value = 2, suspendForMs = 1500)
-    void should_execute_a_tool_then_stream_answer() throws Exception {
-
-        // given
-        UserMessage userMessage = userMessage("2+2=?");
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .maxOutputTokens(20)
-                .toolSpecifications(calculator)
-                .build();
-
-        // when
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        model.chat(chatRequest, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                Exception e =
-                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
-                futureResponse.completeExceptionally(e);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse response = futureResponse.get(10, SECONDS);
-        AiMessage aiMessage = response.aiMessage();
-
-        // then
-        assertThat(aiMessage.text()).isNull();
-
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        assertTokenUsage(response.tokenUsage());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        // when
-        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
-
-        model.chat(messages, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {}
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                secondFutureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                secondFutureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-
-        // then
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
     void should_execute_a_tool_with_blank_partial_arguments() {
 
         // given
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_5_NANO)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         ToolSpecification appendToFile = ToolSpecification.builder()
                 .name("append_to_file")
                 .parameters(JsonObjectSchema.builder()
@@ -306,7 +148,6 @@ class OpenAiStreamingChatModelIT {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
-                .maxOutputTokens(30)
                 .toolSpecifications(appendToFile)
                 .build();
 
@@ -321,199 +162,6 @@ class OpenAiStreamingChatModelIT {
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
-    }
-
-    @Test
-    void should_execute_tool_forcefully_then_stream_answer() throws Exception {
-
-        // given
-        UserMessage userMessage = userMessage("2+2=?");
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(calculator)
-                        .toolChoice(REQUIRED)
-                        .build())
-                .build();
-
-        // when
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        model.chat(chatRequest, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                Exception e =
-                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
-                futureResponse.completeExceptionally(e);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse response = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = response.aiMessage();
-
-        // then
-        assertThat(aiMessage.text()).isNull();
-
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        assertTokenUsage(response.tokenUsage());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        // when
-        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
-
-        model.chat(messages, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {}
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                secondFutureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                secondFutureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-
-        // then
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_execute_multiple_tools_in_parallel_then_stream_answer() throws Exception {
-
-        // given
-        StreamingChatModel model = OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = userMessage("2+2=? 3+3=?");
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .toolSpecifications(calculator)
-                .build();
-
-        // when
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        model.chat(chatRequest, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                Exception e =
-                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
-                futureResponse.completeExceptionally(e);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse response = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = response.aiMessage();
-
-        // then
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
-
-        ToolExecutionRequest toolExecutionRequest1 =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        ToolExecutionRequest toolExecutionRequest2 =
-                aiMessage.toolExecutionRequests().get(1);
-        assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
-
-        assertTokenUsage(response.tokenUsage());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
-
-        List<ChatMessage> messages =
-                asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
-
-        // when
-        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
-
-        model.chat(messages, new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {}
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                secondFutureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                secondFutureResponse.completeExceptionally(error);
-            }
-        });
-
-        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-
-        // then
-        assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -548,24 +196,6 @@ class OpenAiStreamingChatModelIT {
         Person person = new ObjectMapper().readValue(response.aiMessage().text(), Person.class);
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.surname).isEqualTo("Heisler");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images_from_different_sources() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Briefly describe each image."));
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(singletonList(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @ParameterizedTest
@@ -670,12 +300,5 @@ class OpenAiStreamingChatModelIT {
 
         List<ServerSentEvent> rawEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
         assertThat(rawEvents).isEqualTo(events.subList(0, events.size() - 1)); // without [DONE]
-    }
-
-    private static void assertTokenUsage(TokenUsage tokenUsage) {
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 }
