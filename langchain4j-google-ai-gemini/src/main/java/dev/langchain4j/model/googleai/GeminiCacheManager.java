@@ -3,9 +3,11 @@ package dev.langchain4j.model.googleai;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Map;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import dev.langchain4j.exception.HttpException;
@@ -19,7 +21,7 @@ public class GeminiCacheManager {
     private static final Logger log = LoggerFactory.getLogger(GeminiCacheManager.class);
 
     private final GeminiService geminiService;
-    private final Map<String, CachedContentMetadata> cachedContents;
+    private final ConcurrentMap<String, CachedContentMetadata> cachedContents;
 
     public GeminiCacheManager(GeminiService geminiService) {
         this.geminiService = geminiService;
@@ -29,7 +31,8 @@ public class GeminiCacheManager {
         this.cachedContents = new ConcurrentHashMap<>(Optional.ofNullable(geminiService.listCachedContents(listCachedContentsRequest)
                         .getCachedContents()).orElse(Collections.emptyList()).stream()
                 .map(CachedContentMetadata::new)
-                .collect(Collectors.toMap(CachedContentMetadata::getKey, Function.identity())));
+                .collect(Collectors.toConcurrentMap(CachedContentMetadata::getKey, Function.identity(),
+                        BinaryOperator.maxBy(Comparator.comparing(CachedContentMetadata::getExpirationTime)))));
         log.debug("Loaded existing cached contents: {}", cachedContents);
     }
 
@@ -132,6 +135,10 @@ public class GeminiCacheManager {
 
         public void setChecksumVerified(boolean checksumVerified) {
             this.checksumVerified = checksumVerified;
+        }
+
+        public Instant getExpirationTime() {
+            return expirationTime;
         }
 
         public boolean isAlmostExpired() {
