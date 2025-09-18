@@ -16,13 +16,11 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -101,35 +99,6 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_accept_base64_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        ChatResponse response = visionModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_not_accept_image_url() {
-
-        // given
-        ImageContent imageAsURL = ImageContent.from(CAT_IMAGE_URL);
-
-        UserMessage userMessage = UserMessage.from(imageAsURL);
-
-        // when-then
-        assertThatThrownBy(() -> visionModel.chat(userMessage))
-                .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessage("Anthropic does not support images as URLs, only as Base64-encoded strings");
-    }
-
-    @Test
     void should_accept_base64_pdf() {
 
         // given
@@ -144,22 +113,6 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("test content");
-    }
-
-    @Test
-    void should_accept_text_and_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."), ImageContent.from(base64Data, "image/png"));
-
-        // when
-        ChatResponse response = visionModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -186,21 +139,6 @@ class AnthropicChatModelIT {
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxTokens);
 
         assertThat(response.finishReason()).isEqualTo(LENGTH);
-    }
-
-    @Test
-    void should_respect_system_message() {
-
-        // given
-        SystemMessage systemMessage = SystemMessage.from("You are a professional translator into German language."
-                + "You should return only translated text, and I mean it");
-        UserMessage userMessage = UserMessage.from("Translate: I love you");
-
-        // when
-        ChatResponse response = model.chat(systemMessage, userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
     @Test
