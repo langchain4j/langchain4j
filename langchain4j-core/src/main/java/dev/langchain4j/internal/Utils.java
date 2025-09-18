@@ -491,7 +491,7 @@ public class Utils {
     }
 
     /**
-     * Logs a warning if the given string value is {@code null} or empty.
+     * Logs a warning if the given string value is {@code null} or blank.
      * <p>
      * This method is typically used in constructors or validation routines to
      * highlight missing or incomplete field values without throwing an exception.
@@ -500,22 +500,22 @@ public class Utils {
      * <p>
      * Example usage:
      * <pre>
-     * this.name = Utils.warnIfNullOrEmpty(name, "name", McpResource.class);
+     * this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
      * </pre>
      *
      * Which will log:
      * <pre>
-     * McpResource: 'name' is null or empty
+     * McpResource: 'name' is null or blank
      * </pre>
      *
-     * @param value     the string value to check (may be {@code null} or empty)
+     * @param value     the string value to check (may be {@code null} or blank)
      * @param fieldName the name of the field being validated (used in the log message)
      * @param clazz     the class where the validation occurs (used to identify context in the log)
-     * @return the original value (may be {@code null} or empty)
+     * @return the original value (may be {@code null} or blank)
      */
-    public static String warnIfNullOrEmpty(String value, String fieldName, Class<?> clazz) {
-        if (value == null || value.isEmpty()) {
-            log.warn("{}: '{}' is null or empty", clazz.getSimpleName(), fieldName);
+    public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
+        if (isNullOrBlank(fieldName)) {
+            log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;
     }

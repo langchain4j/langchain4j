@@ -20,8 +20,8 @@ public class McpResource {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("mimeType") String mimeType) {
-        this.uri = Utils.warnIfNullOrEmpty(uri, "uri", McpResource.class);
-        this.name = Utils.warnIfNullOrEmpty(name, "name", McpResource.class);
+        this.uri = Utils.warnIfNullOrBlank(uri, "uri", McpResource.class);
+        this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
         this.description = description;
         this.mimeType = mimeType;
     }

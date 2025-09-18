@@ -21,8 +21,8 @@ public class McpResourceTemplate {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("mimeType") String mimeType) {
-        this.uriTemplate = Utils.warnIfNullOrEmpty(uriTemplate, "uriTemplate", McpResourceTemplate.class);
-        this.name = Utils.warnIfNullOrEmpty(name, "name", McpResourceTemplate.class);
+        this.uriTemplate = Utils.warnIfNullOrBlank(uriTemplate, "uriTemplate", McpResourceTemplate.class);
+        this.name = Utils.warnIfNullOrBlank(name, "name", McpResourceTemplate.class);
         this.description = description;
         this.mimeType = mimeType;
     }
