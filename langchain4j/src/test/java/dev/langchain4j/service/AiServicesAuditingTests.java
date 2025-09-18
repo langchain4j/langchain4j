@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -32,16 +33,17 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -65,30 +67,28 @@ class AiServicesAuditingTests {
             Supplier<Assistant> assistantCreator,
             Consumer<Assistant> chatAssertion,
             String expectedMethodName,
+            boolean hasTools,
             List<Class<? extends AiServiceInteractionEvent>> noEventsReceivedClasses,
             String expectedUserMessage,
             List<Class<? extends AiServiceInteractionEvent>> expectedEventsReceivedClasses) {
 
-        // Create the assistant
-        var assistant = assistantCreator.get();
-
         // Invoke the operation prior to registering the listeners
         // Nothing should happen
-        chatAssertion.accept(assistant);
+        chatAssertion.accept(assistantCreator.get());
         assertNoEventsReceived(7, listeners.values());
 
         // Now register the events
         registerAllListeners();
 
         // Let's invoke the operation a few times
-        IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistant));
+        IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreator.get()));
 
         assertNoEventsReceived(
                 noEventsReceivedClasses.size(),
                 noEventsReceivedClasses.stream().map(listeners::get).toList());
 
-        // There should be 1 started, 1 complete, 1 response received, 1 tool invocation
         assertEventsReceived(
+                hasTools,
                 expectedEventsReceivedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
@@ -98,17 +98,50 @@ class AiServicesAuditingTests {
         unregisterAllListeners();
 
         // Nothing should happen when invoking the operation again
-        chatAssertion.accept(assistant);
+        chatAssertion.accept(assistantCreator.get());
         assertNoEventsReceived(7, listeners.values());
     }
 
     @Test
-    void failureChat() {
+    void failureStreamingChat() {
         runScenario(
-                () -> Assistant.createFailingService(),
-                assistant ->
-                        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
-                "chat",
+                () -> Assistant.createFailingService(true),
+                assistant -> {
+                    var latch = new CountDownLatch(1);
+
+                    try {
+                        assistant
+                                .streamingChat("Hello!")
+                                .onError(t -> {
+                                    try {
+                                        assertThat(t)
+                                                .isNotNull()
+                                                .isInstanceOf(RuntimeException.class)
+                                                .hasMessage("LLM invocation failed");
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onCompleteResponse(r -> {
+                                    try {
+                                        fail("onCompleteResponse should not be called");
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onPartialResponse(r -> fail("onPartialResponse should not be called"))
+                                .onToolExecuted(t -> fail("onToolExecuted should not be called"))
+                                .start();
+                    } finally {
+                        try {
+                            latch.await(1, TimeUnit.MINUTES);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                },
+                "streamingChat",
+                false,
                 List.of(
                         AiServiceInteractionCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
@@ -120,12 +153,82 @@ class AiServicesAuditingTests {
     }
 
     @Test
+    void failureChat() {
+        runScenario(
+                () -> Assistant.createFailingService(false),
+                assistant ->
+                        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
+                "chat",
+                false,
+                List.of(
+                        AiServiceInteractionCompletedEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        ToolExecutedEvent.class),
+                "Hello!",
+                List.of(AiServiceInteractionStartedEvent.class, AiServiceInteractionErrorEvent.class));
+    }
+
+    @Test
+    void successfulStreamingChatNoTools() {
+        runScenario(
+                () -> Assistant.create(false, true),
+                assistant -> {
+                    var latch = new CountDownLatch(1);
+
+                    try {
+                        assistant
+                                .streamingChat("Hello!")
+                                .onPartialResponse(r -> assertThat(r).isNotNull())
+                                .onCompleteResponse(response -> {
+                                    try {
+                                        assertThat(response)
+                                                .isNotNull()
+                                                .extracting(r -> r.aiMessage().text())
+                                                .isEqualTo(DEFAULT_EXPECTED_RESPONSE);
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onError(t -> {
+                                    try {
+                                        fail("onError should not be called");
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onToolExecuted(t -> fail("onToolExecuted should not be called"))
+                                .start();
+                    } finally {
+                        try {
+                            latch.await(1, TimeUnit.MINUTES);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                },
+                "streamingChat",
+                false,
+                List.of(
+                        AiServiceInteractionErrorEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        ToolExecutedEvent.class),
+                "Hello!",
+                List.of(
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class));
+    }
+
+    @Test
     void successfulChatNoTools() {
         runScenario(
-                () -> Assistant.create(false),
-                //                () -> Assistant.create(false, this.wireMock),
+                () -> Assistant.create(false, false),
                 assistant -> assertThat(assistant.chat("Hello!")).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
                 "chat",
+                false,
                 List.of(
                         AiServiceInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
@@ -141,14 +244,10 @@ class AiServicesAuditingTests {
     @Test
     void successfulChatWithTools() {
         runScenario(
-                () -> Assistant.create(true),
-                //                () -> Assistant.create(true, this.wireMock),
-                assistant -> {
-                    // Need to reset wiremock's state before each invocation
-                    //                    this.wireMock.setScenarioState(TOOLS_SCENARIO, Scenario.STARTED);
-                    assertThat(assistant.chat(TOOL_USER_MESSAGE)).isEqualTo(TOOL_EXPECTED_RESPONSE);
-                },
+                () -> Assistant.create(true, false),
+                assistant -> assertThat(assistant.chat(TOOL_USER_MESSAGE)).isEqualTo(TOOL_EXPECTED_RESPONSE),
                 "chat",
+                true,
                 List.of(
                         AiServiceInteractionErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
@@ -162,16 +261,73 @@ class AiServicesAuditingTests {
     }
 
     @Test
-    void auditingWithInputGuardrails() {
+    void successfulStreamingChatWithTools() {
         runScenario(
-                () -> Assistant.create(false),
-                //                () -> Assistant.create(false, this.wireMock),
+                () -> Assistant.create(true, true),
+                assistant -> {
+                    var latch = new CountDownLatch(1);
+
+                    try {
+                        assistant
+                                .streamingChat(TOOL_USER_MESSAGE)
+                                .onPartialResponse(r -> assertThat(r).isNotNull())
+                                .onToolExecuted(t -> assertThat(t)
+                                        .isNotNull()
+                                        .extracting(te -> te.request().name())
+                                        .isEqualTo("squareRoot"))
+                                .onCompleteResponse(response -> {
+                                    try {
+                                        assertThat(response)
+                                                .isNotNull()
+                                                .extracting(r -> r.aiMessage().text())
+                                                .isEqualTo(TOOL_EXPECTED_RESPONSE);
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onError(t -> {
+                                    try {
+                                        fail("onError should not be called");
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .start();
+                    } finally {
+                        try {
+                            latch.await(1, TimeUnit.MINUTES);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                },
+                "streamingChat",
+                true,
+                List.of(
+                        AiServiceInteractionErrorEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class),
+                TOOL_USER_MESSAGE,
+                List.of(
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        ToolExecutedEvent.class));
+    }
+
+    @Test
+    void auditingStreamingWithInputGuardrails() {
+        runScenario(
+                () -> Assistant.create(false, true),
                 assistant -> assertThatExceptionOfType(InputGuardrailException.class)
-                        .isThrownBy(() -> assistant.chatWithInputGuardrails("Hello!"))
+                        .isThrownBy(() -> assistant
+                                .streamingChatWithInputGuardrails("Hello!")
+                                .start())
                         .withMessage(
                                 "The guardrail %s failed with this message: User message is not valid",
                                 FailureInputGuardrail.class.getName()),
-                "chatWithInputGuardrails",
+                "streamingChatWithInputGuardrails",
+                false,
                 List.of(
                         AiServiceInteractionCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
@@ -185,16 +341,93 @@ class AiServicesAuditingTests {
     }
 
     @Test
+    void auditingWithInputGuardrails() {
+        runScenario(
+                () -> Assistant.create(false, false),
+                assistant -> assertThatExceptionOfType(InputGuardrailException.class)
+                        .isThrownBy(() -> assistant.chatWithInputGuardrails("Hello!"))
+                        .withMessage(
+                                "The guardrail %s failed with this message: User message is not valid",
+                                FailureInputGuardrail.class.getName()),
+                "chatWithInputGuardrails",
+                false,
+                List.of(
+                        AiServiceInteractionCompletedEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        ToolExecutedEvent.class,
+                        AiServiceResponseReceivedEvent.class),
+                "Hello!",
+                List.of(
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionErrorEvent.class,
+                        InputGuardrailExecutedEvent.class));
+    }
+
+    @Test
+    void auditingStreamingWithOutputGuardrails() {
+        runScenario(
+                () -> Assistant.create(false, true),
+                assistant -> {
+                    var latch = new CountDownLatch(1);
+
+                    try {
+                        assistant
+                                .streamingChatWithOutputGuardrails("Hello!")
+                                .onError(t -> {
+                                    try {
+                                        assertThat(t)
+                                                .isNotNull()
+                                                .isInstanceOf(OutputGuardrailException.class)
+                                                .hasMessage(
+                                                        "The guardrail %s failed with this message: LLM response is not valid",
+                                                        FailureOutputGuardrail.class.getName());
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onCompleteResponse(r -> {
+                                    try {
+                                        fail("onCompleteResponse should not be called");
+                                    } finally {
+                                        latch.countDown();
+                                    }
+                                })
+                                .onPartialResponse(r -> fail("onPartialResponse should not be called"))
+                                .onToolExecuted(t -> fail("onToolExecuted should not be called"))
+                                .start();
+                    } finally {
+                        try {
+                            latch.await(1, TimeUnit.MINUTES);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                },
+                "streamingChatWithOutputGuardrails",
+                false,
+                List.of(
+                        AiServiceInteractionCompletedEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        ToolExecutedEvent.class),
+                "Hello!",
+                List.of(
+                        AiServiceInteractionStartedEvent.class,
+                        AiServiceInteractionErrorEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        AiServiceResponseReceivedEvent.class));
+    }
+
+    @Test
     void auditingWithOutputGuardrails() {
         runScenario(
-                () -> Assistant.create(false),
-                //                () -> Assistant.create(false, this.wireMock),
+                () -> Assistant.create(false, false),
                 assistant -> assertThatExceptionOfType(OutputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithOutputGuardrails("Hello!"))
                         .withMessage(
                                 "The guardrail %s failed with this message: LLM response is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
+                false,
                 List.of(
                         AiServiceInteractionCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
@@ -227,6 +460,7 @@ class AiServicesAuditingTests {
     }
 
     private static void assertEventsReceived(
+            boolean hasTools,
             int expectedSize,
             String expectedUserMessage,
             String expectedMethodName,
@@ -237,7 +471,13 @@ class AiServicesAuditingTests {
             assertThat(l)
                     .isNotNull()
                     .extracting(MyEventListener::count)
-                    .isEqualTo(GuardrailExecutedEvent.class.isAssignableFrom(l.getEventClass()) ? 10 : 5);
+                    .isEqualTo(
+                            (GuardrailExecutedEvent.class.isAssignableFrom(l.getEventClass())
+                                            || (hasTools
+                                                    && AiServiceResponseReceivedEvent.class.isAssignableFrom(
+                                                            l.getEventClass())))
+                                    ? 10
+                                    : 5);
 
             assertThat(l).isNotNull().extracting(MyEventListener::event).isNotNull();
         });
@@ -275,10 +515,10 @@ class AiServicesAuditingTests {
 
         return Stream.of(
                         new MyInputGuardrailExecutedEventListener(),
-                        new MyLLMInteractionCompletedEventListener(),
-                        new MyLLMInteractionErrorEventListener(),
-                        new MyLLMInteractionStartedEventListener(),
-                        new MyLLMResponseReceivedEventListener(),
+                        new MyAiServiceInteractionCompletedEventListener(),
+                        new MyAiServiceInteractionErrorEventListener(),
+                        new MyAiServiceInteractionStartedEventListener(),
+                        new MyAiServiceResponseReceivedEventListener(),
                         new MyOutputGuardrailExecutedEventListener(),
                         new MyToolExecutedEventListener())
                 .collect(Collectors.toMap(AiServiceInteractionEventListener::getEventClass, Function.identity()));
@@ -288,26 +528,57 @@ class AiServicesAuditingTests {
     interface Assistant {
         String chat(String message);
 
+        TokenStream streamingChat(String message);
+
         @InputGuardrails({SuccessInputGuardrail.class, FailureInputGuardrail.class})
         String chatWithInputGuardrails(String message);
+
+        @InputGuardrails({SuccessInputGuardrail.class, FailureInputGuardrail.class})
+        TokenStream streamingChatWithInputGuardrails(String message);
 
         @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
         String chatWithOutputGuardrails(String message);
 
-        static Assistant create(boolean shouldHaveToolAccess) {
+        @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
+        TokenStream streamingChatWithOutputGuardrails(String message);
+
+        static Assistant create(boolean shouldHaveToolAccess, boolean streaming) {
             var builder = AiServices.builder(Assistant.class);
 
             if (shouldHaveToolAccess) {
-                builder.chatModel(new ChatModelWithTool()).tools(new Calculator());
+                if (streaming) {
+                    builder.executeToolsConcurrently()
+                            .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                                    AiMessage.from(ToolExecutionRequest.builder()
+                                            .name("squareRoot")
+                                            .arguments("{\n  \"arg0\": 485906798473894056\n}")
+                                            .build()),
+                                    AiMessage.from(TOOL_EXPECTED_RESPONSE)))
+                            .tools(new Calculator());
+                } else {
+                    builder.chatModel(new ChatModelWithTool()).tools(new Calculator());
+                }
             } else {
-                builder.chatModel(ChatModelMock.thatAlwaysResponds(DEFAULT_EXPECTED_RESPONSE));
+                if (streaming) {
+                    builder.executeToolsConcurrently()
+                            .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                                    AiMessage.from(DEFAULT_EXPECTED_RESPONSE)));
+                } else {
+                    builder.chatModel(ChatModelMock.thatAlwaysResponds(DEFAULT_EXPECTED_RESPONSE));
+                }
             }
 
             return builder.build();
         }
 
-        static Assistant createFailingService() {
-            return AiServices.create(Assistant.class, new FailingChatModel());
+        static Assistant createFailingService(boolean streaming) {
+            return streaming
+                    ? AiServices.create(
+                            Assistant.class,
+                            StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"))
+                    : AiServices.create(
+                            Assistant.class,
+                            ChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"));
         }
     }
 
@@ -377,13 +648,6 @@ class AiServicesAuditingTests {
         }
     }
 
-    public static class FailingChatModel implements ChatModel {
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            throw new RuntimeException("LLM failed!");
-        }
-    }
-
     public abstract static class MyEventListener<T extends AiServiceInteractionEvent>
             implements AiServiceInteractionEventListener<T> {
         private final AtomicInteger count = new AtomicInteger();
@@ -413,22 +677,87 @@ class AiServicesAuditingTests {
         }
     }
 
+    //    private static class WaitingForCompletionTokenStream implements TokenStream {
+    //        private final CountDownLatch latch = new CountDownLatch(1);
+    //        private final TokenStream tokenStream;
+    //
+    //        private WaitingForCompletionTokenStream(TokenStream tokenStream) {
+    //            this.tokenStream = ensureNotNull(tokenStream, "tokenStream");
+    //        }
+    //
+    //        @Override
+    //        public TokenStream onPartialResponse(Consumer<String> partialResponseHandler) {
+    //            return this.tokenStream.onPartialResponse(partialResponseHandler);
+    //        }
+    //
+    //        @Override
+    //        public TokenStream onRetrieved(Consumer<List<Content>> contentHandler) {
+    //            return this.tokenStream.onRetrieved(contentHandler);
+    //        }
+    //
+    //        @Override
+    //        public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler) {
+    //            return this.tokenStream.onToolExecuted(toolExecuteHandler);
+    //        }
+    //
+    //        @Override
+    //        public TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler) {
+    //            return this.tokenStream.onCompleteResponse(wrap(completeResponseHandler));
+    //        }
+    //
+    //        @Override
+    //        public TokenStream onError(Consumer<Throwable> errorHandler) {
+    //            return this.tokenStream.onError(wrap(errorHandler));
+    //        }
+    //
+    //        @Override
+    //        public TokenStream ignoreErrors() {
+    //            return this.tokenStream.ignoreErrors();
+    //        }
+    //
+    //        private <T> Consumer<T> wrap(Consumer<T> consumer) {
+    //            return t -> {
+    //              try {
+    //                  consumer.accept(t);
+    //              }
+    //              finally {
+    //                  this.latch.countDown();
+    //              }
+    //            };
+    //        }
+    //
+    //        @Override
+    //        public void start() {
+    //            try {
+    //                this.tokenStream.start();
+    //            }
+    //            finally {
+    //                try {
+    //                    this.latch.await(1, TimeUnit.MINUTES);
+    //                } catch (InterruptedException e) {
+    //                    throw new RuntimeException(e);
+    //                }
+    //            }
+    //        }
+    //    }
+
     public static class MyToolExecutedEventListener extends MyEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
 
     public static class MyOutputGuardrailExecutedEventListener extends MyEventListener<OutputGuardrailExecutedEvent>
             implements OutputGuardrailExecutedEventListener {}
 
-    public static class MyLLMResponseReceivedEventListener extends MyEventListener<AiServiceResponseReceivedEvent>
+    public static class MyAiServiceResponseReceivedEventListener extends MyEventListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedEventListener {}
 
-    public static class MyLLMInteractionStartedEventListener extends MyEventListener<AiServiceInteractionStartedEvent>
+    public static class MyAiServiceInteractionStartedEventListener
+            extends MyEventListener<AiServiceInteractionStartedEvent>
             implements AiServiceInteractionStartedEventListener {}
 
-    public static class MyLLMInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
+    public static class MyAiServiceInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
             implements LLMInteractionErrorEventListener {}
 
-    public static class MyLLMInteractionCompletedEventListener
+    public static class MyAiServiceInteractionCompletedEventListener
             extends MyEventListener<AiServiceInteractionCompletedEvent>
             implements AiServiceInteractionCompletedEventListener {}
 

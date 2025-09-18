@@ -8,6 +8,8 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
@@ -148,10 +150,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             final ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(() -> execute(toolExecutionRequest), toolExecutor)
-                    .thenApplyAsync(r -> new ToolRequestResult(toolExecutionRequest, r), toolExecutor);
+            var future = CompletableFuture.supplyAsync(
+                    () -> new ToolRequestResult(toolExecutionRequest, execute(toolExecutionRequest)), toolExecutor);
             toolExecutionFutures.add(future);
         }
+    }
+
+    private <T> void fireInteractionComplete(T result) {
+        AiServiceInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                        .invocationContext(commonGuardrailParams.invocationContext())
+                        .result(result)
+                        .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
@@ -168,6 +178,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .fireEvent(AiServiceResponseReceivedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .response(chatResponse)
+                        .build());
+    }
+
+    private void fireErrorReceived(Throwable error) {
+        AiServiceInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceInteractionErrorEvent.builder()
+                        .invocationContext(commonGuardrailParams.invocationContext())
+                        .error(error)
                         .build());
     }
 
@@ -218,8 +236,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             if (immediateToolReturn) {
+                ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+                fireInteractionComplete(finalChatResponse);
+
                 if (completeResponseHandler != null) {
-                    ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                     completeResponseHandler.accept(finalChatResponse);
                 }
                 return;
@@ -253,9 +273,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
-            if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+            ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
+            if (completeResponseHandler != null) {
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
                     if (commonGuardrailParams != null) {
@@ -279,7 +299,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     responseBuffer.clear();
                 }
 
+                fireInteractionComplete(finalChatResponse);
                 completeResponseHandler.accept(finalChatResponse);
+            } else {
+                fireInteractionComplete(finalChatResponse);
             }
         }
     }
@@ -341,6 +364,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onError(Throwable error) {
         if (errorHandler != null) {
             try {
+                fireErrorReceived(error);
                 errorHandler.accept(error);
             } catch (Exception e) {
                 LOG.error("While handling the following error...", error);

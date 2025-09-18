@@ -13,6 +13,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -273,6 +274,8 @@ public class ToolService {
 
             if (immediateToolReturn) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
+                fireResponseReceivedEvent(finalResponse, auditInteractionSource);
+
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
                         .finalResponse(finalResponse)
@@ -292,6 +295,7 @@ public class ToolService {
                     .build();
 
             chatResponse = chatModel.chat(chatRequest);
+            fireResponseReceivedEvent(chatResponse, auditInteractionSource);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -302,6 +306,14 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    private void fireResponseReceivedEvent(ChatResponse chatResponse, AiServiceInvocationContext invocationContext) {
+        AiServiceInteractionEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceResponseReceivedEvent.builder()
+                        .invocationContext(invocationContext)
+                        .response(chatResponse)
+                        .build());
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResultMessage> execute(
