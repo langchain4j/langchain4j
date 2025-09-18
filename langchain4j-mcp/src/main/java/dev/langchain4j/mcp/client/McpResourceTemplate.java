@@ -1,9 +1,8 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.internal.Utils;
 import java.util.Objects;
 
 /**
@@ -22,10 +21,8 @@ public class McpResourceTemplate {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("mimeType") String mimeType) {
-        ensureNotNull(uriTemplate, "uriTemplate");
-        ensureNotNull(name, "name");
-        this.uriTemplate = uriTemplate;
-        this.name = name;
+        this.uriTemplate = Utils.warnIfNullOrEmpty(uriTemplate, "uriTemplate", McpResourceTemplate.class);
+        this.name = Utils.warnIfNullOrEmpty(name, "name", McpResourceTemplate.class);
         this.description = description;
         this.mimeType = mimeType;
     }

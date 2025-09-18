@@ -1,16 +1,14 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.internal.Utils;
 import java.util.Objects;
 
 /**
  * The 'Resource' object from the MCP protocol schema.
  */
 public class McpResource {
-
     private final String uri;
     private final String name;
     private final String description;
@@ -22,10 +20,8 @@ public class McpResource {
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
             @JsonProperty("mimeType") String mimeType) {
-        ensureNotNull(uri, "uri");
-        ensureNotNull(name, "name");
-        this.uri = uri;
-        this.name = name;
+        this.uri = Utils.warnIfNullOrEmpty(uri, "uri", McpResource.class);
+        this.name = Utils.warnIfNullOrEmpty(name, "name", McpResource.class);
         this.description = description;
         this.mimeType = mimeType;
     }
