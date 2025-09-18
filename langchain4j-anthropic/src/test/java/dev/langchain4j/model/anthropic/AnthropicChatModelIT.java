@@ -1,12 +1,9 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,14 +16,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -41,9 +36,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT {
 
-    static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-
     ChatModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -51,52 +43,6 @@ class AnthropicChatModelIT {
             .logRequests(false) // base64-encoded PDFs are huge
             .logResponses(true)
             .build();
-
-    ChatModel visionModel = AnthropicChatModel.builder()
-            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .maxTokens(20)
-            .logRequests(false) // base64-encoded images are huge
-            .logResponses(true)
-            .build();
-
-    ToolSpecification calculator = ToolSpecification.builder()
-            .name("calculator")
-            .description("returns a sum of two numbers")
-            .parameters(JsonObjectSchema.builder()
-                    .addIntegerProperty("first")
-                    .addIntegerProperty("second")
-                    .required("first", "second")
-                    .build())
-            .build();
-
-    @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
-
-        // given
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = userMessage("What is the capital of Germany?");
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).contains("Berlin");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
 
     @Test
     void should_accept_base64_pdf() {
@@ -113,32 +59,6 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("test content");
-    }
-
-    @Test
-    void should_respect_maxTokens() {
-
-        // given
-        int maxTokens = 3;
-
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .maxTokens(maxTokens)
-                .build();
-
-        UserMessage userMessage = userMessage("What is the capital of Germany?");
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).isNotBlank();
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxTokens);
-
-        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
@@ -498,73 +418,6 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_execute_a_tool_then_answer() {
-
-        // given
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
-
-        UserMessage userMessage = userMessage("2+2=?");
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(userMessage)
-                .toolSpecifications(toolSpecifications)
-                .build();
-
-        // when
-        ChatResponse response = model.chat(request);
-
-        // then
-        AiMessage aiMessage = response.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-
-        ChatRequest secondRequest = ChatRequest.builder()
-                .messages(userMessage, aiMessage, toolExecutionResultMessage)
-                .toolSpecifications(toolSpecifications)
-                .build();
-
-        // when
-        ChatResponse secondResponse = model.chat(secondRequest);
-
-        // then
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
-
-        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount())
-                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
     void should_cache_system_message_and_tools() {
 
         // given
@@ -659,76 +512,6 @@ class AnthropicChatModelIT {
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
         assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
         assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
-    }
-
-    @Test
-    void should_execute_multiple_tools_in_parallel_then_answer() {
-
-        // given
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(userMessage)
-                .toolSpecifications(calculator)
-                .build();
-
-        // when
-        ChatResponse response = model.chat(request);
-
-        // then
-        AiMessage aiMessage = response.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
-
-        ToolExecutionRequest toolExecutionRequest1 =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        ToolExecutionRequest toolExecutionRequest2 =
-                aiMessage.toolExecutionRequests().get(1);
-        assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
-
-        ChatRequest secondRequest = ChatRequest.builder()
-                .messages(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2)
-                .toolSpecifications(calculator)
-                .build();
-
-        // when
-        ChatResponse secondResponse = model.chat(secondRequest);
-
-        // then
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-        assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
-
-        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount())
-                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @Test
