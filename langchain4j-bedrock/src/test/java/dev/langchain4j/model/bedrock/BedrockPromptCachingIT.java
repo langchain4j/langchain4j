@@ -19,7 +19,6 @@ import software.amazon.awssdk.regions.Region;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockPromptCachingIT {
 
-    private static final String CLAUDE_MODEL = "us.anthropic.claude-3-7-sonnet-20250219-v1:0";
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
 
     @Test
