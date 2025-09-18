@@ -1,8 +1,9 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
 
 /**
@@ -20,8 +21,9 @@ public class McpResource {
             @JsonProperty("uri") String uri,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("mimeType") String mimeType
-    ) {
+            @JsonProperty("mimeType") String mimeType) {
+        ensureNotNull(uri, "uri");
+        ensureNotNull(name, "name");
         this.uri = uri;
         this.name = name;
         this.description = description;
@@ -49,10 +51,10 @@ public class McpResource {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (McpResource) obj;
-        return Objects.equals(this.uri, that.uri) &&
-                Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.uri, that.uri)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -62,10 +64,10 @@ public class McpResource {
 
     @Override
     public String toString() {
-        return "McpResource[" +
-                "uri=" + uri + ", " +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "mimeType=" + mimeType + ']';
+        return "McpResource[" + "uri="
+                + uri + ", " + "name="
+                + name + ", " + "description="
+                + description + ", " + "mimeType="
+                + mimeType + ']';
     }
 }
