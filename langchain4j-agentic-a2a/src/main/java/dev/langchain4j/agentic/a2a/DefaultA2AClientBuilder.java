@@ -1,18 +1,24 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import io.a2a.A2A;
-import io.a2a.client.A2AClient;
+import io.a2a.client.Client;
+import io.a2a.client.ClientEvent;
+import io.a2a.client.MessageEvent;
+import io.a2a.client.TaskEvent;
+import io.a2a.client.TaskUpdateEvent;
+import io.a2a.client.config.ClientConfig;
+import io.a2a.client.transport.jsonrpc.JSONRPCTransport;
+import io.a2a.client.transport.jsonrpc.JSONRPCTransportConfig;
 import io.a2a.spec.A2AClientError;
-import io.a2a.spec.A2AServerException;
+import io.a2a.spec.A2AClientException;
 import io.a2a.spec.AgentCard;
 import io.a2a.spec.Message;
-import io.a2a.spec.MessageSendParams;
 import io.a2a.spec.Part;
-import io.a2a.spec.SendMessageResponse;
-import io.a2a.spec.Task;
 import io.a2a.spec.TextPart;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -20,16 +26,21 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     private final Class<T> agentServiceClass;
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
     private final AgentCard agentCard;
-    private final A2AClient a2aClient;
+    private final Client a2aClient;
 
     private String name;
     private String uniqueName;
@@ -41,7 +52,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
         this.uniqueName = uniqueAgentName(this.name);
-        this.a2aClient = new A2AClient(agentCard);
+        try {
+            this.a2aClient = Client.builder(agentCard)
+                    .clientConfig(new ClientConfig.Builder()
+                            .setStreaming(false) // Disabling streaming
+                            .build())
+                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
+                    .build();
+        } catch (A2AClientException e) {
+            throw new RuntimeException(e);
+        }
         this.agentServiceClass = agentServiceClass;
     }
 
@@ -73,8 +93,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "outputName" -> outputName;
                                 case "async" -> async;
                                 default ->
-                                        throw new UnsupportedOperationException(
-                                                "Unknown method on AgentInstance class : " + method.getName());
+                                    throw new UnsupportedOperationException(
+                                            "Unknown method on AgentInstance class : " + method.getName());
                             };
                         }
 
@@ -83,8 +103,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "agentCard" -> agentCard;
                                 case "inputNames" -> inputNames;
                                 default ->
-                                        throw new UnsupportedOperationException(
-                                                "Unknown method on A2AClientInstance class : " + method.getName());
+                                    throw new UnsupportedOperationException(
+                                            "Unknown method on A2AClientInstance class : " + method.getName());
                             };
                         }
 
@@ -95,7 +115,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         return (T) agent;
     }
 
-    private Object invokeAgent(Object[] args) throws A2AServerException {
+    private Object invokeAgent(Object[] args) throws A2AClientException {
         List<Part<?>> parts = new ArrayList<>();
 
         if (agentServiceClass == UntypedAgent.class) {
@@ -109,23 +129,52 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
             }
         }
 
-        Message message = new Message.Builder()
-                .role(Message.Role.USER)
-                .parts(parts)
-                .build();
+        Message message =
+                new Message.Builder().role(Message.Role.USER).parts(parts).build();
 
-        MessageSendParams params = new MessageSendParams.Builder()
-                .message(message)
-                .build();
-
-        SendMessageResponse response = a2aClient.sendMessage(params);
-
-        return ((Task)response.getResult()).getArtifacts().stream()
-                .flatMap(a -> a.parts().stream())
-                .filter(TextPart.class::isInstance)
-                .map(TextPart.class::cast)
-                .map(TextPart::getText)
-                .collect(Collectors.joining("\n"));
+        final CompletableFuture<String> messageResponse = new CompletableFuture<>();
+        List<BiConsumer<ClientEvent, AgentCard>> consumers = List.of((event, card) -> {
+            if (event instanceof MessageEvent messageEvent) {
+                messageResponse.complete(messageEvent.getMessage().getParts().stream()
+                        .filter(TextPart.class::isInstance)
+                        .map(TextPart.class::cast)
+                        .map(TextPart::getText)
+                        .collect(Collectors.joining("\n")));
+            } else if (event instanceof TaskEvent taskEvent) {
+                messageResponse.complete(taskEvent.getTask().getArtifacts().stream()
+                        .flatMap(a -> a.parts().stream())
+                        .filter(TextPart.class::isInstance)
+                        .map(TextPart.class::cast)
+                        .map(TextPart::getText)
+                        .collect(Collectors.joining("\n")));
+            } else if (event instanceof TaskUpdateEvent updateEvent) {
+                if (updateEvent.getTask().getArtifacts() != null) {
+                    messageResponse.complete(updateEvent.getTask().getArtifacts().stream()
+                            .flatMap(a -> a.parts().stream())
+                            .filter(TextPart.class::isInstance)
+                            .map(TextPart.class::cast)
+                            .map(TextPart::getText)
+                            .collect(Collectors.joining("\n")));
+                }
+            } else {
+                messageResponse.completeExceptionally(
+                        new IllegalArgumentException("The event expected should be of type " + event.getClass()));
+            }
+        });
+        // Create error handler for streaming errors
+        Consumer<Throwable> streamingErrorHandler = (error) -> {
+            LOG.error("Streaming error occurred: " + error.getMessage(), error);
+            messageResponse.completeExceptionally(error);
+        };
+        a2aClient.sendMessage(message, consumers, streamingErrorHandler);
+        try {
+            String responseText = messageResponse.get();
+            LOG.debug("Response: " + responseText);
+            return responseText;
+        } catch (InterruptedException | ExecutionException e) {
+            LOG.error("Failed to get response: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+        }
     }
 
     @Override
