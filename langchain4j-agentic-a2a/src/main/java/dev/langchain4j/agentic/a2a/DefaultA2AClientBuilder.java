@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     private final Class<T> agentServiceClass;
@@ -29,11 +31,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private final AgentCard agentCard;
     private final A2AClient a2aClient;
 
+    private String name;
+    private String uniqueName;
     private String[] inputNames;
     private String outputName;
+    private boolean async;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
+        this.name = agentCard.name();
+        this.uniqueName = uniqueAgentName(this.name);
         this.a2aClient = new A2AClient(agentCard);
         this.agentServiceClass = agentServiceClass;
     }
@@ -60,9 +67,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
                         if (method.getDeclaringClass() == AgentSpecification.class) {
                             return switch (method.getName()) {
-                                case "name" -> agentCard.name();
+                                case "name" -> name;
+                                case "uniqueName" -> uniqueName;
                                 case "description" -> agentCard.description();
                                 case "outputName" -> outputName;
+                                case "async" -> async;
                                 default ->
                                         throw new UnsupportedOperationException(
                                                 "Unknown method on AgentInstance class : " + method.getName());
@@ -128,6 +137,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     @Override
     public DefaultA2AClientBuilder<T> outputName(String outputName) {
         this.outputName = outputName;
+        return this;
+    }
+
+    public DefaultA2AClientBuilder<T> async(boolean async) {
+        this.async = async;
         return this;
     }
 }
