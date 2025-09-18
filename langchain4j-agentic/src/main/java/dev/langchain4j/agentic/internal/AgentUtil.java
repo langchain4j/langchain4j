@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
@@ -9,6 +10,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -18,8 +20,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentUtil {
 
-    private static final String MEMORY_ID_ARG_NAME = "@MemoryId";
-    private static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
+    public static final String MEMORY_ID_ARG_NAME = "@MemoryId";
+    public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
+    public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
     private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
 
@@ -74,11 +77,7 @@ public class AgentUtil {
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
-    public static Object[] methodInvocationArguments(AgenticScope agenticScope, Method method) {
-        return methodInvocationArguments(agenticScope, argumentsFromMethod(method));
-    }
-
-    static List<AgentArgument> argumentsFromMethod(Method method) {
+    public static List<AgentArgument> argumentsFromMethod(Method method) {
         return Stream.of(method.getParameters())
                 .map(p -> new AgentArgument(p.getType(), parameterName(p)))
                 .toList();
@@ -88,6 +87,9 @@ public class AgentUtil {
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }
+        if (p.getAnnotation(LoopCounter.class) != null) {
+            return LOOP_COUNTER_ARG_NAME;
+        }
         if (AgenticScope.class.isAssignableFrom(p.getType())) {
             return AGENTIC_SCOPE_ARG_NAME;
         }
@@ -95,6 +97,10 @@ public class AgentUtil {
     }
 
     public static Object[] methodInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
+        return methodInvocationArguments(agenticScope, agentArguments, Map.of());
+    }
+
+    public static Object[] methodInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs) throws MissingArgumentException {
         Object[] invocationArgs = new Object[agentArguments.size()];
         int i = 0;
         for (AgentArgument arg : agentArguments) {
@@ -105,6 +111,10 @@ public class AgentUtil {
             }
             if (argName.equals(AGENTIC_SCOPE_ARG_NAME)) {
                 invocationArgs[i++] = agenticScope;
+                continue;
+            }
+            if (additionalArgs.containsKey(argName)) {
+                invocationArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
             invocationArgs[i++] = argumentFromAgenticScope(agenticScope, arg.type(), argName);
