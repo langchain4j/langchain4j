@@ -198,19 +198,19 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash")
                 .build();
 
+        // TODO use local file
+        byte[] bytes = readBytes("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3");
+        String base64Data = new String(Base64.getEncoder().encode(bytes));
+
+        UserMessage userMessage = UserMessage.from(
+                AudioContent.from(base64Data, "audio/mp3"),
+                TextContent.from("Give a summary of the audio"));
+
         // when
-        ChatResponse response = gemini.chat(UserMessage.from(
-                AudioContent.from(
-                        new String(
-                                Base64.getEncoder()
-                                        .encode( // TODO use local file
-                                                readBytes(
-                                                        "https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"))),
-                        "audio/mp3"),
-                TextContent.from("Give a summary of the audio")));
+        ChatResponse response = gemini.chat(userMessage);
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Pixel");
