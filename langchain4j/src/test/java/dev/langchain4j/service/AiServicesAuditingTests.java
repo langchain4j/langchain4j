@@ -35,7 +35,6 @@ import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import java.util.Collection;
@@ -544,19 +543,21 @@ class AiServicesAuditingTests {
 
         static Assistant create(boolean shouldHaveToolAccess, boolean streaming) {
             var builder = AiServices.builder(Assistant.class);
+            var toolRequestMessage = AiMessage.from(ToolExecutionRequest.builder()
+                    .name("squareRoot")
+                    .arguments("{\n  \"arg0\": 485906798473894056\n}")
+                    .build());
+            var toolResponseMessage = AiMessage.from(TOOL_EXPECTED_RESPONSE);
 
             if (shouldHaveToolAccess) {
                 if (streaming) {
                     builder.executeToolsConcurrently()
-                            .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
-                                    AiMessage.from(ToolExecutionRequest.builder()
-                                            .name("squareRoot")
-                                            .arguments("{\n  \"arg0\": 485906798473894056\n}")
-                                            .build()),
-                                    AiMessage.from(TOOL_EXPECTED_RESPONSE)))
+                            .streamingChatModel(
+                                    StreamingChatModelMock.thatAlwaysStreams(toolRequestMessage, toolResponseMessage))
                             .tools(new Calculator());
                 } else {
-                    builder.chatModel(new ChatModelWithTool()).tools(new Calculator());
+                    builder.chatModel(ChatModelMock.thatAlwaysResponds(toolRequestMessage, toolResponseMessage))
+                            .tools(new Calculator());
                 }
             } else {
                 if (streaming) {
@@ -579,37 +580,6 @@ class AiServicesAuditingTests {
                     : AiServices.create(
                             Assistant.class,
                             ChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"));
-        }
-    }
-
-    public static class ChatModelWithTool extends ChatModelMock {
-        private enum State {
-            INITIAL,
-            SECOND
-        }
-
-        private State state = State.INITIAL;
-
-        public ChatModelWithTool() {
-            super(TOOL_EXPECTED_RESPONSE);
-        }
-
-        @Override
-        protected AiMessage getAiMessage(ChatRequest chatRequest) {
-            if (state == State.INITIAL) {
-                state = State.SECOND;
-
-                return AiMessage.builder()
-                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
-                                .name("squareRoot")
-                                .arguments("{\n  \"arg0\": 485906798473894056\n}")
-                                .build()))
-                        .build();
-            } else {
-                state = State.INITIAL;
-            }
-
-            return super.getAiMessage(chatRequest);
         }
     }
 
