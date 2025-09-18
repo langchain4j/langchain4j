@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import io.quarkiverse.mcp.server.Cancellation;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
@@ -30,10 +31,24 @@ public class tools_mcp_server {
         return Boolean.valueOf(input).toString();
     }
 
-    @Tool(description = "Takes 10 seconds to complete")
-    public String longOperation() throws Exception {
-        TimeUnit.SECONDS.sleep(10);
-        return "ok";
+    volatile boolean cancellationReceived = false;
+
+    @Tool(description = "Takes 10 seconds to complete. If the execution is cancelled, the wasCancellationReceived tool will start returning true")
+    public String longOperation(Cancellation cancellation) throws Exception {
+        long start = System.currentTimeMillis();
+        while(System.currentTimeMillis() - start < 10000) {
+            if(cancellation.check().isRequested()) {
+                cancellationReceived = true;
+                return "CANCELLED";
+            }
+            TimeUnit.SECONDS.sleep(1);
+        }
+        return "FINISHED";
+    }
+
+    @Tool(description = "Will return true if longOperation was previously cancelled while running")
+    public String wasCancellationReceived() {
+        return Boolean.toString(cancellationReceived);
     }
 
     @Tool(description = "Takes an untyped array")
