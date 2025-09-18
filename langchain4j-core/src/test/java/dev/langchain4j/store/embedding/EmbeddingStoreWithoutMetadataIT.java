@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.within;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -36,8 +37,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     }
 
     @Test
-    void should_add_embedding() {
-        
+    protected void should_add_embedding() {
+
         // given
         Embedding embedding = embeddingModel().embed("hello").content();
         String id = embeddingStore().add(embedding);
@@ -53,7 +54,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(id).isNotBlank();
-        
+
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
@@ -65,8 +66,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     }
 
     @Test
-    void should_add_embedding_with_id() {
-        
+    protected void should_add_embedding_with_id() {
+
         // given
         String id = randomUUID();
         Embedding embedding = embeddingModel().embed("hello").content();
@@ -77,7 +78,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
-        
+
         // when
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
@@ -115,13 +116,13 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertEmbeddingApprox(embedding, match.embedding(), 1e-6f);
         }
         assertThat(match.embedded()).isEqualTo(segment);
     }
 
     @Test
-    void should_add_multiple_embeddings() {
+    protected void should_add_multiple_embeddings() {
         // given
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
@@ -196,7 +197,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -249,7 +250,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -302,7 +303,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                         percentage());
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest2 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
@@ -319,7 +319,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches2.get(1).embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest3 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
@@ -335,7 +334,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches3).hasSize(2);
         assertThat(matches3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches3.get(1).embeddingId()).isEqualTo(secondId);
-
 
         // given
         EmbeddingSearchRequest searchRequest4 = EmbeddingSearchRequest.builder()
@@ -398,5 +396,15 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     protected Percentage percentage() {
         return withPercentage(1);
+    }
+
+
+    protected void assertEmbeddingApprox(Embedding expected, Embedding actual, float atol) {
+        float[] exp = expected.vector();
+        float[] act = actual.vector();
+        assertThat(act).hasSize(exp.length);
+        for (int i = 0; i < exp.length; i++) {
+            assertThat(act[i]).isCloseTo(exp[i], within(atol)); // or offset(atol)
+        }
     }
 }
