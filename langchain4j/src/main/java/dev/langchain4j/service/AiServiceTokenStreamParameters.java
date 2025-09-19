@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -26,7 +27,7 @@ public class AiServiceTokenStreamParameters {
     private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
@@ -39,7 +40,7 @@ public class AiServiceTokenStreamParameters {
         this.toolExecutor = builder.toolExecutor;
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
-        this.memoryId = builder.memoryId;
+        this.invocationContext = builder.invocationContext;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
     }
@@ -101,10 +102,10 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @return the memory ID
+     * @since 1.6.0
      */
-    public Object memoryId() {
-        return memoryId;
+    public InvocationContext invocationContext() {
+        return invocationContext;
     }
 
     /**
@@ -149,7 +150,7 @@ public class AiServiceTokenStreamParameters {
         private Executor toolExecutor;
         private List<Content> retrievedContents;
         private AiServiceContext context;
-        private Object memoryId;
+        private InvocationContext invocationContext;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
 
@@ -234,14 +235,8 @@ public class AiServiceTokenStreamParameters {
             return this;
         }
 
-        /**
-         * Sets the memory ID.
-         *
-         * @param memoryId the memory ID
-         * @return this builder
-         */
-        public Builder memoryId(Object memoryId) {
-            this.memoryId = memoryId;
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 
