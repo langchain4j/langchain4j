@@ -537,29 +537,6 @@ enum Priority {
 ```
 :::
 
-### `@ToolMemoryId`
-If your AI Service method has a parameter annotated with `@MemoryId`,
-you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:
-
-```java
-interface Assistant{
-    String chat(@UserMessage String userMessage, @MemoryId memoryId);
-}
-
-class Tools {
-    @Tool
-    String add(int a, int b, @ToolMemoryId memoryId) {
-        ...
-    }
-}
-
-String answer = assistant.chat("What is 2+2?", "12345");
-```
-
-The value provided to the AI Service method will be automatically passed to the `@Tool` method.
-This feature is useful if you have multiple users and/or multiple chats/memories per user
-and wish to distinguish between them inside the `@Tool` method.
-
 ### `InvocationParameters`
 If you wish to pass extra data into the tool when invoking AI Service, you can do it with
 `InvocationParameters`:
@@ -597,6 +574,29 @@ Parameters are stored in a mutable, thread safe `Map`.
 Data can be passed between AI Service components inside the `InvocationParameters`
 (for example, from one tool to another or from a RAG component to a tool)
 during a single invocation of the AI Service.
+
+### `@ToolMemoryId`
+If your AI Service method has a parameter annotated with `@MemoryId`,
+you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:
+
+```java
+interface Assistant{
+    String chat(@UserMessage String userMessage, @MemoryId memoryId);
+}
+
+class Tools {
+    @Tool
+    String addCalendarEvent(CalendarEvent event, @ToolMemoryId memoryId) {
+        ...
+    }
+}
+
+String answer = assistant.chat("Tomorrow I will have a meeting with Klaus at 14:00", "12345");
+```
+
+The value provided to the AI Service method will be automatically passed to the `@Tool` method.
+This feature is useful if you have multiple users and/or multiple chats/memories per user
+and wish to distinguish between them inside the `@Tool` method.
 
 ### Executing Tools Concurrently
 
