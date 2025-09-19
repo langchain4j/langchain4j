@@ -586,7 +586,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         // then
         assertThat(toolExecutionResult.isError()).isTrue();
-        assertThat(toolExecutionResult.result()).isNull(); // TODO?
+        assertThat(toolExecutionResult.result()).isNull();
         assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
     }
 }

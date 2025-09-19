@@ -27,10 +27,9 @@ public class AiServiceTokenStreamParameters {
     private final Executor toolExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final InvocationContext invocationContext;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -41,10 +40,9 @@ public class AiServiceTokenStreamParameters {
         this.toolExecutor = builder.toolExecutor;
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
-        this.memoryId = builder.memoryId;
+        this.invocationContext = builder.invocationContext;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
-        this.invocationContext = builder.invocationContext;
     }
 
     /**
@@ -104,10 +102,10 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @return the memory ID
+     * @since 1.5.0
      */
-    public Object memoryId() {
-        return memoryId;
+    public InvocationContext invocationContext() {
+        return invocationContext;
     }
 
     /**
@@ -128,13 +126,6 @@ public class AiServiceTokenStreamParameters {
      */
     public Object methodKey() {
         return methodKey;
-    }
-
-    /**
-     * @since 1.5.0
-     */
-    public InvocationContext invocationContext() {
-        return invocationContext;
     }
 
     /**
@@ -159,10 +150,9 @@ public class AiServiceTokenStreamParameters {
         private Executor toolExecutor;
         private List<Content> retrievedContents;
         private AiServiceContext context;
-        private Object memoryId;
+        private InvocationContext invocationContext;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
-        private InvocationContext invocationContext;
 
         protected Builder() {}
 
@@ -245,14 +235,8 @@ public class AiServiceTokenStreamParameters {
             return this;
         }
 
-        /**
-         * Sets the memory ID.
-         *
-         * @param memoryId the memory ID
-         * @return this builder
-         */
-        public Builder memoryId(Object memoryId) {
-            this.memoryId = memoryId;
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 
@@ -277,11 +261,6 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
-            return this;
-        }
-
-        public Builder invocationContext(InvocationContext invocationContext) {
-            this.invocationContext = invocationContext;
             return this;
         }
 

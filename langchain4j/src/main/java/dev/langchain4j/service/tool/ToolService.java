@@ -201,10 +201,10 @@ public class ToolService {
             List<ChatMessage> messages,
             ChatModel chatModel,
             ChatMemory chatMemory,
-            Object memoryId,
+            InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
-            boolean isReturnTypeResult,
-            InvocationContext invocationContext) {
+            boolean isReturnTypeResult
+    ) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -237,28 +237,28 @@ public class ToolService {
 
             boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
-                ToolExecutionRequest toolRequest = entry.getKey();
-                ToolExecutionResult toolResult = entry.getValue();
-                ToolExecutionResultMessage toolResultMessage = ToolExecutionResultMessage.from(toolRequest, toolResult.resultText());
+                ToolExecutionRequest request = entry.getKey();
+                ToolExecutionResult result = entry.getValue();
+                ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(request, result.resultText());
 
                 ToolExecution toolExecution = ToolExecution.builder()
-                        .request(toolRequest)
-                        .result(toolResult)
+                        .request(request)
+                        .result(result)
                         .build();
                 toolExecutions.add(toolExecution);
 
                 if (chatMemory != null) {
-                    chatMemory.add(toolResultMessage);
+                    chatMemory.add(resultMessage);
                 } else {
-                    messages.add(toolResultMessage);
+                    messages.add(resultMessage);
                 }
 
                 if (immediateToolReturn) {
-                    if (isImmediateTool(toolRequest.name())) {
+                    if (isImmediateTool(request.name())) {
                         if (!isReturnTypeResult) {
                             throw illegalConfiguration(
                                     "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
-                                    toolRequest.name());
+                                    request.name());
                         }
                     } else {
                         immediateToolReturn = false;

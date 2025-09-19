@@ -40,10 +40,9 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final InvocationContext invocationContext;
 
     private Consumer<String> partialResponseHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
@@ -80,10 +79,9 @@ public class AiServiceTokenStream implements TokenStream {
         this.retrievedContents = copy(parameters.gretrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
-        this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
+        this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
-        this.invocationContext = parameters.invocationContext();
     }
 
     @Override
@@ -158,7 +156,7 @@ public class AiServiceTokenStream implements TokenStream {
                         .messages(messages)
                         .toolSpecifications(toolSpecifications)
                         .build(),
-                memoryId);
+                invocationContext.chatMemoryId());
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
@@ -168,7 +166,7 @@ public class AiServiceTokenStream implements TokenStream {
         var handler = new AiServiceStreamingResponseHandler(
                 chatExecutor,
                 context,
-                memoryId,
+                invocationContext,
                 partialResponseHandler,
                 partialThinkingHandler,
                 beforeToolExecutionHandler,
@@ -184,8 +182,7 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey,
-                invocationContext);
+                methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

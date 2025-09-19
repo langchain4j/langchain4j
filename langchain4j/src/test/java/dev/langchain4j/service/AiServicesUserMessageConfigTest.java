@@ -104,7 +104,7 @@ class AiServicesUserMessageConfigTest {
 
         String illegalChat7(String userMessage, InvocationParameters invocationParameters);
 
-        String illegalChat8(@UserMessage String userMessage, InvocationParameters ep1, InvocationParameters ep2);
+        String illegalChat8(@UserMessage String userMessage, InvocationParameters ip1, InvocationParameters ip2);
 
         // TODO more tests with @UserName, @V, @MemoryId
     }

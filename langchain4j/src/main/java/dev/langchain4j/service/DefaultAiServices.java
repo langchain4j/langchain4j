@@ -199,12 +199,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        Object chatMemoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
+                        Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
                         ChatMemory chatMemory = context.hasChatMemory()
-                                ? context.chatMemoryService.getOrCreateChatMemory(chatMemoryId)
+                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(chatMemoryId, method, args);
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
@@ -213,7 +213,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
                         InvocationContext invocationContext = InvocationContext.builder()
-                                .chatMemoryId(chatMemoryId)
+                                .chatMemoryId(memoryId)
                                 .invocationParameters(invocationParameters)
                                 .build();
 
@@ -293,10 +293,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
-                                    .memoryId(chatMemoryId)
+                                    .invocationContext(invocationContext)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
-                                    .invocationContext(invocationContext)
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
@@ -325,7 +324,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .apply(ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
-                                        .build(), chatMemoryId);
+                                        .build(), memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
@@ -343,10 +342,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 context.chatModel,
                                 chatMemory,
-                                chatMemoryId,
+                                invocationContext,
                                 toolServiceContext.toolExecutors(),
-                                isReturnTypeResult,
-                                invocationContext);
+                                isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             return Result.builder()

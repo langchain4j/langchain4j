@@ -175,7 +175,10 @@ class AiServiceTokenStreamTest {
                 .messages(messages)
                 .retrievedContents(content)
                 .context(context)
-                .memoryId(memoryId)
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId(memoryId)
+                        .invocationParameters(new InvocationParameters())
+                        .build())
                 .commonGuardrailParams(GuardrailRequestParams.builder()
                         .chatMemory(null)
                         .augmentationResult(null)
@@ -186,10 +189,6 @@ class AiServiceTokenStreamTest {
                     throw new RuntimeException(e);
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
-                .invocationContext(InvocationContext.builder()
-                        .chatMemoryId("default")
-                        .invocationParameters(new InvocationParameters())
-                        .build())
                 .build());
     }
 }

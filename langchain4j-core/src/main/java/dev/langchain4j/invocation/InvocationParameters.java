@@ -19,6 +19,7 @@ import dev.langchain4j.rag.query.Query;
  * }
  *
  * InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+ * String response = assistant.chat("Hi", parameters);
  * </pre>
  * <p>
  * {@code InvocationParameters} can be accessed within the {@link Tool}-annotated method:
@@ -32,7 +33,7 @@ import dev.langchain4j.rag.query.Query;
  * }
  * </pre>
  * <p>
- * In this case, the LLM is not aware of these parameters; they are only visible to the user code.
+ * In this case, the LLM is not aware of these parameters; they are only visible to LangChain4j and user code.
  * <p>
  * {@code InvocationParameters} can also be accessed within other components, such as:
  * <pre>
@@ -47,14 +48,15 @@ import dev.langchain4j.rag.query.Query;
  */
 public class InvocationParameters {
 
-    private final Map<String, Object> map;
+    private final ConcurrentHashMap<String, Object> map;
 
     public InvocationParameters() {
-        this(new ConcurrentHashMap<>());
+        this.map = new ConcurrentHashMap<>();
     }
 
     public InvocationParameters(Map<String, Object> map) {
-        this.map = ensureNotNull(map, "map");
+        ensureNotNull(map, "map");
+        this.map = new ConcurrentHashMap<>(map);
     }
 
     public Map<String, Object> asMap() {

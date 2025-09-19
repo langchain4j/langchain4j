@@ -50,7 +50,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final ChatExecutor chatExecutor;
     private final AiServiceContext context;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
@@ -76,12 +76,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private final InvocationContext invocationContext;
-
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
             AiServiceContext context,
-            Object memoryId,
+            InvocationContext invocationContext,
             Consumer<String> partialResponseHandler,
             Consumer<PartialThinking> partialThinkingHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
@@ -97,11 +95,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey,
-            InvocationContext invocationContext) {
+            Object methodKey) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
-        this.memoryId = ensureNotNull(memoryId, "memoryId");
+        this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
         this.methodKey = methodKey;
 
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
@@ -123,8 +120,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
-
-        this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
     }
 
     @Override
@@ -203,14 +198,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             ChatRequest chatRequest = ChatRequest.builder()
-                    .messages(messagesToSend(memoryId))
+                    .messages(messagesToSend(invocationContext.chatMemoryId()))
                     .toolSpecifications(toolSpecifications)
                     .build();
 
             var handler = new AiServiceStreamingResponseHandler(
                     chatExecutor,
                     context,
-                    memoryId,
+                    invocationContext,
                     partialResponseHandler,
                     partialThinkingHandler,
                     beforeToolExecutionHandler,
@@ -226,8 +221,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey,
-                    invocationContext);
+                    methodKey);
 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
@@ -305,11 +299,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ChatMemory getMemory() {
-        return getMemory(memoryId);
+        return getMemory(invocationContext.chatMemoryId());
     }
 
     private ChatMemory getMemory(Object memId) {
-        return context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memoryId) : temporaryMemory;
+        return context.hasChatMemory()
+                ? context.chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId())
+                : temporaryMemory;
     }
 
     private void addToMemory(ChatMessage chatMessage) {

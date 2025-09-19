@@ -41,7 +41,7 @@ class InvocationParametersTest {
         seedMap.put("key2", "value2");
         invocationParameters.put("key3", "value3");
 
-        assertThat(seedMap).containsOnlyKeys("key1", "key2", "key3");
-        assertThat(invocationParameters.asMap()).isSameAs(seedMap);
+        assertThat(seedMap).containsOnlyKeys("key1", "key2");
+        assertThat(invocationParameters.asMap()).containsOnlyKeys("key1", "key3");
     }
 }

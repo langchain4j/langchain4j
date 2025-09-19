@@ -3,6 +3,8 @@ package dev.langchain4j.service.tool;
 import java.util.Objects;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Represents the execution of a tool, including the request and the result.
  */
@@ -12,8 +14,8 @@ public class ToolExecution {
     private final ToolExecutionResult result;
 
     private ToolExecution(Builder builder) {
-        this.request = builder.request; // TODO
-        this.result = builder.result; // TODO
+        this.request = ensureNotNull(builder.request, "request");
+        this.result = ensureNotNull(builder.result, "result");
     }
 
     /**
@@ -26,7 +28,7 @@ public class ToolExecution {
     }
 
     /**
-     * Returns the result of the tool execution. TODO as text
+     * Returns the tool execution result as text.
      *
      * @return the result of the tool execution.
      * @see #resultObject()
@@ -36,8 +38,8 @@ public class ToolExecution {
     }
 
     /**
-     * Returns the result object of the tool execution.
-     * This is an actual object returned from the tool (not serialized). TODO
+     * Returns the tool execution result as object.
+     * This object is the actual value returned by the tool.
      *
      * @return the result of the tool execution.
      * @see #result()

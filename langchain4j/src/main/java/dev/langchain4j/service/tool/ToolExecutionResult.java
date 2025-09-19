@@ -1,29 +1,36 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Objects;
+
 /**
+ * Represents the result of a tool execution.
+ *
  * @since 1.5.0
  */
-public class ToolExecutionResult { // TODO name, location
+public class ToolExecutionResult {
 
     private final boolean isError;
-    private final Object result; // TODO name
-    private final String resultText; // TODO name
+    private final Object result;
+    private final String resultText;
 
     public ToolExecutionResult(Builder builder) {
-        this.isError = builder.isError; // TODO
-        this.result = builder.result; // TODO
-        this.resultText = builder.resultText; // TODO
+        this.isError = builder.isError;
+        this.result = builder.result;
+        this.resultText = ensureNotNull(builder.resultText, "resultText");
     }
 
     /**
-     * TODO
+     * Indicates whether the tool execution result represents an error.
      */
     public boolean isError() {
         return isError;
     }
 
     /**
-     * Returns the result of the tool execution. It is an original object returned from tool. TODO
+     * Returns the tool execution result as object.
+     * This object is the actual value returned by the tool.
      *
      * @see #resultText()
      */
@@ -32,16 +39,38 @@ public class ToolExecutionResult { // TODO name, location
     }
 
     /**
-     * Returns the result of the tool execution in the text form.
-     * It is an original object returned from tool that is serialized into JSON.
+     * Returns the tool execution result as text.
+     * It is a {@link #result()} that is serialized into JSON string.
      *
-     * @see #resultText()
+     * @see #result()
      */
     public String resultText() {
         return resultText;
     }
 
-    // TODO eq, hash, tostr
+    @Override
+    public boolean equals(final Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        ToolExecutionResult that = (ToolExecutionResult) object;
+        return isError == that.isError
+                && Objects.equals(result, that.result)
+                && Objects.equals(resultText, that.resultText);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(isError, result, resultText);
+    }
+
+    @Override
+    public String toString() {
+        return "ToolExecutionResult{" +
+                "isError=" + isError +
+                ", result=" + result +
+                ", resultText='" + resultText + '\'' +
+                '}';
+    }
 
     public static Builder builder() {
         return new Builder();
