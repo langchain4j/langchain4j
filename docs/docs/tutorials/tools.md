@@ -634,6 +634,11 @@ Result<String> result = assistant.chat("Cancel my booking 123-456");
 
 String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
+
+ToolExecution toolExecution = toolExecutions.get(0);
+ToolExecutionRequest request = toolExecution.request();
+String result = toolExecution.result(); // tool execution result as text
+Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:

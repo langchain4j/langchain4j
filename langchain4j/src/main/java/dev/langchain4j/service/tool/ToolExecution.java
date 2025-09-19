@@ -44,7 +44,7 @@ public class ToolExecution {
      * @return the result of the tool execution.
      * @see #result()
      */
-    public Object resultObject() { // TODO document
+    public Object resultObject() {
         return result.result();
     }
 
