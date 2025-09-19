@@ -102,7 +102,7 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public InvocationContext invocationContext() {
         return invocationContext;

@@ -9,7 +9,7 @@ import dev.langchain4j.model.chat.ChatModel;
  * and it exists until the end of the AI Service invocation,
  * potentially spanning multiple calls to the {@link ChatModel}.
  *
- * @since 1.5.0
+ * @since 1.6.0
  */
 public class InvocationContext {
 

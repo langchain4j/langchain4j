@@ -12,7 +12,7 @@ public class ToolProviderRequest {
     private final UserMessage userMessage;
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public ToolProviderRequest(Builder builder) {
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
@@ -27,14 +27,14 @@ public class ToolProviderRequest {
     }
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public InvocationContext invocationContext() {
         return invocationContext;
     }
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public InvocationParameters invocationParameters() {
         return invocationContext.invocationParameters();

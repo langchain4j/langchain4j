@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * Represents the result of a tool execution.
  *
- * @since 1.5.0
+ * @since 1.6.0
  */
 public class ToolExecutionResult {
 

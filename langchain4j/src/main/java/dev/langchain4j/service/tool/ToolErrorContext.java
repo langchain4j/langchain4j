@@ -25,14 +25,14 @@ public class ToolErrorContext {
     }
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public InvocationContext invocationContext() {
         return invocationContext;
     }
 
     /**
-     * @since 1.5.0
+     * @since 1.6.0
      */
     public InvocationParameters invocationParameters() {
         return invocationContext.invocationParameters();

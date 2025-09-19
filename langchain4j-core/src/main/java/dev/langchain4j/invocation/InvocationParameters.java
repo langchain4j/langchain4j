@@ -45,7 +45,7 @@ import dev.langchain4j.rag.query.Query;
  * <p>
  * Parameters are stored in a mutable, thread safe {@link Map}.
  *
- * @since 1.5.0
+ * @since 1.6.0
  */
 public class InvocationParameters {
 
