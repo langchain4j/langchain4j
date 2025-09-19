@@ -226,7 +226,24 @@ UntypedAgent styleReviewLoop = AgenticServices
 
 Here the `styleScorer` agent writes its output to the `AgenticScope` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
 
-At this point the `styleReviewLoop` agent can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
+The `exitCondition` method takes as argument a `Predicate<AgenticScope>` that by default is evaluated after each and every agent invocation, making the loop to exit as soon as the condition is satisfied, in order to reduce as much as possible the number of agent invocations. However, it is also possible to check the exit condition only at the end of a loop, thus forcing all agents to be invoked before testing that condition, by configuring the loop builder with the `testExitAtLoopEnd(true)` method. Alternatively, the `exitCondition` method can also take as argument a `BiPredicate<AgenticScope, Integer>` that receives as second argument the counter of the current loop iteration. For example, the following loop definition:
+
+```java
+UntypedAgent styleReviewLoop = AgenticServices
+        .loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .testExitAtLoopEnd(true)
+        .exitCondition( (agenticScope, loopCounter) -> {
+            double score = agenticScope.readState("score", 0.0);
+            return loopCounter <= 3 ? score >= 0.8 : score >= 0.6;
+        })
+        .build();
+```
+
+will make the loop to exit if the score is at least 0.8 in the first 3 iterations, otherwise it will lower the quality expectations, terminating the loop with a score of at least 0.6, also forcing the invocation of the `styleEditor` agent one last time even after the exit condition has been satisfied.
+
+After having configured this `styleReviewLoop`, it can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
 
 ```java
 public interface StyledWriter {
