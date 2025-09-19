@@ -1,11 +1,14 @@
 package dev.langchain4j.agentic.a2a;
 
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
@@ -14,18 +17,18 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final String uniqueName;
     private final String[] inputNames;
-    private final String outputName;
-    private final boolean async;
+
+    private final A2AClientSpecification a2AClientInstance;
+
     private final AgentCard agentCard;
     private final Method method;
 
     public A2AClientAgentInvoker(A2AClientSpecification a2AClientInstance, Method method) {
         this.method = method;
+        this.a2AClientInstance = a2AClientInstance;
         this.agentCard = a2AClientInstance.agentCard();
         this.uniqueName = uniqueAgentName(name());
         this.inputNames = inputNames(a2AClientInstance);
-        this.outputName = a2AClientInstance.outputName();
-        this.async = a2AClientInstance.async();
     }
 
     private String[] inputNames(A2AClientSpecification a2AClientInstance) {
@@ -51,12 +54,22 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String outputName() {
-        return outputName;
+        return a2AClientInstance.outputName();
     }
 
     @Override
     public boolean async() {
-        return async;
+        return a2AClientInstance.async();
+    }
+
+    @Override
+    public void onInvocation(AgentRequest request) {
+        a2AClientInstance.onInvocation(request);
+    }
+
+    @Override
+    public void onCompletion(AgentResponse response) {
+        a2AClientInstance.onCompletion(response);
     }
 
     @Override

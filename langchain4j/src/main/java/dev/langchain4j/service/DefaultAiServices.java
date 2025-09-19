@@ -9,6 +9,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
@@ -43,6 +44,7 @@ import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
@@ -118,6 +120,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     private void validateMethods() {
 
         for (Method method : context.aiServiceClass.getMethods()) {
+            if (isStatic(method.getModifiers())) {
+                // ignore static methods
+                continue;
+            }
+
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
                 throw illegalConfiguration(
                         "The @Moderate annotation is present, but the moderationModel is not set up. "

@@ -39,18 +39,19 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
-        if (agent instanceof AgentSpecification agentSpecification) {
-            return agentToExecutor(agentSpecification);
-        }
+        return agent instanceof AgentSpecification agentSpecification ? agentToExecutor(agentSpecification) : nonAiAgentToExecutor(agent);
+    }
+
+    private static AgentExecutor nonAiAgentToExecutor(Object agent) {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String uniqueName = uniqueAgentName(name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentInvoker(agenticMethod, new AgentSpecificationImpl(name, uniqueName, spec.description(), spec.outputName(), spec.async()),
+                new MethodAgentInvoker(agenticMethod, new AgentSpecificationImpl(name, uniqueName, spec.description(), spec.outputName(), spec.async(), x -> {}, x -> {}),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentInvoker.fromMethod(new AgentSpecificationImpl(name, uniqueName, description, annotation.outputName(), annotation.async()), agenticMethod);
+                AgentInvoker.fromMethod(new AgentSpecificationImpl(name, uniqueName, description, annotation.outputName(), annotation.async(), x -> {}, x -> {}), agenticMethod);
         return new AgentExecutor(agentInvoker, agent);
     }
 

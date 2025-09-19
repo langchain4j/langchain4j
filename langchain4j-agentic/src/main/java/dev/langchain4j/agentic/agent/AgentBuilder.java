@@ -27,6 +27,7 @@ import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
@@ -41,6 +42,9 @@ public class AgentBuilder<T> {
     String description;
     String outputName;
     boolean async;
+
+    Consumer<AgentRequest> invocationListener = request -> {};
+    Consumer<AgentResponse> completionListener = response -> {};
 
     private ChatModel model;
     private ChatMemory chatMemory;
@@ -320,6 +324,16 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
+        return this;
+    }
+
+    public AgentBuilder<T> onAgentInvocation(Consumer<AgentRequest> invocationListener) {
+        this.invocationListener = invocationListener;
+        return this;
+    }
+
+    public AgentBuilder<T> onAgentCompletion(Consumer<AgentResponse> completionListener) {
+        this.completionListener = completionListener;
         return this;
     }
 }

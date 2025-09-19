@@ -1,6 +1,9 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -27,6 +30,9 @@ public abstract class AbstractService<T, S> {
     protected String description;
     protected String outputName;
     protected Function<AgenticScope, Object> output = DEFAULT_OUTPUT_FUNCTION;
+
+    protected Consumer<AgentRequest> invocationListener = request -> {};
+    protected Consumer<AgentResponse> completionListener = response -> {};
 
     private List<AgentExecutor> agentExecutors;
 
@@ -98,6 +104,16 @@ public abstract class AbstractService<T, S> {
 
     public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         this.errorHandler = errorHandler;
+        return (S) this;
+    }
+
+    public S onAgentInvocation(Consumer<AgentRequest> invocationListener) {
+        this.invocationListener = invocationListener;
+        return (S) this;
+    }
+
+    public S onAgentCompletion(Consumer<AgentResponse> completionListener) {
+        this.completionListener = completionListener;
         return (S) this;
     }
 

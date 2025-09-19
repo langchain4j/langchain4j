@@ -2,12 +2,16 @@ package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.OnAgentCompletion;
+import dev.langchain4j.agentic.declarative.OnAgentInvocation;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -58,6 +62,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -270,6 +275,56 @@ public class DeclarativeAgentIT {
         assertThat(styleEditorAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
         loopCount = null;
+    }
+
+    public interface CreativeWriterWithListener extends CreativeWriter {
+        @OnAgentInvocation
+        static void onAgentInvocation(AgentRequest request) {
+            requestedTopic = (String) request.inputs()[0];
+        }
+    }
+
+    public interface StyleReviewLoopAgentWithListener extends StyleReviewLoopAgent {
+        @OnAgentCompletion
+        static void onAgentCompletion(AgentResponse response) {
+            finalScore = response.agenticScope().readState("score", 0.0);
+        }
+    }
+
+    public interface StoryCreatorWithReviewWithListener {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriterWithListener.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputName = "story")
+        })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    static String requestedTopic;
+    static Double finalScore;
+
+    @Test
+    void declarative_listeners_tests() {
+        assertThat(requestedTopic).isNull();
+        assertThat(finalScore).isNull();
+
+        StoryCreatorWithReviewWithListener storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithListener.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(requestedTopic).isEqualTo("dragons and wizards");
+        assertThat(finalScore).isGreaterThanOrEqualTo(0.8);
+
+        requestedTopic = null;
+        finalScore = null;
     }
 
     public interface ExpertsAgent {
