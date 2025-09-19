@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
@@ -9,14 +10,18 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -485,5 +490,43 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Reads all characters from the given {@link InputStream} into a single {@link String},
+     * using the specified {@link Charset}. This method will always close the provided stream
+     * after reading, regardless of whether the operation succeeds or fails.
+     * <p>
+     * If the {@code charset} argument is {@code null}, {@link StandardCharsets#UTF_8} will be used by default.
+     * </p>
+     *
+     * <h3>Example usage:</h3>
+     * <pre>
+     * try (InputStream is = new FileInputStream("example.txt")) {
+     *     String content = IOUtils.readInputStreamAndClose(is, StandardCharsets.ISO_8859_1);
+     *     System.out.println(content);
+     * }
+     * </pre>
+     *
+     * @param inputStream the {@link InputStream} to read from; must not be {@code null}
+     * @param charset     the {@link Charset} to use for decoding, or {@code null} for UTF-8
+     * @return a String containing the full contents of the stream
+     * @throws NullPointerException if {@code inputStream} is {@code null}
+     */
+    public static String readInputStreamAndClose(InputStream inputStream, Charset charset) {
+        ensureNotNull(inputStream, "inputStream");
+        Charset effectiveCharset = (charset != null) ? charset : StandardCharsets.UTF_8;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, effectiveCharset))) {
+            StringBuilder sb = new StringBuilder();
+            char[] buffer = new char[8192];
+            int read;
+            while ((read = reader.read(buffer)) != -1) {
+                sb.append(buffer, 0, read);
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

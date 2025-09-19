@@ -5,7 +5,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonMap;
 
+import dev.langchain4j.data.document.DocumentSource;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -112,5 +118,67 @@ public class PromptTemplate {
      */
     public static PromptTemplate from(String template) {
         return new PromptTemplate(template);
+    }
+
+    /**
+     * Creates a {@link PromptTemplate} by reading the content from the provided {@link DocumentSource}
+     * using the default character set {@link StandardCharsets#UTF_8}.
+     * <p>
+     * This method reads the template content from the {@link InputStream} returned by
+     * {@link DocumentSource#inputStream()}, then closes the stream after reading.
+     * </p>
+     * <h3>When to use</h3>
+     * Use this method when your prompt templates are stored outside of your Java source code
+     * and need to be dynamically loaded at runtime. For example:
+     * <ul>
+     *   <li>Templates stored in <b>classpath resources</b> (e.g., {@code src/main/resources})</li>
+     *   <li>Templates fetched from a <b>remote URL</b> (HTTP, FTP, etc.)</li>
+     *   <li>Templates managed in <b>configuration management systems</b> (e.g., Consul, AWS SSM, Vault)</li>
+     *   <li>Templates stored on <b>file systems</b> that need to be read via an {@link InputStream}</li>
+     * </ul>
+     * Using {@link DocumentSource} allows you to support all these scenarios with a single method signature.
+     *
+     * @param source the {@link DocumentSource} to read the template from; must not be {@code null}.
+     * @return a {@link PromptTemplate} instance containing the content read from the {@code source}.
+     * @throws RuntimeException if an I/O error occurs while reading from the source.
+     * @throws NullPointerException if {@code source} is {@code null}.
+     */
+    public static PromptTemplate fromDocumentSource(DocumentSource source) {
+        return fromDocumentSource(source, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Creates a {@link PromptTemplate} by reading the content from the provided {@link DocumentSource}
+     * using the given {@link Charset}.
+     * <p>
+     * This method reads the template content from the {@link InputStream} returned by
+     * {@link DocumentSource#inputStream()} and closes the stream after reading.
+     * If the provided {@code charset} is {@code null}, {@link StandardCharsets#UTF_8} is used as the default.
+     * </p>
+     * <h3>When to use</h3>
+     * Use this method when:
+     * <ul>
+     *   <li>You need to load templates from different sources like resources, file paths, URLs, or config stores</li>
+     *   <li>The template content might be encoded in a <b>non-UTF-8 charset</b> and you need to specify it</li>
+     *   <li>You want a consistent way to handle stream closing and error handling</li>
+     * </ul>
+     * This approach keeps the template loading logic decoupled from the storage or transport mechanism,
+     * making it easy to swap sources without changing calling code.
+     *
+     * @param source  the {@link DocumentSource} to read the template from; must not be {@code null}.
+     * @param charset the {@link Charset} to use for decoding the template content; if {@code null}, UTF-8 will be used.
+     * @return a {@link PromptTemplate} instance containing the content read from the {@code source}.
+     * @throws RuntimeException if an I/O error occurs while reading from the source.
+     * @throws NullPointerException if {@code source} is {@code null}.
+     */
+    public static PromptTemplate fromDocumentSource(DocumentSource source, Charset charset) {
+        ensureNotNull(source, "source");
+        String template;
+        try {
+            template = Utils.readInputStreamAndClose(source.inputStream(), charset);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return from(template);
     }
 }
