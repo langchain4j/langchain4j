@@ -74,7 +74,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return;
         }
 
-        int invocationParametersCount = 0;
+        boolean invocationParametersExist = false;
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
@@ -83,16 +83,16 @@ class DefaultAiServices<T> extends AiServices<T> {
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
 
-            boolean isInvocationParameters = InvocationParameters.class.isAssignableFrom(parameter.getType());
-            if (isInvocationParameters) {
-                invocationParametersCount++;
-                if (invocationParametersCount > 1) {
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                if (invocationParametersExist) {
                     throw illegalConfiguration("There can be at most one parameter of type %s",
                             InvocationParameters.class.getName());
                 }
+                invocationParametersExist = true;
+                continue;
             }
 
-            if (v == null && userMessage == null && memoryId == null && userName == null && !isInvocationParameters) {
+            if (userMessage == null && v == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
                                 "%s, %s, %s, or %s, or it should be of type %s",
