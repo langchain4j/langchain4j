@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
@@ -135,5 +136,97 @@ class ChatModelListenerTest {
 
         // then
         verify(listener2).onResponse(any());
+    }
+
+    @Test
+    void should_call_onError_when_doChat_throws_exception() {
+        // given
+        ChatModelListener listener = spy(new SuccessfulListener());
+        TestChatModel model = new TestChatModel(List.of(listener)) {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new RuntimeException("Chat model failed");
+            }
+        };
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Chat model failed");
+
+        // then
+        verify(listener).onRequest(any());
+        verify(listener).onError(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void should_handle_empty_listeners_list() {
+        // given
+        TestChatModel model = new TestChatModel(List.of());
+
+        // when/then
+        assertThatNoException().isThrownBy(() -> model.chat("hi"));
+    }
+
+    @Test
+    void should_handle_null_listeners_list() {
+        // given
+        TestChatModel model = new TestChatModel(null);
+
+        // when/then
+        assertThatNoException().isThrownBy(() -> model.chat("hi"));
+    }
+
+    @Test
+    void should_continue_calling_listeners_even_when_some_fail_in_onError() {
+        // given
+        ChatModelListener failingListener = spy(new FailingListener());
+        ChatModelListener successfulListener = spy(new SuccessfulListener());
+        TestChatModel model = new TestChatModel(List.of(failingListener, successfulListener)) {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new RuntimeException("Chat model failed");
+            }
+        };
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi")).hasMessage("Chat model failed");
+
+        // then
+        verify(failingListener).onRequest(any());
+        verify(failingListener).onError(any());
+        verify(successfulListener).onRequest(any());
+        verify(successfulListener).onError(any());
+        verifyNoMoreInteractions(failingListener, successfulListener);
+    }
+
+    @Test
+    void should_maintain_attributes_across_request_and_error() {
+        // given
+        ChatModelListener listener1 = spy(new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestContext.attributes().put("test-key", "test-value");
+            }
+        });
+        ChatModelListener listener2 = spy(new ChatModelListener() {
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                assertThat(errorContext.attributes()).containsExactly(entry("test-key", "test-value"));
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener1, listener2)) {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new RuntimeException("Test error");
+            }
+        };
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"));
+
+        // then
+        verify(listener2).onError(any());
     }
 }
