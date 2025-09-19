@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationParameters;
 
 public class ToolProviderRequest {
 
@@ -30,6 +31,13 @@ public class ToolProviderRequest {
      */
     public InvocationContext invocationContext() {
         return invocationContext;
+    }
+
+    /**
+     * @since 1.5.0
+     */
+    public InvocationParameters invocationParameters() {
+        return invocationContext.invocationParameters();
     }
 
     public UserMessage userMessage() {

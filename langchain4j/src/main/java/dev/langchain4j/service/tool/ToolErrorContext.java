@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.Objects;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationParameters;
 
 /**
  * @since 1.4.0
@@ -28,6 +29,13 @@ public class ToolErrorContext {
      */
     public InvocationContext invocationContext() {
         return invocationContext;
+    }
+
+    /**
+     * @since 1.5.0
+     */
+    public InvocationParameters invocationParameters() {
+        return invocationContext.invocationParameters();
     }
 
     public Object memoryId() {

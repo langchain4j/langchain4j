@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -62,6 +63,13 @@ public class Metadata {
      */
     public InvocationContext invocationContext() {
         return invocationContext;
+    }
+
+    /**
+     * @since 1.5.0
+     */
+    public InvocationParameters invocationParameters() {
+        return invocationContext.invocationParameters();
     }
 
     @Override

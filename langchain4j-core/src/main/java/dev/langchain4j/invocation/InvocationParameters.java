@@ -15,31 +15,32 @@ import dev.langchain4j.rag.query.Query;
  *
  * <pre>
  * interface Assistant {
- *     String chat(@UserMessage String userMessage, InvocationParameters parameters)
+ *     String chat(@UserMessage String userMessage, InvocationParameters parameters);
  * }
  *
  * InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
- * String response = assistant.chat("Hi", parameters);
+ * String response = assistant.chat("What is the weather in London?", parameters);
  * </pre>
  * <p>
  * {@code InvocationParameters} can be accessed within the {@link Tool}-annotated method:
  * <pre>
  * class Tools {
  *     <code>@Tool</code>
- *     String getUserInformation(InvocationParameters parameters) {
+ *     String getWeather(String city, InvocationParameters parameters) {
  *         String userId = parameters.get("userId");
- *         return userService.getUserInformation(userId);
+ *         UserPreferences preferences = getUserPreferences(userId);
+ *         return weatherService.getWeather(city, preferences.temperatureUnits());
  *     }
  * }
  * </pre>
  * <p>
  * In this case, the LLM is not aware of these parameters; they are only visible to LangChain4j and user code.
  * <p>
- * {@code InvocationParameters} can also be accessed within other components, such as:
+ * {@code InvocationParameters} can also be accessed within other AI Service components, such as:
  * <pre>
  * - ToolProvider: inside the ToolProviderRequest
- * - RAG components: inside the {@link Query} -> {@link Metadata}
  * - ToolArgumentsErrorHandler and ToolExecutionErrorHandler: inside the ToolErrorContext
+ * - RAG components: inside the {@link Query} -> {@link Metadata}
  * </pre>
  * <p>
  * Parameters are stored in a mutable, thread safe {@link Map}.
