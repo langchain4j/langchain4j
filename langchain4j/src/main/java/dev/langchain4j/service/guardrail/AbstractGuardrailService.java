@@ -53,18 +53,18 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params) {
+    public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
-                .map(executor -> executor.execute(params))
+                .map(executor -> executor.execute(request))
                 .orElseGet(InputGuardrailResult::success);
     }
 
     @Override
-    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params) {
+    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
-                .map(executor -> executor.execute(params))
+                .map(executor -> executor.execute(request))
                 .orElseGet(OutputGuardrailResult::success);
     }
 

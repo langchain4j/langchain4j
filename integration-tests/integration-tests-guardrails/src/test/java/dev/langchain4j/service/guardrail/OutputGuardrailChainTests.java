@@ -345,9 +345,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -382,9 +382,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -419,9 +419,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -450,9 +450,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -470,9 +470,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -491,9 +491,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -512,9 +512,9 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override

@@ -10,6 +10,12 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -44,7 +50,9 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -152,7 +160,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-
                         if (method.isDefault()) {
                             return InvocationHandler.invokeDefault(proxy, method, args);
                         }
@@ -164,8 +171,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 case "hashCode":
                                     return System.identityHashCode(proxy);
                                 case "toString":
-                                    return context.aiServiceClass.getName() + "@" +
-                                            Integer.toHexString(System.identityHashCode(proxy));
+                                    return context.aiServiceClass.getName() + "@"
+                                            + Integer.toHexString(System.identityHashCode(proxy));
                                 default:
                                     throw new IllegalStateException("Unexpected Object method: " + method);
                             }
@@ -177,8 +184,34 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        final ChatMemory chatMemory = context.hasChatMemory()
+                        var methodArgs = (args != null) ? Arrays.asList(args) : Collections.emptyList();
+                        var memoryIdOpt = findMemoryId(method, args);
+                        var interactionSource = AiServiceInvocationContext.builder()
+                                .interfaceName(context.aiServiceClass.getName())
+                                .methodName(method.getName())
+                                .methodArguments(methodArgs)
+                                .memoryId(memoryIdOpt.orElse(null))
+                                .build();
+
+                        try {
+                            return invoke(method, args, interactionSource);
+                        } catch (Exception ex) {
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInteractionErrorEvent.builder()
+                                            .invocationContext(interactionSource)
+                                            .error(ex)
+                                            .build());
+
+                            throw ex;
+                        }
+                    }
+
+                    public Object invoke(Method method, Object[] args, AiServiceInvocationContext interactionSource) {
+
+                        var memoryIdOpt = findMemoryId(method, args);
+                        Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
+
+                        ChatMemory chatMemory = context.hasChatMemory()
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
@@ -187,6 +220,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInteractionStartedEvent.builder()
+                                        .invocationContext(interactionSource)
+                                        .systemMessage(systemMessage)
+                                        .userMessage(userMessage)
+                                        .build());
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
@@ -200,6 +241,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
+                                .invocationContext(interactionSource)
                                 .variables(variables)
                                 .build();
 
@@ -287,17 +329,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = context.chatRequestTransformer
-                                .apply(ChatRequest.builder()
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
-                                        .build(), memoryId);
+                                        .build(),
+                                memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();
+
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceResponseReceivedEvent.builder()
+                                        .invocationContext(interactionSource)
+                                        .response(chatResponse)
+                                        .build());
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -311,10 +360,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 memoryId,
                                 toolServiceContext.toolExecutors(),
-                                isReturnTypeResult);
+                                isReturnTypeResult,
+                                interactionSource);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
-                            return Result.builder()
+                            var result = Result.builder()
                                     .content(null)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
@@ -323,32 +373,57 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .intermediateResponses(toolServiceResult.intermediateResponses())
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
+
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                            .invocationContext(interactionSource)
+                                            .result(result)
+                                            .build());
+
+                            return result;
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(),
+                                method,
+                                aggregateResponse,
+                                chatExecutor,
+                                commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
+                            AiServiceInteractionEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                            .invocationContext(interactionSource)
+                                            .result(response)
+                                            .build());
+
                             return response;
                         }
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
+                        var actualResponse = (isReturnTypeResult)
+                                ? Result.builder()
+                                        .content(parsedResponse)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(toolServiceResult
+                                                .finalResponse()
+                                                .finishReason())
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build()
+                                : parsedResponse;
 
-                        if (isReturnTypeResult) {
-                            return Result.builder()
-                                    .content(parsedResponse)
-                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(toolServiceResult.finalResponse().finishReason())
-                                    .toolExecutions(toolServiceResult.toolExecutions())
-                                    .intermediateResponses(toolServiceResult.intermediateResponses())
-                                    .finalResponse(toolServiceResult.finalResponse())
-                                    .build();
-                        } else {
-                            return parsedResponse;
-                        }
+                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                                        .invocationContext(interactionSource)
+                                        .result(actualResponse)
+                                        .build());
+
+                        return actualResponse;
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
@@ -503,7 +578,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !(args[i] instanceof Content) && !isListOfContents(args[i])) {
+                    && !(args[i] instanceof Content)
+                    && !isListOfContents(args[i])) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }

@@ -1,5 +1,6 @@
 package dev.langchain4j.spi.guardrail;
 
+import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.guardrail.AbstractGuardrailExecutor.GuardrailExecutorBuilder;
 import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailExecutor;
@@ -16,6 +17,7 @@ import dev.langchain4j.guardrail.config.GuardrailsConfig;
  * @param <R> the type of guardrail result, extending from {@link GuardrailResult}
  * @param <P> the type of guardrail request, extending from {@link GuardrailRequest}
  * @param <G> the type of guardrail, extending from {@link Guardrail}
+ * @param <E> the type of guardrail executed event, extending from {@link GuardrailExecutedEvent}
  * @param <B> the type of builder for creating {@link GuardrailExecutor}, extending from {@link GuardrailExecutorBuilder}
  */
 public sealed interface GuardrailExecutorBuilderFactory<
@@ -23,7 +25,8 @@ public sealed interface GuardrailExecutorBuilderFactory<
                 R extends GuardrailResult<R>,
                 P extends GuardrailRequest<P>,
                 G extends Guardrail<P, R>,
-                B extends GuardrailExecutorBuilder<C, R, P, G, B>>
+                E extends GuardrailExecutedEvent<P, R, G>,
+                B extends GuardrailExecutorBuilder<C, R, P, G, E, B>>
         permits InputGuardrailExecutorBuilderFactory, OutputGuardrailExecutorBuilderFactory {
 
     /**

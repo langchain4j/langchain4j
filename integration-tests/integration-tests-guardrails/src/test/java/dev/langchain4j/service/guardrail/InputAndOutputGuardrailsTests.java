@@ -118,7 +118,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public InputGuardrailResult validate(InputGuardrailRequest params) {
+        public InputGuardrailResult validate(InputGuardrailRequest request) {
             spy.incrementAndGet();
             return success();
         }
@@ -132,7 +132,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public InputGuardrailResult validate(InputGuardrailRequest params) {
+        public InputGuardrailResult validate(InputGuardrailRequest request) {
             spy.incrementAndGet();
             return failure("boom", new ValidationException("boom"));
         }
@@ -146,7 +146,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             spy.incrementAndGet();
             return OutputGuardrailResult.success();
         }
@@ -160,7 +160,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             spy.incrementAndGet();
             return failure("boom", new ValidationException("boom"));
         }
@@ -174,7 +174,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             if (spy.incrementAndGet() == 1) {
                 return retry("KO");
             }
@@ -190,7 +190,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             if (spy.incrementAndGet() == 1) {
                 return reprompt("KO", "retry");
             }

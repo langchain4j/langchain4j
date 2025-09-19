@@ -1,5 +1,8 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
+
+import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
@@ -11,7 +14,12 @@ import java.util.ServiceLoader;
  */
 public non-sealed class InputGuardrailExecutor
         extends AbstractGuardrailExecutor<
-                InputGuardrailsConfig, InputGuardrailRequest, InputGuardrailResult, InputGuardrail, Failure> {
+                InputGuardrailsConfig,
+                InputGuardrailRequest,
+                InputGuardrailResult,
+                InputGuardrail,
+                InputGuardrailExecutedEvent,
+                Failure> {
 
     protected InputGuardrailExecutor(InputGuardrailsConfig config, List<InputGuardrail> guardrails) {
         super(config, guardrails);
@@ -41,15 +49,20 @@ public non-sealed class InputGuardrailExecutor
         return new InputGuardrailException(message, cause);
     }
 
+    @Override
+    protected InputGuardrailExecutedEventBuilder createEmptyAuditEventBuilderInstance() {
+        return InputGuardrailExecutedEvent.builder();
+    }
+
     /**
      * Execeutes the {@link InputGuardrail}s on the given {@link InputGuardrailRequest}.
      *
-     * @param params     The {@link InputGuardrailRequest} to validate
+     * @param request     The {@link InputGuardrailRequest} to validate
      * @return The {@link InputGuardrailResult} of the validation
      */
     @Override
-    public InputGuardrailResult execute(InputGuardrailRequest params) {
-        var result = executeGuardrails(params);
+    public InputGuardrailResult execute(InputGuardrailRequest request) {
+        var result = executeGuardrails(request);
 
         if (!result.isSuccess()) {
             throw new InputGuardrailException(result.toString(), result.getFirstFailureException());
@@ -93,7 +106,9 @@ public non-sealed class InputGuardrailExecutor
                     InputGuardrailResult,
                     InputGuardrailRequest,
                     InputGuardrail,
+                    InputGuardrailExecutedEvent,
                     InputGuardrailExecutorBuilder> {
+
         public InputGuardrailExecutorBuilder() {
             super(InputGuardrailsConfig.builder().build());
         }

@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Stream;
+import java.util.concurrent.Executors;
 
 /**
  * An implementation of a {@link StreamingChatModel} useful for unit testing.
@@ -28,8 +28,8 @@ import java.util.stream.Stream;
  */
 @Experimental
 public class StreamingChatModelMock implements StreamingChatModel {
-
     private final Queue<AiMessage> aiMessages;
+    private final RuntimeException exception;
 
     public StreamingChatModelMock(List<String> tokens) {
         this(List.of(toAiMessage(tokens)));
@@ -37,13 +37,25 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     public StreamingChatModelMock(Collection<AiMessage> aiMessages) {
         this.aiMessages = new ConcurrentLinkedQueue<>(ensureNotEmpty(aiMessages, "aiMessages"));
+        this.exception = null;
+    }
+
+    public StreamingChatModelMock(RuntimeException exception) {
+        this.aiMessages = null;
+        this.exception = ensureNotNull(exception, "exception");
     }
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        AiMessage aiMessage = ensureNotNull(aiMessages.poll(), "aiMessage");
+        if (exception != null) {
+            handler.onError(exception);
+        } else {
+            AiMessage aiMessage = ensureNotNull(aiMessages.poll(), "aiMessage");
 
-        new Thread(() -> {
+            var executor = Executors.newSingleThreadExecutor();
+
+            try {
+                executor.execute(() -> {
                     toTokens(aiMessage).forEach(token -> onPartialResponse(handler, token));
 
                     for (int i = 0; i < aiMessage.toolExecutionRequests().size(); i++) {
@@ -55,9 +67,13 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
                     ChatResponse chatResponse =
                             ChatResponse.builder().aiMessage(aiMessage).build();
+
                     onCompleteResponse(handler, chatResponse);
-                })
-                .start();
+                });
+            } finally {
+                executor.shutdown();
+            }
+        }
     }
 
     private static AiMessage toAiMessage(List<String> tokens) {
@@ -71,9 +87,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
         }
 
         // approximating: each char will become a token
-        return aiMessage.text().chars()
-                .mapToObj(c -> String.valueOf((char) c))
-                .toList();
+        return aiMessage.text().chars().mapToObj(c -> String.valueOf((char) c)).toList();
     }
 
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {
@@ -94,5 +108,13 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     public static StreamingChatModelMock thatAlwaysStreams(Collection<AiMessage> aiMessages) {
         return new StreamingChatModelMock(aiMessages);
+    }
+
+    public static StreamingChatModelMock thatAlwaysThrowsException() {
+        return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
+    }
+
+    public static StreamingChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
+        return new StreamingChatModelMock(new RuntimeException(message));
     }
 }
