@@ -2,9 +2,12 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.V;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -20,9 +23,12 @@ public interface AgentInvoker extends AgentSpecification {
 
     Object[] toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
-    default Object invoke(Object agent, Object... args) throws AgentInvocationException {
+    default Object invoke(DefaultAgenticScope agenticScope, Object agent, Object... args) throws AgentInvocationException {
         try {
-            return method().invoke(agent, args);
+            onInvocation(new AgentRequest(agenticScope, name(), args));
+            Object result = method().invoke(agent, args);
+            onCompletion(new AgentResponse(agenticScope, name(), args, result));
+            return result;
         } catch (Exception e) {
             throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);
         }
