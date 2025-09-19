@@ -20,6 +20,7 @@
 
         <module>langchain4j-easy-rag</module>
         <module>langchain4j-mcp</module>
+        <module>langchain4j-mcp-docker</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
