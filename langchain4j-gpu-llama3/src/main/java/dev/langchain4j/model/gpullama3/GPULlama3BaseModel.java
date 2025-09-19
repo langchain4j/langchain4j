@@ -6,7 +6,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Consumer;
-import org.beehive.gpullama3.LlamaApp;
 import org.beehive.gpullama3.Options;
 import org.beehive.gpullama3.auxiliary.LastRunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
@@ -59,7 +58,7 @@ abstract class GPULlama3BaseModel {
 
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
-            this.sampler = LlamaApp.selectSampler(
+            this.sampler = Sampler.selectSampler(
                     model.configuration().vocabularySize(), temperature.floatValue(), topP.floatValue(), seed);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load model from " + modelPath, e);
