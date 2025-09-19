@@ -303,9 +303,13 @@ public class WorkflowAgentsIT {
 
     @Test
     void loop_agents_tests() {
+        AtomicReference<Object> requestedTopic = new AtomicReference<>();
+        AtomicReference<Double> finalScore = new AtomicReference<>();
+
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputName("story")
+                .onAgentInvocation(request -> requestedTopic.set(request.inputs()[0]))
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
@@ -322,6 +326,7 @@ public class WorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .onAgentCompletion(response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
@@ -347,6 +352,9 @@ public class WorkflowAgentsIT {
                 .isEqualTo(agenticScope.contextAsConversation(styleEditor));
         assertThat(agenticScope.contextAsConversation("notExistingAgent"))
                 .isBlank();
+
+        assertThat(requestedTopic.get()).isEqualTo("dragons and wizards");
+        assertThat(finalScore.get()).isGreaterThanOrEqualTo(0.8);
     }
 
     @Test
