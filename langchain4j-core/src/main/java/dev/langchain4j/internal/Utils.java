@@ -486,4 +486,36 @@ public class Utils {
         }
         return Optional.empty();
     }
+
+    /**
+     * Determines whether a given {@code target} string is present within a list of {@code candidates}.
+     * <p>
+     * This method performs a null-safe equality check, meaning it returns {@code true} if both the
+     * {@code target} and any element in {@code candidates} are {@code null}.
+     * </p>
+     *
+     * <p>Examples:</p>
+     * <ul>
+     *   <li>{@code contains("a", "b", "a", "c")} returns {@code true}</li>
+     *   <li>{@code contains(null, "x", null, "y")} returns {@code true}</li>
+     *   <li>{@code contains("z", "x", "y", "z")} returns {@code true}</li>
+     *   <li>{@code contains("a")} returns {@code false}</li>
+     *   <li>{@code contains("a", (String[]) null)} returns {@code false}</li>
+     * </ul>
+     *
+     * @param target     the string to search for; may be {@code null}
+     * @param candidates the list of strings to search within; may be {@code null} or empty
+     * @return {@code true} if the {@code target} is found in {@code candidates}, {@code false} otherwise
+     */
+    public static boolean contains(String target, String... candidates) {
+        if (candidates == null || candidates.length == 0) {
+            return false;
+        }
+        for (String candidate : candidates) {
+            if (Objects.equals(candidate, target)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

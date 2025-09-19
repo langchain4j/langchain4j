@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.contains;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
@@ -442,5 +443,58 @@ class UtilsTest {
 
         assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
         assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void contains_when_target_is_in_candidates_should_return_true() {
+        assertThat(contains("apple", "banana", "apple", "cherry")).isTrue();
+        assertThat(contains("banana", "banana")).isTrue();
+    }
+
+    @Test
+    void contains_when_target_is_not_in_candidates_should_return_false() {
+        assertThat(contains("grape", "banana", "apple", "cherry")).isFalse();
+        assertThat(contains("grape", "grapefruit", "grapes")).isFalse();
+    }
+
+    @Test
+    void contains_when_candidates_are_empty_should_return_false() {
+        assertThat(contains("apple")).isFalse();
+        assertThat(contains("apple", new String[] {})).isFalse();
+    }
+
+    @Test
+    void contains_when_candidates_is_null_should_return_false() {
+        assertThat(contains("apple", (String[]) null)).isFalse();
+    }
+
+    @Test
+    void contains_when_target_is_null_and_present_in_candidates_should_return_true() {
+        assertThat(contains(null, "a", null, "b")).isTrue();
+    }
+
+    @Test
+    void contains_when_target_is_null_and_not_present_should_return_false() {
+        assertThat(contains(null, "a", "b", "c")).isFalse();
+    }
+
+    @Test
+    void contains_when_candidates_have_only_nulls_and_target_is_null_should_return_true() {
+        assertThat(contains(null, null, null)).isTrue();
+    }
+
+    @Test
+    void contains_when_candidates_have_only_nulls_and_target_is_not_null_should_return_false() {
+        assertThat(contains("not-null", null, null)).isFalse();
+    }
+
+    @Test
+    void contains_when_case_does_not_match_should_return_false() {
+        assertThat(contains("Apple", "apple", "banana")).isFalse();
+    }
+
+    @Test
+    void contains_when_case_matches_should_return_true() {
+        assertThat(contains("Apple", "Apple", "Banana")).isTrue();
     }
 }
