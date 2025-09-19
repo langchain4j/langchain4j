@@ -170,6 +170,15 @@ class ChatModelListenerTest {
     }
 
     @Test
+    void should_handle_null_listeners_list() {
+        // given
+        TestChatModel model = new TestChatModel(null);
+
+        // when/then
+        assertThatNoException().isThrownBy(() -> model.chat("hi"));
+    }
+
+    @Test
     void should_continue_calling_listeners_even_when_some_fail_in_onError() {
         // given
         ChatModelListener failingListener = spy(new FailingListener());
