@@ -273,36 +273,53 @@ public class SupervisorAgentIT {
 
     @Test
     void agentic_banker_with_agentic_exchange_test() {
-        agentic_banker_with_exchange_test(true);
+        agentic_banker_with_exchange_test(true, false);
+    }
+
+    @Test
+    void agentic_banker_with_conflicting_names_test() {
+        agentic_banker_with_exchange_test(true, true);
     }
 
     @Test
     void agentic_banker_with_non_agentic_exchange_test() {
-        agentic_banker_with_exchange_test(false);
+        agentic_banker_with_exchange_test(false, false);
+    }
+
+    @Test
+    void agentic_banker_with_non_agentic_exchange_and_conflicting_names_test() {
+        agentic_banker_with_exchange_test(false, true);
     }
 
     @Test
     void agentic_banker_with_italian_request_test() {
-        agentic_banker_with_exchange_test(false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
+        agentic_banker_with_exchange_test(false, false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
     }
 
-    private void agentic_banker_with_exchange_test(boolean fullyAI) {
-        agentic_banker_with_exchange_test(fullyAI, "Transfer 100 EUR from Mario's account to Georgios' one");
+    private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames) {
+        agentic_banker_with_exchange_test(fullyAI, conflictingNames, "Transfer 100 EUR from Mario's account to Georgios' one");
     }
 
-    private void agentic_banker_with_exchange_test(boolean fullyAI, String userRequest) {
+    private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames, String userRequest) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+        var withdrawAgentBuilder = AgenticServices.agentBuilder(WithdrawAgent.class)
                 .chatModel(baseModel())
-                .tools(bankTool)
-                .build();
-        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .tools(bankTool);
+        if (conflictingNames) {
+            withdrawAgentBuilder.name("banker");
+        }
+        WithdrawAgent withdrawAgent = withdrawAgentBuilder.build();
+
+        var creditAgentBuilder = AgenticServices.agentBuilder(CreditAgent.class)
                 .chatModel(baseModel())
-                .tools(bankTool)
-                .build();
+                .tools(bankTool);
+        if (conflictingNames) {
+            creditAgentBuilder.name("banker");
+        }
+        CreditAgent creditAgent = creditAgentBuilder.build();
 
         Object exchange;
 

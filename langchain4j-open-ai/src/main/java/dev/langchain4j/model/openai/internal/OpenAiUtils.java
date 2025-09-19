@@ -1,5 +1,24 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -20,8 +39,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
@@ -49,32 +68,12 @@ import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
 
 @Internal
 public class OpenAiUtils {
@@ -306,11 +305,11 @@ public class OpenAiUtils {
             reasoningContent = assistantMessage.reasoningContent();
         }
 
-        List<ToolExecutionRequest> toolExecutionRequests = getOrDefault(assistantMessage.toolCalls(), List.of())
-                .stream()
-                .filter(toolCall -> toolCall.type() == FUNCTION)
-                .map(OpenAiUtils::toToolExecutionRequest)
-                .collect(toList());
+        List<ToolExecutionRequest> toolExecutionRequests =
+                getOrDefault(assistantMessage.toolCalls(), List.of()).stream()
+                        .filter(toolCall -> toolCall.type() == FUNCTION)
+                        .map(OpenAiUtils::toToolExecutionRequest)
+                        .collect(toList());
 
         // legacy
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -426,6 +425,7 @@ public class OpenAiUtils {
         return switch (toolChoice) {
             case AUTO -> ToolChoiceMode.AUTO;
             case REQUIRED -> ToolChoiceMode.REQUIRED;
+            case NONE -> ToolChoiceMode.NONE;
         };
     }
 

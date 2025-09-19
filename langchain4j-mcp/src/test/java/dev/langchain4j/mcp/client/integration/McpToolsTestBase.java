@@ -3,6 +3,8 @@ package dev.langchain4j.mcp.client.integration;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -19,7 +21,10 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.time.Duration;
 import java.util.Map;
+import org.awaitility.Awaitility;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -32,7 +37,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(9);
+        assertThat(tools).hasSize(10);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -53,7 +58,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         assertThat(echoBooleanParam.description()).isEqualTo("The boolean to be echoed");
 
         ToolSpecification longOperation = toolProviderResult.toolSpecificationByName("longOperation");
-        assertThat(longOperation.description()).isEqualTo("Takes 10 seconds to complete");
+        assertThat(longOperation.description()).isEqualTo("Takes 10 seconds to complete. " +
+                "If the execution is cancelled, the wasCancellationReceived tool will start returning true");
         assertThat(longOperation.parameters().properties()).isEmpty();
 
         ToolSpecification error = toolProviderResult.toolSpecificationByName("error");
@@ -141,6 +147,13 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
+        ToolExecutionRequest checkCancellationRequest = ToolExecutionRequest.builder()
+                .name("wasCancellationReceived")
+                .arguments("{}")
+                .build();
+        // wait until the server can confirm that the cancellation notification was received
+        await().timeout(Duration.ofSeconds(30))
+                .until(() -> executor.execute(checkCancellationRequest, null), is("true"));
     }
 
     // this is specifically for 'executeToolWithUntypedArrayParameter'

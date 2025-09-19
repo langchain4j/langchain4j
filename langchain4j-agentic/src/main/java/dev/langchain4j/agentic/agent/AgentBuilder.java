@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
@@ -28,12 +29,15 @@ import java.lang.reflect.Proxy;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentBuilder<T> {
     private final Class<T> agentServiceClass;
 
     String name;
+    String uniqueName;
     String description;
     String outputName;
     boolean async;
@@ -71,11 +75,11 @@ public class AgentBuilder<T> {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
 
-        if (!isNullOrBlank(agent.name())) {
-            this.name = agent.name();
-        } else {
-            this.name = agenticMethod.getName();
-        }
+        configureAgent(agentServiceClass, this);
+
+        this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
+        this.uniqueName = uniqueAgentName(this.name);
+
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
         } else if (!isNullOrBlank(agent.value())) {
@@ -92,7 +96,7 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
-        AiServiceContext context = new AiServiceContext(agentServiceClass);
+        AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
             aiServices.chatModel(model);
@@ -116,19 +120,22 @@ public class AgentBuilder<T> {
         setupGuardrails(aiServices);
         setupTools(aiServices);
 
+        UserMessageRecorder messageRecorder = new UserMessageRecorder();
         boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
+                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider).andThen(messageRecorder));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
             }
+        } else {
+            aiServices.chatRequestTransformer(messageRecorder);
         }
 
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class, ChatMessagesAccess.class},
+                new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
 
     private void setupGuardrails(AiServices<T> aiServices) {
@@ -261,6 +268,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
+        this.uniqueName = uniqueAgentName(this.name);
         return this;
     }
 

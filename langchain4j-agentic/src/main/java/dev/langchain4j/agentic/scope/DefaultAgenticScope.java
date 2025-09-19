@@ -2,9 +2,11 @@ package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -15,11 +17,10 @@ import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -31,7 +32,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, ChatMessage message) {}
+    public record AgentMessage(String agentName, String agentUniqueName, ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -126,11 +127,11 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentCall(String agentName, Object agent, Object[] input, Object output) {
+    public void registerAgentCall(AgentSpecification agentSpec, Object agent, Object[] input, Object output) {
         withReadLock(() -> {
-            agentInvocations.computeIfAbsent(agentName, name -> new ArrayList<>())
-                            .add(new AgentInvocation(agentName, input, output));
-            registerContext(agentName, agent);
+            agentInvocations.computeIfAbsent(agentSpec.name(), name -> new ArrayList<>())
+                            .add(new AgentInvocation(agentSpec.name(), input, output));
+            registerContext(agentSpec, agent, output);
         });
     }
 
@@ -138,6 +139,9 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     public void rootCallEnded(AgenticScopeRegistry registry) {
+        // ensure that all pending async operations are completed before ending the root call
+        state.replaceAll(this::readStateBlocking);
+
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId);
@@ -155,35 +159,36 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
-    private void registerContext(String agentName, Object agent) {
-    	if (!(agent instanceof ChatMemoryAccess agentWithMemory)) {
-    		return;
-    	}
-        
-    	ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
-    	if (chatMemory == null) {
-    		return;
-    	}
-        
-    	List<ChatMessage> agentMessages = chatMemory.messages();
-    	if(Utils.isNullOrEmpty(agentMessages)) {
-    		return;
-    	}
-        
-    	ChatMessage lastMessage = agentMessages.get(agentMessages.size() - 1);
-    	if (!(lastMessage instanceof AiMessage aiMessage)) {
-    		return;
-    	}
-        
+    private void registerContext(AgentSpecification agentSpec, Object agent, Object output) {
+    	ChatMemory chatMemory = agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
+    	if (chatMemory != null) {
+            registerContextFromChatMemory(agentSpec, chatMemory);
+    	} else if (output != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
+            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), chatMessagesAccess.lastUserMessage()));
+            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), AiMessage.aiMessage(output.toString())));
+        }
+    }
+
+    private void registerContextFromChatMemory(AgentSpecification agentSpec, ChatMemory chatMemory) {
+        List<ChatMessage> agentMessages = chatMemory.messages();
+        if (Utils.isNullOrEmpty(agentMessages)) {
+            return;
+        }
+
+        ChatMessage lastMessage = agentMessages.get(agentMessages.size() - 1);
+        if (!(lastMessage instanceof AiMessage aiMessage)) {
+            return;
+        }
+
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
         	if (agentMessages.get(i) instanceof UserMessage userMessage) {
         		// Only add to the agenticScope's context the last UserMessage ...
-        		context.add(new AgentMessage(agentName, userMessage));
+        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), userMessage));
         		// ... and last AiMessage response, all other messages are local to the invoked agent internals
-        		context.add(new AgentMessage(agentName, aiMessage));
-        		return;
+        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), aiMessage));
+                return;
         	}
-        }       
+        }
     }
 
     public List<AgentMessage> context() {
@@ -191,11 +196,23 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    public String contextAsConversation(Object... agents) {
+        Predicate<String> agentFilter = agents != null && agents.length > 0 ?
+                Arrays.stream(agents).filter(AgentSpecification.class::isInstance).map(AgentSpecification.class::cast)
+                        .map(AgentSpecification::name).toList()::contains :
+                agent -> true;
+        return contextAsConversation(agentFilter);
+    }
+
+    @Override
     public String contextAsConversation(String... agentNames) {
         Predicate<String> agentFilter = agentNames != null && agentNames.length > 0 ?
                 List.of(agentNames)::contains :
                 agent -> true;
+        return contextAsConversation(agentFilter);
+    }
 
+    private String contextAsConversation(Predicate<String> agentFilter) {
         StringBuilder sb = new StringBuilder();
         for (AgentMessage agentMessage : context) {
             if (!agentFilter.test(agentMessage.agentName())) {
@@ -203,14 +220,14 @@ public class DefaultAgenticScope implements AgenticScope {
             }
             ChatMessage message = agentMessage.message();
             if (message instanceof UserMessage userMessage) {
-                sb.append("User: ").append(userMessage.singleText()).append("\n");
+                sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
-                sb.append(agentMessage.agentName()).append(" agent: ").append(aiMessage.text()).append("\n");
+                sb.append(agentMessage.agentName()).append(" agent: \"").append(aiMessage.text()).append("\"\n");
             }
         }
 
         String contextAsConversation = sb.toString();
-        LOG.debug("AgenticScope context as conversation: '{}'", contextAsConversation);
+        LOG.trace("AgenticScope context as conversation: '{}'", contextAsConversation);
         return contextAsConversation;
     }
 
