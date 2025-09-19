@@ -83,7 +83,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
 
-            boolean isInvocationParameters = parameter.getType() == InvocationParameters.class;
+            boolean isInvocationParameters = InvocationParameters.class.isAssignableFrom(parameter.getType());
             if (isInvocationParameters) {
                 invocationParametersCount++;
                 if (invocationParametersCount > 1) {
@@ -390,7 +390,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                         for (int i = 0; i < parameters.length; i++) {
                             Parameter parameter = parameters[i];
-                            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
+                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                                 InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
                                 ensureNotNull(invocationParameters, "InvocationParameters");
                                 return Optional.of(invocationParameters);

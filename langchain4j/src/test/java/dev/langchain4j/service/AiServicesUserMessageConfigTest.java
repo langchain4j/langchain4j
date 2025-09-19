@@ -46,6 +46,8 @@ class AiServicesUserMessageConfigTest {
         verifyNoMoreInteractionsFor(chatModel);
     }
 
+    static class MyInvocationParameters extends InvocationParameters {}
+
     interface AiService {
 
         String chat1(String userMessage);
@@ -53,6 +55,8 @@ class AiServicesUserMessageConfigTest {
         String chat2(@UserMessage String userMessage);
 
         String chat2_1(@UserMessage String userMessage, InvocationParameters invocationParameters);
+
+        String chat2_2(@UserMessage String userMessage, MyInvocationParameters invocationParameters);
 
         String chat3(@UserMessage String userMessage, @V("country") String country);
 
@@ -181,6 +185,21 @@ class AiServicesUserMessageConfigTest {
         assertThatThrownBy(() -> aiService.chat2_1("does not matter", invocationParameters))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("InvocationParameters cannot be null");
+    }
+
+    @Test
+    void user_message_configuration_2_2() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat2_2("What is the capital of Germany?", new MyInvocationParameters()))
+                .containsIgnoringCase("Berlin");
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test

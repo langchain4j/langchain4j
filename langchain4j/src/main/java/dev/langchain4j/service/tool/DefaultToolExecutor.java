@@ -179,12 +179,12 @@ public class DefaultToolExecutor implements ToolExecutor {
                 continue;
             }
 
-            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 arguments[i] = context.invocationParameters();
                 continue;
             }
 
-            if (parameter.getType().isAssignableFrom(InvocationContext.class)) {
+            if (parameter.getType() == InvocationContext.class) {
                 arguments[i] = context;
                 continue;
             }

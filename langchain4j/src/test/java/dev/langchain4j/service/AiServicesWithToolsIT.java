@@ -839,6 +839,51 @@ class AiServicesWithToolsIT {
     }
 
     @Test
+    void should_propagate_custom_invocation_parameters_into_tool() {
+
+        // given
+        class CustomInvocationParameters extends InvocationParameters {
+
+            public CustomInvocationParameters(Map<String, Object> map) {
+                super(map);
+            }
+        }
+
+        class Tools {
+
+            @Tool
+            String getWeather(CustomInvocationParameters invocationParameters) {
+                String city = invocationParameters.get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, CustomInvocationParameters invocationParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        CustomInvocationParameters invocationParameters = new CustomInvocationParameters(Map.of("city", "Munich"));
+
+        // when
+        String answer = assistant.chat("What is the weather?", invocationParameters);
+
+        // then
+        assertThat(answer).contains("rain");
+        verify(spyTools).getWeather(invocationParameters);
+    }
+
+    @Test
     void should_propagate_invocation_context_into_tool() {
 
         // given

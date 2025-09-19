@@ -107,8 +107,8 @@ public class ToolSpecifications {
 
         for (Parameter parameter : parameters) {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)
-                    || parameter.getType().isAssignableFrom(InvocationParameters.class)
-                    || parameter.getType().isAssignableFrom(InvocationContext.class)) {
+                    || InvocationParameters.class.isAssignableFrom(parameter.getType())
+                    || parameter.getType() == InvocationContext.class) {
                 continue;
             }
 

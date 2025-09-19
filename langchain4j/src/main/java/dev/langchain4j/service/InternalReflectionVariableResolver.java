@@ -34,7 +34,7 @@ public class InternalReflectionVariableResolver {
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
             Parameter parameter = parameters[i];
-            if (parameter.getType().isAssignableFrom(InvocationParameters.class)) {
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
             String variableName = getVariableName(parameter);
