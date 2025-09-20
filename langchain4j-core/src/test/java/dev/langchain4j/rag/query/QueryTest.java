@@ -86,14 +86,7 @@ class QueryTest {
 
         // then
         assertThat(toString)
-                .isEqualTo("Query { " + "text = \"query\", "
-                        + "metadata = Metadata { "
-                        + "chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
-                        + "chatMemoryId = 42, "
-                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, "
-                        + "AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }] "
-                        + "} "
-                        + "}");
+                .isEqualTo("Query { text = \"query\", metadata = Metadata { chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = InvocationContext{chatMemoryId=42, invocationParameters=null} } }");
     }
 
     @Test

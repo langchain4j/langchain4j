@@ -4,6 +4,7 @@ public interface A2AClientBuilder<T> {
 
     A2AClientBuilder<T> inputNames(String... inputNames);
     A2AClientBuilder<T> outputName(String outputName);
+    A2AClientBuilder<T> async(boolean async);
 
     T build();
 }

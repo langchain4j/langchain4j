@@ -173,6 +173,7 @@
                                         <exclude>dev.langchain4j.guardrail</exclude>
                                         <exclude>dev.langchain4j.guardrail.config</exclude>
                                         <exclude>dev.langchain4j.internal</exclude>
+                                        <exclude>dev.langchain4j.invocation</exclude>
                                         <exclude>dev.langchain4j.memory</exclude>
                                         <exclude>dev.langchain4j.model.chat</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>

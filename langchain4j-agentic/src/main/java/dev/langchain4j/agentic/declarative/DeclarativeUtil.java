@@ -23,7 +23,7 @@ public class DeclarativeUtil {
     }
 
     public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
-        configureAgent(agentType, chatModel, false, agentBuilder, ctx -> { });
+        configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
     private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
