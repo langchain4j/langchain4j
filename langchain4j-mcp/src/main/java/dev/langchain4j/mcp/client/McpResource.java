@@ -2,14 +2,13 @@ package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import dev.langchain4j.internal.Utils;
 import java.util.Objects;
 
 /**
  * The 'Resource' object from the MCP protocol schema.
  */
 public class McpResource {
-
     private final String uri;
     private final String name;
     private final String description;
@@ -20,10 +19,9 @@ public class McpResource {
             @JsonProperty("uri") String uri,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("mimeType") String mimeType
-    ) {
-        this.uri = uri;
-        this.name = name;
+            @JsonProperty("mimeType") String mimeType) {
+        this.uri = Utils.warnIfNullOrBlank(uri, "uri", McpResource.class);
+        this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
         this.description = description;
         this.mimeType = mimeType;
     }
@@ -49,10 +47,10 @@ public class McpResource {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (McpResource) obj;
-        return Objects.equals(this.uri, that.uri) &&
-                Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.uri, that.uri)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -62,10 +60,10 @@ public class McpResource {
 
     @Override
     public String toString() {
-        return "McpResource[" +
-                "uri=" + uri + ", " +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "mimeType=" + mimeType + ']';
+        return "McpResource[" + "uri="
+                + uri + ", " + "name="
+                + name + ", " + "description="
+                + description + ", " + "mimeType="
+                + mimeType + ']';
     }
 }
