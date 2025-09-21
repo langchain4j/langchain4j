@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -9,7 +10,9 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -65,11 +68,13 @@ class DefaultAiServices<T> extends AiServices<T> {
         super(context);
     }
 
-    static void validateParameters(Method method) {
+    static void validateParameters(Class<?> aiServiceClass, Method method) {
         Parameter[] parameters = method.getParameters();
         if (parameters == null || parameters.length < 2) {
             return;
         }
+
+        boolean invocationParametersExist = false;
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
@@ -77,11 +82,27 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
+
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                if (invocationParametersExist) {
+                    throw illegalConfiguration("There can be at most one parameter of type %s",
+                            InvocationParameters.class.getName());
+                }
+                invocationParametersExist = true;
+                continue;
+            }
+
+            if (userMessage == null && v == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId",
-                        parameter.getName(), method.getName());
+                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
+                                "%s, %s, %s, or %s, or it should be of type %s",
+                        parameter.getName(), method.getName(), aiServiceClass.getName(),
+                        dev.langchain4j.service.UserMessage.class.getName(),
+                        V.class.getName(),
+                        MemoryId.class.getName(),
+                        UserName.class.getName(),
+                        InvocationParameters.class.getName()
+                );
             }
         }
     }
@@ -175,10 +196,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return handleChatMemoryAccess(method, args);
                         }
 
-                        validateParameters(method);
+                        // TODO do it once, when creating AI Service?
+                        validateParameters(context.aiServiceClass, method);
 
-                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        final ChatMemory chatMemory = context.hasChatMemory()
+                        Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
+                        ChatMemory chatMemory = context.hasChatMemory()
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
@@ -187,10 +209,22 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+
+                        InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
+                                .orElseGet(InvocationParameters::new);
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .chatMemoryId(memoryId)
+                                .invocationParameters(invocationParameters)
+                                .build();
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
-                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
+                            Metadata metadata = Metadata.builder()
+                                    .chatMessage(userMessage)
+                                    .chatMemory(chatMemoryMessages)
+                                    .invocationContext(invocationContext)
+                                    .build();
                             AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
@@ -203,7 +237,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        // Invoke input guardrails
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 
@@ -247,7 +280,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(memoryId, userMessage);
+                                context.toolService.createContext(invocationContext, userMessage);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
@@ -260,7 +293,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
-                                    .memoryId(memoryId)
+                                    .invocationContext(invocationContext)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
                                     .build();
@@ -309,7 +342,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 context.chatModel,
                                 chatMemory,
-                                memoryId,
+                                invocationContext,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult);
 
@@ -349,6 +382,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } else {
                             return parsedResponse;
                         }
+                    }
+
+                    private Optional<InvocationParameters> findInvocationParameters(Object[] arguments, Parameter[] parameters) {
+                        if (arguments == null) {
+                            return Optional.empty();
+                        }
+                        for (int i = 0; i < parameters.length; i++) {
+                            Parameter parameter = parameters[i];
+                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                                InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
+                                ensureNotNull(invocationParameters, "InvocationParameters");
+                                return Optional.of(invocationParameters);
+                            }
+                        }
+                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

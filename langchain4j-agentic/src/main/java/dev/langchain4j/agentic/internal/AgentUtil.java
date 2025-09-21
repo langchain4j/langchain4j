@@ -10,6 +10,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -20,9 +21,15 @@ public class AgentUtil {
     private static final String MEMORY_ID_ARG_NAME = "@MemoryId";
     private static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
 
+    private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
+
     private AgentUtil() { }
 
     public record AgentArgument(Class<?> type, String name) { }
+
+    public static String uniqueAgentName(String agentName) {
+        return agentName + "$" + AGENT_COUNTER.incrementAndGet();
+    }
 
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
         return Stream.of(agents).map(AgentUtil::agentToExecutor).toList();
@@ -35,11 +42,12 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
+        String uniqueName = uniqueAgentName(name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentInvoker(agenticMethod, name, spec.description(), spec.outputName(), spec.async(),
+                new MethodAgentInvoker(agenticMethod, new AgentSpecificationImpl(name, uniqueName, spec.description(), spec.outputName(), spec.async()),
                         List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentInvoker.fromMethodAndSpec(agenticMethod, name, description, annotation.outputName(), annotation.async());
+                AgentInvoker.fromMethod(new AgentSpecificationImpl(name, uniqueName, description, annotation.outputName(), annotation.async()), agenticMethod);
         return new AgentExecutor(agentInvoker, agent);
     }
 

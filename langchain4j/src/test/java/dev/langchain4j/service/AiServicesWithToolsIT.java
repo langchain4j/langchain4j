@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -19,6 +20,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -27,9 +30,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -39,10 +44,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -188,6 +195,7 @@ class AiServicesWithToolsIT {
         assertThat(result.toolExecutions()).hasSize(1);
         assertThat(result.toolExecutions().get(0).request()).isEqualTo(toolExecutionRequest);
         assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo(11.1);
 
         assertThat(result.intermediateResponses()).hasSize(1);
         ChatResponse intermediateResponse = result.intermediateResponses().get(0);
@@ -658,8 +666,8 @@ class AiServicesWithToolsIT {
     static class BookingToolExecutor implements ToolExecutor {
 
         @Override
-        public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+        public String execute(ToolExecutionRequest request, Object memoryId) {
+            Map<String, Object> arguments = toMap(request.arguments());
             assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
             return "Booking period: from 1 July 2027 to 10 July 2027";
         }
@@ -697,7 +705,8 @@ class AiServicesWithToolsIT {
 
         Result<String> result = assistant.chat("When does my booking 123-456 starts?");
         assertThat(result.content()).contains("2027");
-        verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
+        verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 
@@ -742,7 +751,8 @@ class AiServicesWithToolsIT {
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
 
-        verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
+        verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 
@@ -779,9 +789,275 @@ class AiServicesWithToolsIT {
         ).hasMessageContaining("xyz");
     }
 
+
+    @Test
+    void should_propagate_invocation_parameters_into_tool() {
+
+        // given
+        class Tools {
+
+            @Tool
+            String getWeather(InvocationParameters invocationParameters) {
+                String city = invocationParameters.get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        InvocationParameters invocationParameters1 = InvocationParameters.from("city", "Munich");
+
+        // when
+        String answer1 = assistant.chat("What is the weather?", invocationParameters1);
+
+        // then
+        assertThat(answer1).contains("rain");
+        verify(spyTools).getWeather(invocationParameters1);
+
+        // given
+        InvocationParameters invocationParameters2 = InvocationParameters.from("city", "Paris");
+
+        // when
+        String answer2 = assistant.chat("What is the weather?", invocationParameters2);
+
+        // then
+        assertThat(answer2).contains("sun");
+        verify(spyTools).getWeather(invocationParameters2);
+    }
+
+    @Test
+    void should_propagate_custom_invocation_parameters_into_tool() {
+
+        // given
+        class CustomInvocationParameters extends InvocationParameters {
+
+            public CustomInvocationParameters(Map<String, Object> map) {
+                super(map);
+            }
+        }
+
+        class Tools {
+
+            @Tool
+            String getWeather(CustomInvocationParameters invocationParameters) {
+                String city = invocationParameters.get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, CustomInvocationParameters invocationParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        CustomInvocationParameters invocationParameters = new CustomInvocationParameters(Map.of("city", "Munich"));
+
+        // when
+        String answer = assistant.chat("What is the weather?", invocationParameters);
+
+        // then
+        assertThat(answer).contains("rain");
+        verify(spyTools).getWeather(invocationParameters);
+    }
+
+    @Test
+    void should_propagate_invocation_context_into_tool() {
+
+        // given
+        class Tools {
+
+            @Tool
+            String getWeather(InvocationContext invocationContext) {
+                String city = invocationContext.invocationParameters().get("city");
+                return switch (city) {
+                    case "Munich" -> "rainy";
+                    default -> "sunny";
+                };
+            }
+        }
+
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        InvocationParameters invocationParameters1 = InvocationParameters.from("city", "Munich");
+
+        // when
+        String answer1 = assistant.chat("What is the weather?", invocationParameters1);
+
+        // then
+        assertThat(answer1).contains("rain");
+        verify(spyTools).getWeather(InvocationContext.builder()
+                .chatMemoryId("default")
+                .invocationParameters(invocationParameters1)
+                .build());
+
+        // given
+        InvocationParameters invocationParameters2 = InvocationParameters.from("city", "Paris");
+
+        // when
+        String answer2 = assistant.chat("What is the weather?", invocationParameters2);
+
+        // then
+        assertThat(answer2).contains("sun");
+        verify(spyTools).getWeather(InvocationContext.builder()
+                .chatMemoryId("default")
+                .invocationParameters(invocationParameters2)
+                .build());
+    }
+
+    @Test
+    void should_propagate_invocation_parameters_between_tools() {
+
+        // given
+        class Tools {
+
+            static final LocalTime CURRENT_TIME = LocalTime.of(12, 34, 56);
+
+            @Tool
+            String getWeather(InvocationParameters invocationParameters) {
+                assertThat(invocationParameters.asMap()).isEmpty();
+                invocationParameters.put("calledGetWeather", true);
+
+                return "sunny";
+            }
+
+            @Tool
+            LocalTime getTime(InvocationParameters invocationParameters) {
+                assertThat(invocationParameters.asMap()).containsOnly(Map.entry("calledGetWeather", true));
+                return CURRENT_TIME;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .tools(spyTools)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("What is the weather and time?");
+
+        // then
+        assertThat(result.content()).contains("sun", "12", "34");
+        assertThat(result.toolExecutions()).hasSize(2);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("sunny");
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo("sunny");
+        assertThat(result.toolExecutions().get(1).result()).isEqualTo(Json.toJson(Tools.CURRENT_TIME));
+        assertThat(result.toolExecutions().get(1).resultObject()).isEqualTo(Tools.CURRENT_TIME);
+
+        verify(spyTools).getWeather(any());
+        verify(spyTools).getTime(any());
+        verifyNoMoreInteractions(spyTools);
+    }
+
+    @Test
+    void should_propagate_invocation_parameters_into_tool_provider() {
+
+        // given
+        interface Assistant {
+
+            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+        }
+
+        String includeToolsKey = "includeTools";
+
+        ToolProvider toolProvider = request -> {
+
+            if (request.invocationContext().invocationParameters().get(includeToolsKey)) {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("xyz")
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
+                        .build();
+
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, new ToolExecutor() {
+
+                            @Override
+                            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+                                assertThat((boolean) context.invocationParameters().get(includeToolsKey)).isEqualTo(true);
+                                Map<String, Object> arguments = toMap(request.arguments());
+                                assertThat(arguments).containsExactly(entry("number", 2027));
+                                return ToolExecutionResult.builder()
+                                        .resultText("3000")
+                                        .build();
+                            }
+
+                            @Override
+                            public String execute(ToolExecutionRequest request, Object memoryId) {
+                                throw new RuntimeException("should not be called");
+                            }
+                        })
+                        .build();
+            }
+
+            return ToolProviderResult.builder().build();
+        };
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds("does not matter"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .toolProvider(toolProvider)
+                .build();
+
+        InvocationParameters invocationParameters1 = new InvocationParameters();
+        invocationParameters1.put(includeToolsKey, false);
+
+        // when
+        assistant.chat("does not matter", invocationParameters1);
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().isEmpty()));
+
+        // given
+        InvocationParameters invocationParameters2 = new InvocationParameters();
+        invocationParameters2.put(includeToolsKey, true);
+
+        // when
+        assistant.chat("does not matter", invocationParameters2);
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().size() == 1));
+    }
+
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {});
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

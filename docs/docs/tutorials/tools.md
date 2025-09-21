@@ -537,9 +537,63 @@ enum Priority {
 ```
 :::
 
+### `InvocationParameters`
+If you wish to pass extra data into the tool when invoking AI Service, you can do it with
+`InvocationParameters`:
+```java
+
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+class Tools {
+    @Tool
+    String getWeather(String city, InvocationParameters parameters) {
+        String userId = parameters.get("userId");
+        UserPreferences preferences = getUserPreferences(userId);
+        return weatherService.getWeather(city, preferences.temperatureUnits());
+    }
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("What is the weather in London?", parameters);
+```
+
+In this case, the LLM is not aware of these parameters;
+they are only visible to LangChain4j and user code.
+
+`InvocationParameters` can also be accessed within other AI Service components, such as:
+- [`ToolProvider`](/tutorials/tools#specifying-tools-dynamically): inside the `ToolProviderRequest`
+- [`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors)
+and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
+inside the `ToolErrorContext`
+- [RAG components](/tutorials/rag/): inside the `Query` -> `Metadata`
+
+Parameters are stored in a mutable, thread safe `Map`.
+
+Data can be passed between AI Service components inside the `InvocationParameters`
+(for example, from one tool to another or from a RAG component to a tool)
+during a single invocation of the AI Service.
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
-you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`.
+you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:
+
+```java
+interface Assistant{
+    String chat(@UserMessage String userMessage, @MemoryId memoryId);
+}
+
+class Tools {
+    @Tool
+    String addCalendarEvent(CalendarEvent event, @ToolMemoryId memoryId) {
+        ...
+    }
+}
+
+String answer = assistant.chat("Tomorrow I will have a meeting with Klaus at 14:00", "12345");
+```
+
 The value provided to the AI Service method will be automatically passed to the `@Tool` method.
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
@@ -580,6 +634,11 @@ Result<String> result = assistant.chat("Cancel my booking 123-456");
 
 String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
+
+ToolExecution toolExecution = toolExecutions.get(0);
+ToolExecutionRequest request = toolExecution.request();
+String result = toolExecution.result(); // tool execution result as text
+Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:
@@ -646,7 +705,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
 When using AI services, tools can also be specified dynamically for each invocation.
 One can configure a `ToolProvider` that will be called each time the AI service is invoked
 and will provide the tools that should be included in the current request to the LLM.
-The `ToolProvider` accepts a `ToolProviderRequest` that contains the `UserMessage` and chat memory ID
+The `ToolProvider` accepts a `ToolProviderRequest`
+(that contains the `UserMessage`, chat memory ID and [`InvocationParameters`](/tutorials/tools#invocationparameters))
 and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
 
 Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
@@ -753,7 +813,7 @@ You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolArgumentsErrorHandler((error, context) -> ...)
+        .toolArgumentsErrorHandler((error, errorContext) -> ...)
         .build();
 ```
 
@@ -769,13 +829,13 @@ Here is an example of the first approach:
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolArgumentsErrorHandler((error, context) -> { throw MyCustomException(error); })
+        .toolArgumentsErrorHandler((error, errorContext) -> { throw MyCustomException(error); })
         .build();
 
 try {
     assistant.chat(...);
 } catch (MyCustomException e) {
-        // handle e
+    // handle e
 }
 ```
 
@@ -785,7 +845,7 @@ Here is an example of the second approach:
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolArgumentsErrorHandler((error, context) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
+        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
         .build();
 ```
 
@@ -801,7 +861,7 @@ You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolExecutionErrorHandler((error, context) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
+        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
         .build();
 ```
 

@@ -18,7 +18,7 @@ public class McpCancellationNotification extends McpClientMessage {
     public McpCancellationNotification(@NonNull Long requestId, String reason) {
         super(null);
         this.params = new HashMap<>();
-        this.params.put("requestId", String.valueOf(requestId));
+        this.params.put("requestId", requestId);
         if (reason != null) {
             this.params.put("reason", reason);
         }

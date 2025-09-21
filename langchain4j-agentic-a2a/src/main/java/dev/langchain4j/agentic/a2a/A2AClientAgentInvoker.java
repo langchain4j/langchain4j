@@ -8,8 +8,11 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
 public class A2AClientAgentInvoker implements AgentInvoker {
 
+    private final String uniqueName;
     private final String[] inputNames;
     private final String outputName;
     private final boolean async;
@@ -19,6 +22,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public A2AClientAgentInvoker(A2AClientSpecification a2AClientInstance, Method method) {
         this.method = method;
         this.agentCard = a2AClientInstance.agentCard();
+        this.uniqueName = uniqueAgentName(name());
         this.inputNames = inputNames(a2AClientInstance);
         this.outputName = a2AClientInstance.outputName();
         this.async = a2AClientInstance.async();
@@ -33,6 +37,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public String name() {
         return agentCard.name();
+    }
+
+    @Override
+    public String uniqueName() {
+        return uniqueName;
     }
 
     @Override
@@ -57,7 +66,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String toCard() {
-        return "{" + name() + ": " + description() + ", " + Arrays.toString(inputNames) + "}";
+        return "{" + uniqueName() + ": " + description() + ", " + Arrays.toString(inputNames) + "}";
     }
 
     @Override

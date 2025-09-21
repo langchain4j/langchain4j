@@ -19,9 +19,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
 public abstract class AbstractAgentInvocationHandler implements InvocationHandler {
-    protected String name;
-    protected String description;
+    protected final String name;
+    protected final String uniqueName;
+    protected final String description;
     protected final String outputName;
 
     private final Class<?> agentServiceClass;
@@ -41,6 +44,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     protected AbstractAgentInvocationHandler(AbstractService<?, ?> service, DefaultAgenticScope agenticScope) {
         this.agentServiceClass = service.agentServiceClass;
         this.name = service.name;
+        this.uniqueName = uniqueAgentName(this.name);
         this.description = service.description;
         this.outputName = service.outputName;
         this.beforeCall = service.beforeCall;
@@ -80,6 +84,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
                 case "name" -> name;
+                case "uniqueName" -> uniqueName;
                 case "description" -> description;
                 case "outputName" -> outputName;
                 case "async" -> false;

@@ -242,4 +242,25 @@ class TypeUtilsTest {
                 .isEqualTo(
                         "The return type 'Result<List<MY_TYPE>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
+
+    @Test
+    void setWildcardTypeInvalidServiceDefinition() {
+        interface SetWildcardTypeInvalidServiceDefinition {
+            Set<?> ask(String input);
+        }
+        // Given
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        // When
+        IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AiServices.builder(SetWildcardTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build())
+                .actual();
+
+        // Then
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Set<?>' of the method 'ask' must be parameterized with a concrete type, for example: Set<String> or Set<MyCustomPojo>");
+    }
 }

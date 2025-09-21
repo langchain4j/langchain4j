@@ -30,12 +30,14 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentBuilder<T> {
     private final Class<T> agentServiceClass;
 
     String name;
+    String uniqueName;
     String description;
     String outputName;
     boolean async;
@@ -75,11 +77,9 @@ public class AgentBuilder<T> {
 
         configureAgent(agentServiceClass, this);
 
-        if (!isNullOrBlank(agent.name())) {
-            this.name = agent.name();
-        } else {
-            this.name = agenticMethod.getName();
-        }
+        this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
+        this.uniqueName = uniqueAgentName(this.name);
+
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
         } else if (!isNullOrBlank(agent.value())) {
@@ -268,6 +268,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
+        this.uniqueName = uniqueAgentName(this.name);
         return this;
     }
 

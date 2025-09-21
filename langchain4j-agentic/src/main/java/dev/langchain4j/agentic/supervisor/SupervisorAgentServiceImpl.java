@@ -225,9 +225,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     public SupervisorAgentServiceImpl<T> subAgents(List<AgentExecutor> agentExecutors) {
         for (AgentExecutor agentExecutor : agentExecutors) {
             if (!agentExecutor.agentInvoker().description().isEmpty()) {
-                this.agents.put(agentExecutor.agentName(), agentExecutor);
+                this.agents.put(agentExecutor.agentInvoker().uniqueName(), agentExecutor);
             } else {
-                throw new IllegalArgumentException("Agent '" + agentExecutor.agentName()
+                throw new IllegalArgumentException("Agent '" + agentExecutor.agentInvoker().name()
                         + "' must have a non-empty description in order to be used by the supervisor agent.");
             }
         }
