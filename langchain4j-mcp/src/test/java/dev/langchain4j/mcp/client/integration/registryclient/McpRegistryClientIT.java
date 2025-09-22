@@ -1,7 +1,8 @@
-package dev.langchain4j.mcp.registryclient;
+package dev.langchain4j.mcp.client.integration.registryclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.mcp.registryclient.DefaultMcpRegistryClient;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
 import dev.langchain4j.mcp.registryclient.model.McpServer;
@@ -19,9 +20,9 @@ import org.slf4j.LoggerFactory;
  * We might want to stop depending on it and instead run our own subregistry when we have a suitable SDK
  * available to do that for testing. Another option is to introduce a mock that substitutes it.
  */
-public class McpRegistryClientTest {
+public class McpRegistryClientIT {
 
-    private static final Logger log = LoggerFactory.getLogger(McpRegistryClientTest.class);
+    private static final Logger log = LoggerFactory.getLogger(McpRegistryClientIT.class);
 
     static DefaultMcpRegistryClient client;
 
@@ -65,7 +66,7 @@ public class McpRegistryClientTest {
     @Test
     public void testGetServer() {
         McpServer server = client.getServerDetails(
-                "987b074f-a2ca-493d-9830-7ccb0b5bd165"); // this is io.github.bytedance/mcp-server-filesystem
+                "86863c74-2ae5-4430-8880-5474e7ae2155"); // this is io.github.bytedance/mcp-server-filesystem
         verifyMetadataOfServer(server);
     }
 
@@ -100,7 +101,7 @@ public class McpRegistryClientTest {
         assertThat(server.getPackages().get(0).getVersion()).isNotBlank();
         assertThat(server.getPackages().get(0).getTransport()).isNotNull();
         assertThat(server.getPackages().get(0).getTransport().getType()).isNotBlank();
-        assertThat(server.getMeta().getOfficial().getId()).isNotBlank();
+        assertThat(server.getMeta().getOfficial().getServerId()).isNotBlank();
         assertThat(server.getMeta().getOfficial().getPublishedAt()).isNotNull();
         assertThat(server.getMeta().getOfficial().getUpdatedAt()).isNotNull();
     }
