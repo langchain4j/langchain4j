@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.registryclient.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
@@ -15,7 +16,7 @@ public class McpServer {
     private McpRepository repository;
     private String version;
 
-    @JsonProperty("website_url")
+    @JsonAlias("website_url")
     private String websiteUrl;
 
     private List<McpRemote> remotes;
