@@ -9,6 +9,8 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.V;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Optional;
@@ -17,18 +19,32 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 
 public interface AgentInvoker extends AgentSpecification {
 
+    Logger LOG = LoggerFactory.getLogger(AgentInvoker.class);
+
     Method method();
 
     String toCard();
 
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
-    default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
+    default Object invoke(AgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         try {
             beforeInvocation(new AgentRequest(agenticScope, name(), args.namedArgs()));
-            Object result = method().invoke(agent, args.positionalArgs());
+        } catch (Exception e) {
+            LOG.error("Before agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
+        }
+        Object result = internalInvoke(agent, args);
+        try {
             afterInvocation(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
-            return result;
+        } catch (Exception e) {
+            LOG.error("After agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
+    private Object internalInvoke(Object agent, AgentInvocationArguments args) {
+        try {
+            return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
             throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);
         }
