@@ -16,7 +16,8 @@ public class logging_mcp_server {
 
     @Tool(description = "Log an INFO-level message")
     public String info(McpLog log) {
-        log.info("HELLO");
+        // put an additional 'data:' into the message just to test that it doesn't break the SSE event parsing logic
+        log.info("HELLO. data: 1234");
         return "ok";
     }
 
