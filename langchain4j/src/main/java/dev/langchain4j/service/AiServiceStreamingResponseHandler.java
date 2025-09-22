@@ -30,6 +30,7 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +82,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResultMessage result) {}
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -169,7 +170,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .fireEvent(ToolExecutedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .request(toolRequestResult.request())
-                        .result(toolRequestResult.result().text())
+                        .result(toolRequestResult.result().resultText())
                         .build());
     }
 
@@ -208,7 +209,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     try {
                         ToolRequestResult toolExecutionRequestResult = toolExecutionFuture.get();
                         fireToolExecutedEvent(toolExecutionRequestResult);
-                        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionRequestResult.result();
+                        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                                toolExecutionRequestResult.request(),
+                                toolExecutionRequestResult.result().resultText());
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn
                                 && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
@@ -224,14 +227,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     }
                 }
             } else {
-                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                    ToolExecutionResultMessage toolExecutionResultMessage = execute(toolExecutionRequest);
-                    ToolRequestResult toolExecutionRequestResult =
-                            new ToolRequestResult(toolExecutionRequest, toolExecutionResultMessage);
-                    fireToolExecutedEvent(toolExecutionRequestResult);
-                    addToMemory(toolExecutionResultMessage);
+                for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
+                    ToolExecutionResult toolResult = execute(toolRequest);
+                    ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
+                    fireToolExecutedEvent(toolRequestResult);
+                    addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
                     immediateToolReturn =
-                            immediateToolReturn && context.toolService.isImmediateTool(toolExecutionRequest.name());
+                            immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());
                 }
             }
 
@@ -316,16 +318,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build();
     }
 
-    private ToolExecutionResultMessage execute(ToolExecutionRequest toolRequest) {
+    private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
         // TODO applyToolHallucinationStrategy
         handleBeforeTool(toolRequest);
-        ToolExecutionResultMessage toolResult = executeWithErrorHandling(
-                toolRequest,
-                toolExecutor,
-                invocationContext.chatMemoryId(),
-                toolArgumentsErrorHandler,
-                toolExecutionErrorHandler);
+        ToolExecutionResult toolResult = executeWithErrorHandling(
+                toolRequest, toolExecutor, invocationContext, toolArgumentsErrorHandler, toolExecutionErrorHandler);
         handleAfterTool(toolRequest, toolResult);
         return toolResult;
     }
@@ -338,12 +336,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
-    private void handleAfterTool(ToolExecutionRequest request, ToolExecutionResultMessage result) {
+    private void handleAfterTool(ToolExecutionRequest request, ToolExecutionResult result) {
         if (toolExecutionHandler != null) {
-            ToolExecution toolExecution = ToolExecution.builder()
-                    .request(request)
-                    .result(result.text())
-                    .build();
+            ToolExecution toolExecution =
+                    ToolExecution.builder().request(request).result(result).build();
             toolExecutionHandler.accept(toolExecution);
         }
     }
