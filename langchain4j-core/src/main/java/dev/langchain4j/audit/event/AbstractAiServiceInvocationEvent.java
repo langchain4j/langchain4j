@@ -2,13 +2,13 @@ package dev.langchain4j.audit.event;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 
-public abstract class AbstractAiServiceInteractionEvent implements AiServiceInteractionEvent {
+public abstract class AbstractAiServiceInvocationEvent implements AiServiceInvocationEvent {
     private final AiServiceInvocationContext invocationContext;
 
-    protected AbstractAiServiceInteractionEvent(Builder<?> builder) {
+    protected AbstractAiServiceInvocationEvent(Builder<?> builder) {
         ensureNotNull(builder, "builder");
         this.invocationContext = ensureNotNull(builder.getInvocationContext(), "invocationContext");
     }

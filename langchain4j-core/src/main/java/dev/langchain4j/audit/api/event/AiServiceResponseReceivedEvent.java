@@ -7,7 +7,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Invoked with a response from an LLM. It is important to note that this can be invoked multiple times during a single LLM interaction
  * when tools or guardrails exist.
  */
-public interface AiServiceResponseReceivedEvent extends AiServiceInteractionEvent {
+public interface AiServiceResponseReceivedEvent extends AiServiceInvocationEvent {
     /**
      * Retrieves the chat response from the LLM interaction event.
      *

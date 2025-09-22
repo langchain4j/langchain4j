@@ -1,6 +1,6 @@
 package dev.langchain4j.audit.api.event;
 
-public interface AiServiceInteractionEvent {
+public interface AiServiceInvocationEvent {
     /**
      * Retrieves the source of the interaction, containing general information
      * about where and how the interaction originated.
@@ -14,22 +14,22 @@ public interface AiServiceInteractionEvent {
     // Implementation note: I implemented it this way on purpose (rather than defining an enum of "Event Types")
     // So that downstream frameworks/applications could define their own event types and still use the
     // registration/firing mechanisms provided here in LC4j
-    <T extends AiServiceInteractionEvent> Class<T> eventClass();
+    <T extends AiServiceInvocationEvent> Class<T> eventClass();
 
     /**
-     * Creates a new builder instance initialized with the properties of this {@link AiServiceInteractionEvent}.
+     * Creates a new builder instance initialized with the properties of this {@link AiServiceInvocationEvent}.
      * This allows modification of the existing properties and reconstruction of the event.
      */
-    <T extends AiServiceInteractionEvent> Builder<T> toBuilder();
+    <T extends AiServiceInvocationEvent> Builder<T> toBuilder();
 
     /**
-     * An abstract base class for building instances of types that extend {@link AiServiceInteractionEvent}.
+     * An abstract base class for building instances of types that extend {@link AiServiceInvocationEvent}.
      * This class provides a fluent interface for setting properties necessary
-     * for constructing an {@link AiServiceInteractionEvent}.
+     * for constructing an {@link AiServiceInvocationEvent}.
      *
-     * @param <T> the specific type of {@link AiServiceInteractionEvent} being built
+     * @param <T> the specific type of {@link AiServiceInvocationEvent} being built
      */
-    abstract class Builder<T extends AiServiceInteractionEvent> {
+    abstract class Builder<T extends AiServiceInvocationEvent> {
         private AiServiceInvocationContext invocationContext;
 
         protected Builder() {}

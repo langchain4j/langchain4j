@@ -8,7 +8,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 /**
  * Default implementation of {@link AiServiceResponseReceivedEvent}.
  */
-public class DefaultAiServiceResponseReceivedEvent extends AbstractAiServiceInteractionEvent
+public class DefaultAiServiceResponseReceivedEvent extends AbstractAiServiceInvocationEvent
         implements AiServiceResponseReceivedEvent {
     private final ChatResponse response;
 

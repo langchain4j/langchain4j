@@ -2,22 +2,26 @@ package dev.langchain4j.audit.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionStartedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationCompletedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationErrorEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationStartedEventListener;
 import dev.langchain4j.audit.api.listener.AiServiceResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.InputGuardrailExecutedEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionErrorEventListener;
 import dev.langchain4j.audit.api.listener.OutputGuardrailExecutedEventListener;
 import dev.langchain4j.audit.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.data.message.AiMessage;
@@ -32,13 +36,9 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
-class DefaultAiServiceInteractionEventListenerRegistrarTests {
+class DefaultAiServiceInvocationEventListenerRegistrarTests {
     private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
@@ -55,19 +55,19 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
                             .build())
                     .build();
 
-    private static final AiServiceInteractionErrorEvent LLM_INTERACTION_ERROR_EVENT =
-            AiServiceInteractionErrorEvent.builder()
+    private static final AiServiceInvocationErrorEvent LLM_INTERACTION_ERROR_EVENT =
+            AiServiceInvocationErrorEvent.builder()
                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .error(new RuntimeException("Some error"))
                     .build();
 
-    private static final AiServiceInteractionCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
-            AiServiceInteractionCompletedEvent.builder()
+    private static final AiServiceInvocationCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
+            AiServiceInvocationCompletedEvent.builder()
                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .build();
 
-    private static final AiServiceInteractionStartedEvent LLM_INTERACTION_STARTED_EVENT =
-            AiServiceInteractionStartedEvent.builder()
+    private static final AiServiceInvocationStartedEvent LLM_INTERACTION_STARTED_EVENT =
+            AiServiceInvocationStartedEvent.builder()
                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
                     .userMessage(UserMessage.from("Hello, world!"))
                     .build();
@@ -123,7 +123,7 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
             .result("Success!")
             .build();
 
-    private static final List<AiServiceInteractionEvent> ALL_EVENTS = List.of(
+    private static final List<AiServiceInvocationEvent> ALL_EVENTS = List.of(
             LLM_RESPONSE_RECEIVED_EVENT,
             LLM_INTERACTION_ERROR_EVENT,
             LLM_INTERACTION_COMPLETED_EVENT,
@@ -147,10 +147,10 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
 
     @Test
     void hasCorrectListeners() {
-        var registrar = (DefaultAiServiceInteractionEventListenerRegistrar)
-                assertThat(AiServiceInteractionEventListenerRegistrar.getInstance())
+        var registrar = (DefaultAiServiceInvocationEventListenerRegistrar)
+                assertThat(AiServiceInvocationEventListenerRegistrar.getInstance())
                         .isNotNull()
-                        .isExactlyInstanceOf(DefaultAiServiceInteractionEventListenerRegistrar.class)
+                        .isExactlyInstanceOf(DefaultAiServiceInvocationEventListenerRegistrar.class)
                         .actual();
 
         // Assert our starting point that nothing has happened
@@ -167,7 +167,7 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
                 .isNotNull()
                 .satisfies(el -> assertThat(el.count()).isOne(), el -> assertThat(el.lastEvent())
                         .isNotNull()
-                        .extracting(AiServiceInteractionEvent::invocationContext)
+                        .extracting(AiServiceInvocationEvent::invocationContext)
                         .usingRecursiveComparison()
                         .isEqualTo(DEFAULT_INTERACTION_SOURCE)));
 
@@ -191,8 +191,8 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
                         .isNull()));
     }
 
-    private abstract static class AbstractTestEventListener<T extends AiServiceInteractionEvent>
-            implements AiServiceInteractionEventListener<T> {
+    private abstract static class AbstractTestEventListener<T extends AiServiceInvocationEvent>
+            implements AiServiceInvocationEventListener<T> {
 
         private final AtomicInteger count = new AtomicInteger();
         private T lastEvent;
@@ -224,16 +224,16 @@ class DefaultAiServiceInteractionEventListenerRegistrarTests {
             implements OutputGuardrailExecutedEventListener {}
 
     private static class TestLLMInteractionStartedListener
-            extends AbstractTestEventListener<AiServiceInteractionStartedEvent>
-            implements AiServiceInteractionStartedEventListener {}
+            extends AbstractTestEventListener<AiServiceInvocationStartedEvent>
+            implements AiServiceInvocationStartedEventListener {}
 
     private static class TestLLMInteractionCompletedListener
-            extends AbstractTestEventListener<AiServiceInteractionCompletedEvent>
-            implements AiServiceInteractionCompletedEventListener {}
+            extends AbstractTestEventListener<AiServiceInvocationCompletedEvent>
+            implements AiServiceInvocationCompletedEventListener {}
 
     private static class TestLLMInteractionErrorListener
-            extends AbstractTestEventListener<AiServiceInteractionErrorEvent>
-            implements LLMInteractionErrorEventListener {}
+            extends AbstractTestEventListener<AiServiceInvocationErrorEvent>
+            implements AiServiceInvocationErrorEventListener {}
 
     private static class TestLLMResponseReceivedListener
             extends AbstractTestEventListener<AiServiceResponseReceivedEvent>

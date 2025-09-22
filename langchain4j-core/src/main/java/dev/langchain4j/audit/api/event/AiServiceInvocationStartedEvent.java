@@ -1,15 +1,15 @@
 package dev.langchain4j.audit.api.event;
 
-import dev.langchain4j.audit.event.DefaultAiServiceInteractionStartedEvent;
+import java.util.Optional;
+import dev.langchain4j.audit.event.DefaultAiServiceInvocationStartedEvent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Invoked when an LLM interaction has started.
  */
-public interface AiServiceInteractionStartedEvent extends AiServiceInteractionEvent {
+public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEvent {
     /**
      * Retrieves an optional system message associated with the interaction.
      * A system message typically provides instructions regarding the AI's
@@ -25,15 +25,15 @@ public interface AiServiceInteractionStartedEvent extends AiServiceInteractionEv
     UserMessage userMessage();
 
     /**
-     * Creates a new builder instance for constructing a {@link AiServiceInteractionStartedEvent}.
+     * Creates a new builder instance for constructing a {@link AiServiceInvocationStartedEvent}.
      */
     static AiServiceInteractionStartedEventBuilder builder() {
         return new AiServiceInteractionStartedEventBuilder();
     }
 
     @Override
-    default Class<AiServiceInteractionStartedEvent> eventClass() {
-        return AiServiceInteractionStartedEvent.class;
+    default Class<AiServiceInvocationStartedEvent> eventClass() {
+        return AiServiceInvocationStartedEvent.class;
     }
 
     @Override
@@ -42,18 +42,18 @@ public interface AiServiceInteractionStartedEvent extends AiServiceInteractionEv
     }
 
     /**
-     * Builder for {@link DefaultAiServiceInteractionStartedEvent} instances.
+     * Builder for {@link DefaultAiServiceInvocationStartedEvent} instances.
      */
-    class AiServiceInteractionStartedEventBuilder extends Builder<AiServiceInteractionStartedEvent> {
+    class AiServiceInteractionStartedEventBuilder extends Builder<AiServiceInvocationStartedEvent> {
         private @Nullable SystemMessage systemMessage;
         private UserMessage userMessage;
 
         protected AiServiceInteractionStartedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link AiServiceInteractionStartedEvent}.
+         * Creates a builder initialized from an existing {@link AiServiceInvocationStartedEvent}.
          */
-        protected AiServiceInteractionStartedEventBuilder(AiServiceInteractionStartedEvent src) {
+        protected AiServiceInteractionStartedEventBuilder(AiServiceInvocationStartedEvent src) {
             super(src);
             systemMessage(src.systemMessage().orElse(null));
             userMessage(src.userMessage());
@@ -90,10 +90,10 @@ public interface AiServiceInteractionStartedEvent extends AiServiceInteractionEv
         }
 
         /**
-         * Builds a {@link AiServiceInteractionStartedEvent}.
+         * Builds a {@link AiServiceInvocationStartedEvent}.
          */
-        public AiServiceInteractionStartedEvent build() {
-            return new DefaultAiServiceInteractionStartedEvent(this);
+        public AiServiceInvocationStartedEvent build() {
+            return new DefaultAiServiceInvocationStartedEvent(this);
         }
 
         @Nullable

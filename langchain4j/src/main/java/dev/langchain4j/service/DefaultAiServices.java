@@ -9,12 +9,31 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import java.io.InputStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -43,25 +62,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-import java.io.InputStream;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -196,8 +196,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         try {
                             return invoke(method, args, interactionSource);
                         } catch (Exception ex) {
-                            AiServiceInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInteractionErrorEvent.builder()
+                            AiServiceInvocationEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInvocationErrorEvent.builder()
                                             .invocationContext(interactionSource)
                                             .error(ex)
                                             .build());
@@ -221,8 +221,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        AiServiceInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceInteractionStartedEvent.builder()
+                        AiServiceInvocationEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInvocationStartedEvent.builder()
                                         .invocationContext(interactionSource)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
@@ -342,7 +342,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = chatExecutor.execute();
 
-                        AiServiceInteractionEventListenerRegistrar.getInstance()
+                        AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceResponseReceivedEvent.builder()
                                         .invocationContext(interactionSource)
                                         .response(chatResponse)
@@ -374,8 +374,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            AiServiceInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                            AiServiceInvocationEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                             .invocationContext(interactionSource)
                                             .result(result)
                                             .build());
@@ -393,8 +393,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            AiServiceInteractionEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                            AiServiceInvocationEventListenerRegistrar.getInstance()
+                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                             .invocationContext(interactionSource)
                                             .result(response)
                                             .build());
@@ -417,8 +417,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
-                        AiServiceInteractionEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceInteractionCompletedEvent.builder()
+                        AiServiceInvocationEventListenerRegistrar.getInstance()
+                                .fireEvent(AiServiceInvocationCompletedEvent.builder()
                                         .invocationContext(interactionSource)
                                         .result(actualResponse)
                                         .build());

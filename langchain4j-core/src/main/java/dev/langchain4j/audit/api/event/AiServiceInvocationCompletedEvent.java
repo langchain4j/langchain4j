@@ -1,12 +1,12 @@
 package dev.langchain4j.audit.api.event;
 
-import dev.langchain4j.audit.event.DefaultAiServiceInteractionCompletedEvent;
 import java.util.Optional;
+import dev.langchain4j.audit.event.DefaultAiServiceInvocationCompletedEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Represents an event that occurs upon the completion of an interaction
- * with a large language model (LLM). This interface extends {@link AiServiceInteractionEvent}
+ * with a large language model (LLM). This interface extends {@link AiServiceInvocationEvent}
  * to include additional information about the result of the interaction.
  *
  * Classes implementing this interface are expected to provide details
@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * of the interaction process, a returned value, a processed value, or
  * {@code null} if no meaningful result exists.
  */
-public interface AiServiceInteractionCompletedEvent extends AiServiceInteractionEvent {
+public interface AiServiceInvocationCompletedEvent extends AiServiceInvocationEvent {
     /**
      * Retrieves the result of the interaction process. The result could be the outcome
      * of the interaction, a processed value, or {@code null} if no result exists.
@@ -23,8 +23,8 @@ public interface AiServiceInteractionCompletedEvent extends AiServiceInteraction
     Optional<Object> result();
 
     @Override
-    default Class<AiServiceInteractionCompletedEvent> eventClass() {
-        return AiServiceInteractionCompletedEvent.class;
+    default Class<AiServiceInvocationCompletedEvent> eventClass() {
+        return AiServiceInvocationCompletedEvent.class;
     }
 
     static AiServiceInteractionCompletedEventBuilder builder() {
@@ -37,17 +37,17 @@ public interface AiServiceInteractionCompletedEvent extends AiServiceInteraction
     }
 
     /**
-     * Builder for {@link DefaultAiServiceInteractionCompletedEvent} instances.
+     * Builder for {@link DefaultAiServiceInvocationCompletedEvent} instances.
      */
-    class AiServiceInteractionCompletedEventBuilder extends Builder<AiServiceInteractionCompletedEvent> {
+    class AiServiceInteractionCompletedEventBuilder extends Builder<AiServiceInvocationCompletedEvent> {
         private @Nullable Object result;
 
         protected AiServiceInteractionCompletedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link AiServiceInteractionCompletedEvent}.
+         * Creates a builder initialized from an existing {@link AiServiceInvocationCompletedEvent}.
          */
-        protected AiServiceInteractionCompletedEventBuilder(AiServiceInteractionCompletedEvent src) {
+        protected AiServiceInteractionCompletedEventBuilder(AiServiceInvocationCompletedEvent src) {
             super(src);
             result(src.result());
         }
@@ -69,10 +69,10 @@ public interface AiServiceInteractionCompletedEvent extends AiServiceInteraction
         }
 
         /**
-         * Builds a {@link AiServiceInteractionCompletedEvent}.
+         * Builds a {@link AiServiceInvocationCompletedEvent}.
          */
-        public AiServiceInteractionCompletedEvent build() {
-            return new DefaultAiServiceInteractionCompletedEvent(this);
+        public AiServiceInvocationCompletedEvent build() {
+            return new DefaultAiServiceInvocationCompletedEvent(this);
         }
 
         @Nullable

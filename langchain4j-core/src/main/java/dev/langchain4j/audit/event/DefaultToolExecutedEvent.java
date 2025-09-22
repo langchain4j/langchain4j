@@ -8,7 +8,7 @@ import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 /**
  * Default implementation of {@link ToolExecutedEvent}.
  */
-public class DefaultToolExecutedEvent extends AbstractAiServiceInteractionEvent implements ToolExecutedEvent {
+public class DefaultToolExecutedEvent extends AbstractAiServiceInvocationEvent implements ToolExecutedEvent {
     private final ToolExecutionRequest request;
     private final String result;
 

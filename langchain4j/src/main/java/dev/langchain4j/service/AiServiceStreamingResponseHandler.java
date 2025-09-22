@@ -4,12 +4,22 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
+import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
@@ -30,16 +40,6 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
-import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,15 +157,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private <T> void fireInteractionComplete(T result) {
-        AiServiceInteractionEventListenerRegistrar.getInstance()
-                .fireEvent(AiServiceInteractionCompletedEvent.builder()
+        AiServiceInvocationEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceInvocationCompletedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .result(result)
                         .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
-        AiServiceInteractionEventListenerRegistrar.getInstance()
+        AiServiceInvocationEventListenerRegistrar.getInstance()
                 .fireEvent(ToolExecutedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .request(toolRequestResult.request())
@@ -174,7 +174,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
-        AiServiceInteractionEventListenerRegistrar.getInstance()
+        AiServiceInvocationEventListenerRegistrar.getInstance()
                 .fireEvent(AiServiceResponseReceivedEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .response(chatResponse)
@@ -182,8 +182,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireErrorReceived(Throwable error) {
-        AiServiceInteractionEventListenerRegistrar.getInstance()
-                .fireEvent(AiServiceInteractionErrorEvent.builder()
+        AiServiceInvocationEventListenerRegistrar.getInstance()
+                .fireEvent(AiServiceInvocationErrorEvent.builder()
                         .invocationContext(commonGuardrailParams.invocationContext())
                         .error(error)
                         .build());

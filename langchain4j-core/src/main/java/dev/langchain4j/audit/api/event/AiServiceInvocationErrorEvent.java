@@ -1,24 +1,24 @@
 package dev.langchain4j.audit.api.event;
 
-import dev.langchain4j.audit.event.DefaultAiServiceInteractionErrorEvent;
+import dev.langchain4j.audit.event.DefaultAiServiceInvocationErrorEvent;
 
 /**
  * Represents an event that occurs when an interaction with a large language model (LLM) fails.
- * This interface extends {@link AiServiceInteractionEvent} to include additional information
+ * This interface extends {@link AiServiceInvocationEvent} to include additional information
  * about the error that caused the failure.
  *
  * Implementers of this interface can provide details about the failure, including the
  * associated {@link Throwable}, which can be used for debugging or logging purposes.
  */
-public interface AiServiceInteractionErrorEvent extends AiServiceInteractionEvent {
+public interface AiServiceInvocationErrorEvent extends AiServiceInvocationEvent {
     /**
      * Retrieves the {@link Throwable} representing the error associated with the LLM interaction failure.
      */
     Throwable error();
 
     @Override
-    default Class<AiServiceInteractionErrorEvent> eventClass() {
-        return AiServiceInteractionErrorEvent.class;
+    default Class<AiServiceInvocationErrorEvent> eventClass() {
+        return AiServiceInvocationErrorEvent.class;
     }
 
     @Override
@@ -31,17 +31,17 @@ public interface AiServiceInteractionErrorEvent extends AiServiceInteractionEven
     }
 
     /**
-     * Builder for {@link DefaultAiServiceInteractionErrorEvent} instances.
+     * Builder for {@link DefaultAiServiceInvocationErrorEvent} instances.
      */
-    class AiServiceInteractionErrorEventBuilder extends Builder<AiServiceInteractionErrorEvent> {
+    class AiServiceInteractionErrorEventBuilder extends Builder<AiServiceInvocationErrorEvent> {
         private Throwable error;
 
         protected AiServiceInteractionErrorEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link AiServiceInteractionErrorEvent}.
+         * Creates a builder initialized from an existing {@link AiServiceInvocationErrorEvent}.
          */
-        protected AiServiceInteractionErrorEventBuilder(AiServiceInteractionErrorEvent src) {
+        protected AiServiceInteractionErrorEventBuilder(AiServiceInvocationErrorEvent src) {
             super(src);
             error(src.error());
         }
@@ -62,10 +62,10 @@ public interface AiServiceInteractionErrorEvent extends AiServiceInteractionEven
         }
 
         /**
-         * Builds a {@link AiServiceInteractionErrorEvent}.
+         * Builds a {@link AiServiceInvocationErrorEvent}.
          */
-        public AiServiceInteractionErrorEvent build() {
-            return new DefaultAiServiceInteractionErrorEvent(this);
+        public AiServiceInvocationErrorEvent build() {
+            return new DefaultAiServiceInvocationErrorEvent(this);
         }
 
         public Throwable getError() {

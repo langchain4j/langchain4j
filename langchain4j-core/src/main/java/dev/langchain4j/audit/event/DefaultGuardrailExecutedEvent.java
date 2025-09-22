@@ -21,7 +21,7 @@ public abstract class DefaultGuardrailExecutedEvent<
                 R extends GuardrailResult<R>,
                 G extends Guardrail<P, R>,
                 E extends GuardrailExecutedEvent<P, R, G>>
-        extends AbstractAiServiceInteractionEvent implements GuardrailExecutedEvent<P, R, G> {
+        extends AbstractAiServiceInvocationEvent implements GuardrailExecutedEvent<P, R, G> {
 
     private final P request;
     private final R result;

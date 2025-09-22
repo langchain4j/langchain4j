@@ -2,21 +2,21 @@ package dev.langchain4j.audit.event;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import java.util.Optional;
+import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Default implementation of {@link AiServiceInteractionStartedEvent}.
+ * Default implementation of {@link AiServiceInvocationStartedEvent}.
  */
-public class DefaultAiServiceInteractionStartedEvent extends AbstractAiServiceInteractionEvent
-        implements AiServiceInteractionStartedEvent {
+public class DefaultAiServiceInvocationStartedEvent extends AbstractAiServiceInvocationEvent
+        implements AiServiceInvocationStartedEvent {
     private final @Nullable SystemMessage systemMessage;
     private final UserMessage userMessage;
 
-    public DefaultAiServiceInteractionStartedEvent(AiServiceInteractionStartedEventBuilder builder) {
+    public DefaultAiServiceInvocationStartedEvent(AiServiceInteractionStartedEventBuilder builder) {
         super(builder);
         this.systemMessage = builder.getSystemMessage();
         this.userMessage = ensureNotNull(builder.getUserMessage(), "userMessage");

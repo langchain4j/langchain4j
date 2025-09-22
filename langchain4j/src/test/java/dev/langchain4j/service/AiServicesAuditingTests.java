@@ -4,25 +4,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.audit.api.AiServiceInteractionEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceInteractionCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionErrorEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.audit.api.event.AiServiceInteractionStartedEvent;
+import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
+import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
+import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.ToolExecutedEvent;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionCompletedEventListener;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionEventListener;
-import dev.langchain4j.audit.api.listener.AiServiceInteractionStartedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationCompletedEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationErrorEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationStartedEventListener;
 import dev.langchain4j.audit.api.listener.AiServiceResponseReceivedEventListener;
 import dev.langchain4j.audit.api.listener.InputGuardrailExecutedEventListener;
-import dev.langchain4j.audit.api.listener.LLMInteractionErrorEventListener;
 import dev.langchain4j.audit.api.listener.OutputGuardrailExecutedEventListener;
 import dev.langchain4j.audit.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.data.message.AiMessage;
@@ -37,19 +50,6 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServicesAuditingTests {
@@ -59,7 +59,7 @@ class AiServicesAuditingTests {
     private static final String TOOL_EXPECTED_RESPONSE =
             "The square root of 485,906,798,473,894,056 in scientific notation is approximately 6.97070153193991E8.";
 
-    Map<Class<? extends AiServiceInteractionEvent>, MyEventListener<? extends AiServiceInteractionEvent>> listeners =
+    Map<Class<? extends AiServiceInvocationEvent>, MyEventListener<? extends AiServiceInvocationEvent>> listeners =
             createListeners();
 
     private void runScenario(
@@ -67,9 +67,9 @@ class AiServicesAuditingTests {
             Consumer<Assistant> chatAssertion,
             String expectedMethodName,
             boolean hasTools,
-            List<Class<? extends AiServiceInteractionEvent>> noEventsReceivedClasses,
+            List<Class<? extends AiServiceInvocationEvent>> noEventsReceivedClasses,
             String expectedUserMessage,
-            List<Class<? extends AiServiceInteractionEvent>> expectedEventsReceivedClasses) {
+            List<Class<? extends AiServiceInvocationEvent>> expectedEventsReceivedClasses) {
 
         // Invoke the operation prior to registering the listeners
         // Nothing should happen
@@ -142,13 +142,13 @@ class AiServicesAuditingTests {
                 "streamingChat",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceInteractionStartedEvent.class, AiServiceInteractionErrorEvent.class));
+                List.of(AiServiceInvocationStartedEvent.class, AiServiceInvocationErrorEvent.class));
     }
 
     @Test
@@ -160,13 +160,13 @@ class AiServicesAuditingTests {
                 "chat",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceInteractionStartedEvent.class, AiServiceInteractionErrorEvent.class));
+                List.of(AiServiceInvocationStartedEvent.class, AiServiceInvocationErrorEvent.class));
     }
 
     @Test
@@ -210,14 +210,14 @@ class AiServicesAuditingTests {
                 "streamingChat",
                 false,
                 List.of(
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
 
@@ -229,14 +229,14 @@ class AiServicesAuditingTests {
                 "chat",
                 false,
                 List.of(
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
 
@@ -248,13 +248,13 @@ class AiServicesAuditingTests {
                 "chat",
                 true,
                 List.of(
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class),
                 TOOL_USER_MESSAGE,
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
     }
@@ -303,13 +303,13 @@ class AiServicesAuditingTests {
                 "streamingChat",
                 true,
                 List.of(
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class,
                         OutputGuardrailExecutedEvent.class),
                 TOOL_USER_MESSAGE,
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
     }
@@ -328,14 +328,14 @@ class AiServicesAuditingTests {
                 "streamingChatWithInputGuardrails",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class));
     }
 
@@ -351,14 +351,14 @@ class AiServicesAuditingTests {
                 "chatWithInputGuardrails",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         InputGuardrailExecutedEvent.class));
     }
 
@@ -405,13 +405,13 @@ class AiServicesAuditingTests {
                 "streamingChatWithOutputGuardrails",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
@@ -428,30 +428,30 @@ class AiServicesAuditingTests {
                 "chatWithOutputGuardrails",
                 false,
                 List.of(
-                        AiServiceInteractionCompletedEvent.class,
+                        AiServiceInvocationCompletedEvent.class,
                         InputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
                 List.of(
-                        AiServiceInteractionStartedEvent.class,
-                        AiServiceInteractionErrorEvent.class,
+                        AiServiceInvocationStartedEvent.class,
+                        AiServiceInvocationErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
 
     private void registerAllListeners() {
-        listeners.values().forEach(AiServiceInteractionEventListenerRegistrar.getInstance()::register);
+        listeners.values().forEach(AiServiceInvocationEventListenerRegistrar.getInstance()::register);
     }
 
     private void unregisterAllListeners() {
         listeners.values().forEach(listener -> {
-            AiServiceInteractionEventListenerRegistrar.getInstance().unregister(listener);
+            AiServiceInvocationEventListenerRegistrar.getInstance().unregister(listener);
             listener.reset();
         });
     }
 
     private static void assertNoEventsReceived(
-            int expectedSize, Collection<? extends MyEventListener<? extends AiServiceInteractionEvent>> listeners) {
+            int expectedSize, Collection<? extends MyEventListener<? extends AiServiceInvocationEvent>> listeners) {
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
                 .isNotNull()
                 .extracting(MyEventListener::count, MyEventListener::event)
@@ -463,7 +463,7 @@ class AiServicesAuditingTests {
             int expectedSize,
             String expectedUserMessage,
             String expectedMethodName,
-            Collection<? extends MyEventListener<? extends AiServiceInteractionEvent>> listeners) {
+            Collection<? extends MyEventListener<? extends AiServiceInvocationEvent>> listeners) {
 
         // All the events have the correct number of invocations & non-null events
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> {
@@ -483,7 +483,7 @@ class AiServicesAuditingTests {
 
         var firstInteractionSource = listeners.stream()
                 .map(MyEventListener::event)
-                .map(AiServiceInteractionEvent::invocationContext)
+                .map(AiServiceInvocationEvent::invocationContext)
                 .findFirst();
 
         var is = assertThat(firstInteractionSource).get().actual();
@@ -509,7 +509,7 @@ class AiServicesAuditingTests {
         assertThat(is.timestamp()).isNotNull();
     }
 
-    private static Map<Class<? extends AiServiceInteractionEvent>, MyEventListener<? extends AiServiceInteractionEvent>>
+    private static Map<Class<? extends AiServiceInvocationEvent>, MyEventListener<? extends AiServiceInvocationEvent>>
             createListeners() {
 
         return Stream.of(
@@ -520,7 +520,7 @@ class AiServicesAuditingTests {
                         new MyAiServiceResponseReceivedEventListener(),
                         new MyOutputGuardrailExecutedEventListener(),
                         new MyToolExecutedEventListener())
-                .collect(Collectors.toMap(AiServiceInteractionEventListener::getEventClass, Function.identity()));
+                .collect(Collectors.toMap(AiServiceInvocationEventListener::getEventClass, Function.identity()));
     }
 
     @SystemMessage("You are a chat bot that answers questions")
@@ -618,8 +618,8 @@ class AiServicesAuditingTests {
         }
     }
 
-    public abstract static class MyEventListener<T extends AiServiceInteractionEvent>
-            implements AiServiceInteractionEventListener<T> {
+    public abstract static class MyEventListener<T extends AiServiceInvocationEvent>
+            implements AiServiceInvocationEventListener<T> {
         private final AtomicInteger count = new AtomicInteger();
         private T event;
 
@@ -721,15 +721,15 @@ class AiServicesAuditingTests {
             implements AiServiceResponseReceivedEventListener {}
 
     public static class MyAiServiceInteractionStartedEventListener
-            extends MyEventListener<AiServiceInteractionStartedEvent>
-            implements AiServiceInteractionStartedEventListener {}
+            extends MyEventListener<AiServiceInvocationStartedEvent>
+            implements AiServiceInvocationStartedEventListener {}
 
-    public static class MyAiServiceInteractionErrorEventListener extends MyEventListener<AiServiceInteractionErrorEvent>
-            implements LLMInteractionErrorEventListener {}
+    public static class MyAiServiceInteractionErrorEventListener extends MyEventListener<AiServiceInvocationErrorEvent>
+            implements AiServiceInvocationErrorEventListener {}
 
     public static class MyAiServiceInteractionCompletedEventListener
-            extends MyEventListener<AiServiceInteractionCompletedEvent>
-            implements AiServiceInteractionCompletedEventListener {}
+            extends MyEventListener<AiServiceInvocationCompletedEvent>
+            implements AiServiceInvocationCompletedEventListener {}
 
     public static class MyInputGuardrailExecutedEventListener extends MyEventListener<InputGuardrailExecutedEvent>
             implements InputGuardrailExecutedEventListener {}
