@@ -30,9 +30,7 @@ public interface PlannerAgent {
 
             The comma separated list of available agents is: '{{agents}}'.
 
-            Use the following optional supervisor context to better understand constraints, policies or preferences
-            when creating the plan (can be empty):
-            '{{supervisorContext}}'.
+            {{supervisorContext}}
             """)
     @UserMessage(
             """

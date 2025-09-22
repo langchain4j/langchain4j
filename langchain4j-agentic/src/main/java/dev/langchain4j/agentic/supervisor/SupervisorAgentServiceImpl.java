@@ -31,6 +31,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
 
     private static final Logger LOG = LoggerFactory.getLogger(SupervisorAgentServiceImpl.class);
     public static final String SUPERVISOR_CONTEXT_KEY = "supervisorContext";
+    public static final String SUPERVISOR_CONTEXT_PREFIX = "Use the following supervisor context to better understand " +
+            "constraints, policies or preferences when creating the plan ";
 
     private ChatModel chatModel;
 
@@ -122,7 +124,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 PlannerAgent planner = isAgenticScopeDependent()
                         ? agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent)
                         : this.plannerAgent;
-                String supervisorContext = agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "");
+                String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY) ?
+                        SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'." :
+                        "";
                 AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
