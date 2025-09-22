@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -9,6 +10,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
@@ -16,6 +18,7 @@ import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -73,11 +76,13 @@ class DefaultAiServices<T> extends AiServices<T> {
         super(context);
     }
 
-    static void validateParameters(Method method) {
+    static void validateParameters(Class<?> aiServiceClass, Method method) {
         Parameter[] parameters = method.getParameters();
         if (parameters == null || parameters.length < 2) {
             return;
         }
+
+        boolean invocationParametersExist = false;
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
@@ -85,11 +90,27 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
+
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                if (invocationParametersExist) {
+                    throw illegalConfiguration("There can be at most one parameter of type %s",
+                            InvocationParameters.class.getName());
+                }
+                invocationParametersExist = true;
+                continue;
+            }
+
+            if (userMessage == null && v == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId",
-                        parameter.getName(), method.getName());
+                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
+                                "%s, %s, %s, or %s, or it should be of type %s",
+                        parameter.getName(), method.getName(), aiServiceClass.getName(),
+                        dev.langchain4j.service.UserMessage.class.getName(),
+                        V.class.getName(),
+                        MemoryId.class.getName(),
+                        UserName.class.getName(),
+                        InvocationParameters.class.getName()
+                );
             }
         }
     }
@@ -182,11 +203,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return handleChatMemoryAccess(method, args);
                         }
 
-                        validateParameters(method);
+                        // TODO do it once, when creating AI Service?
+                        validateParameters(context.aiServiceClass, method);
 
                         var methodArgs = (args != null) ? Arrays.asList(args) : Collections.emptyList();
                         var memoryIdOpt = findMemoryId(method, args);
-                        var interactionSource = AiServiceInvocationContext.builder()
+                        var invocationContext = AiServiceInvocationContext.builder()
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(methodArgs)
@@ -194,11 +216,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build();
 
                         try {
-                            return invoke(method, args, interactionSource);
+                            return invoke(method, args, invocationContext);
                         } catch (Exception ex) {
                             AiServiceInvocationEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInvocationErrorEvent.builder()
-                                            .invocationContext(interactionSource)
+                                            .invocationContext(invocationContext)
                                             .error(ex)
                                             .build());
 
@@ -206,7 +228,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    public Object invoke(Method method, Object[] args, AiServiceInvocationContext interactionSource) {
+                    public Object invoke(Method method, Object[] args, AiServiceInvocationContext invocationContext) {
 
                         var memoryIdOpt = findMemoryId(method, args);
                         Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
@@ -223,15 +245,26 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInvocationStartedEvent.builder()
-                                        .invocationContext(interactionSource)
+                                        .invocationContext(invocationContext)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
                                         .build());
 
+                      InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
+                                .orElseGet(InvocationParameters::new);
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .chatMemoryId(memoryId)
+                                .invocationParameters(invocationParameters)
+                                .build();
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
-                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
+                            Metadata metadata = Metadata.builder()
+                                    .chatMessage(userMessage)
+                                    .chatMemory(chatMemoryMessages)
+                                    .invocationContext(invocationContext)
+                                    .build();
                             AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
@@ -241,11 +274,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
-                                .invocationContext(interactionSource)
+                                .invocationContext(invocationContext)
                                 .variables(variables)
                                 .build();
 
-                        // Invoke input guardrails
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 
@@ -289,7 +321,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(memoryId, userMessage);
+                                context.toolService.createContext(invocationContext, userMessage);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
@@ -302,7 +334,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
-                                    .memoryId(memoryId)
+                                    .invocationContext(invocationContext)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
                                     .build();
@@ -344,7 +376,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceResponseReceivedEvent.builder()
-                                        .invocationContext(interactionSource)
+                                        .invocationContext(invocationContext)
                                         .response(chatResponse)
                                         .build());
 
@@ -358,10 +390,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 context.chatModel,
                                 chatMemory,
-                                memoryId,
+                                invocationContext,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult,
-                                interactionSource);
+                                invocationContext);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             var result = Result.builder()
@@ -376,7 +408,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             AiServiceInvocationEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(interactionSource)
+                                            .invocationContext(invocationContext)
                                             .result(result)
                                             .build());
 
@@ -395,7 +427,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             AiServiceInvocationEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(interactionSource)
+                                            .invocationContext(invocationContext)
                                             .result(response)
                                             .build());
 
@@ -419,11 +451,26 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                        .invocationContext(interactionSource)
+                                        .invocationContext(invocationContext)
                                         .result(actualResponse)
                                         .build());
 
                         return actualResponse;
+                    }
+
+                    private Optional<InvocationParameters> findInvocationParameters(Object[] arguments, Parameter[] parameters) {
+                        if (arguments == null) {
+                            return Optional.empty();
+                        }
+                        for (int i = 0; i < parameters.length; i++) {
+                            Parameter parameter = parameters[i];
+                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                                InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
+                                ensureNotNull(invocationParameters, "InvocationParameters");
+                                return Optional.of(invocationParameters);
+                            }
+                        }
+                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

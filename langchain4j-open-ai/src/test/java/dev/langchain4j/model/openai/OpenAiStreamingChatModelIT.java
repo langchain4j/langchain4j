@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.repeat;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static java.util.Map.entry;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -124,7 +126,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_execute_a_tool_with_blank_partial_arguments() {
+    void should_execute_a_tool_with_blank_partial_arguments() throws JsonProcessingException {
 
         // given
         OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
@@ -144,7 +146,9 @@ class OpenAiStreamingChatModelIT {
                         .build())
                 .build();
 
-        UserMessage userMessage = UserMessage.from("Append to file the following text: '          '");
+        String tenSpaces = repeat(" ", 10);
+
+        UserMessage userMessage = UserMessage.from("Append to file the following text: '%s'".formatted(tenSpaces));
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -161,7 +165,9 @@ class OpenAiStreamingChatModelIT {
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
-        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"text\":\"          \"}");
+
+        Map<String, Object> argumentsMap = new ObjectMapper().readValue(toolExecutionRequest.arguments(), Map.class);
+        assertThat(argumentsMap).containsOnly(entry("text", tenSpaces));
     }
 
     @Test

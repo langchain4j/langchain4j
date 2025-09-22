@@ -8,6 +8,7 @@ import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +51,8 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setVisibility(FIELD, ANY)
             .registerModule(JACKSON_MODULE)
+            // the servers might add new properties over time, let's not allow that to break the client
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(INDENT_OUTPUT);
 
     private final String baseUrl;

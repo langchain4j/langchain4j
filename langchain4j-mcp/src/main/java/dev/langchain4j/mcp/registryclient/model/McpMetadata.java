@@ -1,11 +1,11 @@
 package dev.langchain4j.mcp.registryclient.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 public class McpMetadata {
     private Long count;
 
-    @JsonProperty("next_cursor")
+    @JsonAlias("next_cursor")
     private String nextCursor;
 
     public Long getCount() {
