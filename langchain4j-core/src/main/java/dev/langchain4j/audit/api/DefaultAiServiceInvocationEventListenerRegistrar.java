@@ -2,11 +2,13 @@ package dev.langchain4j.audit.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import org.jspecify.annotations.NonNull;
@@ -87,41 +89,61 @@ public class DefaultAiServiceInvocationEventListenerRegistrar implements AiServi
     }
 
     private static class EventListeners<T extends AiServiceInvocationEvent> {
-        /**
-         * <strong>Implementation note:</strong> I chose {@link CopyOnWriteArraySet} here because it is thread-safe.
-         * The list will be very read heavy. The only time writes will occur is when listeners are initially registered and subsequently unregistered.
-         * I felt this was better than alternatives involving coarse-grained locking/synchronization
-         * (i.e. {@link java.util.Collections#synchronizedSet(Set)} or {@link java.util.concurrent.locks.ReadWriteLock}).
-         */
-        private final Set<@NonNull AiServiceInvocationEventListener<T>> listeners = new CopyOnWriteArraySet<>();
+        private final Set<@NonNull AiServiceInvocationEventListener<T>> listeners = new LinkedHashSet<>();
+        private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
         private EventListeners() {
             super();
         }
 
         private void add(AiServiceInvocationEventListener<T> listener) {
-            this.listeners.add(ensureNotNull(listener, "listener"));
+            ensureNotNull(listener, "listener");
+            var writeLock = this.lock.writeLock();
+            writeLock.lock();
+
+            try {
+                this.listeners.add(listener);
+            }
+            finally {
+                writeLock.unlock();
+            }
         }
 
         private void remove(AiServiceInvocationEventListener<T> listener) {
-            this.listeners.remove(ensureNotNull(listener, "listener"));
+            var writeLock = this.lock.writeLock();
+            writeLock.lock();
+
+            try {
+                this.listeners.remove(ensureNotNull(listener, "listener"));
+            }
+            finally {
+                writeLock.unlock();
+            }
         }
 
         private void fireEvent(T event) {
             ensureNotNull(event, "event");
-            this.listeners.forEach(listener -> {
-                try {
-                    listener.onEvent(event);
-                } catch (Exception e) {
-                    LOG.warn(
-                            "An error occurred while firing event (%s) to listener (%s): %s"
-                                    .formatted(
-                                            event.getClass().getName(),
-                                            listener.getClass().getName(),
-                                            e.getMessage()),
-                            e);
-                }
-            });
+            var readLock = this.lock.readLock();
+            readLock.lock();
+
+            try {
+                this.listeners.forEach(listener -> {
+                    try {
+                        listener.onEvent(event);
+                    } catch (Exception e) {
+                        LOG.warn(
+                                "An error occurred while firing event (%s) to listener (%s): %s"
+                                        .formatted(
+                                                event.getClass().getName(),
+                                                listener.getClass().getName(),
+                                                e.getMessage()),
+                                e);
+                    }
+                });
+            }
+            finally {
+                readLock.unlock();
+            }
         }
     }
 }
