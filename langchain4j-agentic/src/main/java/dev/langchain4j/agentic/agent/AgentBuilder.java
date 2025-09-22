@@ -43,8 +43,8 @@ public class AgentBuilder<T> {
     String outputName;
     boolean async;
 
-    Consumer<AgentRequest> invocationListener = request -> {};
-    Consumer<AgentResponse> completionListener = response -> {};
+    Consumer<AgentRequest> beforeListener = request -> {};
+    Consumer<AgentResponse> afterListener = response -> {};
 
     private ChatModel model;
     private ChatMemory chatMemory;
@@ -327,13 +327,13 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> onAgentInvocation(Consumer<AgentRequest> invocationListener) {
-        this.invocationListener = this.invocationListener.andThen(invocationListener);
+    public AgentBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> beforeListener) {
+        this.beforeListener = this.beforeListener.andThen(beforeListener);
         return this;
     }
 
-    public AgentBuilder<T> onAgentCompletion(Consumer<AgentResponse> completionListener) {
-        this.completionListener = this.completionListener.andThen(completionListener);
+    public AgentBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
+        this.afterListener = this.afterListener.andThen(afterListener);
         return this;
     }
 }

@@ -41,6 +41,6 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
-    SupervisorAgentService<T> onAgentInvocation(Consumer<AgentRequest> invocationListener);
-    SupervisorAgentService<T> onAgentCompletion(Consumer<AgentResponse> completionListener);
+    SupervisorAgentService<T> beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
+    SupervisorAgentService<T> afterAgentInvocation(Consumer<AgentResponse> completionListener);
 }

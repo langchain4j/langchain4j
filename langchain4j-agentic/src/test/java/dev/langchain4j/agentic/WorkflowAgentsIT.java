@@ -308,7 +308,7 @@ public class WorkflowAgentsIT {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputName("story")
-                .onAgentInvocation(request -> requestedTopic.set(request.inputs().get("topic")))
+                .beforeAgentInvocation(request -> requestedTopic.set(request.inputs().get("topic")))
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
@@ -325,7 +325,7 @@ public class WorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
-                .onAgentCompletion(response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
+                .afterAgentInvocation(response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()

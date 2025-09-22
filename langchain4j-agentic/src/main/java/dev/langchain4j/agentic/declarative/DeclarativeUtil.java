@@ -90,18 +90,18 @@ public class DeclarativeUtil {
                             agentBuilder.chatModel(chatModel);
                         });
 
-        getAnnotatedMethodOnClass(agentType, OnAgentInvocation.class)
+        getAnnotatedMethodOnClass(agentType, BeforeAgentInvocation.class)
                 .ifPresent(method -> {
                     checkArguments(method, AgentRequest.class);
                     checkReturnType(method, void.class);
-                    agentBuilder.onAgentInvocation(request -> invokeStatic(method, request));
+                    agentBuilder.beforeAgentInvocation(request -> invokeStatic(method, request));
                 });
 
-        getAnnotatedMethodOnClass(agentType, OnAgentCompletion.class)
+        getAnnotatedMethodOnClass(agentType, AfterAgentInvocation.class)
                 .ifPresent(method -> {
                     checkArguments(method, AgentResponse.class);
                     checkReturnType(method, void.class);
-                    agentBuilder.onAgentCompletion(response -> invokeStatic(method, response));
+                    agentBuilder.afterAgentInvocation(response -> invokeStatic(method, response));
                 });
 
         agentConfigurator.accept(new AgenticServices.DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));

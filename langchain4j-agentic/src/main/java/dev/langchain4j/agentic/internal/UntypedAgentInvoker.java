@@ -4,7 +4,6 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
-import java.util.Map;
 
 public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
 
@@ -34,13 +33,13 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public void onInvocation(final AgentRequest request) {
-        agentSpecification.onInvocation(request);
+    public void beforeInvocation(final AgentRequest request) {
+        agentSpecification.beforeInvocation(request);
     }
 
     @Override
-    public void onCompletion(final AgentResponse response) {
-        agentSpecification.onCompletion(response);
+    public void afterInvocation(final AgentResponse response) {
+        agentSpecification.afterInvocation(response);
     }
 
     @Override

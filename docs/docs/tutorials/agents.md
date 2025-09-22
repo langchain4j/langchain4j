@@ -539,14 +539,14 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `onAgentInvocation` and `onAgentCompletion` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `beforeAgentInvocation` and `afterAgentInvocation` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
 
 ```java
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
     .chatModel(baseModel())
     .outputName("story")
-    .onAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
-    .onAgentCompletion(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
+    .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
+    .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
     .build();
 ```
 
@@ -626,8 +626,8 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
-| `@OnAgentCompletion`          | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
-| `@OnAgentInvocation`          | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
+| `@BeforeAgentInvocation`      | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
+| `@AfterAgentInvocation`       | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |

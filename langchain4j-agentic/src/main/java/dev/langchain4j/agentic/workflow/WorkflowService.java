@@ -30,6 +30,6 @@ public interface WorkflowService<T, W> {
 
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
-    T onAgentInvocation(Consumer<AgentRequest> invocationListener);
-    T onAgentCompletion(Consumer<AgentResponse> completionListener);
+    T beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
+    T afterAgentInvocation(Consumer<AgentResponse> completionListener);
 }

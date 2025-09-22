@@ -25,9 +25,9 @@ public interface AgentInvoker extends AgentSpecification {
 
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         try {
-            onInvocation(new AgentRequest(agenticScope, name(), args.namedArgs()));
+            beforeInvocation(new AgentRequest(agenticScope, name(), args.namedArgs()));
             Object result = method().invoke(agent, args.positionalArgs());
-            onCompletion(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
+            afterInvocation(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
             return result;
         } catch (Exception e) {
             throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);

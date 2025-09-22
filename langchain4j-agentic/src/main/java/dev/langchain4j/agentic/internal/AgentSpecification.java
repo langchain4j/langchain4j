@@ -11,6 +11,6 @@ public interface AgentSpecification {
     String outputName();
     boolean async();
 
-    void onInvocation(AgentRequest request);
-    void onCompletion(AgentResponse response);
+    void beforeInvocation(AgentRequest request);
+    void afterInvocation(AgentResponse response);
 }

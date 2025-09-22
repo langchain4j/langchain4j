@@ -10,8 +10,8 @@ public interface A2AClientBuilder<T> {
     A2AClientBuilder<T> outputName(String outputName);
     A2AClientBuilder<T> async(boolean async);
 
-    A2AClientBuilder<T> onInvocation(Consumer<AgentRequest> invocationListener);
-    A2AClientBuilder<T> onCompletion(Consumer<AgentResponse> completionListener);
+    A2AClientBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
+    A2AClientBuilder<T> afterAgentInvocation(Consumer<AgentResponse> completionListener);
 
 
     T build();

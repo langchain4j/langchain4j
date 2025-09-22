@@ -37,13 +37,13 @@ public record MethodAgentInvoker(Method method, AgentSpecification agentSpecific
     }
 
     @Override
-    public void onInvocation(final AgentRequest request) {
-        agentSpecification.onInvocation(request);
+    public void beforeInvocation(final AgentRequest request) {
+        agentSpecification.beforeInvocation(request);
     }
 
     @Override
-    public void onCompletion(final AgentResponse response) {
-        agentSpecification.onCompletion(response);
+    public void afterInvocation(final AgentResponse response) {
+        agentSpecification.afterInvocation(response);
     }
 
     @Override

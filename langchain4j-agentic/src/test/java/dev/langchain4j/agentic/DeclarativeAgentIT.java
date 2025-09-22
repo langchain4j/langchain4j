@@ -10,8 +10,8 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.LoopCounter;
-import dev.langchain4j.agentic.declarative.OnAgentCompletion;
-import dev.langchain4j.agentic.declarative.OnAgentInvocation;
+import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
+import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -62,7 +62,6 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -278,15 +277,15 @@ public class DeclarativeAgentIT {
     }
 
     public interface CreativeWriterWithListener extends CreativeWriter {
-        @OnAgentInvocation
-        static void onAgentInvocation(AgentRequest request) {
+        @BeforeAgentInvocation
+        static void beforeAgentInvocation(AgentRequest request) {
             requestedTopic = (String) request.inputs().get("topic");
         }
     }
 
     public interface StyleReviewLoopAgentWithListener extends StyleReviewLoopAgent {
-        @OnAgentCompletion
-        static void onAgentCompletion(AgentResponse response) {
+        @AfterAgentInvocation
+        static void afterAgentInvocation(AgentResponse response) {
             finalScore = response.agenticScope().readState("score", 0.0);
         }
     }

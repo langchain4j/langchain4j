@@ -29,8 +29,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     protected final String description;
     protected final String outputName;
 
-    protected final Consumer<AgentRequest> invocationListener;
-    protected final Consumer<AgentResponse> completionListener;
+    protected final Consumer<AgentRequest> beforeListener;
+    protected final Consumer<AgentResponse> afterListener;
 
     private final Class<?> agentServiceClass;
 
@@ -54,8 +54,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this.outputName = service.outputName;
         this.beforeCall = service.beforeCall;
         this.errorHandler = service.errorHandler;
-        this.invocationListener = service.invocationListener;
-        this.completionListener = service.completionListener;
+        this.beforeListener = service.beforeListener;
+        this.afterListener = service.afterListener;
         this.agenticScope = agenticScope;
     }
 
@@ -95,12 +95,12 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
                 case "description" -> description;
                 case "outputName" -> outputName;
                 case "async" -> false;
-                case "onInvocation" -> {
-                    invocationListener.accept((AgentRequest) args[0]);
+                case "beforeInvocation" -> {
+                    beforeListener.accept((AgentRequest) args[0]);
                     yield null;
                 }
-                case "onCompletion" -> {
-                    completionListener.accept((AgentResponse) args[0]);
+                case "afterInvocation" -> {
+                    afterListener.accept((AgentResponse) args[0]);
                     yield null;
                 }
                 default ->

@@ -9,12 +9,12 @@ public record AgentSpecificationImpl(String name, String uniqueName, String desc
         implements AgentSpecification {
 
     @Override
-    public void onInvocation(AgentRequest request) {
+    public void beforeInvocation(AgentRequest request) {
         invocationListener.accept(request);
     }
 
     @Override
-    public void onCompletion(AgentResponse response) {
+    public void afterInvocation(AgentResponse response) {
         completionListener.accept(response);
     }
 }

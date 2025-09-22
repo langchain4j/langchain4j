@@ -7,8 +7,8 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.declarative.OnAgentCompletion;
-import dev.langchain4j.agentic.declarative.OnAgentInvocation;
+import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
+import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -335,8 +335,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, sequenceAgent.name(), sequenceAgent.description(), sequenceAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::onAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::onAgentCompletion);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         return builder.build();
     }
@@ -349,8 +349,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, loopAgent.name(), loopAgent.description(), loopAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::onAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::onAgentCompletion);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
                 .map( method -> {
@@ -369,8 +369,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, conditionalAgent.name(), conditionalAgent.description(), conditionalAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::onAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::onAgentCompletion);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         for (SubAgent subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
@@ -391,8 +391,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, parallelAgent.name(), parallelAgent.description(), parallelAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::onAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::onAgentCompletion);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ParallelExecutor.class) &&
                 Executor.class.isAssignableFrom(method.getReturnType()) &&
@@ -463,8 +463,8 @@ public class AgenticServices {
                 .ifPresent(builder::output);
 
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::onAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::onAgentCompletion);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         return builder.build();
     }
@@ -475,12 +475,12 @@ public class AgenticServices {
     }
 
     private static <T> Optional<Consumer<AgentRequest>> buildInvocationHandler(Class<T> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(OnAgentInvocation.class))
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeAgentInvocation.class))
                 .map(m -> request -> invokeStatic(m, request));
     }
 
     private static <T> Optional<Consumer<AgentResponse>> buildCompletionHandler(Class<T> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(OnAgentCompletion.class))
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(AfterAgentInvocation.class))
                 .map(m -> response -> invokeStatic(m, response));
     }
 

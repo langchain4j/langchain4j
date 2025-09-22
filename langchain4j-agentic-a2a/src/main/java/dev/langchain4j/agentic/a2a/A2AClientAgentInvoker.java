@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.a2a;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
-import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
@@ -12,7 +11,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
@@ -67,13 +65,13 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public void onInvocation(AgentRequest request) {
-        a2AClientInstance.onInvocation(request);
+    public void beforeInvocation(AgentRequest request) {
+        a2AClientInstance.beforeInvocation(request);
     }
 
     @Override
-    public void onCompletion(AgentResponse response) {
-        a2AClientInstance.onCompletion(response);
+    public void afterInvocation(AgentResponse response) {
+        a2AClientInstance.afterInvocation(response);
     }
 
     @Override

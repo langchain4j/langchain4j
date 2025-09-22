@@ -50,8 +50,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private String outputName;
     private boolean async;
 
-    private Consumer<AgentRequest> invocationListener = request -> {};
-    private Consumer<AgentResponse> completionListener = response -> {};
+    private Consumer<AgentRequest> beforeListener = request -> {};
+    private Consumer<AgentResponse> afterListener = response -> {};
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
@@ -97,12 +97,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "description" -> agentCard.description();
                                 case "outputName" -> outputName;
                                 case "async" -> async;
-                                case "onInvocation" -> {
-                                    invocationListener.accept((AgentRequest) args[0]);
+                                case "beforeInvocation" -> {
+                                    beforeListener.accept((AgentRequest) args[0]);
                                     yield null;
                                 }
-                                case "onCompletion" -> {
-                                    completionListener.accept((AgentResponse) args[0]);
+                                case "afterInvocation" -> {
+                                    afterListener.accept((AgentResponse) args[0]);
                                     yield null;
                                 }
                                 default ->
@@ -209,14 +209,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> onInvocation(Consumer<AgentRequest> invocationListener) {
-        this.invocationListener = invocationListener;
+    public DefaultA2AClientBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> beforeListener) {
+        this.beforeListener = this.beforeListener.andThen(beforeListener);
         return this;
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> onCompletion(Consumer<AgentResponse> completionListener) {
-        this.completionListener = completionListener;
+    public DefaultA2AClientBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
+        this.afterListener = this.afterListener.andThen(afterListener);
         return this;
     }
 }
