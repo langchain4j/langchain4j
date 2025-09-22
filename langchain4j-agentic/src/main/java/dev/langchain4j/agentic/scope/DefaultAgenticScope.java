@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
@@ -127,10 +128,10 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentCall(AgentSpecification agentSpec, Object agent, Object[] input, Object output) {
+    public void registerAgentCall(AgentSpecification agentSpec, Object agent, AgentInvocationArguments input, Object output) {
         withReadLock(() -> {
             agentInvocations.computeIfAbsent(agentSpec.name(), name -> new ArrayList<>())
-                            .add(new AgentInvocation(agentSpec.name(), input, output));
+                            .add(new AgentInvocation(agentSpec.name(), input.namedArgs(), output));
             registerContext(agentSpec, agent, output);
         });
     }

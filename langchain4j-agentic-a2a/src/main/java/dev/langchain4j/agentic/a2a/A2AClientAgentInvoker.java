@@ -2,12 +2,16 @@ package dev.langchain4j.agentic.a2a;
 
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.internal.AgentInvocationArguments;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -83,11 +87,23 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public Object[] toInvocationArguments(AgenticScope agenticScope) {
+    public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         return isUntyped() ?
-                new Object[] { agenticScope.state() } :
-                Stream.of(inputNames).map(agenticScope::readState).toArray();
+                new AgentInvocationArguments(agenticScope.state(), new Object[] { agenticScope.state() }) :
+                agentInvocationArguments(agenticScope);
     }
+
+    private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
+        Map<String, Object> namedArgs = new HashMap<>();
+        Object[] positionalArgs = new Object[inputNames.length];
+
+        int i = 0;
+        for (String argName : inputNames) {
+            Object argValue = agenticScope.readState(argName);
+            positionalArgs[i++] = argValue;
+            namedArgs.put(argName, argValue);
+        }
+        return new AgentInvocationArguments(namedArgs, positionalArgs);    }
 
     private boolean isUntyped() {
         return method.getDeclaringClass() == UntypedAgent.class;

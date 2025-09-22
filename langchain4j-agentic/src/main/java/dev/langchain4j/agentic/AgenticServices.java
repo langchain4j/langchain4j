@@ -59,7 +59,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
-import static dev.langchain4j.agentic.internal.AgentUtil.methodInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -518,7 +518,7 @@ public class AgenticServices {
         List<AgentUtil.AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         return agenticScope -> {
             try {
-                Object[] args = methodInvocationArguments(agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope));
+                Object[] args = agentInvocationArguments(agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope)).positionalArgs();
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);

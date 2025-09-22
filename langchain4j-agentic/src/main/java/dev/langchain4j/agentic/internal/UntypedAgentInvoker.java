@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
 
@@ -48,7 +49,7 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public Object[] toInvocationArguments(AgenticScope agenticScope) {
-        return new Object[] { agenticScope.state() };
+    public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
+        return new AgentInvocationArguments(agenticScope.state(), new Object[] { agenticScope.state() });
     }
 }

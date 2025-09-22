@@ -7,7 +7,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.methodInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 
 public record MethodAgentInvoker(Method method, AgentSpecification agentSpecification, List<AgentUtil.AgentArgument> arguments) implements AgentInvoker {
 
@@ -56,7 +56,7 @@ public record MethodAgentInvoker(Method method, AgentSpecification agentSpecific
     }
 
     @Override
-    public Object[] toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
-        return methodInvocationArguments(agenticScope, arguments);
+    public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
+        return AgentUtil.agentInvocationArguments(agenticScope, arguments);
     }
 }

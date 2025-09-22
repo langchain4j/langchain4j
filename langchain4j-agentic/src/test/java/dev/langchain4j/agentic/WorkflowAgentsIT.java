@@ -308,7 +308,7 @@ public class WorkflowAgentsIT {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputName("story")
-                .onAgentInvocation(request -> requestedTopic.set(request.inputs()[0]))
+                .onAgentInvocation(request -> requestedTopic.set(request.inputs().get("topic")))
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)

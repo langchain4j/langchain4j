@@ -9,6 +9,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,7 +79,11 @@ public class AgentUtil {
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
-    public static List<AgentArgument> argumentsFromMethod(Method method) {
+    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method) {
+        return agentInvocationArguments(agenticScope, argumentsFromMethod(method), Map.of());
+    }
+
+    static List<AgentArgument> argumentsFromMethod(Method method) {
         return Stream.of(method.getParameters())
                 .map(p -> new AgentArgument(p.getType(), parameterName(p)))
                 .toList();
@@ -97,30 +102,30 @@ public class AgentUtil {
         return AgentInvoker.parameterName(p);
     }
 
-    public static Object[] methodInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
-        return methodInvocationArguments(agenticScope, agentArguments, Map.of());
-    }
+    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs) throws MissingArgumentException {
+        Map<String, Object> namedArgs = new HashMap<>();
+        Object[] positionalArgs = new Object[agentArguments.size()];
 
-    public static Object[] methodInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs) throws MissingArgumentException {
-        Object[] invocationArgs = new Object[agentArguments.size()];
         int i = 0;
         for (AgentArgument arg : agentArguments) {
             String argName = arg.name();
             if (argName.equals(MEMORY_ID_ARG_NAME)) {
-                invocationArgs[i++] = agenticScope.memoryId();
+                positionalArgs[i++] = agenticScope.memoryId();
                 continue;
             }
             if (argName.equals(AGENTIC_SCOPE_ARG_NAME)) {
-                invocationArgs[i++] = agenticScope;
+                positionalArgs[i++] = agenticScope;
                 continue;
             }
             if (additionalArgs.containsKey(argName)) {
-                invocationArgs[i++] = additionalArgs.get(argName);
+                positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
-            invocationArgs[i++] = argumentFromAgenticScope(agenticScope, arg.type(), argName);
+            Object argValue = argumentFromAgenticScope(agenticScope, arg.type(), argName);
+            positionalArgs[i++] = argValue;
+            namedArgs.put(argName, argValue);
         }
-        return invocationArgs;
+        return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
     public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {

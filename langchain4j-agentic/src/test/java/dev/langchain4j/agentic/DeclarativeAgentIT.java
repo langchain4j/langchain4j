@@ -280,7 +280,7 @@ public class DeclarativeAgentIT {
     public interface CreativeWriterWithListener extends CreativeWriter {
         @OnAgentInvocation
         static void onAgentInvocation(AgentRequest request) {
-            requestedTopic = (String) request.inputs()[0];
+            requestedTopic = (String) request.inputs().get("topic");
         }
     }
 

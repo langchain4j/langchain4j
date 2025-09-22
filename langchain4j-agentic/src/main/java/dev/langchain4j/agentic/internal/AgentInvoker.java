@@ -21,13 +21,13 @@ public interface AgentInvoker extends AgentSpecification {
 
     String toCard();
 
-    Object[] toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
+    AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
-    default Object invoke(DefaultAgenticScope agenticScope, Object agent, Object... args) throws AgentInvocationException {
+    default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         try {
-            onInvocation(new AgentRequest(agenticScope, name(), args));
-            Object result = method().invoke(agent, args);
-            onCompletion(new AgentResponse(agenticScope, name(), args, result));
+            onInvocation(new AgentRequest(agenticScope, name(), args.namedArgs()));
+            Object result = method().invoke(agent, args.positionalArgs());
+            onCompletion(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
             return result;
         } catch (Exception e) {
             throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);

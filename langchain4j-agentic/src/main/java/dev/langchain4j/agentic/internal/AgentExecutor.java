@@ -37,7 +37,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
 
     private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, boolean async) {
         try {
-            Object[] args = agentInvoker.toInvocationArguments(agenticScope);
+            AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
             Object response = async ?
                     new AsyncResponse<>(() -> {
                         try {
