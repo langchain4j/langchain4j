@@ -10,7 +10,6 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
@@ -18,7 +17,6 @@ import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -27,6 +25,8 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -93,8 +93,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 if (invocationParametersExist) {
-                    throw illegalConfiguration("There can be at most one parameter of type %s",
-                            InvocationParameters.class.getName());
+                    throw illegalConfiguration(
+                            "There can be at most one parameter of type %s", InvocationParameters.class.getName());
                 }
                 invocationParametersExist = true;
                 continue;
@@ -102,15 +102,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             if (userMessage == null && v == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
-                                "%s, %s, %s, or %s, or it should be of type %s",
-                        parameter.getName(), method.getName(), aiServiceClass.getName(),
+                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
+                                + "%s, %s, %s, or %s, or it should be of type %s",
+                        parameter.getName(),
+                        method.getName(),
+                        aiServiceClass.getName(),
                         dev.langchain4j.service.UserMessage.class.getName(),
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
-                        InvocationParameters.class.getName()
-                );
+                        InvocationParameters.class.getName());
             }
         }
     }
@@ -228,7 +229,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    public Object invoke(Method method, Object[] args, AiServiceInvocationContext invocationContext) {
+                    public Object invoke(
+                            Method method, Object[] args, AiServiceInvocationContext auditInvocationContext) {
 
                         var memoryIdOpt = findMemoryId(method, args);
                         Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
@@ -245,12 +247,13 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInvocationStartedEvent.builder()
-                                        .invocationContext(invocationContext)
+                                        .invocationContext(auditInvocationContext)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
                                         .build());
 
-                      InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
+                        InvocationParameters invocationParameters = findInvocationParameters(
+                                        args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .chatMemoryId(memoryId)
@@ -274,7 +277,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
-                                .invocationContext(invocationContext)
+                                .invocationContext(auditInvocationContext)
                                 .variables(variables)
                                 .build();
 
@@ -376,7 +379,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceResponseReceivedEvent.builder()
-                                        .invocationContext(invocationContext)
+                                        .invocationContext(auditInvocationContext)
                                         .response(chatResponse)
                                         .build());
 
@@ -393,7 +396,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 invocationContext,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult,
-                                invocationContext);
+                                auditInvocationContext);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             var result = Result.builder()
@@ -408,7 +411,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             AiServiceInvocationEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(invocationContext)
+                                            .invocationContext(auditInvocationContext)
                                             .result(result)
                                             .build());
 
@@ -427,7 +430,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             AiServiceInvocationEventListenerRegistrar.getInstance()
                                     .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(invocationContext)
+                                            .invocationContext(auditInvocationContext)
                                             .result(response)
                                             .build());
 
@@ -451,14 +454,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         AiServiceInvocationEventListenerRegistrar.getInstance()
                                 .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                                        .invocationContext(invocationContext)
+                                        .invocationContext(auditInvocationContext)
                                         .result(actualResponse)
                                         .build());
 
                         return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParameters(Object[] arguments, Parameter[] parameters) {
+                    private Optional<InvocationParameters> findInvocationParameters(
+                            Object[] arguments, Parameter[] parameters) {
                         if (arguments == null) {
                             return Optional.empty();
                         }
