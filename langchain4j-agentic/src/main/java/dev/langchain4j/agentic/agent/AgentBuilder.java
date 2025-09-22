@@ -328,12 +328,12 @@ public class AgentBuilder<T> {
     }
 
     public AgentBuilder<T> onAgentInvocation(Consumer<AgentRequest> invocationListener) {
-        this.invocationListener = invocationListener;
+        this.invocationListener = this.invocationListener.andThen(invocationListener);
         return this;
     }
 
     public AgentBuilder<T> onAgentCompletion(Consumer<AgentResponse> completionListener) {
-        this.completionListener = completionListener;
+        this.completionListener = this.completionListener.andThen(completionListener);
         return this;
     }
 }

@@ -108,12 +108,12 @@ public abstract class AbstractService<T, S> {
     }
 
     public S onAgentInvocation(Consumer<AgentRequest> invocationListener) {
-        this.invocationListener = invocationListener;
+        this.invocationListener = this.invocationListener.andThen(invocationListener);
         return (S) this;
     }
 
     public S onAgentCompletion(Consumer<AgentResponse> completionListener) {
-        this.completionListener = completionListener;
+        this.completionListener = this.completionListener.andThen(completionListener);
         return (S) this;
     }
 
