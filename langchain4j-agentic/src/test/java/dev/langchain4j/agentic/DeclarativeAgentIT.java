@@ -177,14 +177,14 @@ public class DeclarativeAgentIT {
     public interface StyleReviewLoopAgent {
 
         @LoopAgent(
-                description = "Review the given story to ensure it aligns with the specified style",
+                description = "Review and score the given story to ensure it aligns with the specified style",
                 outputName = "story", maxIterations = 5,
                 subAgents = {
                     @SubAgent(type = StyleScorer.class, outputName = "score"),
                     @SubAgent(type = StyleEditor.class, outputName = "story")
             }
         )
-        String write(@V("story") String story);
+        String reviewAndScore(@V("story") String story);
 
         @ExitCondition
         static boolean exit(@V("score") double score) {
@@ -342,7 +342,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A medical expert")
         @Agent("A medical expert")
         String medical(@MemoryId String memoryId, @V("request") String request);
 
@@ -364,7 +363,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A legal expert")
         @Agent("A legal expert")
         String legal(@MemoryId String memoryId, @V("request") String request);
 
@@ -386,7 +384,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A technical expert")
         @Agent("A technical expert")
         String technical(@MemoryId String memoryId, @V("request") String request);
 
