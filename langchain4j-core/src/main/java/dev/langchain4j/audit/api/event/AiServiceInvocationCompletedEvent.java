@@ -1,7 +1,7 @@
 package dev.langchain4j.audit.api.event;
 
-import java.util.Optional;
 import dev.langchain4j.audit.event.DefaultAiServiceInvocationCompletedEvent;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**

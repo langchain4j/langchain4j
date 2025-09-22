@@ -2,6 +2,8 @@ package dev.langchain4j.audit.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -9,8 +11,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
-import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -103,8 +103,7 @@ public class DefaultAiServiceInvocationEventListenerRegistrar implements AiServi
 
             try {
                 this.listeners.add(listener);
-            }
-            finally {
+            } finally {
                 writeLock.unlock();
             }
         }
@@ -115,8 +114,7 @@ public class DefaultAiServiceInvocationEventListenerRegistrar implements AiServi
 
             try {
                 this.listeners.remove(ensureNotNull(listener, "listener"));
-            }
-            finally {
+            } finally {
                 writeLock.unlock();
             }
         }
@@ -140,8 +138,7 @@ public class DefaultAiServiceInvocationEventListenerRegistrar implements AiServi
                                 e);
                     }
                 });
-            }
-            finally {
+            } finally {
                 readLock.unlock();
             }
         }

@@ -4,19 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
@@ -50,6 +37,20 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.memory.ChatMemoryService;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServicesAuditingTests {
@@ -503,7 +504,10 @@ class AiServicesAuditingTests {
                         AiServiceInvocationContext::methodArguments,
                         AiServiceInvocationContext::memoryId)
                 .containsExactly(
-                        Assistant.class.getName(), expectedMethodName, List.of(expectedUserMessage), Optional.empty());
+                        Assistant.class.getName(),
+                        expectedMethodName,
+                        List.of(expectedUserMessage),
+                        Optional.of(ChatMemoryService.DEFAULT));
 
         assertThat(is.interactionId()).isNotNull();
         assertThat(is.timestamp()).isNotNull();

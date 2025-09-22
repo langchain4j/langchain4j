@@ -1,9 +1,9 @@
 package dev.langchain4j.audit.api;
 
-import java.util.ServiceLoader;
 import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import dev.langchain4j.spi.audit.AiServiceInteractionEventListenerRegistrarFactory;
+import java.util.ServiceLoader;
 
 /**
  * A registrar for registering {@link AiServiceInvocationEventListener}s.
