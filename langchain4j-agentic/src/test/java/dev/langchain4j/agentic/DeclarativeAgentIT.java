@@ -8,6 +8,8 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.HumanInTheLoop;
+import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
 import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
@@ -58,9 +60,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -658,5 +663,70 @@ public class DeclarativeAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+    }
+
+    private static final CyclicBarrier barrier = new CyclicBarrier(2);
+    private static final AtomicReference<String> request = new AtomicReference<>();
+    private static final AtomicReference<String> audience = new AtomicReference<>();
+
+    public interface AudienceRetriever {
+
+        @HumanInTheLoop(description = "Generate a story based on the given topic", outputName = "audience", async = true)
+        static void request(@V("topic") String topic) {
+            request.set("Which audience for topic " + topic + "?");
+        }
+
+        @HumanInTheLoopResponseSupplier
+        static String response() {
+            try {
+                barrier.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                throw new RuntimeException(e);
+            }
+            return "young adults";
+        }
+    }
+
+    public static class BarrierAwaiter {
+
+        @Agent
+        public static void await() {
+            try {
+                barrier.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static class AudienceReader {
+
+        @Agent
+        public static void readAudience(AgenticScope agenticScope) {
+            audience.set(agenticScope.readState("audience", ""));
+        }
+    }
+
+    public interface StoryCreatorWithHumanInTheLoop {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = AudienceRetriever.class, outputName = "audience"),
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = BarrierAwaiter.class),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = AudienceReader.class)
+        })
+        String write(@V("topic") String topic);
+    }
+
+    @Test
+    void declarative_human_in_the_loop_tests() {
+        StoryCreatorWithHumanInTheLoop storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithHumanInTheLoop.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards");
+        System.out.println(story);
+
+        assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
+        assertThat(audience.get()).isEqualTo("young adults");
     }
 }
