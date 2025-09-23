@@ -83,6 +83,7 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <module>document-parsers/langchain4j-document-parser-markdown</module>
 
         <!-- document transformers -->
         <module>document-transformers/langchain4j-document-transformer-jsoup</module>
