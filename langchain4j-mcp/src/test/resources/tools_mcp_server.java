@@ -1,7 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.25.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.4.0
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.4.0
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.5.3
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.5.3
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +19,13 @@ public class tools_mcp_server {
     @Tool(description = "Echoes a string")
     public String echoString(@ToolArg(description = "The string to be echoed") String input) {
         return input;
+    }
+
+    public record Foo(Integer bar, String baz) {}
+
+    @Tool(description = "Returns structured content", structuredContent = true)
+    public Foo structuredContent() {
+        return new Foo(1, "hello");
     }
 
     @Tool(description = "Echoes an integer")

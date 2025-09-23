@@ -65,7 +65,7 @@ class McpReconnectIT {
                 .name("echoString")
                 .arguments("{\"input\": \"abc\"}")
                 .build();
-        String result = mcpClient.executeTool(toolExecutionRequest);
+        String result = mcpClient.executeTool(toolExecutionRequest).resultText();
         assertThat(result).isEqualTo("abc");
     }
 }
