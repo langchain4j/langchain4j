@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
@@ -22,6 +23,8 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -31,6 +34,11 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -39,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -179,16 +188,17 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
-        AiServiceContext context = new AiServiceContext(aiService);
+        AiServiceContext context = AiServiceContext.create(aiService);
         return builder(context);
+    }
+
+    private static class FactoryHolder {
+        private static final AiServicesFactory aiServicesFactory = loadFactory(AiServicesFactory.class);
     }
 
     @Internal
     public static <T> AiServices<T> builder(AiServiceContext context) {
-        for (AiServicesFactory factory : loadFactories(AiServicesFactory.class)) {
-            return factory.create(context);
-        }
-        return new DefaultAiServices<>(context);
+        return FactoryHolder.aiServicesFactory != null ? FactoryHolder.aiServicesFactory.create(context) : new DefaultAiServices<>(context);
     }
 
     /**
@@ -257,7 +267,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.initChatMemories(chatMemory);
+        if (chatMemory != null) {
+            context.initChatMemories(chatMemory);
+        }
         return this;
     }
 
@@ -282,7 +294,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.initChatMemories(chatMemoryProvider);
+       if (chatMemoryProvider != null) {
+           context.initChatMemories(chatMemoryProvider);
+       }
         return this;
     }
 
@@ -381,6 +395,57 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    /**
+     * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
+     * If you enable this option, tools will be executed concurrently (with one exception - see below),
+     * using the default {@link Executor}.
+     * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
+     * <ul>
+     *     <li>When using {@link ChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.</li>
+     *             <li>When the LLM calls a single tool, it is executed in the same (caller) thread,
+     *                 the {@link Executor} is not used to avoid wasting resources.</li>
+     *         </ul>
+     *     </li>
+     *     <li>When using {@link StreamingChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.
+     *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
+     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
+     *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
+     *                 We cannot execute it in the same thread because, at that point,
+     *                 we do not yet know how many tools the LLM will call.</li>
+     *         </ul>
+     *     </li>
+     * </ul>
+     *
+     * @return builder
+     * @see #executeToolsConcurrently(Executor)
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently() {
+        context.toolService.executeToolsConcurrently();
+        return this;
+    }
+
+    /**
+     * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
+     * <p>
+     * If {@code null} is specified, the default {@link Executor} will be used.
+     *
+     * @param executor The {@link Executor} to be used to execute tools.
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently(Executor executor) {
+        context.toolService.executeToolsConcurrently(executor);
+        return this;
+    }
+
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
         return this;
@@ -392,10 +457,65 @@ public abstract class AiServices<T> {
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
      *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        return this;
+    }
+
+    /**
+     * Configures the handler to be invoked when errors related to tool arguments occur,
+     * such as JSON parsing failures or mismatched argument types.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow. This is the default behavior if no handler is configured.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#wrapToolArgumentsExceptions(Boolean)} to {@code true}.
+     *
+     * @param handler The handler responsible for processing tool argument errors
+     * @return builder
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
+     */
+    public AiServices<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        context.toolService.argumentsErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * Configures the handler to be invoked when errors occur during tool execution.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * This is the default behavior if no handler is configured.
+     * The {@link Throwable#getMessage()} is sent to the LLM by default.
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#propagateToolExecutionExceptions(Boolean)} to {@code true}.
+     *
+     * @param handler The handler responsible for processing tool execution errors
+     * @return builder
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
+     */
+    public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
+        context.toolService.executionErrorHandler(handler);
         return this;
     }
 

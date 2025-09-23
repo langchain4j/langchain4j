@@ -13,7 +13,7 @@ https://milvus.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.5.0-beta11</version>
 </dependency>
 ```
 

@@ -1,14 +1,13 @@
 package dev.langchain4j.internal;
 
-import dev.langchain4j.Internal;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
+import dev.langchain4j.Internal;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Utility class for validating method arguments.
@@ -182,6 +181,21 @@ public class ValidationUtils {
         if (!expression) {
             throw illegalArgument(msg);
         }
+    }
+
+    /**
+     * Ensures that the given integer is not negative.
+     * @param i The integer to check.
+     * @param name The logical name of the integer, to be used in the exception.
+     * @return The value if it is not negative.
+     * @throws IllegalArgumentException if the integer is negative.
+     */
+    public static int ensureNotNegative(Integer i, String name) {
+        if (i == null || i < 0) {
+            throw illegalArgument("%s must not be negative, but is: %s", name, i);
+        }
+
+        return i;
     }
 
     /**

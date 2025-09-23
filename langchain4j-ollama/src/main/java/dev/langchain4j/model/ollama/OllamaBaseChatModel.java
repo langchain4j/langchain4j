@@ -4,6 +4,12 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
@@ -12,16 +18,14 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
 
     protected OllamaClient client;
     protected OllamaChatRequestParameters defaultRequestParameters;
+    protected boolean returnThinking;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
 
@@ -33,6 +37,7 @@ abstract class OllamaBaseChatModel {
                 .customHeaders(builder.customHeaders)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .logger(builder.logger)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -68,8 +73,9 @@ abstract class OllamaBaseChatModel {
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
+                .think(getOrDefault(builder.think, ollamaParameters.think()))
                 .build();
-
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -100,10 +106,13 @@ abstract class OllamaBaseChatModel {
         protected List<String> stop;
         protected Double minP;
         protected ResponseFormat responseFormat;
+        protected Boolean think;
+        protected Boolean returnThinking;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
         protected Boolean logResponses;
+        protected Logger logger;
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
 
@@ -207,6 +216,38 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Controls <a href="https://ollama.com/blog/thinking">thinking</a>.
+         * <pre>
+         * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
+         * <code>false</code>: the LLM does not think
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by </code>&lt;think&gt;</code> and </code>&lt;/think&gt;</code>, to the actual response
+         * </pre>
+         *
+         * @see #returnThinking(Boolean)
+         */
+        public B think(Boolean think) {
+            this.think = think;
+            return self();
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thinking} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #think(Boolean)
+         */
+        public B returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return self();
+        }
+
         public B timeout(Duration timeout) {
             this.timeout = timeout;
             return self();
@@ -224,6 +265,15 @@ abstract class OllamaBaseChatModel {
 
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return self();
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public B logger(Logger logger) {
+            this.logger = logger;
             return self();
         }
 

@@ -10,6 +10,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
@@ -30,29 +31,9 @@ public class MistralAiModels {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-    }
-
-    /**
-     * @deprecated please use {@link #MistralAiModels(MistralAiModelsBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiModels(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
-        this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static MistralAiModels withApiKey(String apiKey) {
@@ -84,6 +65,7 @@ public class MistralAiModels {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Integer maxRetries;
 
         public MistralAiModelsBuilder() {}
@@ -136,6 +118,15 @@ public class MistralAiModels {
          */
         public MistralAiModelsBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public MistralAiModelsBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

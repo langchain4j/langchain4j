@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -26,7 +27,7 @@ class NomicClient {
     private final NomicApi nomicApi;
     private final String authorizationHeader;
 
-    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -35,10 +36,10 @@ class NomicClient {
                 .writeTimeout(timeout);
 
         if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
         }
         if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
         }
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -83,6 +84,7 @@ class NomicClient {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         NomicClientBuilder() {
         }
@@ -112,8 +114,13 @@ class NomicClient {
             return this;
         }
 
+        public NomicClientBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public NomicClient build() {
-            return new NomicClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses);
+            return new NomicClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
         }
 
         public String toString() {

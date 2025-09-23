@@ -8,6 +8,7 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -24,7 +25,7 @@ public class JinaClient {
     private final JinaApi jinaApi;
     private final String authorizationHeader;
 
-    JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses) {
+    JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -33,10 +34,10 @@ public class JinaClient {
                 .writeTimeout(timeout);
 
         if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
         }
         if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
         }
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -95,6 +96,7 @@ public class JinaClient {
         private Duration timeout;
         private boolean logRequests;
         private boolean logResponses;
+        private Logger logger;
 
         JinaClientBuilder() {
         }
@@ -124,8 +126,13 @@ public class JinaClient {
             return this;
         }
 
+        public JinaClientBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public JinaClient build() {
-            return new JinaClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses);
+            return new JinaClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
         }
 
         public String toString() {

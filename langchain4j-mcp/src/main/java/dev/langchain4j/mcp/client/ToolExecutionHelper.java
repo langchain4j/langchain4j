@@ -1,17 +1,16 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 
 class ToolExecutionHelper {
 
-    private static final Logger log = LoggerFactory.getLogger(ToolExecutionHelper.class);
-    private static final String EXECUTION_ERROR_MESSAGE = "There was an error executing the tool";
+    private static final int ERROR_CODE_INVALID_PARAMETERS = -32602;
 
     /**
      * Extracts a response from a CallToolResult message. This may be an error response.
@@ -21,24 +20,24 @@ class ToolExecutionHelper {
             JsonNode resultNode = result.get("result");
             if (resultNode.has("content")) {
                 String content = extractSuccessfulResult((ArrayNode) resultNode.get("content"));
-                boolean isError = false;
-                if (resultNode.has("isError")) {
-                    isError = resultNode.get("isError").asBoolean();
-                }
-                if (isError) {
-                    content = String.format(EXECUTION_ERROR_MESSAGE + ". The tool returned: %s", content);
+                if (isError(resultNode)) {
+                    throw new ToolExecutionException(content);
                 }
                 return content;
             } else {
-                log.warn("Result does not contain 'content' element: {}", result);
-                return EXECUTION_ERROR_MESSAGE;
+                throw new RuntimeException("Result does not contain 'content' element: " + result);
             }
         } else {
             if (result.has("error")) {
-                return extractError(result.get("error"));
+                String errorMessage = extractErrorMessage(result.get("error"));
+                Integer errorCode = extractErrorCode(result.get("error"));
+                if (errorCode != null && errorCode == ERROR_CODE_INVALID_PARAMETERS) {
+                    throw new ToolArgumentsException(errorMessage, errorCode);
+                } else {
+                    throw new ToolExecutionException(errorMessage, errorCode);
+                }
             }
-            log.warn("Result contains neither 'result' nor 'error' element: {}", result);
-            return EXECUTION_ERROR_MESSAGE;
+            throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + result);
         }
     }
 
@@ -54,16 +53,24 @@ class ToolExecutionHelper {
                 .collect(Collectors.joining("\n"));
     }
 
-    private static String extractError(JsonNode errorNode) {
-        String errorMessage = "";
-        if (errorNode.get("message") != null) {
-            errorMessage = errorNode.get("message").asText("");
+    private static boolean isError(JsonNode resultNode) {
+        if (resultNode.has("isError")) {
+            return resultNode.get("isError").asBoolean();
         }
-        Integer errorCode = null;
-        if (errorNode.get("code") != null) {
-            errorCode = errorNode.get("code").asInt();
+        return false;
+    }
+
+    private static String extractErrorMessage(JsonNode errorNode) {
+        if (errorNode.has("message")) {
+            return errorNode.get("message").asText("");
         }
-        log.warn("Result contains an error: {}, code: {}", errorMessage, errorCode);
-        return String.format(EXECUTION_ERROR_MESSAGE + ". Message: %s. Code: %s", errorMessage, errorCode);
+        return "";
+    }
+
+    private static Integer extractErrorCode(JsonNode errorNode) {
+        if (errorNode.has("code")) {
+            return errorNode.get("code").asInt();
+        }
+        return null;
     }
 }

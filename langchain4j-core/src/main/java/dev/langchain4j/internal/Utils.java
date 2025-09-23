@@ -191,6 +191,16 @@ public class Utils {
     }
 
     /**
+     * Utility method to check if an array is null or has no elements.
+     *
+     * @param array the array to check
+     * @return {@code true} if the array is null or has no elements, otherwise {@code false}
+     */
+    public static boolean isNullOrEmpty(Object[] array) {
+        return array == null || array.length == 0;
+    }
+
+    /**
      * Is the map object {@code null} or empty?
      *
      * @param map The iterable object to check.
@@ -304,6 +314,15 @@ public class Utils {
                 // Handle URLs
                 HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
                 connection.setRequestMethod("GET");
+                // Add headers to appear as a legitimate browser request
+                connection.setRequestProperty(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                connection.setRequestProperty(
+                        "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+                connection.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+                connection.setRequestProperty("Accept-Encoding", "gzip, deflate");
+                connection.setRequestProperty("Connection", "keep-alive");
 
                 int responseCode = connection.getResponseCode();
 
@@ -456,7 +475,7 @@ public class Utils {
         if (Proxy.isProxyClass(method.getDeclaringClass())) {
             for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
                 try {
-                    Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                    Method interfaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
                     if (interfaceMethod.isAnnotationPresent(annotation)) {
                         return Optional.of(interfaceMethod);
                     }
