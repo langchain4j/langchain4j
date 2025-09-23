@@ -39,6 +39,8 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceInvocationEventListenerRegistrarTests {
+    private static final AiServiceInvocationEventListenerRegistrar REGISTRAR =
+            AiServiceInvocationEventListenerRegistrar.newInstance();
     private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
@@ -84,6 +86,7 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
                                     .userMessageTemplate("")
                                     .variables(Map.of())
                                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                                    .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
                                     .build())
                             .chatExecutor(new ChatExecutor() {
                                 @Override
@@ -112,6 +115,7 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
                                     .userMessageTemplate("")
                                     .variables(Map.of())
                                     .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                                    .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
                                     .build())
                             .build())
                     .result(InputGuardrailResult.success())
@@ -147,11 +151,10 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
 
     @Test
     void hasCorrectListeners() {
-        var registrar = (DefaultAiServiceInvocationEventListenerRegistrar)
-                assertThat(AiServiceInvocationEventListenerRegistrar.getInstance())
-                        .isNotNull()
-                        .isExactlyInstanceOf(DefaultAiServiceInvocationEventListenerRegistrar.class)
-                        .actual();
+        var registrar = (DefaultAiServiceInvocationEventListenerRegistrar) assertThat(REGISTRAR)
+                .isNotNull()
+                .isExactlyInstanceOf(DefaultAiServiceInvocationEventListenerRegistrar.class)
+                .actual();
 
         // Assert our starting point that nothing has happened
         assertListenersNotExecuted();

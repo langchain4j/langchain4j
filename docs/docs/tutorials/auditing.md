@@ -49,7 +49,7 @@ To listen for an event, create your own class implementing the listener interfac
 | [`InputGuardrailExecutedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/listener/InputGuardrailExecutedEventListener.java)             | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/event/InputGuardrailExecutedEvent.java)             |
 | [`OutputGuardrailExecutedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/listener/OutputGuardrailExecutedEventListener.java)           | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/event/OutputGuardrailExecutedEvent.java)           |
 
-Once you've defined your listener(s), register them with the [`AiServiceInvocationEventListenerRegistrar`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/AiServiceInvocationEventListenerRegistrar.java).
+Once you've defined your listener(s), register them when you create your [AI Services](/tutorials/ai-services). There are various `registerInvocationListener` method variants on the [`AiServices` class](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java).
 
 For example, you could do the following to create and register a listener for an `AiServiceInvocationCompletedEvent`:
 
@@ -83,8 +83,13 @@ public class MyAiServiceInvocationCompletedEventListener implements AiServiceInv
     }
 }
 
+// When creating your AI Service
 MyAiServiceInvocationCompletedEventListener myListener = new MyAiServiceInvocationCompletedEventListener();
-AiServiceInvocationEventListenerRegistrar.getInstance().register(myListener);
+
+var myService = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)  // Could also be .streamingChatModel(...)
+        .registerInvocationListener(myListener)
+        .build();
 ```
 
 ## Creating your own events and listeners

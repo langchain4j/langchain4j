@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class AiServiceInvocationEventListenerRegistrarTests {
     @Test
     void correctInstance() {
-        assertThat(AiServiceInvocationEventListenerRegistrar.getInstance())
+        assertThat(AiServiceInvocationEventListenerRegistrar.newInstance())
                 .isNotNull()
                 .isExactlyInstanceOf(DefaultAiServiceInvocationEventListenerRegistrar.class);
     }

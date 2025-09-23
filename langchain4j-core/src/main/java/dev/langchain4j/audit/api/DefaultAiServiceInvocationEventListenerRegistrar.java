@@ -21,23 +21,8 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultAiServiceInvocationEventListenerRegistrar implements AiServiceInvocationEventListenerRegistrar {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAiServiceInvocationEventListenerRegistrar.class);
-
-    private static final AiServiceInvocationEventListenerRegistrar INSTANCE =
-            new DefaultAiServiceInvocationEventListenerRegistrar();
-
     private final Map<Class<? extends AiServiceInvocationEvent>, EventListeners<? extends AiServiceInvocationEvent>>
             listeners = new ConcurrentHashMap<>();
-
-    private DefaultAiServiceInvocationEventListenerRegistrar() {
-        super();
-    }
-
-    /**
-     * Provides the instance of {@link AiServiceInvocationEventListenerRegistrar}.
-     */
-    public static AiServiceInvocationEventListenerRegistrar getInstance() {
-        return INSTANCE;
-    }
 
     /**
      * Registers a listener to receive {@link AiServiceInvocationEvent} notifications.

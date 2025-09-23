@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -11,9 +10,13 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
+import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
@@ -35,10 +38,8 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
-import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -198,7 +199,9 @@ public abstract class AiServices<T> {
 
     @Internal
     public static <T> AiServices<T> builder(AiServiceContext context) {
-        return FactoryHolder.aiServicesFactory != null ? FactoryHolder.aiServicesFactory.create(context) : new DefaultAiServices<>(context);
+        return FactoryHolder.aiServicesFactory != null
+                ? FactoryHolder.aiServicesFactory.create(context)
+                : new DefaultAiServices<>(context);
     }
 
     /**
@@ -294,9 +297,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-       if (chatMemoryProvider != null) {
-           context.initChatMemories(chatMemoryProvider);
-       }
+        if (chatMemoryProvider != null) {
+            context.initChatMemories(chatMemoryProvider);
+        }
         return this;
     }
 
@@ -555,6 +558,80 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Registers an {@link AiServiceInvocationEventListener} listener for AI service events for this AI Service.
+     *
+     * @param listener the listener to be registered, must not be {@code null}
+     * @return builder
+     */
+    public <I extends AiServiceInvocationEvent> AiServices<T> registerInvocationListener(
+            AiServiceInvocationEventListener<I> listener) {
+        context.auditInvocationEventListenerRegistrar.register(ensureNotNull(listener, "listener"));
+        return this;
+    }
+
+    /**
+     * Registers one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be registered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> registerInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
+        context.auditInvocationEventListenerRegistrar.register(listeners);
+        return this;
+    }
+
+    /**
+     * Registers one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be registered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> registerInvocationListeners(
+            Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
+        context.auditInvocationEventListenerRegistrar.register(listeners);
+        return this;
+    }
+
+    /**
+     * Unregisters an {@link AiServiceInvocationEventListener} listener for AI service events for this AI Service.
+     *
+     * @param listener the listener to be registered, must not be {@code null}
+     * @return builder
+     */
+    public <I extends AiServiceInvocationEvent> AiServices<T> unregisterInvocationListener(
+            AiServiceInvocationEventListener<I> listener) {
+        context.auditInvocationEventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
+        return this;
+    }
+
+    /**
+     * Unregisters one or more invocation event listeners from the AI service.
+     *
+     * @param listeners the invocation event listeners to be unregistered.
+     *                  Can be null, in which case no action will be performed.
+     * @return builder
+     */
+    public AiServices<T> unregisterInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
+        context.auditInvocationEventListenerRegistrar.unregister(listeners);
+        return this;
+    }
+
+    /**
+     * Unregisters one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be unregistered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> unregisterInvocationListeners(
+            Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
+        context.auditInvocationEventListenerRegistrar.unregister(listeners);
         return this;
     }
 

@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
@@ -72,14 +71,6 @@ class AiServicesAuditingTests {
             String expectedUserMessage,
             List<Class<? extends AiServiceInvocationEvent>> expectedEventsReceivedClasses) {
 
-        // Invoke the operation prior to registering the listeners
-        // Nothing should happen
-        chatAssertion.accept(assistantCreator.get());
-        assertNoEventsReceived(7, listeners.values());
-
-        // Now register the events
-        registerAllListeners();
-
         // Let's invoke the operation a few times
         IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreator.get()));
 
@@ -93,19 +84,12 @@ class AiServicesAuditingTests {
                 expectedUserMessage,
                 expectedMethodName,
                 expectedEventsReceivedClasses.stream().map(listeners::get).toList());
-
-        // Now unregister
-        unregisterAllListeners();
-
-        // Nothing should happen when invoking the operation again
-        chatAssertion.accept(assistantCreator.get());
-        assertNoEventsReceived(7, listeners.values());
     }
 
     @Test
     void failureStreamingChat() {
         runScenario(
-                () -> Assistant.createFailingService(true),
+                () -> Assistant.createFailingService(true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
 
@@ -155,7 +139,7 @@ class AiServicesAuditingTests {
     @Test
     void failureChat() {
         runScenario(
-                () -> Assistant.createFailingService(false),
+                () -> Assistant.createFailingService(false, listeners.values()),
                 assistant ->
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
                 "chat",
@@ -173,7 +157,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulStreamingChatNoTools() {
         runScenario(
-                () -> Assistant.create(false, true),
+                () -> Assistant.create(false, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
 
@@ -225,7 +209,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulChatNoTools() {
         runScenario(
-                () -> Assistant.create(false, false),
+                () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThat(assistant.chat("Hello!")).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
                 "chat",
                 false,
@@ -244,7 +228,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulChatWithTools() {
         runScenario(
-                () -> Assistant.create(true, false),
+                () -> Assistant.create(true, false, listeners.values()),
                 assistant -> assertThat(assistant.chat(TOOL_USER_MESSAGE)).isEqualTo(TOOL_EXPECTED_RESPONSE),
                 "chat",
                 true,
@@ -263,7 +247,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulStreamingChatWithTools() {
         runScenario(
-                () -> Assistant.create(true, true),
+                () -> Assistant.create(true, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
 
@@ -318,7 +302,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingStreamingWithInputGuardrails() {
         runScenario(
-                () -> Assistant.create(false, true),
+                () -> Assistant.create(false, true, listeners.values()),
                 assistant -> assertThatExceptionOfType(InputGuardrailException.class)
                         .isThrownBy(() -> assistant
                                 .streamingChatWithInputGuardrails("Hello!")
@@ -343,7 +327,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingWithInputGuardrails() {
         runScenario(
-                () -> Assistant.create(false, false),
+                () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThatExceptionOfType(InputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithInputGuardrails("Hello!"))
                         .withMessage(
@@ -366,7 +350,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingStreamingWithOutputGuardrails() {
         runScenario(
-                () -> Assistant.create(false, true),
+                () -> Assistant.create(false, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
 
@@ -420,7 +404,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingWithOutputGuardrails() {
         runScenario(
-                () -> Assistant.create(false, false),
+                () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThatExceptionOfType(OutputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithOutputGuardrails("Hello!"))
                         .withMessage(
@@ -438,17 +422,6 @@ class AiServicesAuditingTests {
                         AiServiceInvocationErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
-    }
-
-    private void registerAllListeners() {
-        listeners.values().forEach(AiServiceInvocationEventListenerRegistrar.getInstance()::register);
-    }
-
-    private void unregisterAllListeners() {
-        listeners.values().forEach(listener -> {
-            AiServiceInvocationEventListenerRegistrar.getInstance().unregister(listener);
-            listener.reset();
-        });
     }
 
     private static void assertNoEventsReceived(
@@ -545,8 +518,12 @@ class AiServicesAuditingTests {
         @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
         TokenStream streamingChatWithOutputGuardrails(String message);
 
-        static Assistant create(boolean shouldHaveToolAccess, boolean streaming) {
-            var builder = AiServices.builder(Assistant.class);
+        static Assistant create(
+                boolean shouldHaveToolAccess,
+                boolean streaming,
+                Collection<? extends AiServiceInvocationEventListener<? extends AiServiceInvocationEvent>> listeners) {
+            var builder = AiServices.builder(Assistant.class).registerInvocationListeners(listeners);
+
             var toolRequestMessage = AiMessage.from(ToolExecutionRequest.builder()
                     .name("squareRoot")
                     .arguments("{\n  \"arg0\": 485906798473894056\n}")
@@ -576,14 +553,17 @@ class AiServicesAuditingTests {
             return builder.build();
         }
 
-        static Assistant createFailingService(boolean streaming) {
+        static Assistant createFailingService(
+                boolean streaming,
+                Collection<? extends AiServiceInvocationEventListener<? extends AiServiceInvocationEvent>> listeners) {
+            var builder = AiServices.builder(Assistant.class).registerInvocationListeners(listeners);
+
             return streaming
-                    ? AiServices.create(
-                            Assistant.class,
-                            StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"))
-                    : AiServices.create(
-                            Assistant.class,
-                            ChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"));
+                    ? builder.streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage(
+                                    "LLM invocation failed"))
+                            .build()
+                    : builder.chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"))
+                            .build();
         }
     }
 

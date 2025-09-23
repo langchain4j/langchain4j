@@ -12,7 +12,6 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
@@ -50,7 +49,6 @@ import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
@@ -226,8 +224,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         try {
                             return invoke(method, args, invocationContext);
                         } catch (Exception ex) {
-                            AiServiceInvocationEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInvocationErrorEvent.builder()
+                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                                    AiServiceInvocationErrorEvent.builder()
                                             .invocationContext(invocationContext)
                                             .error(ex)
                                             .build());
@@ -252,8 +250,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        AiServiceInvocationEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceInvocationStartedEvent.builder()
+                        context.auditInvocationEventListenerRegistrar.fireEvent(
+                                AiServiceInvocationStartedEvent.builder()
                                         .invocationContext(auditInvocationContext)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
@@ -285,6 +283,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
                                 .invocationContext(auditInvocationContext)
+                                .aiServiceInvocationEventListenerRegistrar(
+                                        context.auditInvocationEventListenerRegistrar)
                                 .variables(variables)
                                 .build();
 
@@ -384,11 +384,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = chatExecutor.execute();
 
-                        AiServiceInvocationEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceResponseReceivedEvent.builder()
-                                        .invocationContext(auditInvocationContext)
-                                        .response(chatResponse)
-                                        .build());
+                        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                .invocationContext(auditInvocationContext)
+                                .response(chatResponse)
+                                .build());
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -403,7 +402,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 invocationContext,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult,
-                                auditInvocationContext);
+                                auditInvocationContext,
+                                context.auditInvocationEventListenerRegistrar);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             var result = Result.builder()
@@ -416,8 +416,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            AiServiceInvocationEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
+                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                                    AiServiceInvocationCompletedEvent.builder()
                                             .invocationContext(auditInvocationContext)
                                             .result(result)
                                             .build());
@@ -435,8 +435,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            AiServiceInvocationEventListenerRegistrar.getInstance()
-                                    .fireEvent(AiServiceInvocationCompletedEvent.builder()
+                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                                    AiServiceInvocationCompletedEvent.builder()
                                             .invocationContext(auditInvocationContext)
                                             .result(response)
                                             .build());
@@ -459,8 +459,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
-                        AiServiceInvocationEventListenerRegistrar.getInstance()
-                                .fireEvent(AiServiceInvocationCompletedEvent.builder()
+                        context.auditInvocationEventListenerRegistrar.fireEvent(
+                                AiServiceInvocationCompletedEvent.builder()
                                         .invocationContext(auditInvocationContext)
                                         .result(actualResponse)
                                         .build());

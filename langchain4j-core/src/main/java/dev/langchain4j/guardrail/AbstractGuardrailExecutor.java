@@ -3,7 +3,6 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.audit.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
@@ -117,7 +116,8 @@ public abstract sealed class AbstractGuardrailExecutor<
     }
 
     protected void fireAuditEvent(AiServiceInvocationContext auditInteractionSource, P request, R result, G guardrail) {
-        AiServiceInvocationEventListenerRegistrar.getInstance()
+        request.requestParams()
+                .aiServiceInvocationEventListenerRegistrar()
                 .fireEvent(createEmptyAuditEventBuilderInstance()
                         .invocationContext(auditInteractionSource)
                         .request(request)

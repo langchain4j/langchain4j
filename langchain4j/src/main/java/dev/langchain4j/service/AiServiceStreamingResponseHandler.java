@@ -7,7 +7,6 @@ import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
@@ -158,36 +157,32 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private <T> void fireInteractionComplete(T result) {
-        AiServiceInvocationEventListenerRegistrar.getInstance()
-                .fireEvent(AiServiceInvocationCompletedEvent.builder()
-                        .invocationContext(commonGuardrailParams.invocationContext())
-                        .result(result)
-                        .build());
+        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceInvocationCompletedEvent.builder()
+                .invocationContext(commonGuardrailParams.invocationContext())
+                .result(result)
+                .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
-        AiServiceInvocationEventListenerRegistrar.getInstance()
-                .fireEvent(ToolExecutedEvent.builder()
-                        .invocationContext(commonGuardrailParams.invocationContext())
-                        .request(toolRequestResult.request())
-                        .result(toolRequestResult.result().resultText())
-                        .build());
+        context.auditInvocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                .invocationContext(commonGuardrailParams.invocationContext())
+                .request(toolRequestResult.request())
+                .result(toolRequestResult.result().resultText())
+                .build());
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
-        AiServiceInvocationEventListenerRegistrar.getInstance()
-                .fireEvent(AiServiceResponseReceivedEvent.builder()
-                        .invocationContext(commonGuardrailParams.invocationContext())
-                        .response(chatResponse)
-                        .build());
+        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                .invocationContext(commonGuardrailParams.invocationContext())
+                .response(chatResponse)
+                .build());
     }
 
     private void fireErrorReceived(Throwable error) {
-        AiServiceInvocationEventListenerRegistrar.getInstance()
-                .fireEvent(AiServiceInvocationErrorEvent.builder()
-                        .invocationContext(commonGuardrailParams.invocationContext())
-                        .error(error)
-                        .build());
+        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceInvocationErrorEvent.builder()
+                .invocationContext(commonGuardrailParams.invocationContext())
+                .error(error)
+                .build());
     }
 
     @Override
