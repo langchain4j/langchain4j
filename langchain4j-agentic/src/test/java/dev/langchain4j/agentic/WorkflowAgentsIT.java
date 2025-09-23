@@ -8,7 +8,6 @@ import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -351,6 +350,17 @@ public class WorkflowAgentsIT {
 
     @Test
     void typed_loop_agents_tests() {
+        check_typed_loop_agents(false);
+    }
+
+    @Test
+    void typed_loop_agents_completing_loop_tests() {
+        check_typed_loop_agents(true);
+    }
+
+    void check_typed_loop_agents(boolean testExitAtLoopEnd) {
+        AtomicInteger loopCount = new AtomicInteger();
+
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputName("story")
@@ -369,7 +379,11 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .testExitAtLoopEnd(testExitAtLoopEnd)
+                .exitCondition( (agenticScope, loop) -> {
+                    loopCount.set(loop);
+                    return agenticScope.readState("score", 0.0) >= 0.8;
+                })
                 .build();
 
         StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
@@ -381,7 +395,7 @@ public class WorkflowAgentsIT {
         String story = result.result();
         System.out.println(story);
 
-        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        AgenticScope agenticScope = result.agenticScope();
         // Verify that an ephemeral agenticScope is correctly evicted from the registry after the call
         assertThat(styledWriter.getAgenticScope(agenticScope.memoryId())).isNull();
 
@@ -393,9 +407,14 @@ public class WorkflowAgentsIT {
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
-        assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
+        assertThat(scoreAgentCalls)
+                .hasSizeBetween(1, 5)
+                .hasSize(loopCount.get());
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+
+        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
+        assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get()-1);
     }
 
     @Test
