@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -27,6 +29,9 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     protected final String description;
     protected final String outputName;
 
+    protected final Consumer<AgentRequest> beforeListener;
+    protected final Consumer<AgentResponse> afterListener;
+
     private final Class<?> agentServiceClass;
 
     private final Consumer<AgenticScope> beforeCall;
@@ -49,6 +54,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this.outputName = service.outputName;
         this.beforeCall = service.beforeCall;
         this.errorHandler = service.errorHandler;
+        this.beforeListener = service.beforeListener;
+        this.afterListener = service.afterListener;
         this.agenticScope = agenticScope;
     }
 
@@ -88,6 +95,14 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
                 case "description" -> description;
                 case "outputName" -> outputName;
                 case "async" -> false;
+                case "beforeInvocation" -> {
+                    beforeListener.accept((AgentRequest) args[0]);
+                    yield null;
+                }
+                case "afterInvocation" -> {
+                    afterListener.accept((AgentResponse) args[0]);
+                    yield null;
+                }
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on AgentInstance class : " + method.getName());

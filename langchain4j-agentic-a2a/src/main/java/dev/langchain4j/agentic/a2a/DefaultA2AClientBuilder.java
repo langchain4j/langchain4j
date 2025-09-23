@@ -3,6 +3,8 @@ package dev.langchain4j.agentic.a2a;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import io.a2a.A2A;
@@ -48,6 +50,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private String outputName;
     private boolean async;
 
+    private Consumer<AgentRequest> beforeListener = request -> {};
+    private Consumer<AgentResponse> afterListener = response -> {};
+
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
@@ -92,6 +97,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "description" -> agentCard.description();
                                 case "outputName" -> outputName;
                                 case "async" -> async;
+                                case "beforeInvocation" -> {
+                                    beforeListener.accept((AgentRequest) args[0]);
+                                    yield null;
+                                }
+                                case "afterInvocation" -> {
+                                    afterListener.accept((AgentResponse) args[0]);
+                                    yield null;
+                                }
                                 default ->
                                     throw new UnsupportedOperationException(
                                             "Unknown method on AgentInstance class : " + method.getName());
@@ -189,8 +202,21 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         return this;
     }
 
+    @Override
     public DefaultA2AClientBuilder<T> async(boolean async) {
         this.async = async;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> beforeListener) {
+        this.beforeListener = this.beforeListener.andThen(beforeListener);
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
+        this.afterListener = this.afterListener.andThen(afterListener);
         return this;
     }
 }
