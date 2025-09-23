@@ -1,9 +1,19 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
@@ -79,5 +89,60 @@ class AiServicesModerationTest {
         // When/Then - same future can be checked multiple times
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
+    }
+
+    @Test
+    void should_handle_empty_response_choices() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(Collections.emptyList())
+                .build();
+
+        // when/then
+        assertThatThrownBy(() -> aiMessageFrom(response)).isInstanceOf(IndexOutOfBoundsException.class);
+    }
+
+    @Test
+    void should_handle_null_message_content() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder().content(null).build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_handle_function_call_with_null_arguments() {
+        // given
+        String functionName = "simple_function";
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder()
+                                .functionCall(FunctionCall.builder()
+                                        .name(functionName)
+                                        .arguments(null)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.toolExecutionRequests())
+                .containsExactly(ToolExecutionRequest.builder()
+                        .name(functionName)
+                        .arguments(null)
+                        .build());
     }
 }
