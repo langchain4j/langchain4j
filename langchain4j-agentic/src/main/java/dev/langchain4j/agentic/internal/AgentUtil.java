@@ -79,11 +79,7 @@ public class AgentUtil {
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
-    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method) {
-        return agentInvocationArguments(agenticScope, argumentsFromMethod(method), Map.of());
-    }
-
-    static List<AgentArgument> argumentsFromMethod(Method method) {
+    public static List<AgentArgument> argumentsFromMethod(Method method) {
         return Stream.of(method.getParameters())
                 .map(p -> new AgentArgument(p.getType(), parameterName(p)))
                 .toList();
@@ -100,6 +96,10 @@ public class AgentUtil {
             return AGENTIC_SCOPE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
+    }
+
+    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
+        return agentInvocationArguments(agenticScope, agentArguments, Map.of());
     }
 
     public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs) throws MissingArgumentException {

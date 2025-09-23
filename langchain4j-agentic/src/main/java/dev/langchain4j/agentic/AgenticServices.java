@@ -501,8 +501,8 @@ public class AgenticServices {
         List<AgentUtil.AgentArgument> agentArguments = argumentsFromMethod(predicateMethod);
         return (agenticScope, loopCounter) -> {
             try {
-                Object[] args = methodInvocationArguments(agenticScope, agentArguments,
-                        Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter));
+                Object[] args = agentInvocationArguments(agenticScope, agentArguments,
+                        Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter)).positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);

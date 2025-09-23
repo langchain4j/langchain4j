@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
