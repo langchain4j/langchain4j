@@ -1,23 +1,24 @@
 package dev.langchain4j.mcp.registryclient.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.time.ZonedDateTime;
 
 public class McpOfficialMeta {
 
-    private String id;
+    @JsonAlias("id")
+    private String serverId;
 
-    @JsonProperty("is_latest")
+    @JsonAlias("is_latest")
     private boolean isLatest;
 
-    @JsonProperty("published_at")
+    @JsonAlias("published_at")
     private ZonedDateTime publishedAt;
 
-    @JsonProperty("updated_at")
+    @JsonAlias("updated_at")
     private ZonedDateTime updatedAt;
 
-    public String getId() {
-        return id;
+    public String getServerId() {
+        return serverId;
     }
 
     public boolean isLatest() {

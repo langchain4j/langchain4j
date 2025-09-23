@@ -1,9 +1,14 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
+import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -37,9 +42,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.Executor;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -47,9 +54,12 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
+import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
-import static dev.langchain4j.agentic.internal.AgentUtil.methodInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -325,6 +335,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, sequenceAgent.name(), sequenceAgent.description(), sequenceAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         return builder.build();
     }
@@ -337,9 +349,15 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, loopAgent.name(), loopAgent.description(), loopAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
-                .map(AgenticServices::agenticScopePredicate)
+                .map( method -> {
+                    builder.testExitAtLoopEnd(method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
+                    return method;
+                })
+                .map(AgenticServices::loopExitConditionPredicate)
                 .ifPresent(builder::exitCondition);
 
         return builder.build();
@@ -351,6 +369,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, conditionalAgent.name(), conditionalAgent.description(), conditionalAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         for (SubAgent subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
@@ -371,6 +391,8 @@ public class AgenticServices {
 
         buildAgentSpecs(agentServiceClass, agentMethod, parallelAgent.name(), parallelAgent.description(), parallelAgent.outputName(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ParallelExecutor.class) &&
                 Executor.class.isAssignableFrom(method.getReturnType()) &&
@@ -441,6 +463,8 @@ public class AgenticServices {
                 .ifPresent(builder::output);
 
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
+        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         return builder.build();
     }
@@ -448,6 +472,16 @@ public class AgenticServices {
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(Class<T> agentServiceClass) {
         return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
                 .map(m -> errorContext -> invokeStatic(m, errorContext));
+    }
+
+    private static <T> Optional<Consumer<AgentRequest>> buildInvocationHandler(Class<T> agentServiceClass) {
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeAgentInvocation.class))
+                .map(m -> request -> invokeStatic(m, request));
+    }
+
+    private static <T> Optional<Consumer<AgentResponse>> buildCompletionHandler(Class<T> agentServiceClass) {
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(AfterAgentInvocation.class))
+                .map(m -> response -> invokeStatic(m, response));
     }
 
     private static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
@@ -463,18 +497,31 @@ public class AgenticServices {
         return Optional.empty();
     }
 
+    private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(Method predicateMethod) {
+        List<AgentUtil.AgentArgument> agentArguments = argumentsFromMethod(predicateMethod);
+        return (agenticScope, loopCounter) -> {
+            try {
+                Object[] args = agentInvocationArguments(agenticScope, agentArguments,
+                        Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter)).positionalArgs();
+                return (boolean) predicateMethod.invoke(null, args);
+            } catch (Exception e) {
+                throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);
+            }
+        };
+    }
+
     private static Predicate<AgenticScope> agenticScopePredicate(Method predicateMethod) {
         return agenticScope -> agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
     private static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
-        boolean isAgenticScopeArg = functionMethod.getParameterCount() == 1 && functionMethod.getParameterTypes()[0] == AgenticScope.class;
+        List<AgentUtil.AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         return agenticScope -> {
             try {
-                Object[] args = isAgenticScopeArg ? new Object[] {agenticScope} : methodInvocationArguments(agenticScope, functionMethod);
+                Object[] args = agentInvocationArguments(agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope)).positionalArgs();
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {
-                throw new RuntimeException("Error invoking exit condition method: " + functionMethod.getName(), e);
+                throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
             }
         };
     }

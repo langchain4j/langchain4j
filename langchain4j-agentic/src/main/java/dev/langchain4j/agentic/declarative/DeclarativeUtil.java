@@ -3,6 +3,8 @@ package dev.langchain4j.agentic.declarative;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -23,7 +25,7 @@ public class DeclarativeUtil {
     }
 
     public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
-        configureAgent(agentType, chatModel, false, agentBuilder, ctx -> { });
+        configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
     private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
@@ -87,6 +89,20 @@ public class DeclarativeUtil {
                             }
                             agentBuilder.chatModel(chatModel);
                         });
+
+        getAnnotatedMethodOnClass(agentType, BeforeAgentInvocation.class)
+                .ifPresent(method -> {
+                    checkArguments(method, AgentRequest.class);
+                    checkReturnType(method, void.class);
+                    agentBuilder.beforeAgentInvocation(request -> invokeStatic(method, request));
+                });
+
+        getAnnotatedMethodOnClass(agentType, AfterAgentInvocation.class)
+                .ifPresent(method -> {
+                    checkArguments(method, AgentResponse.class);
+                    checkReturnType(method, void.class);
+                    agentBuilder.afterAgentInvocation(response -> invokeStatic(method, response));
+                });
 
         agentConfigurator.accept(new AgenticServices.DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }

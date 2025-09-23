@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
+
 public interface AgentSpecification {
 
     String name();
@@ -7,4 +10,7 @@ public interface AgentSpecification {
     String description();
     String outputName();
     boolean async();
+
+    void beforeInvocation(AgentRequest request);
+    void afterInvocation(AgentResponse response);
 }

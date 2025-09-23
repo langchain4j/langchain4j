@@ -1,34 +1,29 @@
 package dev.langchain4j.mcp.registryclient.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.util.List;
 
 public class McpPackage {
 
-    @JsonProperty("file_sha256")
+    @JsonAlias("file_sha256")
     private String fileSha256;
 
     private String identifier;
 
-    @JsonProperty("registry_base_url")
     private String registryBaseUrl;
 
-    @JsonProperty("registry_type")
+    @JsonAlias("registry_type")
     private String registryType;
 
-    @JsonProperty("runtime_hint")
     private String runtimeHint;
 
     private String version;
     private McpTransport transport;
 
-    @JsonProperty("runtime_arguments")
     private List<McpRuntimeArgument> runtimeArguments;
 
-    @JsonProperty("package_arguments")
     private List<McpPackageArgument> packageArguments;
 
-    @JsonProperty("environment_variables")
     private List<McpEnvironmentVariable> environmentVariables;
 
     public String getFileSha256() {

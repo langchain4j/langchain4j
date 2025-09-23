@@ -226,7 +226,24 @@ UntypedAgent styleReviewLoop = AgenticServices
 
 Here the `styleScorer` agent writes its output to the `AgenticScope` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
 
-At this point the `styleReviewLoop` agent can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
+The `exitCondition` method takes as argument a `Predicate<AgenticScope>` that by default is evaluated after each and every agent invocation, making the loop to exit as soon as the condition is satisfied, in order to reduce as much as possible the number of agent invocations. However, it is also possible to check the exit condition only at the end of a loop, thus forcing all agents to be invoked before testing that condition, by configuring the loop builder with the `testExitAtLoopEnd(true)` method. Alternatively, the `exitCondition` method can also take as argument a `BiPredicate<AgenticScope, Integer>` that receives as second argument the counter of the current loop iteration. For example, the following loop definition:
+
+```java
+UntypedAgent styleReviewLoop = AgenticServices
+        .loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .testExitAtLoopEnd(true)
+        .exitCondition( (agenticScope, loopCounter) -> {
+            double score = agenticScope.readState("score", 0.0);
+            return loopCounter <= 3 ? score >= 0.8 : score >= 0.6;
+        })
+        .build();
+```
+
+will make the loop to exit if the score is at least 0.8 in the first 3 iterations, otherwise it will lower the quality expectations, terminating the loop with a score of at least 0.6, also forcing the invocation of the `styleEditor` agent one last time even after the exit condition has been satisfied.
+
+After having configured this `styleReviewLoop`, it can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
 
 ```java
 public interface StyledWriter {
@@ -520,6 +537,21 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .build();
 ```
 
+## Observability
+
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `beforeAgentInvocation` and `afterAgentInvocation` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
+
+```java
+CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+    .chatModel(baseModel())
+    .outputName("story")
+    .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
+    .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
+    .build();
+```
+
+These listeners receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these listeners are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+
 ## Declarative API
 
 All the workflow patterns discussed so far can be defined using a declarative API, which allows you to define workflows in a more concise and readable way. The `langchain4j-agentic` module provides a set of annotations that can be used to define agents and their workflows in a more declarative style.
@@ -586,17 +618,19 @@ public interface FoodExpert {
 }
 ```
 
-In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments except for the one annotated with `@ChatMemoryProviderSupplier`. The list of annotations available to this purpose follows:
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
 
-| Annotation Name               | Description                                                                                                                                               |
-|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                         |
-| `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                        |
+| Annotation Name               | Description                                                                                                                                                   |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
+| `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
-| `@ContentRetrieverSupplier` | Returns the `ContentRetriever` to be used by this agent.                                                                                                  |
-| `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                |
-| `@ToolsSupplier` | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                         |
-| `@ToolProviderSupplier` | Returns the `ToolProvider` to be used by this agent.                                        |
+| `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
+| `@BeforeAgentInvocation`      | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
+| `@AfterAgentInvocation`       | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
+| `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
+| `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
+| `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
 
 To give another example of this declarative API, let's redefine through it the `ExpertsAgent` demonstrated in the conditional workflow section.
 

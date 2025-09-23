@@ -746,6 +746,29 @@ of the RAG pipeline, for example:
 - `Metadata.userMessage()` - the original `UserMessage` that should be augmented
 - `Metadata.chatMemoryId()` - the value of a `@MemoryId`-annotated method parameter. More details [here](/tutorials/ai-services/#chat-memory). This can be used to identify the user and apply access restrictions or filters during the retrieval.
 - `Metadata.chatMemory()` - all previous `ChatMessage`s. This can help to understand the context in which the `Query` was asked.
+- `Metadata.invocationParameters()` - contains `InvocationParameters` that can be specified when invoking AI Service:
+
+```java
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("Hello", parameters);
+```
+
+`InvocationParameters` can also be accessed within other AI Service components, such as:
+- [`@Tool`-annotated method](/tutorials/tools#invocationparameters)
+- [`ToolProvider`](/tutorials/tools#specifying-tools-dynamically): inside the `ToolProviderRequest`
+- [`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors)
+  and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
+  inside the `ToolErrorContext`
+
+Parameters are stored in a mutable, thread safe `Map`.
+
+Data can be passed between AI Service components inside the `InvocationParameters`
+(for example, from one RAG component to another or from a RAG component to a tool)
+during a single invocation of the AI Service.
 
 ### Query Transformer
 `QueryTransformer` transforms the given `Query` into one or multiple `Query`s.
@@ -826,10 +849,17 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
     .filter(metadataKey("userId").isEqualTo("12345"))
     // filter can also be specified dynamically depending on the query
     .dynamicFilter(query -> {
-        String userId = getUserId(query.metadata().chatMemoryId());
+        String userId = query.metadata().invocationParameters().get("userId");
         return metadataKey("userId").isEqualTo(userId);
     })
     .build();
+
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("Hello", parameters);
 ```
 
 #### Web Search Content Retriever

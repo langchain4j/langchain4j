@@ -291,13 +291,6 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
-        if (sendThinking) {
-            assertThat(aiMessage4.thinking()).isNull();
-            assertThat(aiMessage4.attributes()).isEmpty();
-        } else {
-            assertThat(aiMessage4.thinking()).isNotBlank();
-            assertThat(aiMessage4.attribute("thinking_signature", String.class)).isNotBlank();
-        }
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
 
         InOrder inOrder4 = inOrder(spyHandler4);

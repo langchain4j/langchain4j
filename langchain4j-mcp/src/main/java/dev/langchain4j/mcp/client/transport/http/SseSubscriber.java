@@ -35,7 +35,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
-                operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.split("data:")[1]));
+                operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.substring(5)));
             } catch (JsonProcessingException e) {
                 log.warn("Failed to parse SSE event: " + item, e);
             }
