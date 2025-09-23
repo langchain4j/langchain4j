@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -13,6 +14,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,8 @@ import static software.amazon.awssdk.regions.Region.US_EAST_1;
  * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-embed.html">here</a>.
  */
 public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
+
+    private static final int BATCH_SIZE = 96;
 
     private final BedrockRuntimeClient client;
     private final String model;
@@ -60,20 +64,29 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        Map<String, Object> requestParameters = toRequestParameters(textSegments);
-        String requestJson = toJson(requestParameters);
+        List<Embedding> embeddings = new ArrayList<>();
 
-        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() ->
-                invoke(requestJson), maxRetries, BedrockExceptionMapper.INSTANCE);
+        int inputTokenCount = 0;
+        for (int i = 0; i < textSegments.size(); i += BATCH_SIZE) {
+            List<TextSegment> batch = textSegments.subList(i, Math.min(i + BATCH_SIZE, textSegments.size()));
 
-        String responseJson = invokeModelResponse.body().asUtf8String();
-        BedrockCohereEmbeddingResponse embeddingResponse = fromJson(responseJson, BedrockCohereEmbeddingResponse.class);
+            Map<String, Object> requestParameters = toRequestParameters(batch);
+            String requestJson = toJson(requestParameters);
 
-        List<Embedding> embeddings = stream(embeddingResponse.getEmbeddings().getFloatEmbeddings())
-                .map(Embedding::from)
-                .collect(toList());
+            InvokeModelResponse invokeModelResponse =
+                    withRetryMappingExceptions(() -> invoke(requestJson), maxRetries, BedrockExceptionMapper.INSTANCE);
 
-        return Response.from(embeddings);
+            String responseJson = invokeModelResponse.body().asUtf8String();
+            BedrockCohereEmbeddingResponse embeddingResponse =
+                    fromJson(responseJson, BedrockCohereEmbeddingResponse.class);
+
+            embeddings.addAll(stream(embeddingResponse.getEmbeddings().getFloatEmbeddings())
+                    .map(Embedding::from)
+                    .collect(toList()));
+            inputTokenCount += embeddingResponse.getInputTextTokenCount();
+        }
+
+        return Response.from(embeddings, new TokenUsage(inputTokenCount));
     }
 
     private Map<String, Object> toRequestParameters(List<TextSegment> textSegments) {
