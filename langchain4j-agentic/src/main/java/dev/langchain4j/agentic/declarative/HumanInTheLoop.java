@@ -6,9 +6,6 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-/**
- * Java methods annotated with {@code @Agent} are considered agents that other agents can invoke.
- */
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface HumanInTheLoop {

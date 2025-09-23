@@ -609,7 +609,7 @@ public class AgenticServices {
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Optional<Method> humanInTheLoopMethod, Method method) {
         var humanInTheLoop = humanInTheLoopMethod.get().getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
         if (method.getParameterCount() != 1) {
-            throw new IllegalArgumentException("Method " + method.getName() + " annotated with @HumanInTheLoopRequest must have exactly one parameter");
+            throw new IllegalArgumentException("Method " + method.getName() + " annotated with @" + HumanInTheLoop.class.getSimpleName() + " must have exactly one parameter");
         }
 
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
@@ -621,7 +621,8 @@ public class AgenticServices {
 
         getAnnotatedMethodOnClass(agentServiceClass, HumanInTheLoopResponseSupplier.class)
                 .ifPresentOrElse(readerMethod -> humanInTheLoopBuilder.responseReader(() -> invokeStatic(readerMethod)),
-                        () -> { throw new IllegalArgumentException("Human in the loop class " + agentServiceClass.getName() + " must have a static method annotated with "); });
+                        () -> { throw new IllegalArgumentException("Human in the loop class " + agentServiceClass.getName() +
+                                " must have a static method annotated with @" + HumanInTheLoopResponseSupplier.class.getSimpleName()); });
 
         return agentToExecutor(humanInTheLoopBuilder.build());
     }
