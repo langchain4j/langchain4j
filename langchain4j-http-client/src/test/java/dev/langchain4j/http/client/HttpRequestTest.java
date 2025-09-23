@@ -211,4 +211,57 @@ class HttpRequestTest {
         // then
         assertThat(builder.build().headers()).containsEntry("Accept", List.of("text/plain"));
     }
+
+    @Test
+    void should_build_request_with_all_components() {
+        // given
+        HttpRequest request = HttpRequest.builder()
+                .method(HttpMethod.POST)
+                .url("https://api.example.com/v1/users")
+                .addHeader("Content-Type", "application/json")
+                .body("request body content")
+                .build();
+
+        // then
+        assertThat(request.method()).isEqualTo(HttpMethod.POST);
+        assertThat(request.url()).isEqualTo("https://api.example.com/v1/users");
+        assertThat(request.headers()).containsEntry("Content-Type", List.of("application/json"));
+        assertThat(request.body()).isEqualTo("request body content");
+    }
+
+    @Test
+    void should_handle_urls_with_query_parameters() {
+        // when
+        String result = HttpRequest.builder()
+                .method(GET)
+                .url("https://api.example.com", "/search?q=test&limit=5")
+                .build()
+                .url();
+
+        // then
+        assertThat(result).isEqualTo("https://api.example.com/search?q=test&limit=5");
+    }
+
+    @Test
+    void should_handle_null_body() {
+        // when
+        HttpRequest request = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url("http://example.com")
+                .body(null)
+                .build();
+
+        // then
+        assertThat(request.body()).isNull();
+    }
+
+    @Test
+    void should_throw_exception_when_method_is_null() {
+        // when/then
+        assertThatThrownBy(() -> HttpRequest.builder()
+                        .method(null)
+                        .url("http://example.com")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

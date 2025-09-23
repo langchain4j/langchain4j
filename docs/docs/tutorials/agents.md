@@ -12,7 +12,7 @@ This section describes how to build agentic AI applications using the `langchain
 
 Although there is no universally agreed definition of an AI agent, several emerging patterns demonstrate how to coordinate and combine the capabilities of multiple AI services to create AI-infused applications that can accomplish more complex tasks. These patterns are often referred to as "agentic systems" or "agentic AI". They typically involve the use of large language models (LLMs) to orchestrate the execution of tasks, manage tool usage, and maintain context across interactions.
 
-According to a [recent article published by Antropic researchers](https://www.anthropic.com/research/building-effective-agents), these Agentic System architectures can be grouped into two main categories: workflows and pure agents.
+According to a [recent article published by Anthropic researchers](https://www.anthropic.com/research/building-effective-agents), these Agentic System architectures can be grouped into two main categories: workflows and pure agents.
 
 ![](/img/workflow-vs-agents.png)
 
