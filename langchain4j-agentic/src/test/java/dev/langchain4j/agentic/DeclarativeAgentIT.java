@@ -1,12 +1,16 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
+import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -56,6 +60,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -216,6 +221,110 @@ public class DeclarativeAgentIT {
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 
+    static AtomicInteger loopCount;
+
+    public interface StyleReviewLoopAgentWithCounter {
+
+        @LoopAgent(
+                description = "Review the given story to ensure it aligns with the specified style",
+                outputName = "story", maxIterations = 5,
+                subAgents = {
+                    @SubAgent(type = StyleScorer.class, outputName = "score"),
+                    @SubAgent(type = StyleEditor.class, outputName = "story")
+            }
+        )
+        String write(@V("story") String story);
+
+        @ExitCondition(testExitAtLoopEnd = true)
+        static boolean exit(@V("score") double score, @LoopCounter int loopCounter) {
+            loopCount.set(loopCounter);
+            return score >= 0.8;
+        }
+    }
+
+    public interface StoryCreatorWithReviewWithCounter {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgentWithCounter.class, outputName = "story")
+        })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    @Test
+    void declarative_loop_with_counter_tests() {
+        loopCount = new AtomicInteger();
+        StoryCreatorWithReviewWithCounter storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithCounter.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
+        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+
+        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
+        assertThat(styleEditorAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+
+        loopCount = null;
+    }
+
+    public interface CreativeWriterWithListener extends CreativeWriter {
+        @BeforeAgentInvocation
+        static void beforeAgentInvocation(AgentRequest request) {
+            requestedTopic = (String) request.inputs().get("topic");
+        }
+    }
+
+    public interface StyleReviewLoopAgentWithListener extends StyleReviewLoopAgent {
+        @AfterAgentInvocation
+        static void afterAgentInvocation(AgentResponse response) {
+            finalScore = response.agenticScope().readState("score", 0.0);
+        }
+    }
+
+    public interface StoryCreatorWithReviewWithListener {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriterWithListener.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputName = "story")
+        })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    static String requestedTopic;
+    static Double finalScore;
+
+    @Test
+    void declarative_listeners_tests() {
+        assertThat(requestedTopic).isNull();
+        assertThat(finalScore).isNull();
+
+        StoryCreatorWithReviewWithListener storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithListener.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(requestedTopic).isEqualTo("dragons and wizards");
+        assertThat(finalScore).isGreaterThanOrEqualTo(0.8);
+
+        requestedTopic = null;
+        finalScore = null;
+    }
+
     public interface ExpertsAgent {
 
         @ConditionalAgent(outputName = "response", subAgents = {
@@ -236,8 +345,8 @@ public class DeclarativeAgentIT {
         }
 
         @ActivationCondition(LegalExpert.class)
-        static boolean activateLegal(@V("category") RequestCategory category) {
-            return category == RequestCategory.LEGAL;
+        static boolean activateLegal(AgenticScope agenticScope) {
+            return agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL;
         }
     }
 
