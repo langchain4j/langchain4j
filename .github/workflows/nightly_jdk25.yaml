@@ -1,8 +1,8 @@
-name: Nightly Build JDK 21
+name: Nightly Build JDK 25
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # daily at 03:00 UTC
+    - cron: '0 6 * * *'  # daily at 06:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -12,9 +12,9 @@ jobs:
       fail-fast: false # do not cancel jobs on error
       matrix:
         java_version:
-          - 21
+          - 25
         include:
-          - java_version: '21'
+          - java_version: '25'
             mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama'
       max-parallel: 1
     runs-on: ubuntu-latest
