@@ -64,10 +64,10 @@ class ChatResponseTest {
     void should_fail_when_both_response_metadata_and_token_usage_are_set() {
 
         assertThatThrownBy(() -> ChatResponse.builder()
-                .aiMessage(AiMessage.from("hi"))
-                .metadata(ChatResponseMetadata.builder().build())
-                .tokenUsage(new TokenUsage(1, 2, 3))
-                .build())
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .tokenUsage(new TokenUsage(1, 2, 3))
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'metadata' and 'tokenUsage' on ChatResponse");
     }
@@ -76,10 +76,10 @@ class ChatResponseTest {
     void should_fail_when_both_response_metadata_and_finish_reason_are_set() {
 
         assertThatThrownBy(() -> ChatResponse.builder()
-                .aiMessage(AiMessage.from("hi"))
-                .metadata(ChatResponseMetadata.builder().build())
-                .finishReason(STOP)
-                .build())
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .finishReason(STOP)
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'metadata' and 'finishReason' on ChatResponse");
     }
@@ -113,10 +113,10 @@ class ChatResponseTest {
 
         // when/then
         assertThatThrownBy(() -> ChatRequest.builder()
-                .messages(UserMessage.from("hi"))
-                .parameters(parameters)
-                .toolSpecifications(builderTool)
-                .build())
+                        .messages(UserMessage.from("hi"))
+                        .parameters(parameters)
+                        .toolSpecifications(builderTool)
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
     }
