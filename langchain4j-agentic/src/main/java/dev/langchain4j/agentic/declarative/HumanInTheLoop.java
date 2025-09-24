@@ -6,6 +6,28 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * Marks a method as a human-in-the-loop agent. The method can be invoked to get input or feedback from a human during the execution of a workflow.
+ * The annotated method can have any number of parameters, which will be provided by the workflow context when the method is invoked.
+ * <p>
+ * Example:
+ * <pre>
+ * {@code
+ *     public interface AudienceRetriever {
+ *
+ *         @HumanInTheLoop(description = "Generate a story based on the given topic", outputName = "audience", async = true)
+ *         static void request(@V("topic") String topic) {
+ *             request.set("Which audience for topic " + topic + "?");
+ *         }
+ *
+ *         @HumanInTheLoopResponseSupplier
+ *         static String response() {
+ *             return System.console().readLine();
+ *         }
+ *     }
+ * }
+ * </pre>
+ */
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface HumanInTheLoop {
