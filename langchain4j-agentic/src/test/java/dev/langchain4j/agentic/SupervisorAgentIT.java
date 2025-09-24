@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -198,6 +199,7 @@ public class SupervisorAgentIT {
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(withdrawAgent, creditAgent)
