@@ -143,7 +143,7 @@ public class AgentUtil {
     static Object parseArgument(Object argValue, Class<?> type) {
         if (argValue instanceof String s) {
             return switch (type.getName()) {
-                case "java.lang.String" -> s;
+                case "java.lang.String", "java.lang.Object" -> s;
                 case "int", "java.lang.Integer" -> Integer.parseInt(s);
                 case "long", "java.lang.Long" -> Long.parseLong(s);
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
