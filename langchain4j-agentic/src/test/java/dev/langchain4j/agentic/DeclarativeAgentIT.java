@@ -426,6 +426,11 @@ public class DeclarativeAgentIT {
         static ChatModel chatModel() {
             return plannerModel();
         }
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
     }
 
     @Test

@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -38,6 +39,8 @@ import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -459,6 +462,12 @@ public class AgenticServices {
                 method.getParameterCount() == 0)
                 .map(method -> (ChatModel) invokeStatic(method))
                 .ifPresentOrElse(builder::chatModel, () -> builder.chatModel(chatModel));
+
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class) &&
+                method.getReturnType() == ChatMemory.class &&
+                method.getParameterCount() == 1)
+                .map(method -> (ChatMemoryProvider) memoryId -> invokeStatic(method, memoryId))
+                .ifPresent(builder::chatMemoryProvider);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
                 .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))

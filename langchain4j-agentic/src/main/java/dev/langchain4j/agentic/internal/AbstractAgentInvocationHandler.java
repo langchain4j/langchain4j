@@ -11,6 +11,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -109,6 +110,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             };
         }
 
+        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
+            return accessChatMemory(method.getName(), args[0]);
+        }
+
         return executeAgentMethod(currentAgenticScope(registry, method, args), registry, method, args);
     }
 
@@ -184,6 +189,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             }
         }
         return result;
+    }
+
+    protected Object accessChatMemory(String methodName, Object memoryId) {
+        throw new UnsupportedOperationException();
     }
 
     protected abstract Object doAgentAction(DefaultAgenticScope agenticScope);
