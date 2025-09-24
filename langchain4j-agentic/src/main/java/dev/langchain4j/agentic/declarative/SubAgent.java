@@ -8,7 +8,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Defines a sub-agent of a workflow-based or supervisor agent.
- * </pre>
  */
 @Retention(RUNTIME)
 @Target({METHOD})
