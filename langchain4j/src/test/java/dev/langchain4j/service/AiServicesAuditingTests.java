@@ -63,7 +63,8 @@ class AiServicesAuditingTests {
             createListeners();
 
     private void runScenario(
-            Supplier<Assistant> assistantCreator,
+            Supplier<Assistant> assistantCreatorWithoutListeners,
+            Supplier<Assistant> assistantCreatorWithListeners,
             Consumer<Assistant> chatAssertion,
             String expectedMethodName,
             boolean hasTools,
@@ -71,8 +72,13 @@ class AiServicesAuditingTests {
             String expectedUserMessage,
             List<Class<? extends AiServiceInvocationEvent>> expectedEventsReceivedClasses) {
 
-        // Let's invoke the operation a few times
-        IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreator.get()));
+        // Invoke the operation without registered listeners
+        // No listeners should be fired
+        chatAssertion.accept(assistantCreatorWithoutListeners.get());
+        assertNoEventsReceived(7, listeners.values());
+
+        // Let's invoke the operation a few times with the registered listeners
+        IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreatorWithListeners.get()));
 
         assertNoEventsReceived(
                 noEventsReceivedClasses.size(),
@@ -84,11 +90,21 @@ class AiServicesAuditingTests {
                 expectedUserMessage,
                 expectedMethodName,
                 expectedEventsReceivedClasses.stream().map(listeners::get).toList());
+
+        // No additional events should fire when invoking the operation again
+        chatAssertion.accept(assistantCreatorWithoutListeners.get());
+        assertEventsReceived(
+                hasTools,
+                expectedEventsReceivedClasses.size(),
+                expectedUserMessage,
+                expectedMethodName,
+                expectedEventsReceivedClasses.stream().map(listeners::get).toList());
     }
 
     @Test
     void failureStreamingChat() {
         runScenario(
+                () -> Assistant.createFailingService(true),
                 () -> Assistant.createFailingService(true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
@@ -139,6 +155,7 @@ class AiServicesAuditingTests {
     @Test
     void failureChat() {
         runScenario(
+                () -> Assistant.createFailingService(false),
                 () -> Assistant.createFailingService(false, listeners.values()),
                 assistant ->
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
@@ -157,6 +174,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulStreamingChatNoTools() {
         runScenario(
+                () -> Assistant.create(false, true),
                 () -> Assistant.create(false, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
@@ -209,6 +227,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulChatNoTools() {
         runScenario(
+                () -> Assistant.create(false, false),
                 () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThat(assistant.chat("Hello!")).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
                 "chat",
@@ -228,6 +247,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulChatWithTools() {
         runScenario(
+                () -> Assistant.create(true, false),
                 () -> Assistant.create(true, false, listeners.values()),
                 assistant -> assertThat(assistant.chat(TOOL_USER_MESSAGE)).isEqualTo(TOOL_EXPECTED_RESPONSE),
                 "chat",
@@ -247,6 +267,7 @@ class AiServicesAuditingTests {
     @Test
     void successfulStreamingChatWithTools() {
         runScenario(
+                () -> Assistant.create(true, true),
                 () -> Assistant.create(true, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
@@ -302,6 +323,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingStreamingWithInputGuardrails() {
         runScenario(
+                () -> Assistant.create(false, true),
                 () -> Assistant.create(false, true, listeners.values()),
                 assistant -> assertThatExceptionOfType(InputGuardrailException.class)
                         .isThrownBy(() -> assistant
@@ -327,6 +349,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingWithInputGuardrails() {
         runScenario(
+                () -> Assistant.create(false, false),
                 () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThatExceptionOfType(InputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithInputGuardrails("Hello!"))
@@ -350,6 +373,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingStreamingWithOutputGuardrails() {
         runScenario(
+                () -> Assistant.create(false, true),
                 () -> Assistant.create(false, true, listeners.values()),
                 assistant -> {
                     var latch = new CountDownLatch(1);
@@ -404,6 +428,7 @@ class AiServicesAuditingTests {
     @Test
     void auditingWithOutputGuardrails() {
         runScenario(
+                () -> Assistant.create(false, false),
                 () -> Assistant.create(false, false, listeners.values()),
                 assistant -> assertThatExceptionOfType(OutputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithOutputGuardrails("Hello!"))
@@ -518,6 +543,10 @@ class AiServicesAuditingTests {
         @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
         TokenStream streamingChatWithOutputGuardrails(String message);
 
+        static Assistant create(boolean shouldHaveToolAccess, boolean streaming) {
+            return create(shouldHaveToolAccess, streaming, List.of());
+        }
+
         static Assistant create(
                 boolean shouldHaveToolAccess,
                 boolean streaming,
@@ -551,6 +580,10 @@ class AiServicesAuditingTests {
             }
 
             return builder.build();
+        }
+
+        static Assistant createFailingService(boolean streaming) {
+            return createFailingService(streaming, List.of());
         }
 
         static Assistant createFailingService(
