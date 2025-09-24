@@ -6,10 +6,16 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.agentic.Agents.LegalExpert;
@@ -18,7 +24,9 @@ import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -198,6 +206,7 @@ public class SupervisorAgentIT {
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(withdrawAgent, creditAgent)
@@ -413,4 +422,74 @@ public class SupervisorAgentIT {
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
     }
+
+    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
+
+        @Agent
+        TransactionDetails execute(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    @Test
+    void typed_banker_with_memory_test() {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        AtomicReference<Object> memoryId = new AtomicReference<>();
+        AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        ExchangeAgent exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
+                .chatModel(baseModel())
+                .description("A money exchanger that converts a given amount of money from the original to the target currency")
+                .tools(new ExchangeTool())
+                .build();
+
+        var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgentWithMemory.class)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(id -> {
+                    memoryId.set(id);
+                    ChatMemory mem = MessageWindowChatMemory.withMaxMessages(20);
+                    if (id.equals("1")) {
+                        chatMemory.set(mem);
+                    }
+                    return mem;
+                })
+                .output(agenticScope -> new TransactionDetails(
+                        agenticScope.readState("withdrawUser", ""),
+                        agenticScope.readState("creditUser", ""),
+                        agenticScope.readState("amountInUSD", 0.0)))
+                .subAgents(withdrawAgent, creditAgent, exchange);
+
+        TypedBankerAgentWithMemory bankSupervisor = supervisorBuilder.build();
+
+        String userRequest = "Transfer 100 EUR from Mario's account to Georgios' one";
+        TransactionDetails result = bankSupervisor.execute("1", userRequest);
+        System.out.println(result);
+
+        assertThat(result.fromUser()).isEqualTo("Mario");
+        assertThat(result.toUser()).isEqualTo("Georgios");
+        assertThat(result.amountInUSD()).isCloseTo(115.0, offset(0.1));
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+
+        assertThat(memoryId.get()).isEqualTo("1");
+        ChatMemory supervisorChatMemory = bankSupervisor.getChatMemory("1");
+        assertThat(chatMemory.get()).isSameAs(supervisorChatMemory);
+
+        List<ChatMessage> messages = supervisorChatMemory.messages();
+        ChatMessage lastMessage = messages.get(messages.size()-1);
+        assertThat(lastMessage).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) lastMessage).text()).contains("done");
+    }
+
 }
