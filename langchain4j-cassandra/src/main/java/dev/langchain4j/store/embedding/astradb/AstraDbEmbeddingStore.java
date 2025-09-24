@@ -13,6 +13,7 @@ import io.stargate.sdk.data.domain.JsonDocumentMutationResult;
 import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      *
      * @param client astra db collection client
      */
-    public AstraDbEmbeddingStore(AstraDBCollection client) {
+    public AstraDbEmbeddingStore(@NonNull AstraDBCollection client) {
         this(client, 20, 8);
     }
 
@@ -71,7 +72,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param client        astra db collection client
      * @param itemsPerChunk size of 1 chunk in between 1 and 20
      */
-    public AstraDbEmbeddingStore(AstraDBCollection client, int itemsPerChunk, int concurrentThreads) {
+    public AstraDbEmbeddingStore(@NonNull AstraDBCollection client, int itemsPerChunk, int concurrentThreads) {
         Objects.requireNonNull(client, "'client' must not be null");
         if (itemsPerChunk > 20 || itemsPerChunk < 1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
