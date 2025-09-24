@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
@@ -165,7 +167,7 @@ class AiServiceTokenStreamTest {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         ChatModel chatModel = mock(ChatModel.class);
 
-        AiServiceContext context = new AiServiceContext(getClass());
+        AiServiceContext context = AiServiceContext.create(getClass());
         context.streamingChatModel = streamingModel;
         context.chatModel = chatModel;
 
@@ -173,7 +175,10 @@ class AiServiceTokenStreamTest {
                 .messages(messages)
                 .retrievedContents(content)
                 .context(context)
-                .memoryId(memoryId)
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId(memoryId)
+                        .invocationParameters(new InvocationParameters())
+                        .build())
                 .commonGuardrailParams(GuardrailRequestParams.builder()
                         .chatMemory(null)
                         .augmentationResult(null)

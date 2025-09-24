@@ -4,10 +4,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class JsonObjectSchema implements JsonSchemaElement {
 
@@ -51,6 +48,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public Builder toBuilder() {
+        return builder()
+                .description(this.description)
+                .addProperties(this.properties)
+                .required(this.required != null ? new ArrayList<>(this.required) : null)
+                .additionalProperties(this.additionalProperties)
+                .definitions(this.definitions != null ? new LinkedHashMap<>(this.definitions) : null);
     }
 
     public static class Builder {

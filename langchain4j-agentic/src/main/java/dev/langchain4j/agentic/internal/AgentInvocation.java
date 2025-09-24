@@ -1,8 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
-import java.util.Arrays;
+import java.util.Map;
 
-public record AgentInvocation(String agentName, Object[] input, Object output) {
+public record AgentInvocation(String agentName, Map<String, Object> input, Object output) {
 
     @Override
     public Object output() {
@@ -13,7 +13,7 @@ public record AgentInvocation(String agentName, Object[] input, Object output) {
     public String toString() {
         return "AgentInvocation{" +
                 "agentName=" + agentName +
-                ", input=" + Arrays.toString(input) +
+                ", input=" + input +
                 ", output=" + output +
                 '}';
     }
