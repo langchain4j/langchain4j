@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +123,17 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         public SupervisorInvocationHandler(PlannerAgent plannerAgent, DefaultAgenticScope agenticScope) {
             super(SupervisorAgentServiceImpl.this, agenticScope);
             this.plannerAgent = plannerAgent;
+        }
+
+        @Override
+        protected Object accessChatMemory(String methodName, Object memoryId) {
+            return switch (methodName) {
+                case "getChatMemory" -> plannerAgent.getChatMemory(memoryId);
+                case "evictChatMemory" -> plannerAgent.evictChatMemory(memoryId);
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on ChatMemoryAccess class : " + methodName);
+            };
         }
 
         @Override
