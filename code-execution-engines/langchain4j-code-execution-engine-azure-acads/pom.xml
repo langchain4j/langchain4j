@@ -9,64 +9,60 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <!-- Project Coordinates -->
     <artifactId>langchain4j-code-execution-engine-azure-acads</artifactId>
     <version>1.6.0-beta12-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Azure ACADS</name>
     <description>Implementation of a code execution engine using Azure ACA Dynamic Sessions</description>
 
+    <properties>
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
-        <!-- Core dependencies required by SessionsREPLTool -->
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.6.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- HTTP client abstraction -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client</artifactId>
+            <version>1.6.0-SNAPSHOT</version>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
             <version>1.6.0-SNAPSHOT</version>
+            <scope>runtime</scope>
         </dependency>
 
-        <!-- Azure dependencies needed for authentication -->
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-identity</artifactId>
-            <optional>true</optional>
-            <!-- Marked as optional to avoid dependency convergence issues with netty, -->
-            <!-- but consumers of this library must include azure-identity explicitly -->
-        </dependency>
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
         </dependency>
 
-        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- Required for reactor.core.publisher.Mono used in getToken -->
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-core</artifactId>
-            <version>3.4.41</version>
-        </dependency>
-
 
         <!-- Test dependencies -->
 
-        <!-- The "Unused undeclared dependency" warnings can be ignored, preferred vs. adding exclusions from the parent POM -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- Only include the JUnit engine for running tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>

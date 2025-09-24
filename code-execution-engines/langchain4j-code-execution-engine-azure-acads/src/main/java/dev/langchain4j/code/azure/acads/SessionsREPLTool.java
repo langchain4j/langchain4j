@@ -10,11 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.spi.ServiceHelper;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +30,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.http.client.HttpClientBuilderLoader.loadHttpClientBuilder;
 
 /**
  * A tool for executing code in Azure ACA dynamic sessions.
@@ -85,7 +84,6 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    // TypeReferences for type-safe JSON deserialization
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REF = new TypeReference<Map<String, Object>>() {};
     private static final TypeReference<List<Map<String, Object>>> LIST_MAP_TYPE_REF =
             new TypeReference<List<Map<String, Object>>>() {};
@@ -155,7 +153,6 @@ public class SessionsREPLTool implements CodeExecutionEngine {
      */
     @Override
     public String execute(String code) {
-        // Use the existing 'use' method which returns a JSON-formatted string
         return use(code);
     }
 
@@ -171,16 +168,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         this.sessionId = sessionId;
         this.sanitizeInput = sanitizeInput;
         this.nativeHttpClient = java.net.http.HttpClient.newBuilder().build();
-
-        // The loadFactories() method returns a Collection, not a List,
-        // so we need to use the iterator instead of get(0)
-        Collection<HttpClientBuilder> builders = ServiceHelper.loadFactories(HttpClientBuilder.class);
-        if (builders.isEmpty()) {
-            throw new IllegalStateException(
-                    "No HttpClientBuilder implementation found. Make sure you have a proper implementation on the classpath.");
-        }
-        this.langchainHttpClient = builders.iterator().next().build(); // Use the langchain4j HTTP client abstraction
-
+        this.langchainHttpClient = loadHttpClientBuilder().build();
         this.credential = new DefaultAzureCredentialBuilder().build();
     }
 
