@@ -1,10 +1,11 @@
 package dev.langchain4j.agent.tool;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import dev.langchain4j.Experimental;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Java methods annotated with {@code @Tool} are considered tools/functions that language model can execute/call.
@@ -36,4 +37,16 @@ public @interface Tool {
      * @return description of the tool.
      */
     String[] value() default "";
+
+    /**
+     * Return behavior of the tool.
+     * - If {@link ReturnBehavior#TO_LLM} is used (default), the value returned by the tool is sent back to the LLM for further processing.
+     * - If {@link ReturnBehavior#IMMEDIATE} is used, returns immediately to the caller the value returned by the tool without
+     *   allowing the LLM to further processing it. Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result},
+     *   while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an AI service having a different return type.
+     *
+     * @return return behavior of the tool.
+     */
+    @Experimental
+    ReturnBehavior returnBehavior() default ReturnBehavior.TO_LLM;
 }

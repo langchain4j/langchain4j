@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
@@ -80,6 +82,7 @@ public class DefaultMcpClient implements McpClient {
     private final ScheduledExecutorService healthCheckScheduler;
     private final ReentrantLock initializationLock = new ReentrantLock();
     private final AtomicReference<List<McpRoot>> mcpRoots;
+    private final Boolean cacheToolList;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -107,6 +110,7 @@ public class DefaultMcpClient implements McpClient {
             toolExecutionTimeoutErrorMessage =
                     getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
             mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
+            cacheToolList = getOrDefault(builder.cacheToolList, Boolean.TRUE);
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
@@ -185,11 +189,11 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<ToolSpecification> listTools() {
         assertNotClosed();
-        if (toolListOutOfDate.get()) {
+        if (isToolListRefreshNeeded()) {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
                 // if an update is already in progress, wait for it to finish
-                toolListUpdateInProgress.get();
+                updateInProgress.join();
                 return toolListRefs.get();
             } else {
                 // if no update is in progress, start one
@@ -209,6 +213,19 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private boolean isToolListRefreshNeeded() {
+        return Boolean.FALSE.equals(cacheToolList) || toolListOutOfDate.get();
+    }
+
+    /**
+     * Evicts the tool list cache, forcing the next call to
+     * {@link #listTools()} to retrieve a fresh list of tools
+     * from the MCP server.
+     */
+    public void evictToolListCache() {
+        toolListOutOfDate.set(true);
+    }
+
     @Override
     public String executeTool(ToolExecutionRequest executionRequest) {
         assertNotClosed();
@@ -220,7 +237,7 @@ public class DefaultMcpClient implements McpClient {
             }
             arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new ToolArgumentsException(e);
         }
         long operationId = idGenerator.getAndIncrement();
         McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);
@@ -233,7 +250,10 @@ public class DefaultMcpClient implements McpClient {
         } catch (TimeoutException timeout) {
             transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (ExecutionException e) {
+            throw new ToolExecutionException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
@@ -468,6 +488,7 @@ public class DefaultMcpClient implements McpClient {
         private Boolean autoHealthCheck;
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
+        private Boolean cacheToolList;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -623,6 +644,19 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder roots(List<McpRoot> roots) {
             this.roots = new ArrayList<>(roots);
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the tool list obtained
+         * from the server until it's notified by the server that the tools
+         * have changed or until the cache is evicted. If set to false,
+         * there is no tool caching and the client will always fetch the
+         * tool list from the server.
+         * The default is true.
+         */
+        public Builder cacheToolList(boolean cacheToolList) {
+            this.cacheToolList = cacheToolList;
             return this;
         }
 

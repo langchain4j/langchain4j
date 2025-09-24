@@ -81,8 +81,8 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        // Anthropic does not support images as URLs, only as Base64-encoded strings
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        // Anthropic does not support response format yet
         return false;
     }
 

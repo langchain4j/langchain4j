@@ -16,10 +16,6 @@ import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -62,12 +58,14 @@ class InfinispanMetadataFilterMapperTest {
                         " join i.metadata m0"),
                 // IsGreaterThan
                 Arguments.of(
-                        new IsGreaterThan("name", "A"), "m0.name='name' and m0.value > 'A'", " join i.metadata m0"),
+                        new IsGreaterThan("name", "A"),
+                        "m0.name='name' and m0.value > 'A'",
+                        " join i.metadata m0 join i.metadata m1"),
                 // IsGreaterThanOrEqualTo
                 Arguments.of(
                         new IsGreaterThanOrEqualTo("name", "A"),
                         "m0.name='name' and m0.value >= 'A'",
-                        " join i.metadata m0"),
+                        " join i.metadata m0 join i.metadata m1"),
                 // IsLessThan
                 Arguments.of(new IsLessThan("name", "Z"), "m0.name='name' and m0.value < 'Z'", " join i.metadata m0"),
                 // IsLessThanOrEqualTo
@@ -106,7 +104,9 @@ class InfinispanMetadataFilterMapperTest {
                         " join i.metadata m0"),
                 // Integer IsGreaterThan
                 Arguments.of(
-                        new IsGreaterThan("age", 18), "m0.name='age' and m0.value_int > 18", " join i.metadata m0"),
+                        new IsGreaterThan("age", 18),
+                        "m0.name='age' and m0.value_int > 18",
+                        " join i.metadata m0 join i.metadata m1"),
                 // Float IsLessThan
                 Arguments.of(
                         new IsLessThan("score", 4.5f),
@@ -179,8 +179,8 @@ class InfinispanMetadataFilterMapperTest {
 
         // then
         assertThat(result.query)
-                .isEqualTo("((m1.name='name' and m1.value = 'John') AND (m1.name='age' and m1.value_int = 25))");
-        assertThat(result.join).isEqualTo(" join i.metadata m0");
+                .isEqualTo("((m0.name='name' and m0.value = 'John') AND (m1.name='age' and m1.value_int = 25))");
+        assertThat(result.join).isEqualTo(" join i.metadata m0 join i.metadata m1");
     }
 
     @Test
@@ -193,8 +193,8 @@ class InfinispanMetadataFilterMapperTest {
 
         // then
         assertThat(result.query)
-                .isEqualTo("((m1.name='name' and m1.value = 'John') OR (m1.name='name' and m1.value = 'Jane'))");
-        assertThat(result.join).isEqualTo(" join i.metadata m0");
+                .isEqualTo("((m0.name='name' and m0.value = 'John') OR (m1.name='name' and m1.value = 'Jane'))");
+        assertThat(result.join).isEqualTo(" join i.metadata m0 join i.metadata m1");
     }
 
     @Test
@@ -210,8 +210,9 @@ class InfinispanMetadataFilterMapperTest {
         // then
         assertThat(result.query)
                 .isEqualTo(
-                        "((m1.name='category' and m1.value = 'book') AND (((m2.name='price' and m2.value_float > 10.0) OR (m2.name='price' and m2.value_float < 5.0))))");
-        assertThat(result.join).isEqualTo(" join i.metadata m0");
+                        "((m0.name='category' and m0.value = 'book') AND (((m1.name='price' and m1.value_float > 10.0) OR (m3.name='price' and m3.value_float < 5.0))))");
+        assertThat(result.join)
+                .isEqualTo(" join i.metadata m0 join i.metadata m1 join i.metadata m2 join i.metadata m3");
     }
 
     @Test
@@ -321,47 +322,6 @@ class InfinispanMetadataFilterMapperTest {
     }
 
     @Test
-    void should_handle_concurrent_access()
-            throws InterruptedException, java.util.concurrent.ExecutionException,
-                    java.util.concurrent.TimeoutException {
-        // given
-        int threadCount = 10;
-        int iterationsPerThread = 100;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-        // when
-        List<CompletableFuture<Void>> futures = new java.util.ArrayList<>();
-
-        for (int i = 0; i < threadCount; i++) {
-            final int threadId = i;
-            CompletableFuture<Void> future = CompletableFuture.runAsync(
-                    () -> {
-                        for (int j = 0; j < iterationsPerThread; j++) {
-                            Filter filter = new IsEqualTo("key" + threadId, "value" + j);
-                            InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
-
-                            // Verify the result is correct
-                            assertThat(result).isNotNull();
-                            assertThat(result.query).contains("m0.name='key" + threadId + "'");
-                            assertThat(result.query).contains("'value" + j + "'");
-                            assertThat(result.join).isEqualTo(" join i.metadata m0");
-                        }
-                    },
-                    executor);
-            futures.add(future);
-        }
-
-        // Wait for all threads to complete
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
-        executor.shutdown();
-        executor.awaitTermination(5, TimeUnit.SECONDS);
-
-        // then
-        // If we reach here without exceptions, the concurrent access test passed
-        assertThat(executor.isTerminated()).isTrue();
-    }
-
-    @Test
     void should_handle_complex_nested_logical_filters() {
         // given
         Filter filter = new And(
@@ -391,11 +351,11 @@ class InfinispanMetadataFilterMapperTest {
         InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
 
         // then
-        assertThat(result.join).isEqualTo(" join i.metadata m0");
-        assertThat(result.query).contains("m1.name='name'");
-        assertThat(result.query).contains("m2.name='age'");
-        assertThat(result.query).contains("m3.name='city'");
-        assertThat(result.query).contains("m3.name='country'");
+        assertThat(result.join)
+                .isEqualTo(" join i.metadata m0 join i.metadata m1 join i.metadata m2 join i.metadata m3");
+        assertThat(result.query)
+                .isEqualTo(
+                        "((m0.name='name' and m0.value = 'John') AND (((m1.name='age' and m1.value_int = 25) AND (((m2.name='city' and m2.value = 'New York') AND (m3.name='country' and m3.value = 'USA'))))))");
     }
 
     @Test
@@ -432,9 +392,9 @@ class InfinispanMetadataFilterMapperTest {
 
         // then
         // Each metadata field should get a unique alias (m0, m1, m2)
-        assertThat(result.join).isEqualTo(" join i.metadata m0");
-        assertThat(result.query).contains("m1.name='a'");
-        assertThat(result.query).contains("m2.name='b'");
-        assertThat(result.query).contains("m2.name='c'");
+        assertThat(result.join).isEqualTo(" join i.metadata m0 join i.metadata m1 join i.metadata m2");
+        assertThat(result.query)
+                .isEqualTo(
+                        "((m0.name='a' and m0.value = '1') AND (((m1.name='b' and m1.value = '2') OR (m2.name='c' and m2.value = '3'))))");
     }
 }

@@ -2,10 +2,11 @@ package dev.langchain4j.model.chat.response;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
-import java.util.Objects;
 import dev.langchain4j.Experimental;
+import java.util.Objects;
 
 /**
  * Represents a partial tool call.
@@ -26,7 +27,7 @@ public class PartialToolCall {
         this.index = ensureNotNegative(builder.index, "index");
         this.id = builder.id;
         this.name = ensureNotBlank(builder.name, "name");
-        this.partialArguments = ensureNotBlank(builder.partialArguments, "partialArguments");
+        this.partialArguments = ensureNotEmpty(builder.partialArguments, "partialArguments");
     }
 
     /**
@@ -79,12 +80,11 @@ public class PartialToolCall {
 
     @Override
     public String toString() {
-        return "PartialToolCall{" +
-                "index=" + index +
-                ", id=" + quoted(id) +
-                ", name=" + quoted(name) +
-                ", partialArguments=" + quoted(partialArguments) +
-                '}';
+        return "PartialToolCall{" + "index="
+                + index + ", id="
+                + quoted(id) + ", name="
+                + quoted(name) + ", partialArguments="
+                + quoted(partialArguments) + '}';
     }
 
     public static Builder builder() {
