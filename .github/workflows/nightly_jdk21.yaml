@@ -15,7 +15,7 @@ jobs:
           - 25
         include:
           - java_version: '25'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama,!langchain4j-weaviate,!langchain4j-vespa,!langchain4j-qdrant,!langchain4j-elasticsearch,!langchain4j-couchbase'
+            mvn_opts: '-pl langchain4j-jlama,langchain4j-weaviate,langchain4j-vespa,langchain4j-qdrant,langchain4j-elasticsearch,langchain4j-couchbase,langchain4j-azure-cosmos-mongo-vcore,langchain4j-azure-cosmos-nosql,langchain4j-cassandra,langchain4j-chroma,langchain4j-mariadb,langchain4j-opensearch'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
