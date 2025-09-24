@@ -2,6 +2,7 @@ package dev.langchain4j.rag.query;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -70,7 +71,8 @@ class MetadataTest {
 
         // then
         assertThat(toString)
-                .isEqualTo("Metadata { chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = InvocationContext{chatMemoryId=42, invocationParameters=null} }");
+                .isEqualTo(
+                        "Metadata { chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = InvocationContext{chatMemoryId=42, invocationParameters=null} }");
     }
 
     @Test
@@ -170,5 +172,12 @@ class MetadataTest {
         // then - verify defensive copy was made
         assertThat(retrievedChatMemory).isNotSameAs(originalChatMemory);
         assertThat(retrievedChatMemory).isEqualTo(originalChatMemory);
+    }
+
+    @Test
+    void should_handle_null_chat_message() {
+        assertThatThrownBy(() -> Metadata.from(null, 1, asList(UserMessage.from("user message"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chatMessage cannot be null");
     }
 }
