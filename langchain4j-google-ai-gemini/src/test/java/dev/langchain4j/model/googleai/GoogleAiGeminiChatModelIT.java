@@ -66,7 +66,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-pro")
+                .modelName("gemini-2.5-flash-lite")
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
                 .logResponses(true)
@@ -92,7 +92,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -113,7 +113,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         // when
@@ -130,7 +130,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         // TODO use local file
@@ -172,7 +172,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .allowCodeExecution(true)
@@ -192,7 +192,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -247,7 +247,7 @@ class GoogleAiGeminiChatModelIT {
 
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .safetySettings(mapSafetySettings)
@@ -306,7 +306,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -345,7 +345,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -374,7 +374,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -455,9 +455,9 @@ class GoogleAiGeminiChatModelIT {
     @Test
     void should_support_tool_config() {
         // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        GoogleAiGeminiChatModel model1 = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -466,33 +466,33 @@ class GoogleAiGeminiChatModelIT {
                 ToolSpecification.builder().name("toolOne").build(),
                 ToolSpecification.builder().name("toolTwo").build());
 
-        ChatRequest request = ChatRequest.builder()
+        ChatRequest request1 = ChatRequest.builder()
                 .messages(UserMessage.from("Call toolOne"))
                 .toolSpecifications(listOfTools)
                 .build();
 
         // when
-        ChatResponse response = gemini.chat(request);
+        ChatResponse response1 = model1.chat(request1);
 
         // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
+        assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
 
         // given
-        gemini = GoogleAiGeminiChatModel.builder()
+        GoogleAiGeminiChatModel model2 = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .toolConfig(GeminiMode.ANY, "toolTwo")
                 .build();
 
         // when
-        ChatResponse chatResponse = gemini.chat(
-                ChatRequest.builder().messages(UserMessage.from("Call toolOne")).build());
+        ChatResponse response2 = model2.chat(request1);
 
         // then
-        assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
+        assertThat(response2.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response2.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolTwo");
     }
 
     @ParameterizedTest
@@ -504,7 +504,7 @@ class GoogleAiGeminiChatModelIT {
 
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(0)

@@ -25,7 +25,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -42,7 +42,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -59,7 +59,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -77,7 +77,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -102,7 +102,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -138,11 +138,11 @@ class GoogleAiGeminiTokenCountEstimatorIT {
                 .responseFormat(ResponseFormat.TEXT)
                 .logRequestsAndResponses(true)
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         TokenCountEstimator estimator = GoogleAiGeminiTokenCountEstimator.builder()
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
