@@ -19,13 +19,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 
 <dependency>
 <groupId>dev.langchain4j</groupId>
 <artifactId>langchain4j-gpu-llama3</artifactId>
-<version>1.5.0-beta11</version>
+<version>1.6.0-beta12</version>
 </dependency>
 
 ```
@@ -33,8 +33,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.5.0'
-implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.5.0-beta11'
+implementation 'dev.langchain4j:langchain4j:1.6.0'
+implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.6.0-beta12'
 ```
 ---
 ## Model Compatibility
@@ -91,7 +91,6 @@ public static void main(String[] args) {
         System.out.println("Example Prompt: " + prompt);
     }
 
-    // @formatter:off
     ChatRequest request = ChatRequest.builder().messages(
                     UserMessage.from(prompt),
                     SystemMessage.from("reply with extensive sarcasm"))
@@ -104,7 +103,6 @@ public static void main(String[] args) {
             .onGPU(Boolean.TRUE) // if false, runs on CPU though a lightweight implementation of llama3.java
             .modelPath(modelPath)
             .build();
-    // @formatter:on
 
     model.chat(request, new StreamingChatResponseHandler() {
 
