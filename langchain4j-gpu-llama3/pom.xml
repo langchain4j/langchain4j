@@ -26,12 +26,11 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.beehive.gpullama3</groupId>
+         <dependency>
+            <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>0.2.1</version>
         </dependency>
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
