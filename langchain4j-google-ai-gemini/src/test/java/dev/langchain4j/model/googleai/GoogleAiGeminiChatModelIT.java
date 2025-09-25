@@ -313,15 +313,9 @@ class GoogleAiGeminiChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {
-                                            {
-                                                put(
-                                                        "sentiment",
-                                                        JsonEnumSchema.builder()
-                                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                                .build());
-                                            }
-                                        })
+                                        .addProperty("sentiment", JsonEnumSchema.builder()
+                                                .enumValues("POSITIVE", "NEGATIVE")
+                                                .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -337,7 +331,7 @@ class GoogleAiGeminiChatModelIT {
                 .build());
 
         // then
-        assertThat(response.aiMessage().text().trim()).isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+        assertThat(response.aiMessage().text()).isEqualToIgnoringWhitespace("{\"sentiment\":\"POSITIVE\"}");
     }
 
     @Test
