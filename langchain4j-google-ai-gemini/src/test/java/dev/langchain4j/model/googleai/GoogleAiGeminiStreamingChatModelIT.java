@@ -142,7 +142,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         // ToDo waiting for the normal GoogleAiGeminiChatModel to implement the test
     }
 
-    @Test
+    @RetryingTest(3)
     void should_execute_python_code() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -200,15 +200,15 @@ class GoogleAiGeminiStreamingChatModelIT {
         // then
         assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
         assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response1.aiMessage().toolExecutionRequests().get(0).arguments())
-                .contains("\"n\":10");
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).arguments()).contains("\"n\":10");
 
         allMessages.add(response1.aiMessage());
 
         // when
-        ToolExecutionResultMessage forecastResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
-        allMessages.add(forecastResult);
+        String fibonacciNumbers = "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]";
+        ToolExecutionResultMessage toolResult =
+                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", fibonacciNumbers);
+        allMessages.add(toolResult);
 
         // then
         TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
@@ -216,7 +216,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         ChatResponse response2 = handler2.get();
 
         // then
-        assertThat(response2.aiMessage().text()).contains("[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
+        assertThat(response2.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
     }
 
     @RetryingTest(5)

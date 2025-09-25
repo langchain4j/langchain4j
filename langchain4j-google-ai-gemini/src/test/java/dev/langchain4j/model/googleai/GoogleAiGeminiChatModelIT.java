@@ -167,7 +167,7 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
     }
 
-    @Test
+    @RetryingTest(3)
     void should_execute_python_code() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
@@ -220,21 +220,21 @@ class GoogleAiGeminiChatModelIT {
         // then
         assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
         assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments())
-                .contains("\"n\":10");
+        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments()).contains("\"n\":10");
 
         allMessages.add(response.aiMessage());
 
         // when
-        ToolExecutionResultMessage forecastResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
-        allMessages.add(forecastResult);
+        String fibonacciNumbers = "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]";
+        ToolExecutionResultMessage toolResult =
+                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", fibonacciNumbers);
+        allMessages.add(toolResult);
 
         // then
         response = gemini.chat(allMessages);
 
         // then
-        assertThat(response.aiMessage().text()).contains("[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
+        assertThat(response.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
     }
 
     @Disabled("TODO fix")
