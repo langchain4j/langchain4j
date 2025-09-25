@@ -8,6 +8,10 @@ import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -15,16 +19,13 @@ import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.AbstractAiServicesWithToolErrorHandlerTest;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.Duration;
 import java.util.Map;
-import org.awaitility.Awaitility;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -37,7 +38,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(10);
+        assertThat(tools).hasSize(11);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -58,8 +59,9 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         assertThat(echoBooleanParam.description()).isEqualTo("The boolean to be echoed");
 
         ToolSpecification longOperation = toolProviderResult.toolSpecificationByName("longOperation");
-        assertThat(longOperation.description()).isEqualTo("Takes 10 seconds to complete. " +
-                "If the execution is cancelled, the wasCancellationReceived tool will start returning true");
+        assertThat(longOperation.description())
+                .isEqualTo("Takes 10 seconds to complete. "
+                        + "If the execution is cancelled, the wasCancellationReceived tool will start returning true");
         assertThat(longOperation.parameters().properties()).isEmpty();
 
         ToolSpecification error = toolProviderResult.toolSpecificationByName("error");
@@ -69,6 +71,10 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolSpecification errorResponse = toolProviderResult.toolSpecificationByName("errorResponse");
         assertThat(errorResponse.description()).isEqualTo("Returns a response as an error");
         assertThat(errorResponse.parameters().properties()).isEmpty();
+
+        ToolSpecification structuredContent = toolProviderResult.toolSpecificationByName("structuredContent");
+        assertThat(structuredContent.description()).isEqualTo("Returns structured content");
+        assertThat(structuredContent.parameters().properties()).isEmpty();
     }
 
     @Test
@@ -84,6 +90,24 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Test
+    public void executeToolThatReturnsStructuredContent() {
+        ToolProviderResult toolProviderResult = obtainTools();
+        McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("structuredContent");
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("structuredContent")
+                .arguments("")
+                .build();
+        ToolExecutionResult toolExecutionResult = executor.executeWithContext(
+                toolExecutionRequest, InvocationContext.builder().build());
+        assertThat(toolExecutionResult.resultText()).isEqualTo("{\"bar\":1,\"baz\":\"hello\"}");
+        assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
+        Map<String, Object> resultMap = (Map<String, Object>) toolExecutionResult.result();
+        assertThat(resultMap).hasSize(2);
+        assertThat(resultMap.get("bar")).isEqualTo(1);
+        assertThat(resultMap.get("baz")).isEqualTo("hello");
+    }
+
+    @Test
     public void executeToolWithWrongArgumentType() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
@@ -92,9 +116,9 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolExecutionException.class) // TODO should be ToolArgumentsException
-                .hasMessage("Internal error")
-                .hasFieldOrPropertyWithValue("errorCode", -32603); // TODO should be -32602
+                .isExactlyInstanceOf(ToolArgumentsException.class)
+                .hasMessageMatching(".+")
+                .hasFieldOrPropertyWithValue("errorCode", -32602);
     }
 
     @Test
@@ -199,8 +223,6 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     private static McpToolProvider createMcpToolProvider() {
-        return McpToolProvider.builder()
-                .mcpClients(mcpClient)
-                .build();
+        return McpToolProvider.builder().mcpClients(mcpClient).build();
     }
 }
