@@ -4,18 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.gpullama3.GPULlama3StreamingChatModel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-public class GPULlama3CStreamingChatModelIT {
+public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static GPULlama3StreamingChatModel model;
 
     @BeforeAll
@@ -73,5 +77,19 @@ public class GPULlama3CStreamingChatModelIT {
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(streamedAnswer).contains(aiMessage.text());
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        Path modelPath = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
+        return model = GPULlama3StreamingChatModel.builder()
+                .modelPath(modelPath)
+                .onGPU(Boolean.TRUE) // if false, runs on CPU though a lightweight implementation of llama3.java
+                .build();
+    }
+
+    @Override
+    protected List<StreamingChatModel> models() {
+        return List.of(model);
     }
 }

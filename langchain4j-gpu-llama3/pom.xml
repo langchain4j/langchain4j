@@ -26,7 +26,7 @@
     </properties>
 
     <dependencies>
-         <dependency>
+        <dependency>
             <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
             <version>0.2.1</version>
