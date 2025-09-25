@@ -19,7 +19,9 @@ The implementation was originally implemented in the [Quarkus LangChain4j extens
 
 ## Types of events
 
-Each type of event has a unique identifier, which can be used to correlate events across multiple invocations. Each type of event includes information encapsulated inside an [`AiServiceInvocationContext`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/audit/api/event/AiServiceInvocationContext.java).
+Each type of event has a unique identifier, which can be used to correlate events across multiple invocations.
+Each type of event includes information encapsulated inside an
+[`InvocationContext`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/invocation/InvocationContext.java).
 
 The following types of events are currently available:
 
@@ -60,26 +62,25 @@ import java.util.Optional;
 import java.util.UUID;
 
 import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInvocationCompletedEventListener;
+import dev.langchain4j.invocation.InvocationContext;
 
 public class MyAiServiceInvocationCompletedEventListener implements AiServiceInvocationCompletedEventListener {
     @Override
     public void onEvent(AiServiceInvocationCompletedEvent event) {
-        AiServiceInvocationContext invocationContext = event.invocationContext();
+        InvocationContext invocationContext = event.invocationContext();
         Optional<Object> result = event.result();
         
         // The invocationId will be the same for all events related to the same LLM invocation
         UUID invocationId = invocationContext.invocationId();
         String aiServiceInterfaceName = invocationContext.interfaceName();
         String aiServiceMethodName = invocationContext.methodName();
-        List<Object> methodArgs = invocationContext.methodArguments();
-        Optional<Object> memoryId = invocationContext.memoryId();
+        List<Object> aiServiceMethodArgs = invocationContext.methodArguments();
+        Object chatMemoryId = invocationContext.chatMemoryId();
         Instant eventTimestamp = invocationContext.timestamp();
         
         // Do something with the data
-        
     }
 }
 

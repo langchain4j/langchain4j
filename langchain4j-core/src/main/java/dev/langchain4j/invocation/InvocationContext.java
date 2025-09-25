@@ -55,7 +55,7 @@ public interface InvocationContext {
     Instant timestamp();
 
     /**
-     * Converts the current instance of {@code DefaultAiServiceInvocationContext} into a {@code Builder},
+     * Converts the current instance of {@link DefaultInvocationContext} into a {@link Builder},
      * pre-populated with the current values of the instance.
      */
     default Builder toBuilder() {
@@ -64,14 +64,14 @@ public interface InvocationContext {
 
     /**
      * Creates a new instance of the {@code Builder} class for constructing
-     * instances of {@code DefaultAiServiceInvocationContext}.
+     * instances of {@link DefaultInvocationContext}.
      */
     static Builder builder() {
         return new Builder();
     }
 
     /**
-     * A builder class to create {@link AiServiceInvocationContext} instances.
+     * A builder class to create {@link InvocationContext} instances.
      */
     class Builder {
 
@@ -178,7 +178,7 @@ public interface InvocationContext {
         }
 
         /**
-         * Constructs an instance of {@link AiServiceInvocationContext} using the current state of the builder.
+         * Constructs an instance of {@link InvocationContext} using the current state of the builder.
          */
         public <T extends InvocationContext> T build() {
             return (T) new DefaultInvocationContext(this);
