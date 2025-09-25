@@ -54,14 +54,12 @@ class TablestoreEmbeddingStoreTest {
 
     @Test
     void parse_embedding_string_with_invalid_format() {
-        assertThatThrownBy(() -> parseEmbeddingString("[1.0, a, 1.0]"))
-                .isInstanceOf(NumberFormatException.class);
+        assertThatThrownBy(() -> parseEmbeddingString("[1.0, a, 1.0]")).isInstanceOf(NumberFormatException.class);
     }
 
     @Test
     void parse_embedding_string_null_input() {
-        assertThatThrownBy(() -> parseEmbeddingString(null))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> parseEmbeddingString(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -73,7 +71,6 @@ class TablestoreEmbeddingStoreTest {
 
     @Test
     void embedding_to_string_null_array() {
-        assertThatThrownBy(() -> embeddingToString(null))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> embeddingToString(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }
