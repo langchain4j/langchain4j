@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.4.0-beta10</version>
+    <version>1.5.0-beta11</version>
 </dependency>
 ```
 
@@ -125,6 +125,9 @@ langchain4j.open-ai.chat-model.temperature=...
 langchain4j.open-ai.chat-model.timeout=...
 langchain4j.open-ai.chat-model.top-p=
 langchain4j.open-ai.chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.chat-model.custom-parameters.<key>=<value>
 ```
 See the description of most of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
 
@@ -252,6 +255,9 @@ langchain4j.open-ai.streaming-chat-model.temperature=...
 langchain4j.open-ai.streaming-chat-model.timeout=...
 langchain4j.open-ai.streaming-chat-model.top-p=...
 langchain4j.open-ai.streaming-chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.streaming-chat-model.custom-parameters.<key>=<value>
 ```
 
 

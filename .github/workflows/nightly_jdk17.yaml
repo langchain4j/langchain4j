@@ -2,7 +2,7 @@ name: Nightly Build JDK 17
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # daily at 00:00 UTC
+    - cron: '0 22 * * *'  # daily at 22:00 UTC
   workflow_dispatch:
 
 jobs:

@@ -17,10 +17,10 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
 
 abstract class BaseGeminiChatModel {
 
@@ -75,7 +75,14 @@ abstract class BaseGeminiChatModel {
             ChatRequestParameters defaultRequestParameters) {
         ensureNotBlank(apiKey, "apiKey");
         this.geminiService = new GeminiService(
-                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), getOrDefault(logRequests, false), getOrDefault(logResponses, false), logger, timeout);
+                httpClientBuilder,
+                apiKey,
+                baseUrl,
+                getOrDefault(logRequestsAndResponses, false),
+                getOrDefault(logRequests, false),
+                getOrDefault(logResponses, false),
+                logger,
+                timeout);
 
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
@@ -117,7 +124,8 @@ abstract class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+        List<GeminiContent> geminiContentList =
+                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -189,6 +197,7 @@ abstract class BaseGeminiChatModel {
         return switch (toolChoice) {
             case AUTO -> GeminiMode.AUTO;
             case REQUIRED -> GeminiMode.ANY;
+            case NONE -> GeminiMode.NONE;
         };
     }
 

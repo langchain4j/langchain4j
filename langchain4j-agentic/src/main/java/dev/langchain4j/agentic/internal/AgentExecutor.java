@@ -10,10 +10,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
-    public String agentName() {
-        return agentInvoker.name();
-    }
-
     public Object execute(DefaultAgenticScope agenticScope) {
         return execute(agenticScope, agentInvoker.async());
     }
@@ -26,7 +22,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
     }
 
     private Object execute(DefaultAgenticScope agenticScope, boolean async) {
-        Object invokedAgent = agent instanceof AgenticScopeOwner co ? co.withAgenticScope(agenticScope) : agent;
+        Object invokedAgent = (agent instanceof AgenticScopeOwner co ? co.withAgenticScope(agenticScope) : agent);
         return internalExecute(agenticScope, invokedAgent, async);
     }
 
@@ -41,21 +37,21 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
 
     private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, boolean async) {
         try {
-            Object[] args = agentInvoker.toInvocationArguments(agenticScope);
+            AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
             Object response = async ?
                     new AsyncResponse<>(() -> {
                         try {
-                            return agentInvoker.invoke(invokedAgent, args);
+                            return agentInvoker.invoke(agenticScope, invokedAgent, args);
                         } catch (AgentInvocationException e) {
                             return handleAgentFailure(e, agenticScope, invokedAgent);
                         }
                     }) :
-                    agentInvoker.invoke(invokedAgent, args);
+                    agentInvoker.invoke(agenticScope, invokedAgent, args);
             String outputName = agentInvoker.outputName();
             if (outputName != null && !outputName.isBlank()) {
                 agenticScope.writeState(outputName, response);
             }
-            agenticScope.registerAgentCall(agentInvoker.name(), invokedAgent, args, response);
+            agenticScope.registerAgentCall(agentInvoker, invokedAgent, args, response);
             return response;
         } catch (AgentInvocationException e) {
             return handleAgentFailure(e, agenticScope, invokedAgent);
