@@ -54,7 +54,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-
         <!-- Test dependencies -->
 
         <dependency>

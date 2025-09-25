@@ -1,5 +1,7 @@
 package dev.langchain4j.code.azure.acads;
 
+import static dev.langchain4j.http.client.HttpClientBuilderLoader.loadHttpClientBuilder;
+
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
@@ -30,8 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.http.client.HttpClientBuilderLoader.loadHttpClientBuilder;
 
 /**
  * A tool for executing code in Azure ACA dynamic sessions.
