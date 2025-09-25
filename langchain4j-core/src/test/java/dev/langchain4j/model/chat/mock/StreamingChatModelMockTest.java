@@ -26,4 +26,13 @@ public class StreamingChatModelMockTest {
 
         assertThat(tokens).isEmpty();
     }
+
+    @Test
+    void test_toTokens_preserves_consecutive_spaces() {
+        AiMessage aiMessage = AiMessage.from("a  b");
+
+        List<String> tokens = StreamingChatModelMock.toTokens(aiMessage);
+
+        assertThat(tokens).containsExactly("a", " ", " ", "b");
+    }
 }
