@@ -1,12 +1,12 @@
 package dev.langchain4j.guardrail;
 
-import static dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
+import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
-import dev.langchain4j.audit.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
@@ -137,7 +137,7 @@ public non-sealed class OutputGuardrailExecutor
     }
 
     @Override
-    protected OutputGuardrailExecutedEventBuilder createEmptyAuditEventBuilderInstance() {
+    protected OutputGuardrailExecutedEventBuilder createEmptyObservabilityEventBuilderInstance() {
         return OutputGuardrailExecutedEvent.builder();
     }
 

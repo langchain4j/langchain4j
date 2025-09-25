@@ -1,7 +1,7 @@
 package dev.langchain4j.guardrail;
 
-import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import java.util.List;
 
 /**

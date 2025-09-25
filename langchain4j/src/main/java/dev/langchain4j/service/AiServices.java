@@ -10,8 +10,6 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
-import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -32,6 +30,8 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
@@ -562,14 +562,13 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Registers an {@link AiServiceInvocationEventListener} listener for AI service events for this AI Service.
+     * Registers an {@link AiServiceListener} listener for AI service events for this AI Service.
      *
      * @param listener the listener to be registered, must not be {@code null}
      * @return builder
      */
-    public <I extends AiServiceInvocationEvent> AiServices<T> registerInvocationListener(
-            AiServiceInvocationEventListener<I> listener) {
-        context.invocationEventListenerRegistrar.register(ensureNotNull(listener, "listener"));
+    public <I extends AiServiceEvent> AiServices<T> registerListener(AiServiceListener<I> listener) {
+        context.eventListenerRegistrar.register(ensureNotNull(listener, "listener"));
         return this;
     }
 
@@ -580,8 +579,8 @@ public abstract class AiServices<T> {
      * @param listeners the invocation event listeners to be registered; can be null or empty
      * @return builder
      */
-    public AiServices<T> registerInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
-        context.invocationEventListenerRegistrar.register(listeners);
+    public AiServices<T> registerListeners(AiServiceListener<?>... listeners) {
+        context.eventListenerRegistrar.register(listeners);
         return this;
     }
 
@@ -592,21 +591,19 @@ public abstract class AiServices<T> {
      * @param listeners the invocation event listeners to be registered; can be null or empty
      * @return builder
      */
-    public AiServices<T> registerInvocationListeners(
-            Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
-        context.invocationEventListenerRegistrar.register(listeners);
+    public AiServices<T> registerListeners(Collection<? extends AiServiceListener<?>> listeners) {
+        context.eventListenerRegistrar.register(listeners);
         return this;
     }
 
     /**
-     * Unregisters an {@link AiServiceInvocationEventListener} listener for AI service events for this AI Service.
+     * Unregisters an {@link AiServiceListener} listener for AI service events for this AI Service.
      *
      * @param listener the listener to be registered, must not be {@code null}
      * @return builder
      */
-    public <I extends AiServiceInvocationEvent> AiServices<T> unregisterInvocationListener(
-            AiServiceInvocationEventListener<I> listener) {
-        context.invocationEventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
+    public <I extends AiServiceEvent> AiServices<T> unregisterListener(AiServiceListener<I> listener) {
+        context.eventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
         return this;
     }
 
@@ -617,8 +614,8 @@ public abstract class AiServices<T> {
      *                  Can be null, in which case no action will be performed.
      * @return builder
      */
-    public AiServices<T> unregisterInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
-        context.invocationEventListenerRegistrar.unregister(listeners);
+    public AiServices<T> unregisterListeners(AiServiceListener<?>... listeners) {
+        context.eventListenerRegistrar.unregister(listeners);
         return this;
     }
 
@@ -629,9 +626,8 @@ public abstract class AiServices<T> {
      * @param listeners the invocation event listeners to be unregistered; can be null or empty
      * @return builder
      */
-    public AiServices<T> unregisterInvocationListeners(
-            Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
-        context.invocationEventListenerRegistrar.unregister(listeners);
+    public AiServices<T> unregisterListeners(Collection<? extends AiServiceListener<?>> listeners) {
+        context.eventListenerRegistrar.unregister(listeners);
         return this;
     }
 

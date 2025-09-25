@@ -7,10 +7,6 @@ import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
-import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -25,6 +21,10 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -150,23 +150,25 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(() -> {
-                ToolExecutionResult toolResult = execute(toolRequest);
-                return new ToolRequestResult(toolRequest, toolResult);
-            }, toolExecutor);
+            var future = CompletableFuture.supplyAsync(
+                    () -> {
+                        ToolExecutionResult toolResult = execute(toolRequest);
+                        return new ToolRequestResult(toolRequest, toolResult);
+                    },
+                    toolExecutor);
             toolExecutionFutures.add(future);
         }
     }
 
     private <T> void fireInvocationComplete(T result) {
-        context.invocationEventListenerRegistrar.fireEvent(AiServiceInvocationCompletedEvent.builder()
+        context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .result(result)
                 .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
-        context.invocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+        context.eventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .request(toolRequestResult.request())
                 .resultText(toolRequestResult.result().resultText())
@@ -174,14 +176,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
-        context.invocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+        context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .response(chatResponse)
                 .build());
     }
 
     private void fireErrorReceived(Throwable error) {
-        context.invocationEventListenerRegistrar.fireEvent(AiServiceInvocationErrorEvent.builder()
+        context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .error(error)
                 .build());

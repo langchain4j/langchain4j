@@ -3,11 +3,11 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.audit.api.event.GuardrailExecutedEvent;
-import dev.langchain4j.audit.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -68,11 +68,11 @@ public abstract sealed class AbstractGuardrailExecutor<
     protected abstract GuardrailException createGuardrailException(String message, Throwable cause);
 
     /**
-     * Creates an empty instance of {@link GuardrailExecutedEventBuilder} used for constructing audit event objects.
+     * Creates an empty instance of {@link GuardrailExecutedEventBuilder} used for constructing observability event objects.
      *
      * @return An initialized instance of {@link GuardrailExecutedEventBuilder} with the appropriate type parameters.
      */
-    protected abstract GuardrailExecutedEventBuilder<P, R, G, E> createEmptyAuditEventBuilderInstance();
+    protected abstract GuardrailExecutedEventBuilder<P, R, G, E> createEmptyObservabilityEventBuilderInstance();
 
     @Override
     public C config() {
@@ -115,10 +115,10 @@ public abstract sealed class AbstractGuardrailExecutor<
         return result;
     }
 
-    protected void fireAuditEvent(InvocationContext invocationContext, P request, R result, G guardrail) {
+    protected void fireObservabilityEvent(InvocationContext invocationContext, P request, R result, G guardrail) {
         request.requestParams()
                 .aiServiceInvocationEventListenerRegistrar()
-                .fireEvent(createEmptyAuditEventBuilderInstance()
+                .fireEvent(createEmptyObservabilityEventBuilderInstance()
                         .invocationContext(invocationContext)
                         .request(request)
                         .result(result)
@@ -135,7 +135,8 @@ public abstract sealed class AbstractGuardrailExecutor<
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
                 var result = validate(accumulatedRequest, guardrail);
-                fireAuditEvent(request.requestParams().invocationContext(), accumulatedRequest, result, guardrail);
+                fireObservabilityEvent(
+                        request.requestParams().invocationContext(), accumulatedRequest, result, guardrail);
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing

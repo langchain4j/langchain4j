@@ -2,9 +2,9 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.AugmentationResult;
 import java.util.Map;
 import java.util.Optional;
@@ -21,7 +21,7 @@ public final class GuardrailRequestParams {
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
     private final InvocationContext invocationContext;
-    private final AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar;
+    private final AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar;
 
     private GuardrailRequestParams(Builder builder) {
         this.chatMemory = builder.chatMemory;
@@ -31,7 +31,7 @@ public final class GuardrailRequestParams {
         this.invocationContext = builder.invocationContext;
         this.aiServiceInvocationEventListenerRegistrar = Optional.ofNullable(
                         builder.aiServiceInvocationEventListenerRegistrar)
-                .orElseGet(AiServiceInvocationEventListenerRegistrar::newInstance);
+                .orElseGet(AiServiceListenerRegistrar::newInstance);
     }
 
     /**
@@ -80,13 +80,13 @@ public final class GuardrailRequestParams {
     }
 
     /**
-     * Returns the {@link AiServiceInvocationEventListenerRegistrar}, which provides
+     * Returns the {@link AiServiceListenerRegistrar}, which provides
      * functionality for registering, unregistering, and notifying listeners of AI
      * service invocation events.
      *
-     * @return the {@link AiServiceInvocationEventListenerRegistrar}
+     * @return the {@link AiServiceListenerRegistrar}
      */
-    public AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar() {
+    public AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar() {
         return aiServiceInvocationEventListenerRegistrar;
     }
 
@@ -118,7 +118,7 @@ public final class GuardrailRequestParams {
         private String userMessageTemplate;
         private Map<String, Object> variables;
         private InvocationContext invocationContext;
-        private AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar;
+        private AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar;
 
         public Builder() {}
 
@@ -195,7 +195,7 @@ public final class GuardrailRequestParams {
          * @return this builder instance, to allow for method chaining
          */
         public Builder aiServiceInvocationEventListenerRegistrar(
-                AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar) {
+                AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar) {
             this.aiServiceInvocationEventListenerRegistrar = aiServiceInvocationEventListenerRegistrar;
             return this;
         }

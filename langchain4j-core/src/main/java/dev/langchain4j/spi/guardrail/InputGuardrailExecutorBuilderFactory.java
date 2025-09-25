@@ -1,11 +1,11 @@
 package dev.langchain4j.spi.guardrail;
 
-import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 
 /**
  * Represents a factory for creating instances of {@link InputGuardrailExecutor.InputGuardrailExecutorBuilder}.

@@ -11,9 +11,6 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.audit.api.event.ToolExecutedEvent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -27,6 +24,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -207,7 +207,7 @@ public class ToolService {
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
             boolean isReturnTypeResult,
-            AiServiceInvocationEventListenerRegistrar invocationEventListenerRegistrar) {
+            AiServiceListenerRegistrar invocationEventListenerRegistrar) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -276,8 +276,7 @@ public class ToolService {
 
             if (immediateToolReturn) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
-                fireResponseReceivedEvent(
-                        finalResponse, invocationContext, invocationEventListenerRegistrar);
+                fireResponseReceivedEvent(finalResponse, invocationContext, invocationEventListenerRegistrar);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
                         .finalResponse(finalResponse)
@@ -313,7 +312,7 @@ public class ToolService {
     private void fireResponseReceivedEvent(
             ChatResponse chatResponse,
             InvocationContext invocationContext,
-            AiServiceInvocationEventListenerRegistrar invocationEventListenerRegistrar) {
+            AiServiceListenerRegistrar invocationEventListenerRegistrar) {
         invocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
                 .response(chatResponse)

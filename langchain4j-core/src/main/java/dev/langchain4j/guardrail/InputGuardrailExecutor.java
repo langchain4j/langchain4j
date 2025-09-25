@@ -1,10 +1,10 @@
 package dev.langchain4j.guardrail;
 
-import static dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
+import static dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
 
-import dev.langchain4j.audit.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -50,7 +50,7 @@ public non-sealed class InputGuardrailExecutor
     }
 
     @Override
-    protected InputGuardrailExecutedEventBuilder createEmptyAuditEventBuilderInstance() {
+    protected InputGuardrailExecutedEventBuilder createEmptyObservabilityEventBuilderInstance() {
         return InputGuardrailExecutedEvent.builder();
     }
 

@@ -7,10 +7,10 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import dev.langchain4j.invocation.InvocationContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.params.ParameterizedTest;
