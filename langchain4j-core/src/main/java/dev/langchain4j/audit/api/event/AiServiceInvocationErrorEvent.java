@@ -3,7 +3,7 @@ package dev.langchain4j.audit.api.event;
 import dev.langchain4j.audit.event.DefaultAiServiceInvocationErrorEvent;
 
 /**
- * Represents an event that occurs when an interaction with a large language model (LLM) fails.
+ * Represents an event that occurs when an AI Service invocation fails.
  * This interface extends {@link AiServiceInvocationEvent} to include additional information
  * about the error that caused the failure.
  *
@@ -12,7 +12,7 @@ import dev.langchain4j.audit.event.DefaultAiServiceInvocationErrorEvent;
  */
 public interface AiServiceInvocationErrorEvent extends AiServiceInvocationEvent {
     /**
-     * Retrieves the {@link Throwable} representing the error associated with the LLM interaction failure.
+     * Retrieves the {@link Throwable} representing the error associated with the AI Service invocation failure.
      */
     Throwable error();
 
@@ -22,41 +22,41 @@ public interface AiServiceInvocationErrorEvent extends AiServiceInvocationEvent 
     }
 
     @Override
-    default AiServiceInteractionErrorEventBuilder toBuilder() {
-        return new AiServiceInteractionErrorEventBuilder(this);
+    default AiServiceInvocationErrorEventBuilder toBuilder() {
+        return new AiServiceInvocationErrorEventBuilder(this);
     }
 
-    static AiServiceInteractionErrorEventBuilder builder() {
-        return new AiServiceInteractionErrorEventBuilder();
+    static AiServiceInvocationErrorEventBuilder builder() {
+        return new AiServiceInvocationErrorEventBuilder();
     }
 
     /**
      * Builder for {@link DefaultAiServiceInvocationErrorEvent} instances.
      */
-    class AiServiceInteractionErrorEventBuilder extends Builder<AiServiceInvocationErrorEvent> {
+    class AiServiceInvocationErrorEventBuilder extends Builder<AiServiceInvocationErrorEvent> {
         private Throwable error;
 
-        protected AiServiceInteractionErrorEventBuilder() {}
+        protected AiServiceInvocationErrorEventBuilder() {}
 
         /**
          * Creates a builder initialized from an existing {@link AiServiceInvocationErrorEvent}.
          */
-        protected AiServiceInteractionErrorEventBuilder(AiServiceInvocationErrorEvent src) {
+        protected AiServiceInvocationErrorEventBuilder(AiServiceInvocationErrorEvent src) {
             super(src);
             error(src.error());
         }
 
         /**
-         * Sets the interaction source.
+         * Sets the invocation context.
          */
-        public AiServiceInteractionErrorEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
-            return (AiServiceInteractionErrorEventBuilder) super.invocationContext(invocationContext);
+        public AiServiceInvocationErrorEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceInvocationErrorEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**
          * Sets the error.
          */
-        public AiServiceInteractionErrorEventBuilder error(Throwable error) {
+        public AiServiceInvocationErrorEventBuilder error(Throwable error) {
             this.error = error;
             return this;
         }

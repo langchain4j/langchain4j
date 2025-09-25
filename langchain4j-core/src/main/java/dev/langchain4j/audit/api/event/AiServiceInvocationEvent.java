@@ -2,14 +2,14 @@ package dev.langchain4j.audit.api.event;
 
 public interface AiServiceInvocationEvent {
     /**
-     * Retrieves the source of the interaction, containing general information
-     * about where and how the interaction originated.
+     * Retrieves the invocation context, containing general information
+     * about where and how the invocation originated.
      */
     AiServiceInvocationContext invocationContext();
 
     /**
      * Retrieves the class type of the event, representing the specific category
-     * of the LLM interaction event.
+     * of the AI Service invocation event.
      */
     // Implementation note: I implemented it this way on purpose (rather than defining an enum of "Event Types")
     // So that downstream frameworks/applications could define their own event types and still use the

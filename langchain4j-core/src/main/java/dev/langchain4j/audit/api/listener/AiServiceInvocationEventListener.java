@@ -16,10 +16,10 @@ public interface AiServiceInvocationEventListener<T extends AiServiceInvocationE
     Class<T> getEventClass();
 
     /**
-     * Invoked when an event of type {@link AiServiceInvocationEvent} occurs.
+     * Called when an event of type {@link AiServiceInvocationEvent} occurs.
      *
      * @param event The event instance that occurred, encapsulating specific information
-     *              about the interaction or process related to the LLM.
+     *              about the invocation.
      */
     void onEvent(T event);
 }

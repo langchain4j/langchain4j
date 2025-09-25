@@ -4,7 +4,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.event.DefaultToolExecutedEvent;
 
 /**
- * Invoked with a tool response from an LLM. It is important to note that this can be invoked multiple times within a single llm interaction.
+ * Invoked after the tool is executed.
+ * It is important to note that this can be invoked multiple times within a single AI Service invocation.
  */
 public interface ToolExecutedEvent extends AiServiceInvocationEvent {
     /**

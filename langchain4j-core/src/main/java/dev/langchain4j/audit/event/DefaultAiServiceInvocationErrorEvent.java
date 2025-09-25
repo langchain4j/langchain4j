@@ -11,7 +11,7 @@ public class DefaultAiServiceInvocationErrorEvent extends AbstractAiServiceInvoc
         implements AiServiceInvocationErrorEvent {
     private final Throwable error;
 
-    public DefaultAiServiceInvocationErrorEvent(AiServiceInteractionErrorEventBuilder builder) {
+    public DefaultAiServiceInvocationErrorEvent(AiServiceInvocationErrorEventBuilder builder) {
         super(builder);
         this.error = ensureNotNull(builder.getError(), "error");
     }

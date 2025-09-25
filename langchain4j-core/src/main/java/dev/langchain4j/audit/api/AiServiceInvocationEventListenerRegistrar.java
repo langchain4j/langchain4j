@@ -2,7 +2,7 @@ package dev.langchain4j.audit.api;
 
 import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 import dev.langchain4j.audit.api.listener.AiServiceInvocationEventListener;
-import dev.langchain4j.spi.audit.AiServiceInteractionEventListenerRegistrarFactory;
+import dev.langchain4j.spi.audit.AiServiceInvocationEventListenerRegistrarFactory;
 import java.util.Arrays;
 import java.util.ServiceLoader;
 
@@ -91,9 +91,9 @@ public interface AiServiceInvocationEventListenerRegistrar {
      * instance provided by {@link DefaultAiServiceInvocationEventListenerRegistrar#newInstance()} is returned.
      */
     static AiServiceInvocationEventListenerRegistrar newInstance() {
-        return ServiceLoader.load(AiServiceInteractionEventListenerRegistrarFactory.class)
+        return ServiceLoader.load(AiServiceInvocationEventListenerRegistrarFactory.class)
                 .findFirst()
-                .map(AiServiceInteractionEventListenerRegistrarFactory::get)
+                .map(AiServiceInvocationEventListenerRegistrarFactory::get)
                 .orElseGet(DefaultAiServiceInvocationEventListenerRegistrar::new);
     }
 }

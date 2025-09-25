@@ -507,7 +507,7 @@ class AiServicesAuditingTests {
                         List.of(expectedUserMessage),
                         Optional.of(ChatMemoryService.DEFAULT));
 
-        assertThat(is.interactionId()).isNotNull();
+        assertThat(is.invocationId()).isNotNull();
         assertThat(is.timestamp()).isNotNull();
     }
 

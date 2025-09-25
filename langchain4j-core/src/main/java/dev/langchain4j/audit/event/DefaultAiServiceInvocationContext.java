@@ -13,12 +13,13 @@ import java.util.UUID;
 
 /**
  * Default implementation of the {@link AiServiceInvocationContext} interface used to represent
- * information about the source of an interaction, including details such as the unique
- * interaction ID, interface name, method name, method arguments, and optional memory ID.
+ * information about the invocation, including details such as the unique invocation ID,
+ * AI Service interface name, method name, method arguments, and optional memory ID.
  * Instances of this class are immutable and can be constructed using the nested {@link Builder}.
  */
 public class DefaultAiServiceInvocationContext implements AiServiceInvocationContext {
-    private final UUID interactionId = UUID.randomUUID();
+
+    private final UUID invocationId = UUID.randomUUID();
     private final String interfaceName;
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
@@ -35,8 +36,8 @@ public class DefaultAiServiceInvocationContext implements AiServiceInvocationCon
     }
 
     @Override
-    public UUID interactionId() {
-        return this.interactionId;
+    public UUID invocationId() {
+        return this.invocationId;
     }
 
     @Override

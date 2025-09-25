@@ -7,28 +7,28 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Invoked when an LLM interaction has started.
+ * Called when an LLM invocation has started.
  */
 public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEvent {
     /**
-     * Retrieves an optional system message associated with the interaction.
+     * Retrieves an optional system message associated with the invocation.
      * A system message typically provides instructions regarding the AI's
      * behavior, actions, or response style.
      */
     Optional<SystemMessage> systemMessage();
 
     /**
-     * Retrieves the user message associated with the interaction.
+     * Retrieves the user message associated with the invocation.
      * The user message represents the content or input provided by the user
-     * during the AI interaction.
+     * during the AI Service invocation.
      */
     UserMessage userMessage();
 
     /**
      * Creates a new builder instance for constructing a {@link AiServiceInvocationStartedEvent}.
      */
-    static AiServiceInteractionStartedEventBuilder builder() {
-        return new AiServiceInteractionStartedEventBuilder();
+    static AiServiceInvocationStartedEventBuilder builder() {
+        return new AiServiceInvocationStartedEventBuilder();
     }
 
     @Override
@@ -37,39 +37,39 @@ public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEven
     }
 
     @Override
-    default AiServiceInteractionStartedEventBuilder toBuilder() {
-        return new AiServiceInteractionStartedEventBuilder(this);
+    default AiServiceInvocationStartedEventBuilder toBuilder() {
+        return new AiServiceInvocationStartedEventBuilder(this);
     }
 
     /**
      * Builder for {@link DefaultAiServiceInvocationStartedEvent} instances.
      */
-    class AiServiceInteractionStartedEventBuilder extends Builder<AiServiceInvocationStartedEvent> {
+    class AiServiceInvocationStartedEventBuilder extends Builder<AiServiceInvocationStartedEvent> {
         private @Nullable SystemMessage systemMessage;
         private UserMessage userMessage;
 
-        protected AiServiceInteractionStartedEventBuilder() {}
+        protected AiServiceInvocationStartedEventBuilder() {}
 
         /**
          * Creates a builder initialized from an existing {@link AiServiceInvocationStartedEvent}.
          */
-        protected AiServiceInteractionStartedEventBuilder(AiServiceInvocationStartedEvent src) {
+        protected AiServiceInvocationStartedEventBuilder(AiServiceInvocationStartedEvent src) {
             super(src);
             systemMessage(src.systemMessage().orElse(null));
             userMessage(src.userMessage());
         }
 
         /**
-         * Sets the interaction source.
+         * Sets the invocation context.
          */
-        public AiServiceInteractionStartedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
-            return (AiServiceInteractionStartedEventBuilder) super.invocationContext(invocationContext);
+        public AiServiceInvocationStartedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+            return (AiServiceInvocationStartedEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**
          * Sets a system message.
          */
-        public AiServiceInteractionStartedEventBuilder systemMessage(@Nullable SystemMessage systemMessage) {
+        public AiServiceInvocationStartedEventBuilder systemMessage(@Nullable SystemMessage systemMessage) {
             this.systemMessage = systemMessage;
             return this;
         }
@@ -77,14 +77,14 @@ public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEven
         /**
          * Sets an optional system message.
          */
-        public AiServiceInteractionStartedEventBuilder systemMessage(Optional<SystemMessage> systemMessage) {
+        public AiServiceInvocationStartedEventBuilder systemMessage(Optional<SystemMessage> systemMessage) {
             return systemMessage(systemMessage.orElse(null));
         }
 
         /**
          * Sets the user message.
          */
-        public AiServiceInteractionStartedEventBuilder userMessage(UserMessage userMessage) {
+        public AiServiceInvocationStartedEventBuilder userMessage(UserMessage userMessage) {
             this.userMessage = userMessage;
             return this;
         }

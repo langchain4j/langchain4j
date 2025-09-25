@@ -11,7 +11,7 @@ public class DefaultAiServiceInvocationCompletedEvent extends AbstractAiServiceI
         implements AiServiceInvocationCompletedEvent {
     private final @Nullable Object result;
 
-    public DefaultAiServiceInvocationCompletedEvent(AiServiceInteractionCompletedEventBuilder builder) {
+    public DefaultAiServiceInvocationCompletedEvent(AiServiceInvocationCompletedEventBuilder builder) {
         super(builder);
         this.result = builder.getResult();
     }

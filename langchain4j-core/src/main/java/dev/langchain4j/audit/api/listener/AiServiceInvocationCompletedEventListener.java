@@ -4,7 +4,7 @@ import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
 
 /**
  * A listener for {@link AiServiceInvocationCompletedEvent}, which represents an event
- * that occurs upon the completion of an interaction with a large language model (LLM).
+ * that occurs upon the completion of an AI Service invocation.
  * This interface extends the generic {@link AiServiceInvocationEventListener} interface,
  * allowing it to specifically listen for completion events.
  */

@@ -16,7 +16,7 @@ public class DefaultAiServiceInvocationStartedEvent extends AbstractAiServiceInv
     private final @Nullable SystemMessage systemMessage;
     private final UserMessage userMessage;
 
-    public DefaultAiServiceInvocationStartedEvent(AiServiceInteractionStartedEventBuilder builder) {
+    public DefaultAiServiceInvocationStartedEvent(AiServiceInvocationStartedEventBuilder builder) {
         super(builder);
         this.systemMessage = builder.getSystemMessage();
         this.userMessage = ensureNotNull(builder.getUserMessage(), "userMessage");

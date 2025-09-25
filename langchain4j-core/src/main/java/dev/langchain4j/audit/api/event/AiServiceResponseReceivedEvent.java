@@ -4,12 +4,13 @@ import dev.langchain4j.audit.event.DefaultAiServiceResponseReceivedEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * Invoked with a response from an LLM. It is important to note that this can be invoked multiple times during a single LLM interaction
+ * Invoked when response from a {@link dev.langchain4j.model.chat.ChatModel} is received.
+ * It is important to note that this can be invoked multiple times during a single AI Service invocation
  * when tools or guardrails exist.
  */
 public interface AiServiceResponseReceivedEvent extends AiServiceInvocationEvent {
     /**
-     * Retrieves the chat response from the LLM interaction event.
+     * Retrieves the chat response from the AI Service invocation event.
      *
      * @return the {@link ChatResponse} object containing the AI-generated message and related metadata.
      */
@@ -50,7 +51,7 @@ public interface AiServiceResponseReceivedEvent extends AiServiceInvocationEvent
         }
 
         /**
-         * Sets the interaction source.
+         * Sets the invocation context.
          */
         public AiServiceResponseReceivedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
             return (AiServiceResponseReceivedEventBuilder) super.invocationContext(invocationContext);

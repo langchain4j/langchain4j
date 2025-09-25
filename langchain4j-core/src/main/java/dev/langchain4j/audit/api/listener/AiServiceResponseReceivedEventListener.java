@@ -9,8 +9,8 @@ import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
  * specializing it for handling events related to LLM responses.
  *
  * Classes implementing this interface can respond to events where the LLM
- * provides a response during an interaction, which may happen multiple times
- * if the LLM interaction involves tools or guardrails.
+ * provides a response during an AI Service invocation, which may happen
+ * multiple times if it involves tools or guardrails.
  */
 @FunctionalInterface
 public interface AiServiceResponseReceivedEventListener

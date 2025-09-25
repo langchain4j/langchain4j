@@ -9,22 +9,23 @@ import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Contains general information about the source of the interaction.
+ * Contains general information about the AI Service invocation.
  */
 public interface AiServiceInvocationContext {
-    /**
-     * Unique identifier for an entire interaction with the LLM
-     */
-    UUID interactionId();
 
     /**
-     * The fully-qualified name of the AI Service interface where the LLM interaction was initiated from
+     * Unique identifier for an entire AI Service invocation
+     */
+    UUID invocationId();
+
+    /**
+     * The fully-qualified name of the AI Service interface where the invocation was initiated from
      * @see #methodName()
      */
     String interfaceName();
 
     /**
-     * The method name on {@link #interfaceName()} where the LLM interaction was initiated from
+     * The method name on {@link #interfaceName()} where the invocation was initiated from
      */
     String methodName();
 
@@ -39,7 +40,7 @@ public interface AiServiceInvocationContext {
     Optional<Object> memoryId();
 
     /**
-     * Retrieves the point in time when the interaction occurred.
+     * Retrieves the point in time when the invocation occurred.
      */
     Instant timestamp();
 
@@ -71,12 +72,12 @@ public interface AiServiceInvocationContext {
 
         protected Builder() {}
 
-        protected Builder(AiServiceInvocationContext interactionSource) {
-            interfaceName(interactionSource.interfaceName());
-            methodName(interactionSource.methodName());
-            methodArguments(interactionSource.methodArguments());
-            memoryId(interactionSource.memoryId().orElse(null));
-            timestamp(interactionSource.timestamp());
+        protected Builder(AiServiceInvocationContext invocationContext) {
+            interfaceName(invocationContext.interfaceName());
+            methodName(invocationContext.methodName());
+            methodArguments(invocationContext.methodArguments());
+            memoryId(invocationContext.memoryId().orElse(null));
+            timestamp(invocationContext.timestamp());
         }
 
         /**
