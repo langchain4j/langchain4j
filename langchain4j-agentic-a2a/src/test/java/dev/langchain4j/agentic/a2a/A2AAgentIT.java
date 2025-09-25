@@ -17,13 +17,14 @@ import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 
 import static dev.langchain4j.agentic.a2a.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class A2AAgentIT {
 
-    private static final String A2A_SERVER_URL = "http://localhost:8080";
+    static final String A2A_SERVER_URL = "http://localhost:8080";
 
     @Test
     @Disabled("Requires A2A server to be running")
@@ -77,12 +78,12 @@ public class A2AAgentIT {
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(Models.baseModel())
+                .chatModel(baseModel())
                 .outputName("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(Models.baseModel())
+                .chatModel(baseModel())
                 .outputName("score")
                 .build();
 
@@ -116,5 +117,21 @@ public class A2AAgentIT {
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_sequence_and_loop_tests() {
+        StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 }

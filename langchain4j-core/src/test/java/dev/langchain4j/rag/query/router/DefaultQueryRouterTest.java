@@ -86,4 +86,39 @@ class DefaultQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(retriever1, retriever2, retriever3);
     }
+
+    @Test
+    void should_handle_duplicate_retrievers() {
+        // given
+        ContentRetriever retriever = mock(ContentRetriever.class);
+        QueryRouter router = new DefaultQueryRouter(retriever, retriever, retriever);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(Query.from("query"));
+
+        // then - duplicates are preserved
+        assertThat(retrievers).hasSize(3);
+        assertThat(retrievers).containsExactly(retriever, retriever, retriever);
+    }
+
+    @Test
+    void should_handle_empty_query_text() {
+        // when/then
+        assertThatThrownBy(() -> Query.from(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("text cannot be null or blank");
+    }
+
+    @Test
+    void should_handle_null_query() {
+        // given
+        ContentRetriever retriever = mock(ContentRetriever.class);
+        QueryRouter router = new DefaultQueryRouter(retriever);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(null);
+
+        // then - router returns retrievers even with null query
+        assertThat(retrievers).containsExactly(retriever);
+    }
 }

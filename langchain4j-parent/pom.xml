@@ -46,9 +46,9 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <dokka.version>2.0.0</dokka.version>
+        <dokka.version>2.1.0-Beta</dokka.version>
         <ai-mocks.version>0.4.6</ai-mocks.version>
-        <assertj.version>3.27.3</assertj.version>
+        <assertj.version>4.0.0-M1</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.33.5</aws.java.sdk.version>
@@ -491,7 +491,7 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.12</version>
+                    <version>0.8.13</version>
                 </plugin>
                 <plugin>
                     <groupId>org.jetbrains.kotlin</groupId>

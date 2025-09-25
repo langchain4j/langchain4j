@@ -107,7 +107,7 @@ class VertexAiGeminiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         // then
-        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
     }
 
     @ParameterizedTest

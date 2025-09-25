@@ -120,4 +120,12 @@ class ChatResponseTest {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
     }
+
+    @Test
+    void should_handle_null_ai_message() {
+        // when/then
+        assertThatThrownBy(() -> ChatResponse.builder().aiMessage(null).build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("aiMessage cannot be null");
+    }
 }
