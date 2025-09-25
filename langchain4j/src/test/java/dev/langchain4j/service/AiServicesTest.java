@@ -87,4 +87,42 @@ class AiServicesTest {
     void test_toString() throws Exception {
         assertThat(assistant.toString()).startsWith("dev.langchain4j.service.AiServicesTest$Assistant@");
     }
+
+    @Test
+    void should_handle_null_chat_model() {
+        assertThatThrownBy(() -> AiServices.builder(Assistant.class)
+                .chatModel(null)
+                .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("chatModel");
+    }
+
+    @Test
+    void should_handle_non_interface_class() {
+        assertThatThrownBy(() -> AiServices.builder(String.class)
+                .chatModel(chatModel)
+                .build())
+                .isInstanceOf(IllegalConfigurationException.class);
+    }
+
+    @Test
+    void should_create_different_instances_for_same_interface() {
+        Assistant assistant1 = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        Assistant assistant2 = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(assistant1).isNotSameAs(assistant2);
+        assertThat(assistant1.equals(assistant2)).isFalse();
+        assertThat(assistant1.hashCode()).isNotEqualTo(assistant2.hashCode());
+    }
+
+    @Test
+    void should_preserve_interface_type() {
+        assertThat(assistant).isInstanceOf(Assistant.class);
+        assertThat(Assistant.class.isAssignableFrom(assistant.getClass())).isTrue();
+    }
 }

@@ -17,4 +17,13 @@ public class StreamingChatModelMockTest {
 
         assertThat(tokens).containsExactly("H", "e", "l", "l", "o");
     }
+
+    @Test
+    void test_toTokens_with_empty_string() {
+        AiMessage aiMessage = AiMessage.from("");
+
+        List<String> tokens = StreamingChatModelMock.toTokens(aiMessage);
+
+        assertThat(tokens).isEmpty();
+    }
 }
