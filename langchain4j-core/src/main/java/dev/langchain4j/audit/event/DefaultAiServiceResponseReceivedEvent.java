@@ -10,11 +10,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  */
 public class DefaultAiServiceResponseReceivedEvent extends AbstractAiServiceInvocationEvent
         implements AiServiceResponseReceivedEvent {
+
     private final ChatResponse response;
 
     public DefaultAiServiceResponseReceivedEvent(AiServiceResponseReceivedEventBuilder builder) {
         super(builder);
-        this.response = ensureNotNull(builder.getResponse(), "response");
+        this.response = ensureNotNull(builder.response(), "response");
     }
 
     @Override

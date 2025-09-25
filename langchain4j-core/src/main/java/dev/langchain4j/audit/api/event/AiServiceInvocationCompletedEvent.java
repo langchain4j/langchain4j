@@ -2,6 +2,7 @@ package dev.langchain4j.audit.api.event;
 
 import dev.langchain4j.audit.event.DefaultAiServiceInvocationCompletedEvent;
 import java.util.Optional;
+import dev.langchain4j.invocation.InvocationContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,8 +56,7 @@ public interface AiServiceInvocationCompletedEvent extends AiServiceInvocationEv
         /**
          * Sets the invocation context.
          */
-        public AiServiceInvocationCompletedEventBuilder invocationContext(
-                AiServiceInvocationContext invocationContext) {
+        public AiServiceInvocationCompletedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (AiServiceInvocationCompletedEventBuilder) super.invocationContext(invocationContext);
         }
 

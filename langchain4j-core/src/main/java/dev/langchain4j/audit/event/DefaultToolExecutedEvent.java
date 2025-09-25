@@ -9,13 +9,14 @@ import dev.langchain4j.audit.api.event.ToolExecutedEvent;
  * Default implementation of {@link ToolExecutedEvent}.
  */
 public class DefaultToolExecutedEvent extends AbstractAiServiceInvocationEvent implements ToolExecutedEvent {
+
     private final ToolExecutionRequest request;
     private final String result;
 
     public DefaultToolExecutedEvent(ToolExecutedEventBuilder builder) {
         super(builder);
-        this.request = ensureNotNull(builder.getRequest(), "request");
-        this.result = ensureNotNull(builder.getResult(), "result");
+        this.request = ensureNotNull(builder.request(), "request");
+        this.result = ensureNotNull(builder.result(), "result");
     }
 
     @Override

@@ -13,7 +13,6 @@ import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
 import dev.langchain4j.audit.api.event.AiServiceResponseReceivedEvent;
@@ -55,13 +54,13 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -212,30 +211,32 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        var methodArgs = (args != null) ? Arrays.asList(args) : Collections.emptyList();
-                        var memoryIdOpt = findMemoryId(method, args);
-                        var invocationContext = AiServiceInvocationContext.builder()
+                        Object chatMemoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
+                        InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
+                                .orElseGet(InvocationParameters::new);
+
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .invocationId(UUID.randomUUID())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
-                                .methodArguments(methodArgs)
-                                .memoryId(memoryIdOpt.orElse(ChatMemoryService.DEFAULT))
+                                .methodArguments(args != null ? Arrays.asList(args) : List.of())
+                                .chatMemoryId(chatMemoryId)
+                                .invocationParameters(invocationParameters)
+                                .timestampNow()
                                 .build();
-
                         try {
                             return invoke(method, args, invocationContext);
                         } catch (Exception ex) {
-                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                            context.invocationEventListenerRegistrar.fireEvent(
                                     AiServiceInvocationErrorEvent.builder()
                                             .invocationContext(invocationContext)
                                             .error(ex)
                                             .build());
-
                             throw ex;
                         }
                     }
 
-                    public Object invoke(
-                            Method method, Object[] args, AiServiceInvocationContext auditInvocationContext) {
+                    public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
 
                         var memoryIdOpt = findMemoryId(method, args);
                         Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
@@ -250,20 +251,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        context.auditInvocationEventListenerRegistrar.fireEvent(
+                        context.invocationEventListenerRegistrar.fireEvent(
                                 AiServiceInvocationStartedEvent.builder()
-                                        .invocationContext(auditInvocationContext)
+                                        .invocationContext(invocationContext)
                                         .systemMessage(systemMessage)
                                         .userMessage(userMessage)
                                         .build());
-
-                        InvocationParameters invocationParameters = findInvocationParameters(
-                                        args, method.getParameters())
-                                .orElseGet(InvocationParameters::new);
-                        InvocationContext invocationContext = InvocationContext.builder()
-                                .chatMemoryId(memoryId)
-                                .invocationParameters(invocationParameters)
-                                .build();
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
@@ -282,9 +275,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
-                                .invocationContext(auditInvocationContext)
+                                .invocationContext(invocationContext)
                                 .aiServiceInvocationEventListenerRegistrar(
-                                        context.auditInvocationEventListenerRegistrar)
+                                        context.invocationEventListenerRegistrar)
                                 .variables(variables)
                                 .build();
 
@@ -384,8 +377,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = chatExecutor.execute();
 
-                        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
-                                .invocationContext(auditInvocationContext)
+                        context.invocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                .invocationContext(invocationContext)
                                 .response(chatResponse)
                                 .build());
 
@@ -402,8 +395,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 invocationContext,
                                 toolServiceContext.toolExecutors(),
                                 isReturnTypeResult,
-                                auditInvocationContext,
-                                context.auditInvocationEventListenerRegistrar);
+                                context.invocationEventListenerRegistrar);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             var result = Result.builder()
@@ -416,9 +408,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                            context.invocationEventListenerRegistrar.fireEvent(
                                     AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(auditInvocationContext)
+                                            .invocationContext(invocationContext)
                                             .result(result)
                                             .build());
 
@@ -435,9 +427,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            context.auditInvocationEventListenerRegistrar.fireEvent(
+                            context.invocationEventListenerRegistrar.fireEvent(
                                     AiServiceInvocationCompletedEvent.builder()
-                                            .invocationContext(auditInvocationContext)
+                                            .invocationContext(invocationContext)
                                             .result(response)
                                             .build());
 
@@ -459,9 +451,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
-                        context.auditInvocationEventListenerRegistrar.fireEvent(
+                        context.invocationEventListenerRegistrar.fireEvent(
                                 AiServiceInvocationCompletedEvent.builder()
-                                        .invocationContext(auditInvocationContext)
+                                        .invocationContext(invocationContext)
                                         .result(actualResponse)
                                         .build());
 

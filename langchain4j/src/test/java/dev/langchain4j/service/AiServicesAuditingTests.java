@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.fail;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
@@ -32,6 +31,7 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.service.guardrail.InputGuardrails;
@@ -40,7 +40,6 @@ import dev.langchain4j.service.memory.ChatMemoryService;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,6 +52,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServicesAuditingTests {
+
     private static final String DEFAULT_EXPECTED_RESPONSE = "Hello how are you today?";
     private static final String TOOL_USER_MESSAGE =
             "What is the square root of 485906798473894056 in scientific notation?";
@@ -480,35 +480,35 @@ class AiServicesAuditingTests {
             assertThat(l).isNotNull().extracting(MyEventListener::event).isNotNull();
         });
 
-        var firstInteractionSource = listeners.stream()
+        var firstInvocationContext = listeners.stream()
                 .map(MyEventListener::event)
                 .map(AiServiceInvocationEvent::invocationContext)
                 .findFirst();
 
-        var is = assertThat(firstInteractionSource).get().actual();
+        var ic = assertThat(firstInvocationContext).get().actual();
 
         // Verify that all the listeners have the same invocationContext()
         assertThat(listeners)
                 .extracting(l -> l.event().invocationContext())
                 .usingRecursiveFieldByFieldElementComparator()
-                .containsOnly(is);
+                .containsOnly(ic);
 
         // And because all the invocationContext() is the same, verify that it has the correct information
-        assertThat(is)
+        assertThat(ic)
                 .isNotNull()
                 .extracting(
-                        AiServiceInvocationContext::interfaceName,
-                        AiServiceInvocationContext::methodName,
-                        AiServiceInvocationContext::methodArguments,
-                        AiServiceInvocationContext::memoryId)
+                        InvocationContext::interfaceName,
+                        InvocationContext::methodName,
+                        InvocationContext::methodArguments,
+                        InvocationContext::chatMemoryId)
                 .containsExactly(
                         Assistant.class.getName(),
                         expectedMethodName,
                         List.of(expectedUserMessage),
-                        Optional.of(ChatMemoryService.DEFAULT));
+                        ChatMemoryService.DEFAULT);
 
-        assertThat(is.invocationId()).isNotNull();
-        assertThat(is.timestamp()).isNotNull();
+        assertThat(ic.invocationId()).isNotNull();
+        assertThat(ic.timestamp()).isNotNull();
     }
 
     private static Map<Class<? extends AiServiceInvocationEvent>, MyEventListener<? extends AiServiceInvocationEvent>>
@@ -516,9 +516,9 @@ class AiServicesAuditingTests {
 
         return Stream.of(
                         new MyInputGuardrailExecutedEventListener(),
-                        new MyAiServiceInteractionCompletedEventListener(),
-                        new MyAiServiceInteractionErrorEventListener(),
-                        new MyAiServiceInteractionStartedEventListener(),
+                        new MyAiServiceInvocationCompletedEventListener(),
+                        new MyAiServiceInvocationErrorEventListener(),
+                        new MyAiServiceInvocactionStartedEventListener(),
                         new MyAiServiceResponseReceivedEventListener(),
                         new MyOutputGuardrailExecutedEventListener(),
                         new MyToolExecutedEventListener())
@@ -737,14 +737,14 @@ class AiServicesAuditingTests {
     public static class MyAiServiceResponseReceivedEventListener extends MyEventListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedEventListener {}
 
-    public static class MyAiServiceInteractionStartedEventListener
+    public static class MyAiServiceInvocactionStartedEventListener
             extends MyEventListener<AiServiceInvocationStartedEvent>
             implements AiServiceInvocationStartedEventListener {}
 
-    public static class MyAiServiceInteractionErrorEventListener extends MyEventListener<AiServiceInvocationErrorEvent>
+    public static class MyAiServiceInvocationErrorEventListener extends MyEventListener<AiServiceInvocationErrorEvent>
             implements AiServiceInvocationErrorEventListener {}
 
-    public static class MyAiServiceInteractionCompletedEventListener
+    public static class MyAiServiceInvocationCompletedEventListener
             extends MyEventListener<AiServiceInvocationCompletedEvent>
             implements AiServiceInvocationCompletedEventListener {}
 

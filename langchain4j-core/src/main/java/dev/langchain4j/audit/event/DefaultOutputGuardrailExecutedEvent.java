@@ -12,6 +12,7 @@ public class DefaultOutputGuardrailExecutedEvent
         extends DefaultGuardrailExecutedEvent<
                 OutputGuardrailRequest, OutputGuardrailResult, OutputGuardrail, OutputGuardrailExecutedEvent>
         implements OutputGuardrailExecutedEvent {
+
     public DefaultOutputGuardrailExecutedEvent(OutputGuardrailExecutedEventBuilder builder) {
         super(builder);
     }

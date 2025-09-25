@@ -13,13 +13,14 @@ import org.jspecify.annotations.Nullable;
  */
 public class DefaultAiServiceInvocationStartedEvent extends AbstractAiServiceInvocationEvent
         implements AiServiceInvocationStartedEvent {
+
     private final @Nullable SystemMessage systemMessage;
     private final UserMessage userMessage;
 
     public DefaultAiServiceInvocationStartedEvent(AiServiceInvocationStartedEventBuilder builder) {
         super(builder);
-        this.systemMessage = builder.getSystemMessage();
-        this.userMessage = ensureNotNull(builder.getUserMessage(), "userMessage");
+        this.systemMessage = builder.systemMessage();
+        this.userMessage = ensureNotNull(builder.userMessage(), "userMessage");
     }
 
     @Override

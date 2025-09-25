@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
@@ -28,12 +27,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
-    private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
+
+    private static final InvocationContext DEFAULT_INVOCATION_CONTEXT = InvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
             .methodArgument("two")
-            .memoryId("one")
+            .chatMemoryId("one")
             .build();
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
@@ -192,7 +192,7 @@ class AiServiceTokenStreamTest {
                         .augmentationResult(null)
                         .userMessageTemplate("")
                         .variables(Map.of())
-                        .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                        .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                         .build())
                 .toolArgumentsErrorHandler((e, c) -> {
                     throw new RuntimeException(e);

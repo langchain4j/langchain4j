@@ -9,6 +9,7 @@ import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
  */
 public class DefaultAiServiceInvocationErrorEvent extends AbstractAiServiceInvocationEvent
         implements AiServiceInvocationErrorEvent {
+
     private final Throwable error;
 
     public DefaultAiServiceInvocationErrorEvent(AiServiceInvocationErrorEventBuilder builder) {

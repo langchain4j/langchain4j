@@ -1,6 +1,7 @@
 package dev.langchain4j.audit.api.event;
 
 import dev.langchain4j.audit.event.DefaultAiServiceResponseReceivedEvent;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
@@ -46,14 +47,14 @@ public interface AiServiceResponseReceivedEvent extends AiServiceInvocationEvent
             response(src.response());
         }
 
-        public ChatResponse getResponse() {
+        public ChatResponse response() {
             return response;
         }
 
         /**
          * Sets the invocation context.
          */
-        public AiServiceResponseReceivedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+        public AiServiceResponseReceivedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (AiServiceResponseReceivedEventBuilder) super.invocationContext(invocationContext);
         }
 

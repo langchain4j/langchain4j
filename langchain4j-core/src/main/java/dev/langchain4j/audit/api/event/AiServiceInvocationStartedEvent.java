@@ -4,6 +4,7 @@ import dev.langchain4j.audit.event.DefaultAiServiceInvocationStartedEvent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import java.util.Optional;
+import dev.langchain4j.invocation.InvocationContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -62,7 +63,7 @@ public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEven
         /**
          * Sets the invocation context.
          */
-        public AiServiceInvocationStartedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+        public AiServiceInvocationStartedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (AiServiceInvocationStartedEventBuilder) super.invocationContext(invocationContext);
         }
 
@@ -97,11 +98,11 @@ public interface AiServiceInvocationStartedEvent extends AiServiceInvocationEven
         }
 
         @Nullable
-        public SystemMessage getSystemMessage() {
+        public SystemMessage systemMessage() {
             return systemMessage;
         }
 
-        public UserMessage getUserMessage() {
+        public UserMessage userMessage() {
             return userMessage;
         }
     }

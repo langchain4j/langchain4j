@@ -1,11 +1,13 @@
 package dev.langchain4j.audit.api.event;
 
+import dev.langchain4j.invocation.InvocationContext;
+
 public interface AiServiceInvocationEvent {
     /**
      * Retrieves the invocation context, containing general information
      * about where and how the invocation originated.
      */
-    AiServiceInvocationContext invocationContext();
+    InvocationContext invocationContext();
 
     /**
      * Retrieves the class type of the event, representing the specific category
@@ -30,19 +32,20 @@ public interface AiServiceInvocationEvent {
      * @param <T> the specific type of {@link AiServiceInvocationEvent} being built
      */
     abstract class Builder<T extends AiServiceInvocationEvent> {
-        private AiServiceInvocationContext invocationContext;
+        private InvocationContext invocationContext;
 
-        protected Builder() {}
+        protected Builder() {
+        }
 
         protected Builder(T src) {
             this.invocationContext = src.invocationContext();
         }
 
-        public AiServiceInvocationContext getInvocationContext() {
+        public InvocationContext invocationContext() {
             return this.invocationContext;
         }
 
-        public Builder<T> invocationContext(AiServiceInvocationContext invocationContext) {
+        public Builder<T> invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
             return this;
         }

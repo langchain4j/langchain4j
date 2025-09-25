@@ -569,7 +569,7 @@ public abstract class AiServices<T> {
      */
     public <I extends AiServiceInvocationEvent> AiServices<T> registerInvocationListener(
             AiServiceInvocationEventListener<I> listener) {
-        context.auditInvocationEventListenerRegistrar.register(ensureNotNull(listener, "listener"));
+        context.invocationEventListenerRegistrar.register(ensureNotNull(listener, "listener"));
         return this;
     }
 
@@ -581,7 +581,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> registerInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
-        context.auditInvocationEventListenerRegistrar.register(listeners);
+        context.invocationEventListenerRegistrar.register(listeners);
         return this;
     }
 
@@ -594,7 +594,7 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> registerInvocationListeners(
             Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
-        context.auditInvocationEventListenerRegistrar.register(listeners);
+        context.invocationEventListenerRegistrar.register(listeners);
         return this;
     }
 
@@ -606,7 +606,7 @@ public abstract class AiServices<T> {
      */
     public <I extends AiServiceInvocationEvent> AiServices<T> unregisterInvocationListener(
             AiServiceInvocationEventListener<I> listener) {
-        context.auditInvocationEventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
+        context.invocationEventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
         return this;
     }
 
@@ -618,7 +618,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> unregisterInvocationListeners(AiServiceInvocationEventListener<?>... listeners) {
-        context.auditInvocationEventListenerRegistrar.unregister(listeners);
+        context.invocationEventListenerRegistrar.unregister(listeners);
         return this;
     }
 
@@ -631,7 +631,7 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> unregisterInvocationListeners(
             Collection<? extends AiServiceInvocationEventListener<?>> listeners) {
-        context.auditInvocationEventListenerRegistrar.unregister(listeners);
+        context.invocationEventListenerRegistrar.unregister(listeners);
         return this;
     }
 

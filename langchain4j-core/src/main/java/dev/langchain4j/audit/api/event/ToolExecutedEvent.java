@@ -2,6 +2,7 @@ package dev.langchain4j.audit.api.event;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.event.DefaultToolExecutedEvent;
+import dev.langchain4j.invocation.InvocationContext;
 
 /**
  * Invoked after the tool is executed.
@@ -66,16 +67,16 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
             return this;
         }
 
-        public ToolExecutionRequest getRequest() {
+        public ToolExecutionRequest request() {
             return request;
         }
 
-        public String getResult() {
+        public String result() {
             return result;
         }
 
         @Override
-        public ToolExecutedEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+        public ToolExecutedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (ToolExecutedEventBuilder) super.invocationContext(invocationContext);
         }
 

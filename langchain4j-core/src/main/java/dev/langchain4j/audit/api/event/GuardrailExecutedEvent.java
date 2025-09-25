@@ -3,6 +3,7 @@ package dev.langchain4j.audit.api.event;
 import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 
 /**
  * Represents an event that is executed when a guardrail validation occurs.
@@ -62,15 +63,15 @@ public interface GuardrailExecutedEvent<
             guardrailClass(src.guardrailClass());
         }
 
-        public Class<G> getGuardrailClass() {
+        public Class<G> guardrailClass() {
             return guardrailClass;
         }
 
-        public P getRequest() {
+        public P request() {
             return request;
         }
 
-        public R getResult() {
+        public R result() {
             return result;
         }
 
@@ -84,8 +85,7 @@ public interface GuardrailExecutedEvent<
             return this;
         }
 
-        public GuardrailExecutedEventBuilder<P, R, G, T> invocationContext(
-                AiServiceInvocationContext invocationContext) {
+        public GuardrailExecutedEventBuilder<P, R, G, T> invocationContext(InvocationContext invocationContext) {
             return (GuardrailExecutedEventBuilder<P, R, G, T>) super.invocationContext(invocationContext);
         }
 

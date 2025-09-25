@@ -29,9 +29,9 @@ public abstract class DefaultGuardrailExecutedEvent<
 
     protected DefaultGuardrailExecutedEvent(GuardrailExecutedEventBuilder<P, R, G, E> builder) {
         super(builder);
-        this.request = ensureNotNull(builder.getRequest(), "request");
-        this.result = ensureNotNull(builder.getResult(), "result");
-        this.guardrailClass = ensureNotNull(builder.getGuardrailClass(), "guardrailClass");
+        this.request = ensureNotNull(builder.request(), "request");
+        this.result = ensureNotNull(builder.result(), "result");
+        this.guardrailClass = ensureNotNull(builder.guardrailClass(), "guardrailClass");
     }
 
     @Override

@@ -3,7 +3,7 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.audit.api.AiServiceInvocationEventListenerRegistrar;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
 import java.util.Map;
@@ -15,11 +15,12 @@ import java.util.Optional;
  * template, and additional variables required for guardrail processing.
  */
 public final class GuardrailRequestParams {
+
     private final ChatMemory chatMemory;
     private final AugmentationResult augmentationResult;
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
-    private final AiServiceInvocationContext invocationContext;
+    private final InvocationContext invocationContext;
     private final AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar;
 
     private GuardrailRequestParams(Builder builder) {
@@ -70,11 +71,11 @@ public final class GuardrailRequestParams {
     }
 
     /**
-     * Returns the {@link AiServiceInvocationContext}, which contains general information about the source of the interaction.
+     * Returns the {@link InvocationContext}, which contains general information about the AI Service invocation.
      *
-     * @return the interaction source
+     * @return the invocation context
      */
-    public AiServiceInvocationContext invocationContext() {
+    public InvocationContext invocationContext() {
         return invocationContext;
     }
 
@@ -116,7 +117,7 @@ public final class GuardrailRequestParams {
         private AugmentationResult augmentationResult;
         private String userMessageTemplate;
         private Map<String, Object> variables;
-        private AiServiceInvocationContext invocationContext;
+        private InvocationContext invocationContext;
         private AiServiceInvocationEventListenerRegistrar aiServiceInvocationEventListenerRegistrar;
 
         public Builder() {}
@@ -175,13 +176,13 @@ public final class GuardrailRequestParams {
         }
 
         /**
-         * Sets the interaction source for the builder.
+         * Sets the invocation context for the builder.
          *
-         * @param invocationContext the source of the interaction, containing details such as the method name,
-         *                          interface name, and timestamp of the interaction
+         * @param invocationContext the invocation context, containing details such as the method name,
+         *                          interface name, and timestamp of the invocation
          * @return this builder instance, to allow for method chaining
          */
-        public Builder invocationContext(AiServiceInvocationContext invocationContext) {
+        public Builder invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
             return this;
         }

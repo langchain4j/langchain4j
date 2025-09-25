@@ -1,6 +1,7 @@
 package dev.langchain4j.audit.api.event;
 
 import dev.langchain4j.audit.event.DefaultAiServiceInvocationErrorEvent;
+import dev.langchain4j.invocation.InvocationContext;
 
 /**
  * Represents an event that occurs when an AI Service invocation fails.
@@ -49,7 +50,7 @@ public interface AiServiceInvocationErrorEvent extends AiServiceInvocationEvent 
         /**
          * Sets the invocation context.
          */
-        public AiServiceInvocationErrorEventBuilder invocationContext(AiServiceInvocationContext invocationContext) {
+        public AiServiceInvocationErrorEventBuilder invocationContext(InvocationContext invocationContext) {
             return (AiServiceInvocationErrorEventBuilder) super.invocationContext(invocationContext);
         }
 

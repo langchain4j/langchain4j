@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.audit.api.event.AiServiceInvocationCompletedEvent;
-import dev.langchain4j.audit.api.event.AiServiceInvocationContext;
 import dev.langchain4j.audit.api.event.AiServiceInvocationErrorEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationEvent;
 import dev.langchain4j.audit.api.event.AiServiceInvocationStartedEvent;
@@ -31,6 +30,7 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
@@ -39,44 +39,46 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceInvocationEventListenerRegistrarTests {
+
     private static final AiServiceInvocationEventListenerRegistrar REGISTRAR =
             AiServiceInvocationEventListenerRegistrar.newInstance();
-    private static final AiServiceInvocationContext DEFAULT_INTERACTION_SOURCE = AiServiceInvocationContext.builder()
+
+    private static final InvocationContext DEFAULT_INVOCATION_CONTEXT = InvocationContext.builder()
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
             .methodArgument("two")
-            .memoryId("one")
+            .chatMemoryId("one")
             .build();
 
-    private static final AiServiceResponseReceivedEvent LLM_RESPONSE_RECEIVED_EVENT =
+    private static final AiServiceResponseReceivedEvent RESPONSE_RECEIVED_EVENT =
             AiServiceResponseReceivedEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .response(ChatResponse.builder()
                             .aiMessage(AiMessage.from("Message!"))
                             .build())
                     .build();
 
-    private static final AiServiceInvocationErrorEvent LLM_INTERACTION_ERROR_EVENT =
+    private static final AiServiceInvocationErrorEvent INVOCATION_ERROR_EVENT =
             AiServiceInvocationErrorEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .error(new RuntimeException("Some error"))
                     .build();
 
-    private static final AiServiceInvocationCompletedEvent LLM_INTERACTION_COMPLETED_EVENT =
+    private static final AiServiceInvocationCompletedEvent INVOCATION_COMPLETED_EVENT =
             AiServiceInvocationCompletedEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .build();
 
-    private static final AiServiceInvocationStartedEvent LLM_INTERACTION_STARTED_EVENT =
+    private static final AiServiceInvocationStartedEvent INVOCATION_STARTED_EVENT =
             AiServiceInvocationStartedEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .userMessage(UserMessage.from("Hello, world!"))
                     .build();
 
     private static final OutputGuardrailExecutedEvent OUTPUT_GUARDRAIL_EXECUTED_EVENT =
             OutputGuardrailExecutedEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .guardrailClass(OG.class)
                     .request(OutputGuardrailRequest.builder()
                             .responseFromLLM(ChatResponse.builder()
@@ -85,7 +87,7 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
                             .requestParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
-                                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                                     .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
                                     .build())
                             .chatExecutor(new ChatExecutor() {
@@ -107,14 +109,14 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
 
     private static final InputGuardrailExecutedEvent INPUT_GUARDRAIL_EXECUTED_EVENT =
             InputGuardrailExecutedEvent.builder()
-                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                     .guardrailClass(IG.class)
                     .request(InputGuardrailRequest.builder()
                             .userMessage(UserMessage.from("Hello, world!"))
                             .commonParams(GuardrailRequestParams.builder()
                                     .userMessageTemplate("")
                                     .variables(Map.of())
-                                    .invocationContext(DEFAULT_INTERACTION_SOURCE)
+                                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                                     .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
                                     .build())
                             .build())
@@ -122,16 +124,16 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
                     .build();
 
     private static final ToolExecutedEvent TOOL_EXECUTED_EVENT = ToolExecutedEvent.builder()
-            .invocationContext(DEFAULT_INTERACTION_SOURCE)
+            .invocationContext(DEFAULT_INVOCATION_CONTEXT)
             .request(ToolExecutionRequest.builder().build())
             .result("Success!")
             .build();
 
     private static final List<AiServiceInvocationEvent> ALL_EVENTS = List.of(
-            LLM_RESPONSE_RECEIVED_EVENT,
-            LLM_INTERACTION_ERROR_EVENT,
-            LLM_INTERACTION_COMPLETED_EVENT,
-            LLM_INTERACTION_STARTED_EVENT,
+            RESPONSE_RECEIVED_EVENT,
+            INVOCATION_ERROR_EVENT,
+            INVOCATION_COMPLETED_EVENT,
+            INVOCATION_STARTED_EVENT,
             OUTPUT_GUARDRAIL_EXECUTED_EVENT,
             INPUT_GUARDRAIL_EXECUTED_EVENT,
             TOOL_EXECUTED_EVENT);
@@ -141,9 +143,9 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
             .mapToObj(i -> List.of(
                     new TestInputGuardrailListener(),
                     new TestOutputGuardrailListener(),
-                    new TestLLMInteractionStartedListener(),
-                    new TestLLMInteractionCompletedListener(),
-                    new TestLLMInteractionErrorListener(),
+                    new TestInvocationStartedListener(),
+                    new TestInvocationCompletedListener(),
+                    new TestInvocationErrorListener(),
                     new TestLLMResponseReceivedListener(),
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
@@ -172,7 +174,7 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
                         .isNotNull()
                         .extracting(AiServiceInvocationEvent::invocationContext)
                         .usingRecursiveComparison()
-                        .isEqualTo(DEFAULT_INTERACTION_SOURCE)));
+                        .isEqualTo(DEFAULT_INVOCATION_CONTEXT)));
 
         // Unregister all the listeners & reset their data
         ALL_LISTENERS.forEach(l -> {
@@ -226,15 +228,15 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
     private static class TestOutputGuardrailListener extends AbstractTestEventListener<OutputGuardrailExecutedEvent>
             implements OutputGuardrailExecutedEventListener {}
 
-    private static class TestLLMInteractionStartedListener
+    private static class TestInvocationStartedListener
             extends AbstractTestEventListener<AiServiceInvocationStartedEvent>
             implements AiServiceInvocationStartedEventListener {}
 
-    private static class TestLLMInteractionCompletedListener
+    private static class TestInvocationCompletedListener
             extends AbstractTestEventListener<AiServiceInvocationCompletedEvent>
             implements AiServiceInvocationCompletedEventListener {}
 
-    private static class TestLLMInteractionErrorListener
+    private static class TestInvocationErrorListener
             extends AbstractTestEventListener<AiServiceInvocationErrorEvent>
             implements AiServiceInvocationErrorEventListener {}
 

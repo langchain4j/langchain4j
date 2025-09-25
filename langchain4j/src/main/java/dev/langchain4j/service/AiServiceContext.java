@@ -26,7 +26,7 @@ public class AiServiceContext {
     private static final Function<Object, Optional<String>> DEFAULT_MESSAGE_PROVIDER = x -> Optional.empty();
 
     public final Class<?> aiServiceClass;
-    public final AiServiceInvocationEventListenerRegistrar auditInvocationEventListenerRegistrar =
+    public final AiServiceInvocationEventListenerRegistrar invocationEventListenerRegistrar =
             AiServiceInvocationEventListenerRegistrar.newInstance();
 
     public ChatModel chatModel;

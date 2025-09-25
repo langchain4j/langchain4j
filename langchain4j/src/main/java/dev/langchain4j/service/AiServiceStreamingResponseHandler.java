@@ -156,15 +156,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
-    private <T> void fireInteractionComplete(T result) {
-        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceInvocationCompletedEvent.builder()
+    private <T> void fireInvocationComplete(T result) {
+        context.invocationEventListenerRegistrar.fireEvent(AiServiceInvocationCompletedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .result(result)
                 .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
-        context.auditInvocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+        context.invocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .request(toolRequestResult.request())
                 .result(toolRequestResult.result().resultText())
@@ -172,14 +172,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
-        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+        context.invocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .response(chatResponse)
                 .build());
     }
 
     private void fireErrorReceived(Throwable error) {
-        context.auditInvocationEventListenerRegistrar.fireEvent(AiServiceInvocationErrorEvent.builder()
+        context.invocationEventListenerRegistrar.fireEvent(AiServiceInvocationErrorEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .error(error)
                 .build());
@@ -234,7 +234,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             if (immediateToolReturn) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
-                fireInteractionComplete(finalChatResponse);
+                fireInvocationComplete(finalChatResponse);
 
                 if (completeResponseHandler != null) {
                     completeResponseHandler.accept(finalChatResponse);
@@ -296,10 +296,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     responseBuffer.clear();
                 }
 
-                fireInteractionComplete(finalChatResponse);
+                fireInvocationComplete(finalChatResponse);
                 completeResponseHandler.accept(finalChatResponse);
             } else {
-                fireInteractionComplete(finalChatResponse);
+                fireInvocationComplete(finalChatResponse);
             }
         }
     }

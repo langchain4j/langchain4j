@@ -13,6 +13,7 @@ public class DefaultInputGuardrailExecutedEvent
         extends DefaultGuardrailExecutedEvent<
                 InputGuardrailRequest, InputGuardrailResult, InputGuardrail, InputGuardrailExecutedEvent>
         implements InputGuardrailExecutedEvent {
+
     public DefaultInputGuardrailExecutedEvent(InputGuardrailExecutedEventBuilder builder) {
         super(builder);
     }
