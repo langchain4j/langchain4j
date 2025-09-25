@@ -141,7 +141,8 @@ The tests require proper GPULlama3.java and TornadoVM configuration.Prerequisite
 To run the integration tests with TornadoVM GPU acceleration:
 
 ```bash
-mvn -P run-test
+mvn clean compile test-compile
+mvn -P run-tests
 ```
 
 #### Expected Output
