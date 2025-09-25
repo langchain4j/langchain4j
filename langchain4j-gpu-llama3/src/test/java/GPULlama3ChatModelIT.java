@@ -2,19 +2,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.gpullama3.GPULlama3ChatModel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-public class GPULlama3ChatModelIT extends AbstractChatModelIT {
+public class GPULlama3ChatModelIT {
 
     static GPULlama3ChatModel model;
 
@@ -40,10 +37,5 @@ public class GPULlama3ChatModelIT extends AbstractChatModelIT {
         AiMessage aiMessage = response.aiMessage();
         System.out.println(aiMessage.text());
         assertThat(aiMessage.text()).isNotBlank();
-    }
-
-    @Override
-    protected List<ChatModel> models() {
-        return List.of(model);
     }
 }
