@@ -1,10 +1,10 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.model.chat.ChatModel;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import dev.langchain4j.model.chat.ChatModel;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -83,8 +83,7 @@ public interface InvocationContext {
         private InvocationParameters invocationParameters;
         private Instant timestamp;
 
-        protected Builder() {
-        }
+        protected Builder() {}
 
         protected Builder(InvocationContext invocationContext) {
             invocationId(invocationContext.invocationId());

@@ -80,20 +80,25 @@ public class DefaultInvocationContext implements InvocationContext {
 
     @Override
     public int hashCode() {
-        return Objects.hash(invocationId, interfaceName, methodName, methodArguments, chatMemoryId,
-                invocationParameters, timestamp);
+        return Objects.hash(
+                invocationId,
+                interfaceName,
+                methodName,
+                methodArguments,
+                chatMemoryId,
+                invocationParameters,
+                timestamp);
     }
 
     @Override
     public String toString() {
-        return "DefaultInvocationContext{" +
-                "invocationId=" + invocationId +
-                ", interfaceName='" + interfaceName + '\'' +
-                ", methodName='" + methodName + '\'' +
-                ", methodArguments=" + methodArguments +
-                ", chatMemoryId=" + chatMemoryId +
-                ", invocationParameters=" + invocationParameters +
-                ", timestamp=" + timestamp +
-                '}';
+        return "DefaultInvocationContext{" + "invocationId="
+                + invocationId + ", interfaceName='"
+                + interfaceName + '\'' + ", methodName='"
+                + methodName + '\'' + ", methodArguments="
+                + methodArguments + ", chatMemoryId="
+                + chatMemoryId + ", invocationParameters="
+                + invocationParameters + ", timestamp="
+                + timestamp + '}';
     }
 }
