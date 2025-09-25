@@ -25,7 +25,7 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.5-flash-lite";
     }
 
     @Override

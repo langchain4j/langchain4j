@@ -33,12 +33,15 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility methods.
  */
 @Internal
 public class Utils {
+    private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {}
 
@@ -485,5 +488,35 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Logs a warning if the given string value is {@code null} or blank.
+     * <p>
+     * This method is typically used in constructors or validation routines to
+     * highlight missing or incomplete field values without throwing an exception.
+     * It returns the original value unchanged so it can be assigned directly to
+     * a field or variable.
+     * <p>
+     * Example usage:
+     * <pre>
+     * this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
+     * </pre>
+     *
+     * Which will log:
+     * <pre>
+     * McpResource: 'name' is null or blank
+     * </pre>
+     *
+     * @param value     the string value to check (may be {@code null} or blank)
+     * @param fieldName the name of the field being validated (used in the log message)
+     * @param clazz     the class where the validation occurs (used to identify context in the log)
+     * @return the original value (may be {@code null} or blank)
+     */
+    public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
+        if (isNullOrBlank(fieldName)) {
+            log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
+        }
+        return value;
     }
 }
