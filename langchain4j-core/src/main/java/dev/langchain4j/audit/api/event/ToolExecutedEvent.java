@@ -17,7 +17,7 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
     /**
      * Gets the result of the tool execution
      */
-    String result();
+    String resultText();
 
     /**
      * Creates a new builder instance for constructing a {@link ToolExecutedEvent}.
@@ -38,7 +38,7 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
 
     class ToolExecutedEventBuilder extends Builder<ToolExecutedEvent> {
         private ToolExecutionRequest request;
-        private String result;
+        private String resultText;
 
         protected ToolExecutedEventBuilder() {}
 
@@ -48,7 +48,7 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
         protected ToolExecutedEventBuilder(ToolExecutedEvent src) {
             super(src);
             request(src.request());
-            result(src.result());
+            resultText(src.resultText());
         }
 
         /**
@@ -60,10 +60,10 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
         }
 
         /**
-         * Sets the tool execution result.
+         * Sets the tool execution result text.
          */
-        public ToolExecutedEventBuilder result(String result) {
-            this.result = result;
+        public ToolExecutedEventBuilder resultText(String resultText) {
+            this.resultText = resultText;
             return this;
         }
 
@@ -71,8 +71,8 @@ public interface ToolExecutedEvent extends AiServiceInvocationEvent {
             return request;
         }
 
-        public String result() {
-            return result;
+        public String resultText() {
+            return resultText;
         }
 
         @Override

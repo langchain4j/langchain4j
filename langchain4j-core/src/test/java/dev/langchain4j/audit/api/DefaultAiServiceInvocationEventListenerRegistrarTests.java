@@ -126,7 +126,7 @@ class DefaultAiServiceInvocationEventListenerRegistrarTests {
     private static final ToolExecutedEvent TOOL_EXECUTED_EVENT = ToolExecutedEvent.builder()
             .invocationContext(DEFAULT_INVOCATION_CONTEXT)
             .request(ToolExecutionRequest.builder().build())
-            .result("Success!")
+            .resultText("Success!")
             .build();
 
     private static final List<AiServiceInvocationEvent> ALL_EVENTS = List.of(

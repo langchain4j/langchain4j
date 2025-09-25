@@ -252,7 +252,7 @@ public class ToolService {
                 invocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                         .invocationContext(invocationContext)
                         .request(request)
-                        .result(toolExecution.result())
+                        .resultText(toolExecution.result())
                         .build());
 
                 if (chatMemory != null) {

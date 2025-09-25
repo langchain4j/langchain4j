@@ -149,9 +149,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
-            ToolExecutionRequest toolExecutionRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(
-                    () -> new ToolRequestResult(toolExecutionRequest, execute(toolExecutionRequest)), toolExecutor);
+            ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
+            var future = CompletableFuture.supplyAsync(() -> {
+                ToolExecutionResult toolResult = execute(toolRequest);
+                return new ToolRequestResult(toolRequest, toolResult);
+            }, toolExecutor);
             toolExecutionFutures.add(future);
         }
     }
@@ -167,7 +169,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         context.invocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(commonGuardrailParams.invocationContext())
                 .request(toolRequestResult.request())
-                .result(toolRequestResult.result().resultText())
+                .resultText(toolRequestResult.result().resultText())
                 .build());
     }
 
@@ -202,11 +204,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
-                        ToolRequestResult toolExecutionRequestResult = toolExecutionFuture.get();
-                        fireToolExecutedEvent(toolExecutionRequestResult);
+                        ToolRequestResult toolRequestResult = toolExecutionFuture.get();
+                        fireToolExecutedEvent(toolRequestResult);
                         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
-                                toolExecutionRequestResult.request(),
-                                toolExecutionRequestResult.result().resultText());
+                                toolRequestResult.request(),
+                                toolRequestResult.result().resultText());
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn
                                 && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());

@@ -16,7 +16,7 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceInvocationEvent i
     public DefaultToolExecutedEvent(ToolExecutedEventBuilder builder) {
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
-        this.result = ensureNotNull(builder.result(), "result");
+        this.result = ensureNotNull(builder.resultText(), "result");
     }
 
     @Override
@@ -25,7 +25,7 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceInvocationEvent i
     }
 
     @Override
-    public String result() {
+    public String resultText() {
         return result;
     }
 }
