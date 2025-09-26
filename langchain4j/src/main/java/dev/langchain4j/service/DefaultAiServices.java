@@ -211,9 +211,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        Object chatMemoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        InvocationParameters invocationParameters = findInvocationParameters(
-                                        args, method.getParameters())
+                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -221,7 +219,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
-                                .chatMemoryId(chatMemoryId)
+                                .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .invocationParameters(invocationParameters)
                                 .timestampNow()
                                 .build();
@@ -238,9 +236,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
 
-                        var memoryIdOpt = findMemoryId(method, args);
-                        Object memoryId = memoryIdOpt.orElse(ChatMemoryService.DEFAULT);
-
+                        Object memoryId = invocationContext.chatMemoryId();
                         ChatMemory chatMemory = context.hasChatMemory()
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
@@ -455,15 +451,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParameters(
-                            Object[] arguments, Parameter[] parameters) {
-                        if (arguments == null) {
+                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                        if (args == null) {
                             return Optional.empty();
                         }
-                        for (int i = 0; i < parameters.length; i++) {
-                            Parameter parameter = parameters[i];
+                        for (int i = 0; i < params.length; i++) {
+                            Parameter parameter = params[i];
                             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
+                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
                                 ensureNotNull(invocationParameters, "InvocationParameters");
                                 return Optional.of(invocationParameters);
                             }
