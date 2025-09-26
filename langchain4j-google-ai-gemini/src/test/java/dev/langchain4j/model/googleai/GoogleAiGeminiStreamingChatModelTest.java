@@ -31,6 +31,17 @@ class GoogleAiGeminiStreamingChatModelTest {
                 .hasMessage("messages cannot be null or empty");
     }
 
+    @Test
+    void should_fail_when_api_key_is_empty() {
+        // when/then
+        assertThatThrownBy(() -> GoogleAiGeminiStreamingChatModel.builder()
+                        .apiKey("")
+                        .modelName("ModelName")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("apiKey");
+    }
+
     @Nested
     class GoogleAiGeminiStreamingChatModelBuilder {
 
