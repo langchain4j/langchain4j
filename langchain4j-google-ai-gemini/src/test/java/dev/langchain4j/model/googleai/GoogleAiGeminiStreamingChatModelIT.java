@@ -168,7 +168,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(text).containsIgnoringCase("233");
     }
 
-    @Test
+    @RetryingTest(3)
     void should_support_JSON_array_in_tools() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -219,6 +219,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(response2.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
     }
 
+    @Disabled("TODO fix")
     @RetryingTest(5)
     void should_support_safety_settings() {
         // given

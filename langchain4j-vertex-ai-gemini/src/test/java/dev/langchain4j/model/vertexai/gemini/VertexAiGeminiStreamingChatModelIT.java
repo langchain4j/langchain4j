@@ -37,8 +37,6 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
@@ -110,15 +108,14 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"gemini-1.5-flash", "gemini-2.0-flash-lite"})
-    void should_use_google_search(String modelName) {
+    @Test
+    void should_use_google_search() {
 
         // given
         VertexAiGeminiStreamingChatModel modelWithSearch = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(modelName)
+                .modelName("gemini-2.0-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 

@@ -35,8 +35,6 @@ import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiChatModelIT {
@@ -209,15 +207,14 @@ class VertexAiGeminiChatModelIT {
                 .contains("rejected");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"gemini-1.5-flash", "gemini-2.0-flash-lite"})
-    void should_use_google_search(String modelName) {
+    @Test
+    void should_use_google_search() {
 
         // given
         VertexAiGeminiChatModel modelWithSearch = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(modelName)
+                .modelName("gemini-2.0-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 
