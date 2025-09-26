@@ -30,12 +30,12 @@ public interface GuardrailService {
      * Executes the input guardrails associated with a given {@link Method}
      *
      * @param method The method whose input guardrails are to be executed.
-     * @param params The parameters to validate against the input guardrails. Must not be null.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
      * @return The result of executing the input guardrails, encapsulated in an {@code InputGuardrailResult}.
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params);
+    <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request);
 
     /**
      * Executes the input guardrails associated with the given method and parameters,
@@ -43,26 +43,26 @@ public interface GuardrailService {
      *
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @param method The method whose input guardrails are to be executed. Nullable.
-     * @param params The parameters to validate against the input guardrails. Must not be null.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
      * @return A {@link UserMessage} derived from the provided parameters and the result
      *         of the input guardrails execution. If guardrails are applied successfully,
      *         a potentially rewritten user message is returned. If no guardrails are
      *         associated with the method, the original user message is returned.
      */
-    default <MethodKey> UserMessage executeGuardrails(MethodKey method, InputGuardrailRequest params) {
-        return executeInputGuardrails(method, params).userMessage(params);
+    default <MethodKey> UserMessage executeGuardrails(MethodKey method, InputGuardrailRequest request) {
+        return executeInputGuardrails(method, request).userMessage(request);
     }
 
     /**
      * Executes the output guardrails associated with a given {@code Method}.
      *
      * @param method The method whose output guardrails are to be executed.
-     * @param params The parameters to validate against the output guardrails. Must not be null.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
      * @return The result of executing the output guardrails, encapsulated in an {@code OutputGuardrailResult}.
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params);
+    <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request);
 
     /**
      * Whether or not a method has any input guardrails associated with it
@@ -86,11 +86,11 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @param <T> The type of response to produce
      * @param method The method whose output guardrails are to be executed. Nullable.
-     * @param params The parameters to validate against the output guardrails. Must not be null.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
      * @return A {@link ChatResponse} that encapsulates the output of executing the guardrails based on the provided parameters.
      */
-    default <MethodKey, T> T executeGuardrails(MethodKey method, OutputGuardrailRequest params) {
-        return executeOutputGuardrails(method, params).response(params);
+    default <MethodKey, T> T executeGuardrails(MethodKey method, OutputGuardrailRequest request) {
+        return executeOutputGuardrails(method, request).response(request);
     }
 
     /**

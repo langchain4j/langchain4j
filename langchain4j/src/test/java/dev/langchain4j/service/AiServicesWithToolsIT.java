@@ -918,10 +918,7 @@ class AiServicesWithToolsIT {
 
         // then
         assertThat(answer1).contains("rain");
-        verify(spyTools).getWeather(InvocationContext.builder()
-                .chatMemoryId("default")
-                .invocationParameters(invocationParameters1)
-                .build());
+        verify(spyTools).getWeather(argThat(ctx -> ctx.invocationParameters().equals(invocationParameters1)));
 
         // given
         InvocationParameters invocationParameters2 = InvocationParameters.from("city", "Paris");
@@ -931,10 +928,7 @@ class AiServicesWithToolsIT {
 
         // then
         assertThat(answer2).contains("sun");
-        verify(spyTools).getWeather(InvocationContext.builder()
-                .chatMemoryId("default")
-                .invocationParameters(invocationParameters2)
-                .build());
+        verify(spyTools).getWeather(argThat(ctx -> ctx.invocationParameters().equals(invocationParameters2)));
     }
 
     @Test

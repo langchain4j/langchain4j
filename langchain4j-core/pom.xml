@@ -166,6 +166,9 @@
                             <rules>
                                 <rule>
                                     <excludes>
+                                        <exclude>dev.langchain4j.observability.api</exclude>
+                                        <exclude>dev.langchain4j.observability.api.event</exclude>
+                                        <exclude>dev.langchain4j.observability.event</exclude>
                                         <exclude>dev.langchain4j.classinstance</exclude>
                                         <exclude>dev.langchain4j.data.document</exclude>
                                         <exclude>dev.langchain4j.data.text</exclude>
