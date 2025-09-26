@@ -12,28 +12,33 @@ import dev.langchain4j.model.gpullama3.GPULlama3ChatModel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class GPULlama3ChatModelIT extends AbstractChatModelIT {
 
-    private GPULlama3ChatModel model;
+    private static GPULlama3ChatModel model;
     private static final Path MODEL_PATH = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
 
-    @BeforeEach
-    void setUp() {
+    @BeforeAll
+    public static void setUp() {
         model = GPULlama3ChatModel.builder()
                 .modelPath(MODEL_PATH)
                 .onGPU(Boolean.TRUE)
                 .build();
     }
 
-    @AfterEach
+    @AfterAll
     void tearDown() {
         if (model != null) {
-            model = null;
+            try {
+                model.freeTornadoVMGPUResources();
+                model = null;
+            } catch (Exception e) {
+                System.err.println("Error while cleaning up TornadoVM resources: " + e.getMessage());
+            }
         }
         System.gc();
     }

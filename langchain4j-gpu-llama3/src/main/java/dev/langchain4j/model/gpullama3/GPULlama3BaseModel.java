@@ -11,6 +11,7 @@ import org.beehive.gpullama3.auxiliary.LastRunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
 import org.beehive.gpullama3.model.Model;
 import org.beehive.gpullama3.model.loader.ModelLoader;
+import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 
 abstract class GPULlama3BaseModel {
     private Path modelPath;
@@ -22,6 +23,8 @@ abstract class GPULlama3BaseModel {
     private Model model;
     private Sampler sampler;
     private Boolean stream;
+
+    TornadoVMMasterPlan tornadoVMPlan;
 
     private static String extractSystemPrompt(ChatRequest request) {
         return request.messages().stream()
@@ -119,5 +122,9 @@ abstract class GPULlama3BaseModel {
 
     public void printLastMetrics() {
         LastRunMetrics.printMetrics();
+    }
+
+    public void freeTornadoVMGPUResources() {
+        tornadoVMPlan.freeTornadoExecutionPlan();
     }
 }
