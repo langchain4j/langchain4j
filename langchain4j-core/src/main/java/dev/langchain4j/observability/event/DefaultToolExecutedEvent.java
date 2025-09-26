@@ -11,12 +11,12 @@ import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements ToolExecutedEvent {
 
     private final ToolExecutionRequest request;
-    private final String result;
+    private final String resultText;
 
     public DefaultToolExecutedEvent(ToolExecutedEventBuilder builder) {
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
-        this.result = ensureNotNull(builder.resultText(), "result");
+        this.resultText = ensureNotNull(builder.resultText(), "resultText");
     }
 
     @Override
@@ -26,6 +26,6 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements 
 
     @Override
     public String resultText() {
-        return result;
+        return resultText;
     }
 }
