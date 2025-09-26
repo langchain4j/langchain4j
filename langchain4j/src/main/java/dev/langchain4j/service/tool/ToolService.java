@@ -207,7 +207,7 @@ public class ToolService {
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
             boolean isReturnTypeResult,
-            AiServiceListenerRegistrar invocationEventListenerRegistrar) {
+            AiServiceListenerRegistrar aiServiceListenerRegistrar) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -249,7 +249,7 @@ public class ToolService {
                         ToolExecution.builder().request(request).result(result).build();
                 toolExecutions.add(toolExecution);
 
-                invocationEventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                aiServiceListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                         .invocationContext(invocationContext)
                         .request(request)
                         .resultText(toolExecution.result())
@@ -276,7 +276,7 @@ public class ToolService {
 
             if (immediateToolReturn) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
-                fireResponseReceivedEvent(finalResponse, invocationContext, invocationEventListenerRegistrar);
+                fireResponseReceivedEvent(finalResponse, invocationContext, aiServiceListenerRegistrar);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
                         .finalResponse(finalResponse)
@@ -296,7 +296,7 @@ public class ToolService {
                     .build();
 
             chatResponse = chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatResponse, invocationContext, invocationEventListenerRegistrar);
+            fireResponseReceivedEvent(chatResponse, invocationContext, aiServiceListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -312,8 +312,8 @@ public class ToolService {
     private void fireResponseReceivedEvent(
             ChatResponse chatResponse,
             InvocationContext invocationContext,
-            AiServiceListenerRegistrar invocationEventListenerRegistrar) {
-        invocationEventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+            AiServiceListenerRegistrar listenerRegistrar) {
+        listenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
                 .response(chatResponse)
                 .build());

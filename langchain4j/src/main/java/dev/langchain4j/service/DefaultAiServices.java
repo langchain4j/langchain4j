@@ -275,7 +275,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
                                 .invocationContext(invocationContext)
-                                .aiServiceInvocationEventListenerRegistrar(context.eventListenerRegistrar)
+                                .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                 .variables(variables)
                                 .build();
 

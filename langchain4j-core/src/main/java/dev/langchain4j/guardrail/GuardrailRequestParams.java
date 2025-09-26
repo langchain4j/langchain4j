@@ -21,7 +21,7 @@ public final class GuardrailRequestParams {
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
     private final InvocationContext invocationContext;
-    private final AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar;
+    private final AiServiceListenerRegistrar aiServiceListenerRegistrar;
 
     private GuardrailRequestParams(Builder builder) {
         this.chatMemory = builder.chatMemory;
@@ -29,8 +29,7 @@ public final class GuardrailRequestParams {
         this.userMessageTemplate = ensureNotNull(builder.userMessageTemplate, "userMessageTemplate");
         this.variables = ensureNotNull(builder.variables, "variables");
         this.invocationContext = builder.invocationContext;
-        this.aiServiceInvocationEventListenerRegistrar = Optional.ofNullable(
-                        builder.aiServiceInvocationEventListenerRegistrar)
+        this.aiServiceListenerRegistrar = Optional.ofNullable(builder.aiServiceListenerRegistrar)
                 .orElseGet(AiServiceListenerRegistrar::newInstance);
     }
 
@@ -86,8 +85,8 @@ public final class GuardrailRequestParams {
      *
      * @return the {@link AiServiceListenerRegistrar}
      */
-    public AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar() {
-        return aiServiceInvocationEventListenerRegistrar;
+    public AiServiceListenerRegistrar aiservicelistenerregistrar() {
+        return aiServiceListenerRegistrar;
     }
 
     /**
@@ -118,7 +117,7 @@ public final class GuardrailRequestParams {
         private String userMessageTemplate;
         private Map<String, Object> variables;
         private InvocationContext invocationContext;
-        private AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar;
+        private AiServiceListenerRegistrar aiServiceListenerRegistrar;
 
         public Builder() {}
 
@@ -128,7 +127,7 @@ public final class GuardrailRequestParams {
             this.userMessageTemplate = src.userMessageTemplate;
             this.variables = src.variables;
             this.invocationContext = src.invocationContext;
-            this.aiServiceInvocationEventListenerRegistrar = src.aiServiceInvocationEventListenerRegistrar;
+            this.aiServiceListenerRegistrar = src.aiServiceListenerRegistrar;
         }
 
         /**
@@ -190,13 +189,12 @@ public final class GuardrailRequestParams {
         /**
          * Sets the AI service invocation event listener registrar.
          *
-         * @param aiServiceInvocationEventListenerRegistrar the registrar used to register and manage
-         *                                                  AI service invocation event listeners
+         * @param aiServiceListenerRegistrar the registrar used to register and manage
+         *                                   AI service invocation event listeners
          * @return this builder instance, to allow for method chaining
          */
-        public Builder aiServiceInvocationEventListenerRegistrar(
-                AiServiceListenerRegistrar aiServiceInvocationEventListenerRegistrar) {
-            this.aiServiceInvocationEventListenerRegistrar = aiServiceInvocationEventListenerRegistrar;
+        public Builder aiServiceListenerRegistrar(AiServiceListenerRegistrar aiServiceListenerRegistrar) {
+            this.aiServiceListenerRegistrar = aiServiceListenerRegistrar;
             return this;
         }
 

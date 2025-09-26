@@ -84,7 +84,7 @@ class DefaultAiServiceListenerRegistrarTests {
                                     .userMessageTemplate("")
                                     .variables(Map.of())
                                     .invocationContext(DEFAULT_INVOCATION_CONTEXT)
-                                    .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
+                                    .aiServiceListenerRegistrar(REGISTRAR)
                                     .build())
                             .chatExecutor(new ChatExecutor() {
                                 @Override
@@ -113,7 +113,7 @@ class DefaultAiServiceListenerRegistrarTests {
                                     .userMessageTemplate("")
                                     .variables(Map.of())
                                     .invocationContext(DEFAULT_INVOCATION_CONTEXT)
-                                    .aiServiceInvocationEventListenerRegistrar(REGISTRAR)
+                                    .aiServiceListenerRegistrar(REGISTRAR)
                                     .build())
                             .build())
                     .result(InputGuardrailResult.success())
