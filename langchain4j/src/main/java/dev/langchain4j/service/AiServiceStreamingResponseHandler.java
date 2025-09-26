@@ -162,14 +162,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private <T> void fireInvocationComplete(T result) {
         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                .invocationContext(commonGuardrailParams.invocationContext())
+                .invocationContext(invocationContext)
                 .result(result)
                 .build());
     }
 
     private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
         context.eventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
-                .invocationContext(commonGuardrailParams.invocationContext())
+                .invocationContext(invocationContext)
                 .request(toolRequestResult.request())
                 .resultText(toolRequestResult.result().resultText())
                 .build());
@@ -177,14 +177,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
-                .invocationContext(commonGuardrailParams.invocationContext())
+                .invocationContext(invocationContext)
                 .response(chatResponse)
                 .build());
     }
 
     private void fireErrorReceived(Throwable error) {
         context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                .invocationContext(commonGuardrailParams.invocationContext())
+                .invocationContext(invocationContext)
                 .error(error)
                 .build());
     }
