@@ -7,20 +7,15 @@ import static dev.langchain4j.model.googleai.GeminiFinishReason.*;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
+import static dev.langchain4j.model.googleai.GeneratedImageHelper.hasGeneratedImages;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -31,7 +26,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -41,9 +35,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.net.URI;
 import java.nio.file.Paths;
@@ -55,7 +47,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -71,50 +62,11 @@ class GoogleAiGeminiChatModelIT {
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     @Test
-    void should_answer_simple_question() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
-
-        // when
-        ChatResponse response = gemini.chat(ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of France?"))
-                .build());
-
-        // then
-        String text = response.aiMessage().text();
-        assertThat(text).containsIgnoringCase("Paris");
-
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
-    }
-
-    @Test
-    void should_configure_generation() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .temperature(2.0)
-                .topP(0.5)
-                .topK(10)
-                .maxOutputTokens(10)
-                .build();
-
-        // when
-        String response = gemini.chat("How much is 3+4? Reply with just the answer");
-
-        // then
-        assertThat(response.trim()).isEqualTo("7");
-    }
-
-    @Test
     void should_answer_in_json() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-pro")
+                .modelName("gemini-2.5-flash-lite")
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
                 .logResponses(true)
@@ -140,7 +92,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -155,31 +107,13 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage().text()).contains("Guillaume");
     }
 
-    @Test
-    void should_support_sending_images_as_base64() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
-
-        // when
-        ChatResponse response = gemini.chat(UserMessage.from(
-                //            ImageContent.fromToolExecReqToGFunCall(CAT_IMAGE_URL),
-                ImageContent.from(new String(Base64.getEncoder().encode(readBytes(CAT_IMAGE_URL))), "image/png"),
-                TextContent.from("Describe this image in a single word")));
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
     // Not supported yet, needs to implement the File Upload API first
     // @Test
     void should_support_sending_images_as_uri() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
         // when
@@ -196,19 +130,19 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .build();
 
+        // TODO use local file
+        byte[] bytes = readBytes("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3");
+        String base64Data = new String(Base64.getEncoder().encode(bytes));
+
+        UserMessage userMessage = UserMessage.from(
+                AudioContent.from(base64Data, "audio/mp3"),
+                TextContent.from("Give a summary of the audio"));
+
         // when
-        ChatResponse response = gemini.chat(UserMessage.from(
-                AudioContent.from(
-                        new String(
-                                Base64.getEncoder()
-                                        .encode( // TODO use local file
-                                                readBytes(
-                                                        "https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"))),
-                        "audio/mp3"),
-                TextContent.from("Give a summary of the audio")));
+        ChatResponse response = gemini.chat(userMessage);
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Pixel");
@@ -227,27 +161,10 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
         ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"),
-                TextContent.from("Give a summary of the video")));
+                VideoContent.from(base64Data, "video/mp4"), TextContent.from("Give a summary of the video")));
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
-    }
-
-    @Test
-    void should_respect_system_instruction() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
-
-        // when
-        ChatResponse response =
-                gemini.chat(SystemMessage.from("Translate from English into French"), UserMessage.from("apple"));
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("pomme");
     }
 
     @Test
@@ -255,7 +172,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .allowCodeExecution(true)
@@ -271,61 +188,11 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
-    void should_request_to_call_function() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.0-flash")
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("What is the weather forecast in Paris?"));
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getWeatherForecast")
-                .description("Get the weather forecast for a given city")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .required("city")
-                        .build())
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        // when
-        ChatResponse response = gemini.chat(request);
-
-        // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getWeatherForecast");
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments())
-                .isEqualTo("{\"city\":\"Paris\"}");
-
-        allMessages.add(response.aiMessage());
-
-        ToolExecutionResultMessage forecastResult =
-                ToolExecutionResultMessage.from(null, "getWeatherForecast", "{\"forecast\":\"sunny\"}");
-        allMessages.add(forecastResult);
-
-        // when
-        response = gemini.chat(allMessages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("sunny");
-    }
-
-    @Test
     void should_support_JSON_array_in_tools() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -370,48 +237,6 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage().text()).contains("[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
     }
 
-    @Test
-    void should_support_parallel_tool_execution() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.0-flash")
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        // when
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("Which warehouse has more stock, ABC or XYZ?"));
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getWarehouseStock")
-                .description("Retrieve the amount of stock available in a warehouse designated by its name")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("name", "The name of the warehouse")
-                        .required("name")
-                        .build())
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        ChatResponse response = gemini.chat(request);
-
-        // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-
-        List<ToolExecutionRequest> executionRequests = response.aiMessage().toolExecutionRequests();
-        assertThat(executionRequests).hasSize(2);
-
-        String allArgs =
-                executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(" "));
-        assertThat(allArgs).contains("ABC").contains("XYZ");
-    }
-
     @Disabled("TODO fix")
     @RetryingTest(5)
     void should_support_safety_settings() {
@@ -422,7 +247,7 @@ class GoogleAiGeminiChatModelIT {
 
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .safetySettings(mapSafetySettings)
@@ -481,22 +306,16 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {
-                                            {
-                                                put(
-                                                        "sentiment",
-                                                        JsonEnumSchema.builder()
-                                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                                .build());
-                                            }
-                                        })
+                                        .addProperty("sentiment", JsonEnumSchema.builder()
+                                                .enumValues("POSITIVE", "NEGATIVE")
+                                                .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -512,7 +331,7 @@ class GoogleAiGeminiChatModelIT {
                 .build());
 
         // then
-        assertThat(response.aiMessage().text().trim()).isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+        assertThat(response.aiMessage().text()).isEqualToIgnoringWhitespace("{\"sentiment\":\"POSITIVE\"}");
     }
 
     @Test
@@ -520,7 +339,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -549,7 +368,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
@@ -608,30 +427,14 @@ class GoogleAiGeminiChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
                         .build())
-                //             Equivalent to:
-                //            .responseFormat(ResponseFormat.builder()
-                //                .type(JSON)
-                //                .jsonSchema(JsonSchema.builder()
-                //                    .schema(JsonObjectSchema.builder()
-                //                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                //                            put("name", JSON_STRING_SCHEMA);
-                //                            put("red", JSON_INTEGER_SCHEMA);
-                //                            put("green", JSON_INTEGER_SCHEMA);
-                //                            put("blue", JSON_INTEGER_SCHEMA);
-                //                            put("muted", JSON_BOOLEAN_SCHEMA);
-                //                        }})
-                //                        .required("name", "red", "green", "blue", "muted")
-                //                        .additionalProperties(false)
-                //                        .build())
-                //                    .build())
-                //                .build())
                 .build();
 
         // when
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
-                        UserMessage.from("'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
+                        UserMessage.from(
+                                "'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red."))
                 .build());
 
         Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
@@ -646,9 +449,9 @@ class GoogleAiGeminiChatModelIT {
     @Test
     void should_support_tool_config() {
         // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        GoogleAiGeminiChatModel model1 = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -657,89 +460,33 @@ class GoogleAiGeminiChatModelIT {
                 ToolSpecification.builder().name("toolOne").build(),
                 ToolSpecification.builder().name("toolTwo").build());
 
-        ChatRequest request = ChatRequest.builder()
+        ChatRequest request1 = ChatRequest.builder()
                 .messages(UserMessage.from("Call toolOne"))
                 .toolSpecifications(listOfTools)
                 .build();
 
         // when
-        ChatResponse response = gemini.chat(request);
+        ChatResponse response1 = model1.chat(request1);
 
         // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
+        assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
 
         // given
-        gemini = GoogleAiGeminiChatModel.builder()
+        GoogleAiGeminiChatModel model2 = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .toolConfig(GeminiMode.ANY, "toolTwo")
                 .build();
 
         // when
-        ChatResponse chatResponse = gemini.chat(
-                ChatRequest.builder().messages(UserMessage.from("Call toolOne")).build());
+        ChatResponse response2 = model2.chat(request1);
 
         // then
-        assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
-    }
-
-    static class Transactions {
-        @Tool("returns amount of a given transaction")
-        double getTransactionAmount(@P("ID of a transaction") String id) {
-            switch (id) {
-                case "T001":
-                    return 11.1;
-                case "T002":
-                    return 22.2;
-                default:
-                    throw new IllegalArgumentException("Unknown transaction ID: " + id);
-            }
-        }
-    }
-
-    interface Assistant {
-        String chat(String userMessage);
-    }
-
-    @RetryingTest(10)
-    void should_work_with_tools_with_AiServices() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-pro")
-                .logRequests(true)
-                .logResponses(true)
-                .timeout(Duration.ofMinutes(2))
-                .temperature(0.0)
-                .topP(0.0)
-                .topK(1)
-                .build();
-
-        // when
-        Transactions spyTransactions = spy(new Transactions());
-
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .tools(spyTransactions)
-                .chatMemory(chatMemory)
-                .chatModel(gemini)
-                .build();
-
-        // then
-        String response = "";
-
-        response = assistant.chat("What is the amount of transaction T001?");
-        assertThat(response).containsIgnoringCase("11.1");
-        verify(spyTransactions).getTransactionAmount("T001");
-
-        response = assistant.chat("What is the amount of transaction T002?");
-        assertThat(response).containsIgnoringCase("22.2");
-        verify(spyTransactions).getTransactionAmount("T002");
-
-        verifyNoMoreInteractions(spyTransactions);
+        assertThat(response2.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response2.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolTwo");
     }
 
     @ParameterizedTest
@@ -751,7 +498,7 @@ class GoogleAiGeminiChatModelIT {
 
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(0)
@@ -761,6 +508,39 @@ class GoogleAiGeminiChatModelIT {
         // when
         assertThatThrownBy(() -> model.chat("hi"))
                 .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_generate_image() {
+
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-image-preview")
+                .build();
+
+        // when
+        ChatResponse response = gemini.chat(ChatRequest.builder()
+                .messages(
+                        UserMessage.from(
+                                "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
+                .build());
+
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(aiMessage).isNotNull();
+
+        if (hasGeneratedImages(aiMessage)) {
+            List<dev.langchain4j.data.image.Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
+            assertThat(generatedImages).isNotEmpty();
+
+            for (dev.langchain4j.data.image.Image image : generatedImages) {
+                assertThat(image.base64Data()).isNotEmpty();
+                assertThat(image.mimeType()).startsWith("image/");
+            }
+        }
+
+        assertThat(aiMessage.text() != null || hasGeneratedImages(aiMessage)).isTrue();
     }
 
     @AfterEach

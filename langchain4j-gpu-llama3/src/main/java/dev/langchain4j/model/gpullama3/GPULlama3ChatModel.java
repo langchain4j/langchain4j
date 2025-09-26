@@ -2,8 +2,10 @@ package dev.langchain4j.model.gpullama3;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.nio.file.Path;
 import org.beehive.gpullama3.Options;
@@ -33,6 +35,12 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
+
         try {
             // Create and return chat response
             return this.modelResponse(chatRequest);

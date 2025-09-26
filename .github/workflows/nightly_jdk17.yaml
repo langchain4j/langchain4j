@@ -2,7 +2,7 @@ name: Nightly Build JDK 17
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # daily at 00:00 UTC
+    - cron: '0 22 * * *'  # daily at 22:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
           - 17
         include:
           - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus, !langchain4j-gpu-llama3'
+            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-gpu-llama3'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:

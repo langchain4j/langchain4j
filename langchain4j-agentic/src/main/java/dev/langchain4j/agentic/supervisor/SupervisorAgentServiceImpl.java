@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +33,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
 
     private static final Logger LOG = LoggerFactory.getLogger(SupervisorAgentServiceImpl.class);
     public static final String SUPERVISOR_CONTEXT_KEY = "supervisorContext";
+    public static final String SUPERVISOR_CONTEXT_PREFIX = "Use the following supervisor context to better understand " +
+            "constraints, policies or preferences when creating the plan ";
 
     private ChatModel chatModel;
+
+    private ChatMemoryProvider chatMemoryProvider;
 
     private int maxAgentsInvocations = 10;
 
@@ -80,20 +86,31 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
             return null;
         }
         var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
-        switch (contextStrategy) {
-            case CHAT_MEMORY:
-                builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20));
-                break;
-            case SUMMARIZATION:
-                builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
-                        .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
-                break;
-            case CHAT_MEMORY_AND_SUMMARIZATION:
-                builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
-                        .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
-                break;
-        }
+        configureMemoryAndContext(agenticScope, builder);
         return builder.build();
+    }
+
+    private void configureMemoryAndContext(AgenticScope agenticScope, AiServices<PlannerAgent> builder) {
+        if (chatMemoryProvider != null) {
+            builder.chatMemoryProvider(chatMemoryProvider);
+            if (contextStrategy != SupervisorContextStrategy.CHAT_MEMORY) {
+                builder.chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+            }
+        } else {
+            switch (contextStrategy) {
+                case CHAT_MEMORY:
+                    builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20));
+                    break;
+                case SUMMARIZATION:
+                    builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
+                            .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+                    break;
+                case CHAT_MEMORY_AND_SUMMARIZATION:
+                    builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                            .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+                    break;
+            }
+        }
     }
 
     private boolean isAgenticScopeDependent() {
@@ -106,6 +123,17 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         public SupervisorInvocationHandler(PlannerAgent plannerAgent, DefaultAgenticScope agenticScope) {
             super(SupervisorAgentServiceImpl.this, agenticScope);
             this.plannerAgent = plannerAgent;
+        }
+
+        @Override
+        protected Object accessChatMemory(String methodName, Object memoryId) {
+            return switch (methodName) {
+                case "getChatMemory" -> plannerAgent.getChatMemory(memoryId);
+                case "evictChatMemory" -> plannerAgent.evictChatMemory(memoryId);
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on ChatMemoryAccess class : " + methodName);
+            };
         }
 
         @Override
@@ -122,7 +150,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 PlannerAgent planner = isAgenticScopeDependent()
                         ? agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent)
                         : this.plannerAgent;
-                String supervisorContext = agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "");
+                String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY) ?
+                        SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'." :
+                        "";
                 AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
@@ -198,6 +228,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     }
 
     @Override
+    public SupervisorAgentServiceImpl<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
+        this.chatMemoryProvider = chatMemoryProvider;
+        return this;
+    }
+
+    @Override
     public SupervisorAgentServiceImpl<T> requestGenerator(Function<AgenticScope, String> requestGenerator) {
         this.requestGenerator = requestGenerator;
         return this;
@@ -225,9 +261,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     public SupervisorAgentServiceImpl<T> subAgents(List<AgentExecutor> agentExecutors) {
         for (AgentExecutor agentExecutor : agentExecutors) {
             if (!agentExecutor.agentInvoker().description().isEmpty()) {
-                this.agents.put(agentExecutor.agentName(), agentExecutor);
+                this.agents.put(agentExecutor.agentInvoker().uniqueName(), agentExecutor);
             } else {
-                throw new IllegalArgumentException("Agent '" + agentExecutor.agentName()
+                throw new IllegalArgumentException("Agent '" + agentExecutor.agentInvoker().name()
                         + "' must have a non-empty description in order to be used by the supervisor agent.");
             }
         }

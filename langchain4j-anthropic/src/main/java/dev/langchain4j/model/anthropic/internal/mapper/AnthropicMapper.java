@@ -33,7 +33,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -63,8 +62,10 @@ import java.util.Map;
 @Internal
 public class AnthropicMapper {
 
-    public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
-    public static final String REDACTED_THINKING_KEY = "redacted_thinking"; // do not change, will break backward compatibility!
+    public static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
+    public static final String REDACTED_THINKING_KEY =
+            "redacted_thinking"; // do not change, will break backward compatibility!
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -116,10 +117,9 @@ public class AnthropicMapper {
                     } else if (content instanceof ImageContent imageContent) {
                         Image image = imageContent.image();
                         if (image.url() != null) {
-                            throw new UnsupportedFeatureException(
-                                    "Anthropic does not support images as URLs, only as Base64-encoded strings");
+                            return AnthropicImageContent.fromUrl(image.url().toString());
                         }
-                        return new AnthropicImageContent(
+                        return AnthropicImageContent.fromBase64(
                                 ensureNotBlank(image.mimeType(), "mimeType"),
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -207,7 +207,7 @@ public class AnthropicMapper {
                 .collect(joining("\n"));
 
         String thinking = null;
-        Map<String, Object> attributes = new HashMap<>();;
+        Map<String, Object> attributes = new HashMap<>();
         if (returnThinking) {
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
@@ -272,6 +272,26 @@ public class AnthropicMapper {
         };
     }
 
+    public static AnthropicToolChoice toAnthropicToolChoice(
+            ToolChoice toolChoice, String toolChoiceName, Boolean disableParallelToolUse) {
+        if (toolChoice == null) {
+            return null;
+        }
+
+        AnthropicToolChoiceType toolChoiceType =
+                switch (toolChoice) {
+                    case AUTO -> AnthropicToolChoiceType.AUTO;
+                    case REQUIRED -> AnthropicToolChoiceType.ANY;
+                    case NONE -> AnthropicToolChoiceType.NONE;
+                };
+
+        if (toolChoiceName != null) {
+            return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
+        }
+
+        return AnthropicToolChoice.from(toolChoiceType, disableParallelToolUse);
+    }
+
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
         ToolSpecification lastToolSpecification =
@@ -304,19 +324,5 @@ public class AnthropicMapper {
         }
 
         return toolBuilder.build();
-    }
-
-    public static AnthropicToolChoice toAnthropicToolChoice(ToolChoice toolChoice) {
-        if (toolChoice == null) {
-            return null;
-        }
-
-        AnthropicToolChoiceType toolChoiceType =
-                switch (toolChoice) {
-                    case AUTO -> AnthropicToolChoiceType.AUTO;
-                    case REQUIRED -> AnthropicToolChoiceType.ANY;
-                };
-
-        return AnthropicToolChoice.from(toolChoiceType);
     }
 }
