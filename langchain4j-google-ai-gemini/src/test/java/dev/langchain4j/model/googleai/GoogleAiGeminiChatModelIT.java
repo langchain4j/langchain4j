@@ -187,7 +187,7 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("233");
     }
 
-    @Test
+    @RetryingTest(3)
     void should_support_JSON_array_in_tools() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
