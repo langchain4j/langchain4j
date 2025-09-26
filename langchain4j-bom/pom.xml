@@ -423,6 +423,13 @@
                 <version>1.6.0-beta12-SNAPSHOT</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-code-execution-engine-azure-acads</artifactId>
+                <version>1.6.0-beta12-SNAPSHOT</version>
+            </dependency>
+
+
             <!-- document loaders -->
 
             <dependency>
