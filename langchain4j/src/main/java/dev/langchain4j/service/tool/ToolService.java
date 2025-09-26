@@ -276,7 +276,6 @@ public class ToolService {
 
             if (immediateToolReturn) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
-                fireResponseReceivedEvent(finalResponse, invocationContext, aiServiceListenerRegistrar);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
                         .finalResponse(finalResponse)
