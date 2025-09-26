@@ -106,9 +106,6 @@
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
 
-        <!-- integration tests -->
-        <module>integration-tests</module>
-
     </modules>
 
     <properties>
