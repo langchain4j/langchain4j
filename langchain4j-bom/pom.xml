@@ -543,6 +543,11 @@
                 <artifactId>langchain4j-agentic-a2a</artifactId>
                 <version>1.7.0-beta13-SNAPSHOT</version>
             </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-browser-use</artifactId>
+                <version>1.7.0-beta13-SNAPSHOT</version>
+            </dependency>
 
             <!-- spring boot -->
             <dependency>
