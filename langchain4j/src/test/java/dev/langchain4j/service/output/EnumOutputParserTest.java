@@ -1,6 +1,12 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.EnumOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumOutputParserTest.Weather.SUNNY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.output.structured.Description;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -8,19 +14,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.stream.Stream;
-
-import static dev.langchain4j.service.output.EnumOutputParserTest.Animal.CAT;
-import static dev.langchain4j.service.output.EnumOutputParserTest.Weather.SUNNY;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class EnumOutputParserTest {
 
     EnumOutputParser<Weather> sut = new EnumOutputParser<>(Weather.class);
 
     enum Animal {
-        CAT, DOG, BIRD
+        CAT,
+        DOG,
+        BIRD
     }
 
     @ParameterizedTest
@@ -51,8 +52,7 @@ class EnumOutputParserTest {
                 // JSON
                 Arguments.of("{\"value\":\"CAT\"}", CAT),
                 Arguments.of("  {\"value\":\"CAT\"}  ", CAT),
-                Arguments.of("  {\"value\":[\"CAT\"]}  ", CAT)
-        );
+                Arguments.of("  {\"value\":[\"CAT\"]}  ", CAT));
     }
 
     @ParameterizedTest
@@ -67,10 +67,11 @@ class EnumOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "BANANA",
-            "{\"value\":\"BANANA\"}",
-    })
+    @ValueSource(
+            strings = {
+                "BANANA",
+                "{\"value\":\"BANANA\"}",
+            })
     void should_fail_to_parse_invalid_input(String text) {
 
         // given
@@ -163,4 +164,25 @@ class EnumOutputParserTest {
                         + "C - Majority of keywords starting with C");
     }
 
+    @Test
+    void should_handle_single_character_enums() {
+        // given
+        EnumOutputParser<Category> parser = new EnumOutputParser<>(Category.class);
+
+        // when/then
+        assertThat(parser.parse("A")).isEqualTo(Category.A);
+        assertThat(parser.parse("a")).isEqualTo(Category.A);
+        assertThat(parser.parse("{\"value\":\"B\"}")).isEqualTo(Category.B);
+    }
+
+    @Test
+    void should_handle_json_with_non_string_value() {
+        // given
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
+
+        // when/then
+        assertThatThrownBy(() -> parser.parse("{\"value\":1}"))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse");
+    }
 }

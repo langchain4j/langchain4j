@@ -5,6 +5,7 @@ import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 
 /**
  * Represents a factory for creating instances of {@link InputGuardrailExecutor.InputGuardrailExecutorBuilder}.
@@ -18,4 +19,5 @@ public non-sealed interface InputGuardrailExecutorBuilderFactory
                 InputGuardrailResult,
                 InputGuardrailRequest,
                 InputGuardrail,
+                InputGuardrailExecutedEvent,
                 InputGuardrailExecutor.InputGuardrailExecutorBuilder> {}

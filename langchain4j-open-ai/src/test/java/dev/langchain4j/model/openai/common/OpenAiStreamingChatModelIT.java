@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.common;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -16,6 +17,7 @@ import org.mockito.InOrder;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
@@ -37,13 +39,23 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 defaultStreamingModelBuilder()
                         .build(),
                 defaultStreamingModelBuilder()
-                        .strictTools(true)
-                        .build(),
-                defaultStreamingModelBuilder()
                         .responseFormat("json_schema")
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
+        );
+    }
+
+    @Override
+    protected List<StreamingChatModel> modelsSupportingTools() {
+        return List.of(
+                defaultStreamingModelBuilder()
+                        .modelName(GPT_5_NANO)
+                        .build(),
+                defaultStreamingModelBuilder()
+                        .modelName(GPT_5_NANO)
+                        .strictTools(true)
+                        .build()
         );
     }
 
@@ -100,7 +112,15 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
     }
 
     @Override
@@ -111,7 +131,15 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id1)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
 
         io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
                 toolCall.index() == 1
@@ -119,7 +147,15 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.name().equals("getTime")
                         && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 1
+                            && request.id().equals(id2)
+                            && request.name().equals("getTime")
+                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
+                }
+        ));
     }
 
     // TODO OpenAI-specific tests

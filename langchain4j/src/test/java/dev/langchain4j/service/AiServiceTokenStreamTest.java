@@ -6,12 +6,15 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
+
+    private static final InvocationContext DEFAULT_INVOCATION_CONTEXT = InvocationContext.builder()
+            .interfaceName("SomeInterface")
+            .methodName("someMethod")
+            .methodArgument("one")
+            .methodArgument("two")
+            .chatMemoryId("one")
+            .build();
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
     static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
@@ -164,7 +175,7 @@ class AiServiceTokenStreamTest {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         ChatModel chatModel = mock(ChatModel.class);
 
-        AiServiceContext context = new AiServiceContext(getClass());
+        AiServiceContext context = AiServiceContext.create(getClass());
         context.streamingChatModel = streamingModel;
         context.chatModel = chatModel;
 
@@ -172,13 +183,21 @@ class AiServiceTokenStreamTest {
                 .messages(messages)
                 .retrievedContents(content)
                 .context(context)
-                .memoryId(memoryId)
+                .invocationContext(InvocationContext.builder()
+                        .chatMemoryId(memoryId)
+                        .invocationParameters(new InvocationParameters())
+                        .build())
                 .commonGuardrailParams(GuardrailRequestParams.builder()
                         .chatMemory(null)
                         .augmentationResult(null)
                         .userMessageTemplate("")
                         .variables(Map.of())
+                        .invocationContext(DEFAULT_INVOCATION_CONTEXT)
                         .build())
+                .toolArgumentsErrorHandler((e, c) -> {
+                    throw new RuntimeException(e);
+                })
+                .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
     }
 }

@@ -13,7 +13,7 @@ https://www.couchbase.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-couchbase</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.6.0-beta12</version>
 </dependency>
 ```
 

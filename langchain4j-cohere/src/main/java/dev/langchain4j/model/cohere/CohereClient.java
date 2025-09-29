@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -28,7 +29,7 @@ class CohereClient {
     private final CohereApi cohereApi;
     private final String authorizationHeader;
 
-    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses) {
+    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -37,10 +38,10 @@ class CohereClient {
                 .writeTimeout(timeout);
 
         if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
         }
         if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
         }
 
         if (Objects.nonNull(proxy)) {
@@ -105,6 +106,7 @@ class CohereClient {
         private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         CohereClientBuilder() {
         }
@@ -139,8 +141,13 @@ class CohereClient {
             return this;
         }
 
+        public CohereClientBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public CohereClient build() {
-            return new CohereClient(this.baseUrl, this.apiKey, this.timeout, this.proxy, this.logRequests, this.logResponses);
+            return new CohereClient(this.baseUrl, this.apiKey, this.timeout, this.proxy, this.logRequests, this.logResponses, this.logger);
         }
 
         public String toString() {

@@ -6,6 +6,30 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * Marks a method as a definition of a loop agent, used to orchestrate the agentic workflow
+ * by invoking a series of sub-agents in a loop until a certain condition is met or a maximum number of iterations is reached.
+ * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
+ * and its output variable name.
+ * <p>
+ * Example:
+ * <pre>
+ * {@code
+ *     public interface StyleReviewLoopAgentWithCounter {
+ *
+ *         @LoopAgent(
+ *                 description = "Review the given story to ensure it aligns with the specified style",
+ *                 outputName = "story", maxIterations = 5,
+ *                 subAgents = {
+ *                     @SubAgent(type = StyleScorer.class, outputName = "score"),
+ *                     @SubAgent(type = StyleEditor.class, outputName = "story")
+ *             }
+ *         )
+ *         String write(@V("story") String story);
+ *     }
+ * }
+ * </pre>
+ */
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface LoopAgent {
@@ -25,9 +49,25 @@ public @interface LoopAgent {
      */
     String description() default "";
 
+    /**
+     * Name of the output variable that will hold the result of the agent invocation.
+     *
+     * @return name of the output variable.
+     */
     String outputName() default "";
 
+    /**
+     * Array of sub-agents that will be invoked in parallel.
+     *
+     * @return array of sub-agents.
+     */
     SubAgent[] subAgents();
 
+    /**
+     * Maximum number of iterations the loop will execute.
+     * If the exit condition is not met within this number of iterations, the loop will terminate.
+     *
+     * @return maximum number of iterations.
+     */
     int maxIterations() default 10;
 }
