@@ -64,6 +64,16 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
+    /*
+        Chroma stores embeddings in float32, and when they are serialized to JSON and parsed back,
+        some values round to the adjacent float representation
+        use approximate or ULP-based comparison instead of strict equality
+     */
+    @Override
+    protected void assertEmbeddingEquals(Embedding expected, Embedding actual) {
+        assertEmbeddingApprox(expected, actual, 1e-6f);
+    }
+
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
@@ -163,7 +173,7 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertEmbeddingApprox(embedding, match.embedding(), 1e-6f);
+            assertEmbeddingEquals(embedding, match.embedding());
         }
         assertThat(match.embedded()).isNotNull();
     }
@@ -193,7 +203,7 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertEmbeddingApprox(embedding, match.embedding(), 1e-6f);
+            assertEmbeddingEquals(embedding, match.embedding());
         }
         assertThat(match.embedded()).isNotNull();
     }
@@ -226,7 +236,7 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
+            assertEmbeddingEquals(firstEmbedding, firstMatch.embedding());
         }
         assertThat(firstMatch.embedded()).isNotNull();
 

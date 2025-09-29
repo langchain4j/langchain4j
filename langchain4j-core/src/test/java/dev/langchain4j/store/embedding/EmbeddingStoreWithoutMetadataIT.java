@@ -36,6 +36,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(getAllEmbeddings()).isEmpty();
     }
 
+
+    protected void assertEmbeddingEquals(Embedding expected, Embedding actual) {
+        assertThat(actual).isEqualTo(expected);
+    }
+
     @Test
     protected void should_add_embedding() {
 
@@ -116,7 +121,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertEmbeddingApprox(embedding, match.embedding(), 1e-6f);
+            assertEmbeddingEquals(match.embedding(), embedding);
         }
         assertThat(match.embedded()).isEqualTo(segment);
     }
@@ -197,7 +202,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
+            assertEmbeddingEquals(firstMatch.embedding(), firstEmbedding);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -250,7 +255,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
-            assertEmbeddingApprox(firstEmbedding, firstMatch.embedding(), 1e-6f);
+            assertEmbeddingEquals(firstMatch.embedding(), firstEmbedding);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
