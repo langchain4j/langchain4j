@@ -104,20 +104,6 @@ abstract class GPULlama3BaseModel {
 
     public ChatResponse modelResponse(ChatRequest request) {
 
-        Options options = new Options(
-                modelPath,
-                extractUserPrompt(request),
-                extractSystemPrompt(request),
-                null, // suffix
-                false, // interactive
-                temperature.floatValue(),
-                topP.floatValue(),
-                seed,
-                maxTokens,
-                stream, // streaming
-                false, // echo
-                onGPU);
-
         // String responseText = model.runInstructOnce(sampler, options);
         String responseText = modelStringResponse(request, null);
         // Create AI message from response
