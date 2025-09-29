@@ -26,6 +26,10 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     public static void setUp() {
         model = GPULlama3ChatModel.builder()
                 .modelPath(MODEL_PATH)
+                .temperature(0.6)
+                .topP(1.0)
+                .maxTokens(2048)
+                .seed(12345)
                 .onGPU(Boolean.TRUE)
                 .build();
     }

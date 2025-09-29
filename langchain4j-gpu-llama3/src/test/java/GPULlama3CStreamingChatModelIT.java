@@ -30,6 +30,10 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
         // @formatter:off
         model = GPULlama3StreamingChatModel.builder()
                 .modelPath(MODEL_PATH)
+                .temperature(0.6)
+                .topP(1.0)
+                .maxTokens(2048)
+                .seed(12345)
                 .onGPU(Boolean.TRUE) // if false, runs on CPU though a lightweight implementation of llama3.java
                 .build();
         // @formatter:on
