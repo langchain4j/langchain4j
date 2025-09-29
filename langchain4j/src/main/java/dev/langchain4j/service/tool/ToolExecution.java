@@ -98,7 +98,7 @@ public class ToolExecution {
         @Deprecated(since = "1.5.0")
         public Builder result(String result) {
             this.result = ToolExecutionResult.builder()
-                    .result(result)
+                    .resultText(result)
                     .build();
             return this;
         }
