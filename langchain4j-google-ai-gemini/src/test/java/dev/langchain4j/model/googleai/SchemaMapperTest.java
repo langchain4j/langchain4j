@@ -3,10 +3,12 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
@@ -225,6 +227,38 @@ public class SchemaMapperTest {
         assertThat(options.getType()).isEqualTo(GeminiType.OBJECT);
         assertThat(options.getProperties()).hasSize(2);
         assertThat(options.getRequired()).containsExactly("includeHourly");
+    }
+
+    @Test
+    public void should_handle_anyof_schema() {
+        // given
+        JsonSchemaElement anyOfSchema = JsonAnyOfSchema.builder()
+                .description("A value that can be either a string or a number")
+                .anyOf(
+                        JsonStringSchema.builder().build(),
+                        JsonNumberSchema.builder().build())
+                .build();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(anyOfSchema);
+
+        // then
+        assertThat(result.getDescription()).isEqualTo("A value that can be either a string or a number");
+        assertThat(result.getAnyOf()).hasSize(2);
+        assertThat(result.getAnyOf().get(0).getType()).isEqualTo(GeminiType.STRING);
+        assertThat(result.getAnyOf().get(1).getType()).isEqualTo(GeminiType.NUMBER);
+    }
+
+    @Test
+    public void should_handle_null_schema() {
+        // given
+        JsonSchemaElement nullSchema = new JsonNullSchema();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(nullSchema);
+
+        // then
+        assertThat(result.getType()).isEqualTo(GeminiType.NULL);
     }
 
     @Test
