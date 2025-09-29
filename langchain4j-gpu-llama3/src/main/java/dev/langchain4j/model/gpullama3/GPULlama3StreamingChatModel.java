@@ -1,6 +1,7 @@
 package dev.langchain4j.model.gpullama3;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.Objects.requireNonNull;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
@@ -11,24 +12,18 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.nio.file.Path;
 import java.util.List;
-import org.beehive.gpullama3.Options;
 
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
     // @formatter:off
     private GPULlama3StreamingChatModel(Builder builder) {
         init(
-                getOrDefault(builder.modelPath, Options.getDefaultOptions().modelPath()),
-                getOrDefault(
-                        builder.temperature,
-                        Double.valueOf(Options.getDefaultOptions().temperature())),
-                getOrDefault(
-                        builder.topP, Double.valueOf(Options.getDefaultOptions().topp())),
-                getOrDefault(builder.seed, Integer.valueOf((int)
-                        Options.getDefaultOptions().seed())),
-                getOrDefault(builder.maxTokens, Options.getDefaultOptions().maxTokens()),
-                getOrDefault(builder.onGPU, Boolean.TRUE),
-                Boolean.TRUE);
+                requireNonNull(builder.modelPath, "modelPath is required and must be specified"),
+                getOrDefault(builder.temperature, 0.1),
+                getOrDefault(builder.topP, 1.0),
+                getOrDefault(builder.seed, 12345),
+                getOrDefault(builder.maxTokens, 512),
+                getOrDefault(builder.onGPU, Boolean.TRUE));
     }
     // @formatter:on
 

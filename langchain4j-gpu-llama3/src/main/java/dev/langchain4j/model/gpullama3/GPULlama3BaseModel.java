@@ -2,6 +2,7 @@ package dev.langchain4j.model.gpullama3;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -19,15 +20,10 @@ import org.beehive.gpullama3.model.loader.ModelLoader;
 import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 
 abstract class GPULlama3BaseModel {
-    private Path modelPath;
-    private Double temperature;
-    private Double topP;
-    private Integer seed;
     private Integer maxTokens;
     private Boolean onGPU;
     private Model model;
     private Sampler sampler;
-    private Boolean stream;
 
     //
     int startPosition;
@@ -59,15 +55,9 @@ abstract class GPULlama3BaseModel {
             Double topP,
             Integer seed,
             Integer maxTokens,
-            Boolean onGPU,
-            Boolean stream) {
+            Boolean onGPU) {
         this.maxTokens = maxTokens;
         this.onGPU = onGPU;
-        this.modelPath = modelPath;
-        this.temperature = temperature;
-        this.topP = topP;
-        this.seed = seed;
-        this.stream = stream;
 
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
@@ -114,19 +104,6 @@ abstract class GPULlama3BaseModel {
     }
 
     public String modelStringResponse(ChatRequest request, IntConsumer tokenConsumer) {
-        Options options = new Options(
-                modelPath,
-                extractUserPrompt(request),
-                extractSystemPrompt(request),
-                null, // suffix
-                false, // interactive
-                temperature.floatValue(),
-                topP.floatValue(),
-                seed,
-                maxTokens,
-                stream, // streaming
-                false, // echo
-                onGPU);
 
         // String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
         // return responseText;
@@ -149,9 +126,9 @@ abstract class GPULlama3BaseModel {
                     startPosition,
                     conversationTokens.subList(startPosition, conversationTokens.size()),
                     stopTokens,
-                    options.maxTokens(),
+                    maxTokens,
                     sampler,
-                    options.echo(),
+                    false, //echo
                     tokenConsumer,
                     tornadoVMPlan);
         } else {
@@ -160,9 +137,9 @@ abstract class GPULlama3BaseModel {
                     startPosition,
                     conversationTokens.subList(startPosition, conversationTokens.size()),
                     stopTokens,
-                    options.maxTokens(),
+                    maxTokens,
                     sampler,
-                    options.echo(),
+                    false, //echo
                     tokenConsumer);
         }
 
