@@ -329,7 +329,7 @@ System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},
 ```
 
 :::note
-The `JsonAnyOfSchema` is currently supported only by OpenAI and Azure OpenAI.
+The `JsonAnyOfSchema` is currently supported only by OpenAI, Azure OpenAI and Google AI Gemini.
 :::
 
 #### `JsonRawSchema`
