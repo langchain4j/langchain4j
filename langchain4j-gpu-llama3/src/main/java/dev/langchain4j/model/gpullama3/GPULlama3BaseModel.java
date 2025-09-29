@@ -31,7 +31,7 @@ abstract class GPULlama3BaseModel {
                 .filter(m -> m instanceof dev.langchain4j.data.message.SystemMessage)
                 .map(m -> ((dev.langchain4j.data.message.SystemMessage) m).text())
                 .findFirst()
-                .orElse(null); // systemPrompt is optional
+                .orElse(""); // systemPrompt is optional
     }
 
     private static String extractUserPrompt(ChatRequest request) {
