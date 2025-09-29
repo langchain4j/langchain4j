@@ -312,4 +312,17 @@ class AwsDocumentConverterTest {
                 .asString();
         assertThat(deepValue).isEqualTo("deep");
     }
+
+    @Test
+    void handle_null() {
+
+        // given
+        Document document = null;
+
+        // when
+        String json = AwsDocumentConverter.documentToJson(document);
+
+        // then
+        assertThat(json).isEqualTo("{}");
+    }
 }
