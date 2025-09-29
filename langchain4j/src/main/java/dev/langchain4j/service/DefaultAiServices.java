@@ -64,6 +64,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -96,6 +97,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             "There can be at most one parameter of type %s", InvocationParameters.class.getName());
                 }
                 invocationParametersExist = true;
+                continue;
+            }
+
+            if (BuiltInParameter.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
 
@@ -214,6 +219,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
+                        setupBuiltInParameters(invocationParameters, args, method.getParameters());
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
@@ -450,6 +456,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
 
                         return actualResponse;
+                    }
+
+                    private void setupBuiltInParameters(InvocationParameters invocationParameters, Object[] args, Parameter[] params) {
+                        for (int i = 0; i < params.length; i++) {
+                            Parameter parameter = params[i];
+                            if (BuiltInParameter.class.isAssignableFrom(parameter.getType())) {
+                                invocationParameters.put(parameter.getType().getName(), args[i]);
+                            }
+                        }
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
