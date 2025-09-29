@@ -61,8 +61,6 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         protected Integer seed;
         protected Integer maxTokens;
         protected Boolean onGPU;
-        protected Boolean stream;
-        protected String modelName;
 
         public Builder() {
             // This is public so it can be extended
@@ -70,16 +68,6 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
 
         public Builder modelPath(Path modelPath) {
             this.modelPath = modelPath;
-            return this;
-        }
-
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        public Builder stream(Boolean stream) {
-            this.stream = stream;
             return this;
         }
 
