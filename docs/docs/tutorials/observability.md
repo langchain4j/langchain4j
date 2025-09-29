@@ -273,3 +273,7 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
+
+## Third-party Integrations
+
+- [Arize Phoenix](https://github.com/Arize-ai/phoenix)
