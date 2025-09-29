@@ -385,7 +385,7 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to return a list of 6-faces dice rolls"),
-                        UserMessage.from("Give me 3 dice rolls"))
+                        UserMessage.from("Give me 3 dice rolls, all at once"))
                 .build());
 
         // then

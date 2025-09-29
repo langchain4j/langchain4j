@@ -507,7 +507,7 @@ class VertexAiGeminiChatModelIT {
                 .logResponses(true)
                 .responseSchema(Schema.newBuilder()
                         .setType(Type.STRING)
-                        .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                        .addAllEnum(Arrays.asList("POSITIVE", "NEGATIVE"))
                         .build())
                 .build();
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20241022;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -36,18 +37,17 @@ import org.junit.jupiter.params.provider.EnumSource;
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT {
 
-    ChatModel model = AnthropicChatModel.builder()
-            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .maxTokens(20)
-            .logRequests(false) // base64-encoded PDFs are huge
-            .logResponses(true)
-            .build();
-
     @Test
     void should_accept_base64_pdf() {
 
         // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(false) // base64-encoded PDFs are huge
+                .logResponses(true)
+                .build();
+
         URI pdfUri = Paths.get("src/test/resources/test-file.pdf").toUri();
         String base64Data = new String(Base64.getEncoder().encode(readBytes(pdfUri.toString())));
         UserMessage userMessage = UserMessage.from(
@@ -69,7 +69,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_3_5_SONNET_20241022)
                 .stopSequences(stopSequences)
                 .logRequests(true)
                 .logResponses(true)

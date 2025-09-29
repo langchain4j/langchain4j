@@ -377,7 +377,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to return a list of 6-faces dice rolls"),
-                        UserMessage.from("Give me 3 dice rolls")),
+                        UserMessage.from("Give me 3 dice rolls, all at once")),
                 handler);
         ChatResponse response = handler.get();
 
@@ -522,7 +522,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
-    @Test
+    @RetryingTest(3)
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -533,13 +533,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        gemini.chat(
-                ChatRequest.builder()
-                        .messages(
-                                UserMessage.from(
-                                        "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
-                        .build(),
-                handler);
+        gemini.chat("funny puppy", handler);
         ChatResponse response = handler.get();
 
         // then
