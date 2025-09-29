@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.nio.file.Path;
+import java.util.List;
 import org.beehive.gpullama3.Options;
 
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
@@ -44,8 +45,11 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
-            StreamingChatResponseHandler finalHandler = handler;
-            String response = modelStringResponse(chatRequest, token -> finalHandler.onPartialResponse(token));
+            // StreamingChatResponseHandler finalHandler = handler;
+            String response = modelStringResponse(chatRequest, token -> {
+                String tokenStr = getModel().tokenizer().decode(List.of(token));
+                handler.onPartialResponse(tokenStr);
+            });
             ChatResponse chatResponse =
                     ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
             handler.onCompleteResponse(chatResponse);

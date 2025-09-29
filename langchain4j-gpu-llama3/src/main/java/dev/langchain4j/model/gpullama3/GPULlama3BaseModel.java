@@ -5,11 +5,16 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.function.IntConsumer;
 import org.beehive.gpullama3.Options;
 import org.beehive.gpullama3.auxiliary.LastRunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
+import org.beehive.gpullama3.inference.state.State;
 import org.beehive.gpullama3.model.Model;
+import org.beehive.gpullama3.model.format.ChatFormat;
 import org.beehive.gpullama3.model.loader.ModelLoader;
 import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 
@@ -24,6 +29,11 @@ abstract class GPULlama3BaseModel {
     private Sampler sampler;
     private Boolean stream;
 
+    //
+    int startPosition;
+    State state;
+    List<Integer> conversationTokens;
+    ChatFormat chatFormat;
     TornadoVMMasterPlan tornadoVMPlan;
 
     private static String extractSystemPrompt(ChatRequest request) {
@@ -63,6 +73,22 @@ abstract class GPULlama3BaseModel {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
             this.sampler = Sampler.selectSampler(
                     model.configuration().vocabularySize(), temperature.floatValue(), topP.floatValue(), seed);
+
+            this.state = model.createNewState();
+            this.conversationTokens = new ArrayList<>();
+            this.chatFormat = model.chatFormat();
+
+            if (model.shouldAddBeginOfText()) {
+                conversationTokens.add(chatFormat.getBeginOfText());
+            }
+
+            startPosition = 0;
+
+            // we cannot add system message here, we add in modelResponse()
+
+            if (onGPU) {
+                tornadoVMPlan = TornadoVMMasterPlan.initializeTornadoVMPlan(state, model);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load model from " + modelPath, e);
         }
@@ -92,7 +118,8 @@ abstract class GPULlama3BaseModel {
                 false, // echo
                 onGPU);
 
-        String responseText = model.runInstructOnce(sampler, options);
+        // String responseText = model.runInstructOnce(sampler, options);
+        String responseText = modelStringResponse(request, null);
         // Create AI message from response
         AiMessage aiMessage = AiMessage.from(responseText);
 
@@ -100,7 +127,7 @@ abstract class GPULlama3BaseModel {
         return ChatResponse.builder().aiMessage(aiMessage).build();
     }
 
-    public String modelStringResponse(ChatRequest request, Consumer<String> tokeCallBack) {
+    public String modelStringResponse(ChatRequest request, IntConsumer tokenConsumer) {
         Options options = new Options(
                 modelPath,
                 extractUserPrompt(request),
@@ -115,8 +142,58 @@ abstract class GPULlama3BaseModel {
                 false, // echo
                 onGPU);
 
-        String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
-        return responseText;
+        // String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
+        // return responseText;
+
+        String systemText = extractSystemPrompt(request);
+        if (model.shouldAddSystemPrompt() && !systemText.isEmpty()) {
+            conversationTokens.addAll(
+                    chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemText)));
+        }
+        String userText = extractUserPrompt(request);
+        conversationTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, userText)));
+        // TODO: Include reasoning for Deepseek-R1-Distill-Qwen
+
+        Set<Integer> stopTokens = chatFormat.getStopTokens();
+        List<Integer> responseTokens;
+
+        if (onGPU) {
+            responseTokens = model.generateTokensGPU(
+                    state,
+                    startPosition,
+                    conversationTokens.subList(startPosition, conversationTokens.size()),
+                    stopTokens,
+                    options.maxTokens(),
+                    sampler,
+                    options.echo(),
+                    tokenConsumer,
+                    tornadoVMPlan);
+        } else {
+            responseTokens = model.generateTokens(
+                    state,
+                    startPosition,
+                    conversationTokens.subList(startPosition, conversationTokens.size()),
+                    stopTokens,
+                    options.maxTokens(),
+                    sampler,
+                    options.echo(),
+                    tokenConsumer);
+        }
+
+        conversationTokens.addAll(responseTokens);
+        startPosition = conversationTokens.size();
+        Integer stopToken = null;
+        if (!responseTokens.isEmpty() && stopTokens.contains(responseTokens.getLast())) {
+            stopToken = responseTokens.getLast();
+            responseTokens.removeLast();
+        }
+        String responseText = model.tokenizer().decode(responseTokens);
+
+        if (stopToken == null) {
+            return "Ran out of context length...\n Increase context length with by passing to llama-tornado --max-tokens XXX";
+        } else {
+            return responseText;
+        }
     }
     // @formatter:on
 
