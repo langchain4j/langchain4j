@@ -80,7 +80,7 @@
         <slf4j.version>2.0.17</slf4j.version>
         <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
         <playwright.version>1.54.0</playwright.version>
-        <testcontainers.version>1.20.4</testcontainers.version>
+        <testcontainers.version>1.21.3</testcontainers.version>
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.1</wiremock.version>
         <opennlp-tools.version>2.5.4</opennlp-tools.version>

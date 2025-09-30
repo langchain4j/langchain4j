@@ -1,4 +1,4 @@
-name: Nightly Build JDK 17
+name: Nightly Build JDK 17 Part 2
 
 on:
   schedule:
@@ -15,7 +15,7 @@ jobs:
           - 17
         include:
           - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+            mvn_opts: '-pl langchain4j-vespa,langchain4j-document-loader-playwright'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
@@ -28,23 +28,14 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Authenticate to Google Cloud
-        # Needed for langchain4j-vertex-ai and langchain4j-vertex-ai-gemini modules
-        uses: 'google-github-actions/auth@v2'
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-
-      - name: Setup JBang
-        uses: jbangdev/setup-jbang@main
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
-          ## compile and verify javadocs on ALL modules
+          ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
             --fail-at-end \
             ${{ matrix.mvn_opts }}
           
-          ## run tests for some modules
+          ## run integration tests
           mvn -B -U verify \
               --fail-at-end \
               -Dmaven.test.failure.ignore=true \
