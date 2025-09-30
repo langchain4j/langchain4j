@@ -3,6 +3,7 @@ package dev.langchain4j.model.gpullama3;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.requireNonNull;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -38,7 +39,10 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
 
         try {
             // Create and return chat response
-            return this.modelResponse(chatRequest);
+            String response = modelResponse(chatRequest, null);
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(response))
+                    .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate response from GPULlama3", e);
         }

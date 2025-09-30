@@ -67,7 +67,10 @@ abstract class GPULlama3BaseModel {
             this.chatFormat = model.chatFormat();
 
             if (model.shouldAddBeginOfText()) {
+                System.out.println("Adding BOS token to conversation history");
                 conversationTokens.add(chatFormat.getBeginOfText());
+            } else {
+                System.out.println("Not adding BOS token to conversation history");
             }
 
             startPosition = 0;
@@ -90,31 +93,27 @@ abstract class GPULlama3BaseModel {
         return sampler;
     }
 
-    public ChatResponse modelResponse(ChatRequest request) {
-
-        // String responseText = model.runInstructOnce(sampler, options);
-        String responseText = modelStringResponse(request, null);
-        // Create AI message from response
-        AiMessage aiMessage = AiMessage.from(responseText);
-
-        // Create and return chat response
-        return ChatResponse.builder().aiMessage(aiMessage).build();
-    }
-
-    public String modelStringResponse(ChatRequest request, IntConsumer tokenConsumer) {
-
-        // String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
-        // return responseText;
+    /**
+     * Generates a chat response from the model.
+     * Used by GPULlama3StreamingChatModel.
+     * @param request
+     * @param tokenConsumer
+     * @return
+     */
+    public String modelResponse(ChatRequest request, IntConsumer tokenConsumer) {
 
         String systemText = extractSystemPrompt(request);
         if (model.shouldAddSystemPrompt() && !systemText.isEmpty()) {
             conversationTokens.addAll(
                     chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemText)));
         }
+
         String userText = extractUserPrompt(request);
         conversationTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, userText)));
-        // TODO: Include reasoning for Deepseek-R1-Distill-Qwen
 
+        // Prompt the model to generate the assistant response by adding the header**
+        List<Integer> assistantHeader = chatFormat.encodeHeader(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, ""));
+        conversationTokens.addAll(assistantHeader);
         Set<Integer> stopTokens = chatFormat.getStopTokens();
         List<Integer> responseTokens;
 
@@ -126,7 +125,7 @@ abstract class GPULlama3BaseModel {
                     stopTokens,
                     maxTokens,
                     sampler,
-                    false, //echo
+                    false,
                     tokenConsumer,
                     tornadoVMPlan);
         } else {
@@ -137,18 +136,29 @@ abstract class GPULlama3BaseModel {
                     stopTokens,
                     maxTokens,
                     sampler,
-                    false, //echo
+                    false,
                     tokenConsumer);
         }
 
-        conversationTokens.addAll(responseTokens);
-        startPosition = conversationTokens.size();
         Integer stopToken = null;
         if (!responseTokens.isEmpty() && stopTokens.contains(responseTokens.getLast())) {
             stopToken = responseTokens.getLast();
+            // dbg
+            //System.out.println("Found stop token at end: " + stopToken + " = '" + model.tokenizer().decode(List.of(stopToken)) + "'");
             responseTokens.removeLast();
         }
+
         String responseText = model.tokenizer().decode(responseTokens);
+
+        // Add the response content tokens to conversation history
+        conversationTokens.addAll(responseTokens);
+
+        // Add the stop token to complete the message
+        if (stopToken != null) {
+            conversationTokens.add(stopToken);
+        }
+
+        startPosition = conversationTokens.size();
 
         if (stopToken == null) {
             return "Ran out of context length...\n Increase context length with by passing to llama-tornado --max-tokens XXX";

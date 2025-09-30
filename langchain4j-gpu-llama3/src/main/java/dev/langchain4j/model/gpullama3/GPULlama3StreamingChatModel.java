@@ -40,8 +40,7 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
-            // StreamingChatResponseHandler finalHandler = handler;
-            String response = modelStringResponse(chatRequest, token -> {
+            String response = modelResponse(chatRequest, token -> {
                 String tokenStr = getModel().tokenizer().decode(List.of(token));
                 handler.onPartialResponse(tokenStr);
             });
