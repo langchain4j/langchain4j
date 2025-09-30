@@ -1,9 +1,9 @@
-package dev.langchain4j.store.embedding.chroma;
+package dev.langchain4j.store.embedding.chroma.model;
 
 import java.util.List;
 import java.util.Map;
 
-class DeleteEmbeddingsRequest {
+public class DeleteEmbeddingsRequest {
 
     private final List<String> ids;
     private final Map<String, Object> where;
@@ -25,22 +25,22 @@ class DeleteEmbeddingsRequest {
         return where;
     }
 
-    static class Builder {
+    public static class Builder {
 
         private List<String> ids;
         private Map<String, Object> where;
 
-        Builder ids(List<String> ids) {
+        public Builder ids(List<String> ids) {
             this.ids = ids;
             return this;
         }
 
-        Builder where(Map<String, Object> where) {
+        public Builder where(Map<String, Object> where) {
             this.where = where;
             return this;
         }
 
-        DeleteEmbeddingsRequest build() {
+        public DeleteEmbeddingsRequest build() {
             return new DeleteEmbeddingsRequest(this);
         }
     }

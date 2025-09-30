@@ -1,9 +1,9 @@
-package dev.langchain4j.store.embedding.chroma;
+package dev.langchain4j.store.embedding.chroma.model;
 
 import java.util.List;
 import java.util.Map;
 
-class QueryResponse {
+public class QueryResponse {
 
     private List<List<String>> ids;
     private List<List<List<Float>>> embeddings;

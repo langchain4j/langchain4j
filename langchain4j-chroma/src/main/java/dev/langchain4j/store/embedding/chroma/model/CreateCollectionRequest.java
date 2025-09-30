@@ -1,9 +1,9 @@
-package dev.langchain4j.store.embedding.chroma;
+package dev.langchain4j.store.embedding.chroma.model;
 
 import java.util.HashMap;
 import java.util.Map;
 
-class CreateCollectionRequest {
+public class CreateCollectionRequest {
 
     private final String name;
     private final Map<String, Object> metadata;
@@ -11,7 +11,7 @@ class CreateCollectionRequest {
     /**
      * Currently, cosine distance is always used as the distance method for chroma implementation
      */
-    CreateCollectionRequest(String name) {
+    public CreateCollectionRequest(String name) {
         this.name = name;
         HashMap<String, Object> metadata = new HashMap<>();
         metadata.put("hnsw:space", "cosine");
