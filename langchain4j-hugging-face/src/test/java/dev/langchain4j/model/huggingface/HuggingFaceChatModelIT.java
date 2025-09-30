@@ -14,13 +14,10 @@ class HuggingFaceChatModelIT {
     void should_send_messages_and_receive_response() {
 
         // given
-        String modelName = "meta-llama/Llama-3.2-11B-Vision-Instruct";
-        String baseUrl = String.format("https://router.huggingface.co/hf-inference/models/%s/v1", modelName);
-
         ChatModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("HF_API_KEY"))
-                .baseUrl(baseUrl)
-                .modelName(modelName)
+                .baseUrl("https://router.huggingface.co/v1")
+                .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
                 .build();
 
         // when

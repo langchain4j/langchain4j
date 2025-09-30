@@ -10,7 +10,7 @@ import java.util.Objects;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Deprecated(forRemoval = true, since = "1.2.0-beta8")
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)

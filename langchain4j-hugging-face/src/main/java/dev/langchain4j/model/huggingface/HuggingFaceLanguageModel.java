@@ -17,16 +17,14 @@ import java.time.Duration;
 /**
  * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
  * <pre>
- * String modelName = "meta-llama/Llama-3.2-11B-Vision-Instruct";
- * String baseUrl = String.format("https://router.huggingface.co/hf-inference/models/%s/v1", modelName);
  * ChatModel model = OpenAiChatModel.builder()
  *     .apiKey(System.getenv("HF_API_KEY"))
- *     .baseUrl(baseUrl)
- *     .modelName(modelName)
+ *     .baseUrl("https://router.huggingface.co/v1")
+ *     .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
  *     .build();
  * </pre>
  */
-@Deprecated(forRemoval = true, since = "1.2.0-beta8")
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 public class HuggingFaceLanguageModel implements LanguageModel {
 
     private final HuggingFaceClient client;
