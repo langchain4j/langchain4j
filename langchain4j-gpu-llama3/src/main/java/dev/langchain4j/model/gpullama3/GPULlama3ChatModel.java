@@ -13,7 +13,7 @@ import java.nio.file.Path;
 
 /**
  * GPULlama3 implementation of the langchain4j ChatModel interface.
- *
+ * <p>
  * This model provides synchronous chat capabilities using the GPULlama3.java library,
  * supporting both CPU and GPU execution modes. The model maintains the conversation state
  * and automatically separates thinking content from actual responses.

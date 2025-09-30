@@ -5,10 +5,10 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 /**
  * Utility class for parsing GPULlama3 model responses that contain thinking content.
- *
+ * <p>
  * GPULlama3 models can generate responses with embedded thinking content in the format:
  * &lt;think&gt;thinking content...&lt;/think&gt;actual response content
- *
+ * <p>
  * This parser separates the thinking content from the actual response content for both
  * complete responses and streaming responses, while preserving the thinking tags.
  */
@@ -138,7 +138,7 @@ public class GPULlama3ResponseParser {
 
     /**
      * Parser for handling streaming responses with real-time thinking content separation.
-     *
+     * <p>
      * This parser detects thinking content as tokens are generated and routes it to
      * the appropriate handler methods (onPartialThinking vs onPartialResponse).
      * The thinking tags are preserved and streamed as part of the thinking content.

@@ -9,11 +9,8 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.beehive.gpullama3.model.Model;
 import java.nio.file.Path;
-import java.util.List;
 
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
