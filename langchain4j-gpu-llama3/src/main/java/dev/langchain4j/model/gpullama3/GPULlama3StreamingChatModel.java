@@ -9,7 +9,9 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.beehive.gpullama3.model.Model;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -40,15 +42,26 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
-            String response = modelResponse(chatRequest, token -> {
-                String tokenStr = getModel().tokenizer().decode(List.of(token));
-                handler.onPartialResponse(tokenStr);
-            });
-            ChatResponse chatResponse =
-                    ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
+            // Create streaming parser using the utility class
+            GPULlama3ResponseParser.StreamingParser parser =
+                    GPULlama3ResponseParser.createStreamingParser(handler, getModel());
+
+            // Generate response with streaming callback
+            String rawResponse = modelResponse(chatRequest, parser::onToken);
+
+            // Parse the complete response and send final result
+            GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);
+
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .aiMessage(AiMessage.builder()
+                            .text(parsed.getActualResponse())
+                            .thinking(parsed.getThinkingContent())
+                            .build())
+                    .build();
+
             handler.onCompleteResponse(chatResponse);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate response from GPULlama3", e);
+            handler.onError(e);
         }
     }
 
