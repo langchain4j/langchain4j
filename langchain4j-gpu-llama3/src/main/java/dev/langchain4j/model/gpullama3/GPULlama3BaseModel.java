@@ -2,6 +2,7 @@ package dev.langchain4j.model.gpullama3;
 
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.io.IOException;
+import java.lang.ref.Cleaner;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,16 +27,23 @@ import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
  *   <li>Token encoding and decoding using proper chat formats</li>
  *   <li>Both CPU and GPU execution modes</li>
  *   <li>System and user message processing</li>
+ *   <li>Automatic resource cleanup using modern Cleaner API</li>
  * </ul>
  *
  * <p>The class maintains conversation history across multiple requests, allowing
  * for natural multi-turn conversations without requiring clients to manage
  * conversation state explicitly.
  *
+ * <p>GPU resources are automatically cleaned up when the model is garbage collected,
+ * but can also be manually freed using {@link #freeTornadoVMGPUResources()} or
+ * {@link #close()}.
+ *
  * <p>Subclasses should implement specific model interfaces (e.g., ChatModel or
  * StreamingChatModel) while leveraging this base functionality.
  */
-abstract class GPULlama3BaseModel {
+abstract class GPULlama3BaseModel implements AutoCloseable {
+    private static final Cleaner CLEANER = Cleaner.create();
+
     private Integer maxTokens;
     private Boolean onGPU;
     private Model model;
@@ -47,6 +55,11 @@ abstract class GPULlama3BaseModel {
     List<Integer> conversationTokens;
     ChatFormat chatFormat;
     TornadoVMMasterPlan tornadoVMPlan;
+
+    /** Cleaner for automatic resource management */
+    private Cleaner.Cleanable cleanable;
+    /** Flag to track if resources have been closed */
+    private boolean closed = false;
 
     private static String extractSystemPrompt(ChatRequest request) {
         return request.messages().stream()
@@ -85,10 +98,7 @@ abstract class GPULlama3BaseModel {
             this.chatFormat = model.chatFormat();
 
             if (model.shouldAddBeginOfText()) {
-                System.out.println("Adding BOS token to conversation history");
                 conversationTokens.add(chatFormat.getBeginOfText());
-            } else {
-                System.out.println("Not adding BOS token to conversation history");
             }
 
             startPosition = 0;
@@ -97,6 +107,10 @@ abstract class GPULlama3BaseModel {
 
             if (onGPU) {
                 tornadoVMPlan = TornadoVMMasterPlan.initializeTornadoVMPlan(state, model);
+                // Register automatic cleanup with Cleaner
+                this.cleanable = CLEANER.register(this, new TornadoVMCleanupAction(tornadoVMPlan));
+            } else {
+                this.cleanable = null;
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load model from " + modelPath, e);
@@ -190,7 +204,51 @@ abstract class GPULlama3BaseModel {
         LastRunMetrics.printMetrics();
     }
 
+    /**
+     * Manually releases GPU resources allocated by TornadoVM.
+     *
+     * <p>This method can be called explicitly to free resources immediately,
+     * or will be called automatically when the model is garbage collected.
+     * It's safe to call this method multiple times.
+     */
     public void freeTornadoVMGPUResources() {
-        tornadoVMPlan.freeTornadoExecutionPlan();
+        if (!closed && cleanable != null) {
+            cleanable.clean();
+            closed = true;
+        }
+    }
+
+    /**
+     * Closes the model and releases all associated resources.
+     *
+     * <p>This method implements AutoCloseable, allowing the model to be used
+     * with try-with-resources statements for automatic resource management.
+     */
+    @Override
+    public void close() {
+        freeTornadoVMGPUResources();
+    }
+
+    /**
+     * Cleanup action for TornadoVM resources that holds no reference to the model instance.
+     * This prevents memory leaks while ensuring resources are properly cleaned up.
+     */
+    private static class TornadoVMCleanupAction implements Runnable {
+        private final TornadoVMMasterPlan plan;
+
+        TornadoVMCleanupAction(TornadoVMMasterPlan plan) {
+            this.plan = plan;
+        }
+
+        @Override
+        public void run() {
+            if (plan != null) {
+                try {
+                    plan.freeTornadoExecutionPlan();
+                } catch (Exception e) {
+                    System.err.println("Error while cleaning up TornadoVM resources: " + e.getMessage());
+                }
+            }
+        }
     }
 }
