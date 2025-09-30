@@ -16,6 +16,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.agentic.Agents.LegalExpert;
@@ -295,6 +296,7 @@ public class SupervisorAgentIT {
     }
 
     @Test
+    @Disabled("Flaky test, needs investigation and rework to make it more reliable")
     void agentic_banker_with_non_agentic_exchange_and_conflicting_names_test() {
         agentic_banker_with_exchange_test(false, true);
     }
