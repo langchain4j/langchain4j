@@ -266,7 +266,7 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-mcp-docker</artifactId>
-                <version>1.4.0-beta10-SNAPSHOT</version>
+                <version>1.7.0-beta13-SNAPSHOT</version>
             </dependency>
 
             <dependency>
