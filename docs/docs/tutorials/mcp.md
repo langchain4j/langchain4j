@@ -14,6 +14,9 @@ The protocol specifies two types of transport, both of these are supported:
   can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
 
+Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
+container image.
+
 LangChain4j also supports the legacy 
 [HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
 but this is deprecated and will be removed in the future.
@@ -59,6 +62,25 @@ McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
+    .build();
+```
+
+For the Docker stdio transport, you first need to add a module to your pom.xml:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-mcp-docker</artifactId>
+</dependency>
+```
+
+Then you need to create a Docker transport:
+
+```java
+McpTransport transport = new DockerMcpTransport.Builder()
+    .image("mcp/time")
+    .dockerHost("unix:///var/run/docker.sock")
+    .logEvents(true) // if you want to see the traffic in the log
     .build();
 ```
 
