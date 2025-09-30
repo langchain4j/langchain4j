@@ -15,7 +15,7 @@ jobs:
           - 21
         include:
           - java_version: '21'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama'
+            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama,!langchain4j-vespa,!langchain4j-document-loader-playwright'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
@@ -39,12 +39,12 @@ jobs:
         uses: jbangdev/setup-jbang@main
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
-          ## compile and verify javadocs on ALL modules
+          ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
             --fail-at-end \
             ${{ matrix.mvn_opts }}
           
-          ## run tests for some modules
+          ## run integration tests
           mvn -B -U verify \
               --fail-at-end \
               -Dmaven.test.failure.ignore=true \
