@@ -14,7 +14,6 @@
 
     <properties>
         <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
-        <test.class>GPULlama3ChatModelIT</test.class>
         <maven.test.skip>true</maven.test.skip>
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
