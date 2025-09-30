@@ -14,12 +14,14 @@ public class AgenticScopeJsonSerializationIT {
         Person person = new Person();
         person.setName("Mario");
         person.setAge(51);
+        person.setAdult(true);
 
         agenticScope.writeState("category", Agents.RequestCategory.MEDICAL);
         agenticScope.writeState("person", person);
 
         String json = AgenticScopeSerializer.toJson(agenticScope);
         System.out.println(json);
+        assertThat(json).contains("is_adult");
         DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
 
         assertThat(deserialized.memoryId()).isEqualTo(agenticScope.memoryId());
@@ -28,5 +30,6 @@ public class AgenticScopeJsonSerializationIT {
         Person deserPerson = (Person) deserialized.readState("person");
         assertThat(deserPerson.getName()).isEqualTo("Mario");
         assertThat(deserPerson.getAge()).isEqualTo(51);
+        assertThat(deserPerson.isAdult()).isTrue();
     }
 }

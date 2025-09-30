@@ -2,12 +2,12 @@ package dev.langchain4j.invocation;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents arbitrary parameters available during a single AI Service invocation.
@@ -95,9 +95,7 @@ public class InvocationParameters {
 
     @Override
     public String toString() {
-        return "InvocationParameters{" +
-                "map=" + map +
-                '}';
+        return "InvocationParameters{" + "map=" + map + '}';
     }
 
     public static InvocationParameters from(String key, Object value) {

@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -40,6 +41,9 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
+        if (agent instanceof Class c) {
+            agent = AgenticServices.agentBuilder(c).build();
+        }
         return agent instanceof AgentSpecification agentSpecification ? agentToExecutor(agentSpecification) : nonAiAgentToExecutor(agent);
     }
 

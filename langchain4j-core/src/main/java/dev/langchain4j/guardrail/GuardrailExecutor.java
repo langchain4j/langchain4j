@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import java.util.List;
 
 /**
@@ -16,12 +17,14 @@ import java.util.List;
  *            The type of {@link GuardrailResult} to return
  * @param <G>
  *            The type of {@link Guardrail}s being executed
+ * @param <E> The type of {@link GuardrailExecutedEvent} to be fired
  */
 public sealed interface GuardrailExecutor<
                 C extends GuardrailsConfig,
-                P extends GuardrailRequest,
+                P extends GuardrailRequest<P>,
                 R extends GuardrailResult<R>,
-                G extends Guardrail<P, R>>
+                G extends Guardrail<P, R>,
+                E extends GuardrailExecutedEvent<P, R, G>>
         permits AbstractGuardrailExecutor {
 
     /**
@@ -38,8 +41,8 @@ public sealed interface GuardrailExecutor<
 
     /**
      * Executes the provided guardrails on the given parameters.
-     * @param params The {@link GuardrailRequest} to validate
+     * @param request The {@link GuardrailRequest} to validate
      * @return The {@link GuardrailResult} of the validation
      */
-    R execute(P params);
+    R execute(P request);
 }

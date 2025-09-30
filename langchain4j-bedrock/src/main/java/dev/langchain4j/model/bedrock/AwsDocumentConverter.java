@@ -28,12 +28,15 @@ class AwsDocumentConverter {
     private AwsDocumentConverter() {}
 
     public static String documentToJson(Document document) {
+        if (document == null) {
+            return "{}";
+        }
+
         try {
             Map<String, Object> actualValues = new HashMap<>();
             for (Map.Entry<String, Document> entry : document.asMap().entrySet()) {
                 Document doc = entry.getValue();
                 actualValues.put(entry.getKey(), documentToObject(doc));
-                // Add other types as needed
             }
             return OBJECT_MAPPER.writeValueAsString(actualValues);
         } catch (JsonProcessingException e) {
@@ -63,10 +66,9 @@ class AwsDocumentConverter {
 
     public static Document documentFromJson(String json) {
         try {
-            final JsonNode jsonNode = OBJECT_MAPPER.readValue(json, JsonNode.class);
+            JsonNode jsonNode = OBJECT_MAPPER.readValue(json, JsonNode.class);
             Iterator<Map.Entry<String, JsonNode>> fields = jsonNode.fields();
             return new MapDocument(fieldsToDocumentMap(fields));
-
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -76,7 +78,7 @@ class AwsDocumentConverter {
         Map<String, Document> documentMap = new HashMap<>();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
-            final JsonNode value = entry.getValue();
+            JsonNode value = entry.getValue();
             Document doc = getDocument(value);
             documentMap.put(entry.getKey(), doc);
         }
@@ -106,7 +108,6 @@ class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
-        // Convert ToolSpecification to a Map using JsonSchemaElementHelper
         Map<String, Object> schemaMap = new HashMap<>();
         schemaMap.put("type", "object");
 
@@ -124,7 +125,6 @@ class AwsDocumentConverter {
             schemaMap.put("required", required);
         }
 
-        // Convert the schema map to AWS Document
         try {
             String jsonSchema = OBJECT_MAPPER.writeValueAsString(schemaMap);
             return documentFromJson(jsonSchema);

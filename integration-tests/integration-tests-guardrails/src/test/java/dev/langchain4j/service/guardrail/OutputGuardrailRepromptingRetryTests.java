@@ -94,7 +94,7 @@ class OutputGuardrailRepromptingRetryTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             spy.incrementAndGet();
             return retry("Retry");
         }
@@ -112,7 +112,7 @@ class OutputGuardrailRepromptingRetryTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             int v = spy.incrementAndGet();
             return reprompt("Retry", "reprompt");
         }

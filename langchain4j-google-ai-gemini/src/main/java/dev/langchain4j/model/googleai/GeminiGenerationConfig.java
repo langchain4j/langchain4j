@@ -7,52 +7,51 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 class GeminiGenerationConfig {
 
-    @JsonProperty
+    @JsonProperty("stopSequences")
     private final List<String> stopSequences;
 
-    @JsonProperty
+    @JsonProperty("responseMimeType")
     private final String responseMimeType;
 
-    @JsonProperty
+    @JsonProperty("responseSchema")
     private final GeminiSchema responseSchema;
 
-    @JsonProperty
+    @JsonProperty("candidateCount")
     private final Integer candidateCount;
 
-    @JsonProperty
+    @JsonProperty("maxOutputTokens")
     private final Integer maxOutputTokens;
 
-    @JsonProperty
+    @JsonProperty("temperature")
     private final Double temperature;
 
-    @JsonProperty
+    @JsonProperty("topK")
     private final Integer topK;
 
-    @JsonProperty
+    @JsonProperty("seed")
     private Integer seed;
 
-    @JsonProperty
+    @JsonProperty("topP")
     private final Double topP;
 
-    @JsonProperty
+    @JsonProperty("presencePenalty")
     private final Double presencePenalty;
 
-    @JsonProperty
+    @JsonProperty("frequencyPenalty")
     private final Double frequencyPenalty;
 
-    @JsonProperty
+    @JsonProperty("thinkingConfig")
     private final GeminiThinkingConfig thinkingConfig;
 
-    @JsonProperty
+    @JsonProperty("responseLogprobs")
     private final Boolean responseLogprobs;
 
-    @JsonProperty
+    @JsonProperty("enableEnhancedCivicAnswers")
     private final Boolean enableEnhancedCivicAnswers;
 
-    @JsonProperty
+    @JsonProperty("logprobs")
     private final Integer logprobs;
 
     GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
