@@ -10,8 +10,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.nio.file.Path;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
 
@@ -40,53 +38,21 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
-            // Create and return chat response
+            // Generate raw response from the model
             String rawResponse = modelResponse(chatRequest, null);
 
-            // Parse thinking and actual response
-            ParsedResponse parsed = parseResponse(rawResponse);
+            // Parse thinking and actual response using the GPULlama3ResponseParser
+            GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);
 
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
-                            .text(parsed.actualResponse)
-                            .thinking(parsed.thinkingContent)
+                            .text(parsed.getActualResponse())
+                            .thinking(parsed.getThinkingContent())
                             .build())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate response from GPULlama3", e);
         }
-    }
-
-    private static class ParsedResponse {
-        String thinkingContent;
-        String actualResponse;
-    }
-
-    private ParsedResponse parseResponse(String rawResponse) {
-        String thinking = null;
-        String actualResponse = rawResponse;
-
-        // Find <think> and </think> positions
-        int thinkStart = rawResponse.indexOf("<think>");
-        int thinkEnd = rawResponse.indexOf("</think>");
-
-        if (thinkStart != -1 && thinkEnd != -1 && thinkEnd > thinkStart) {
-            // Extract thinking content (skip the <think> tag itself)
-            thinking = rawResponse.substring(thinkStart + 7, thinkEnd).trim();
-
-            // Remove the entire thinking block from response
-            String beforeThink = rawResponse.substring(0, thinkStart);
-            String afterThink = rawResponse.substring(thinkEnd + 8); // Skip </think>
-            actualResponse = (beforeThink + afterThink).trim();
-
-            // Clean up any extra whitespace
-            actualResponse = actualResponse.replaceAll("\\s+", " ").trim();
-        }
-
-        ParsedResponse result = new ParsedResponse();
-        result.thinkingContent = thinking;
-        result.actualResponse = actualResponse;
-        return result;
     }
 
     public static class Builder {
