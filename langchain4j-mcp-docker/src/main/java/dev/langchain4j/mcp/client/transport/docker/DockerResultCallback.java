@@ -12,7 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-public class DockerResultCallback extends ResultCallback.Adapter<Frame> {
+class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     private static final Logger LOG = LoggerFactory.getLogger(DockerResultCallback.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
