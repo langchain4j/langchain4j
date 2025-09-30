@@ -1,10 +1,12 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AddEmbeddingsRequest {
+@Internal
+class AddEmbeddingsRequest {
 
     private final List<String> ids;
     private final List<float[]> embeddings;

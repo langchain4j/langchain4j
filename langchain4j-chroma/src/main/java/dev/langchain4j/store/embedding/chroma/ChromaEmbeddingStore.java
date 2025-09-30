@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.store.embedding.chroma.ChromaApiVersion.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -16,14 +17,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.chroma.model.AddEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.Collection;
-import dev.langchain4j.store.embedding.chroma.model.CreateCollectionRequest;
-import dev.langchain4j.store.embedding.chroma.model.Database;
-import dev.langchain4j.store.embedding.chroma.model.DeleteEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryResponse;
-import dev.langchain4j.store.embedding.chroma.model.Tenant;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -35,33 +28,11 @@ import java.util.Map;
  * Represents a store for embeddings using the Chroma backend.
  * Always uses cosine distance as the distance metric.
  */
-public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
+class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final ChromaClient chromaClient;
     private String collectionId;
     private final String collectionName;
-
-    /**
-     * Initializes a new instance of ChromaEmbeddingStore (V1 API) with the specified parameters.
-     *
-     * @param baseUrl        The base URL of the Chroma service.
-     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
-     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
-     * @param logRequests    If true, requests to the Chroma service are logged.
-     * @param logResponses   If true, responses from the Chroma service are logged.
-     * @deprecated Only works with the V1 API, use the nbuilder constructor instead.
-     */
-    @Deprecated
-    public ChromaEmbeddingStore(
-            String baseUrl, String collectionName, Duration timeout, boolean logRequests, boolean logResponses) {
-        this(builder()
-                .apiVersion(ApiVersion.V1)
-                .baseUrl(baseUrl)
-                .collectionName(collectionName)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .timeout(timeout));
-    }
 
     /**
      * Initializes a new instance of ChromaEmbeddingStore with the specified parameters.
@@ -70,9 +41,9 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public ChromaEmbeddingStore(Builder builder) {
         this.collectionName = getOrDefault(builder.collectionName, "default");
-        ApiVersion apiVersion = Utils.getOrDefault(builder.apiVersion, ApiVersion.V1);
+        ChromaApiVersion apiVersion = Utils.getOrDefault(builder.apiVersion, V1);
 
-        if (apiVersion == ApiVersion.V1) {
+        if (apiVersion == V1) {
             this.chromaClient = new ChromaClientV1.Builder()
                     .baseUrl(builder.baseUrl)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
@@ -83,8 +54,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         } else {
             ChromaClientV2 chromaClientV2 = new ChromaClientV2.Builder()
                     .baseUrl(builder.baseUrl)
-                    .tenantName(builder.tenant)
-                    .databaseName(builder.database)
+                    .tenantName(builder.tenantName)
+                    .databaseName(builder.databaseName)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
                     .logRequests(builder.logRequests)
                     .logResponses(builder.logResponses)
@@ -101,20 +72,47 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    /**
+     * Initializes a new instance of ChromaEmbeddingStore (V1 API) with the specified parameters.
+     *
+     * @param baseUrl        The base URL of the Chroma service.
+     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
+     * @param logRequests    If true, requests to the Chroma service are logged.
+     * @param logResponses   If true, responses from the Chroma service are logged.
+     * @deprecated Only works with the V1 API, use the {@link #ChromaEmbeddingStore(Builder)} constructor instead.
+     */
+    @Deprecated(since = "1.7.0-beta13", forRemoval = true)
+    public ChromaEmbeddingStore(
+            String baseUrl, String collectionName, Duration timeout, boolean logRequests, boolean logResponses) {
+        this(builder()
+                .apiVersion(V1)
+                .baseUrl(baseUrl)
+                .collectionName(collectionName)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .timeout(timeout));
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
+        private ChromaApiVersion apiVersion;
         private String baseUrl;
+        private String tenantName;
+        private String databaseName;
         private String collectionName;
         private Duration timeout;
         private boolean logRequests;
         private boolean logResponses;
-        private ApiVersion apiVersion;
-        private String tenant;
-        private String database;
+
+        public Builder apiVersion(ChromaApiVersion apiVersion) {
+            this.apiVersion = apiVersion;
+            return this;
+        }
 
         /**
          * @param baseUrl The base URL of the Chroma service.
@@ -126,7 +124,28 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+         * @param tenantName The name of the tenant in the Chroma service.
+         *                   If not specified, "default" will be used.
+         * @return builder
+         */
+        public Builder tenantName(String tenantName) {
+            this.tenantName = tenantName;
+            return this;
+        }
+
+        /**
+         * @param databaseName The name of the database in the Chroma service.
+         *                     If not specified, "default" will be used.
+         * @return builder
+         */
+        public Builder databaseName(String databaseName) {
+            this.databaseName = databaseName;
+            return this;
+        }
+
+        /**
+         * @param collectionName The name of the collection in the Chroma service.
+         *                       If not specified, "default" will be used.
          * @return builder
          */
         public Builder collectionName(String collectionName) {
@@ -150,21 +169,6 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public Builder apiVersion(ApiVersion apiVersion) {
-            this.apiVersion = apiVersion;
-            return this;
-        }
-
-        public Builder database(String database) {
-            this.database = database;
-            return this;
-        }
-
-        public Builder tenant(String tenant) {
-            this.tenant = tenant;
             return this;
         }
 

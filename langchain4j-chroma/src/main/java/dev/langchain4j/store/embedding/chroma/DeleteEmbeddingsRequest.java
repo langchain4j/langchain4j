@@ -1,9 +1,11 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.List;
 import java.util.Map;
 
-public class DeleteEmbeddingsRequest {
+@Internal
+class DeleteEmbeddingsRequest {
 
     private final List<String> ids;
     private final Map<String, Object> where;

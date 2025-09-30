@@ -28,7 +28,7 @@ class ChromaEmbeddingStoreRemovalV2IT extends EmbeddingStoreWithRemovalIT {
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl(chroma.getEndpoint())
             .collectionName(randomUUID())
-            .apiVersion(ApiVersion.V2)
+            .apiVersion(ChromaApiVersion.V2)
             .logRequests(true)
             .logResponses(true)
             .build();

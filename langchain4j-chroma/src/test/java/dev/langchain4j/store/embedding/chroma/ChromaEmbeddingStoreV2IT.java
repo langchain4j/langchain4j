@@ -31,7 +31,7 @@ class ChromaEmbeddingStoreV2IT extends EmbeddingStoreWithFilteringIT {
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl("http://" + chroma.getHost() + ":" + chroma.getFirstMappedPort())
-            .apiVersion(ApiVersion.V2)
+            .apiVersion(ChromaApiVersion.V2)
             .collectionName(randomUUID())
             .logRequests(true)
             .logResponses(true)

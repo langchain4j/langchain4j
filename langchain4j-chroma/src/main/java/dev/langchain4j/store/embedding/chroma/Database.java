@@ -1,6 +1,9 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
 
-public class Database {
+import dev.langchain4j.Internal;
+
+@Internal
+class Database {
 
     private String name;
 

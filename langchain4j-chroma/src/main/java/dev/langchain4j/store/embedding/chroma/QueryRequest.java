@@ -1,4 +1,6 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
+
+import dev.langchain4j.Internal;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -6,7 +8,8 @@ import static java.util.Collections.singletonList;
 import java.util.List;
 import java.util.Map;
 
-public class QueryRequest {
+@Internal
+class QueryRequest {
 
     private final Map<String, Object> where;
     private final List<List<Float>> queryEmbeddings;

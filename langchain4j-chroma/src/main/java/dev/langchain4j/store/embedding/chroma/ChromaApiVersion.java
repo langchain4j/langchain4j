@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.chroma;
 
-public enum ApiVersion {
-    V1,
-    V2
+public enum ChromaApiVersion {
+    V1, V2
 }

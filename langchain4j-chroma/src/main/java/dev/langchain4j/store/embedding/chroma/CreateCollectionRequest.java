@@ -1,9 +1,11 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CreateCollectionRequest {
+@Internal
+class CreateCollectionRequest {
 
     private final String name;
     private final Map<String, Object> metadata;

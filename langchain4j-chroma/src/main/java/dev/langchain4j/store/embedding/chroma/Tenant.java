@@ -1,6 +1,9 @@
-package dev.langchain4j.store.embedding.chroma.model;
+package dev.langchain4j.store.embedding.chroma;
 
-public class Tenant {
+import dev.langchain4j.Internal;
+
+@Internal
+class Tenant {
 
     private String name;
 

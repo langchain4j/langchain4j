@@ -1,13 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
-import dev.langchain4j.store.embedding.chroma.model.AddEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.Collection;
-import dev.langchain4j.store.embedding.chroma.model.CreateCollectionRequest;
-import dev.langchain4j.store.embedding.chroma.model.DeleteEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryResponse;
+import dev.langchain4j.Internal;
 
-public interface ChromaClient {
+@Internal
+interface ChromaClient {
     Collection createCollection(CreateCollectionRequest createCollectionRequest);
 
     Collection collection(String collectionName);

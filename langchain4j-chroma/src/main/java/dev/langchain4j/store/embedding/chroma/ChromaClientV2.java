@@ -2,18 +2,12 @@ package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.store.embedding.chroma.model.AddEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.Collection;
-import dev.langchain4j.store.embedding.chroma.model.CreateCollectionRequest;
-import dev.langchain4j.store.embedding.chroma.model.Database;
-import dev.langchain4j.store.embedding.chroma.model.DeleteEmbeddingsRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryRequest;
-import dev.langchain4j.store.embedding.chroma.model.QueryResponse;
-import dev.langchain4j.store.embedding.chroma.model.Tenant;
 import java.io.IOException;
 import java.time.Duration;
 
+@Internal
 class ChromaClientV2 implements ChromaClient {
 
     private final ChromaApiV2Impl chromaApi;
