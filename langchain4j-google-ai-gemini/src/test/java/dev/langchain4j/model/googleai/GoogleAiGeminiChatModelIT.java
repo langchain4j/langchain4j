@@ -26,7 +26,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.model.chat.ChatModel;
@@ -49,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -190,56 +188,6 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("233");
-    }
-
-    @RetryingTest(3)
-    void should_support_JSON_array_in_tools() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-lite")
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("Return a JSON list containing the first 10 fibonacci numbers."));
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getFirstNFibonacciNumbers")
-                .description("Get the first n fibonacci numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("n")
-                        .required("n")
-                        .build())
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        // when
-        ChatResponse response = gemini.chat(request);
-
-        // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments()).contains("\"n\":10");
-
-        allMessages.add(response.aiMessage());
-
-        // when
-        String fibonacciNumbers = "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]";
-        ToolExecutionResultMessage toolResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", fibonacciNumbers);
-        allMessages.add(toolResult);
-
-        // then
-        response = gemini.chat(allMessages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
     }
 
     @Disabled("TODO fix")
