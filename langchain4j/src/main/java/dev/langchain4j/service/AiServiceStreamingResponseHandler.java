@@ -108,7 +108,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
         this.methodKey = methodKey;
 
-        this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
+        this.partialResponseHandler = partialResponseHandler;
         this.partialThinkingHandler = partialThinkingHandler;
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
@@ -134,7 +134,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse);
-        } else {
+        } else if (partialResponseHandler != null) {
             partialResponseHandler.accept(partialResponse);
         }
     }
@@ -296,7 +296,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
                     // If we have output guardrails, we should process all of the partial responses first before
                     // completing
-                    responseBuffer.forEach(partialResponseHandler::accept);
+                    if (partialResponseHandler != null) {
+                        responseBuffer.forEach(partialResponseHandler::accept);
+                    }
                     responseBuffer.clear();
                 }
 
