@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
         # Modules specify the oldest java version that they support:
-        # even if we build with version 21, produced jars should be compatible with
+        # even if we build with version 25, produced jars should be compatible with
         # JVMs running the version specified in each module's maven.compiler.target property
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           server-id: central
           server-username: MAVEN_CENTRAL_USERNAME

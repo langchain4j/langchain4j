@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.AiMessage.aiMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.CompleteResponse
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.PartialResponse
-import dev.langchain4j.kotlin.model.chat.chatFlow
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler

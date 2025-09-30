@@ -1,9 +1,9 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.Objects;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the execution of a tool, including the request and the result.
@@ -11,11 +11,11 @@ import java.util.Objects;
 public class ToolExecution {
 
     private final ToolExecutionRequest request;
-    private final String result;
+    private final ToolExecutionResult result;
 
     private ToolExecution(Builder builder) {
-        this.request = builder.request;
-        this.result = builder.result;
+        this.request = ensureNotNull(builder.request, "request");
+        this.result = ensureNotNull(builder.result, "result");
     }
 
     /**
@@ -28,35 +28,46 @@ public class ToolExecution {
     }
 
     /**
-     * Returns the result of the tool execution.
+     * Returns the tool execution result as text.
      *
      * @return the result of the tool execution.
+     * @see #resultObject()
      */
     public String result() {
-        return result;
+        return result.resultText();
+    }
+
+    /**
+     * Returns the tool execution result as object.
+     * This object is the actual value returned by the tool.
+     *
+     * @return the result of the tool execution.
+     * @see #result()
+     */
+    public Object resultObject() {
+        return result.result();
     }
 
     @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof ToolExecution && equalTo((ToolExecution) another);
-    }
-
-    private boolean equalTo(ToolExecution another) {
-        return Objects.equals(request, another.request) && Objects.equals(result, another.result);
+    public boolean equals(final Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        ToolExecution that = (ToolExecution) object;
+        return Objects.equals(request, that.request)
+                && Objects.equals(result, that.result);
     }
 
     @Override
     public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(request);
-        h += (h << 5) + Objects.hashCode(result);
-        return h;
+        return Objects.hash(request, result);
     }
 
     @Override
     public String toString() {
-        return "ToolExecution {" + " request = " + request + ", result = " + quoted(result) + " }";
+        return "ToolExecution{" +
+                "request=" + request +
+                ", result=" + result +
+                '}';
     }
 
     public static Builder builder() {
@@ -66,17 +77,29 @@ public class ToolExecution {
     public static final class Builder {
 
         private ToolExecutionRequest request;
-        private String result;
+        private ToolExecutionResult result;
 
-        private Builder() {}
+        private Builder() {
+        }
 
         public Builder request(ToolExecutionRequest request) {
             this.request = request;
             return this;
         }
 
-        public Builder result(String result) {
+        public Builder result(ToolExecutionResult result) {
             this.result = result;
+            return this;
+        }
+
+        /**
+         * @deprecated Please use {@link #result(ToolExecutionResult)} instead
+         */
+        @Deprecated(since = "1.5.0")
+        public Builder result(String result) {
+            this.result = ToolExecutionResult.builder()
+                    .resultText(result)
+                    .build();
             return this;
         }
 

@@ -15,6 +15,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -81,7 +82,8 @@ class ChromaMetadataFilterMapperTest {
         And filter = new And(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
-            .isEqualTo(singletonMap("$and", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+                .isEqualTo(
+                        singletonMap("$and", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
     }
 
     @Test
@@ -89,6 +91,33 @@ class ChromaMetadataFilterMapperTest {
         Or filter = new Or(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
-            .isEqualTo(singletonMap("$or", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+                .isEqualTo(singletonMap("$or", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+    }
+
+    @Test
+    void should_map_nested_and_or_filters() {
+        // given
+        And nestedAnd = new And(
+                new IsEqualTo("key1", "value1"), new Or(new IsGreaterThan("key2", 1), new IsLessThan("key2", 1)));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(nestedAnd);
+
+        // then
+        assertThat(result).containsKey("$and");
+        assertThat((List<?>) result.get("$and")).hasSize(2);
+    }
+
+    @Test
+    void should_map_multiple_and_conditions() {
+        // given
+        And filter = new And(new IsEqualTo("key1", "value1"), new IsGreaterThan("key2", 1));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then
+        assertThat(result).containsKey("$and");
+        assertThat((List<?>) result.get("$and")).hasSize(2);
     }
 }

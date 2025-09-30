@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.2.0-beta8-SNAPSHOT</version>
+    <version>1.7.0-beta13-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -20,6 +20,7 @@
 
         <module>langchain4j-easy-rag</module>
         <module>langchain4j-mcp</module>
+        <module>langchain4j-mcp-docker</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -46,6 +47,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
+        <module>langchain4j-watsonx</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -74,6 +76,7 @@
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
+        <module>document-loaders/langchain4j-document-loader-playwright</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
         <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
@@ -81,6 +84,7 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <module>document-parsers/langchain4j-document-parser-markdown</module>
 
         <!-- document transformers -->
         <module>document-transformers/langchain4j-document-transformer-jsoup</module>
@@ -88,6 +92,7 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-azure-acads</module>
 
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
@@ -99,6 +104,8 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-agentic</module>
+        <module>langchain4j-agentic-a2a</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
@@ -213,7 +220,7 @@
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.43.4</version>
+                        <version>5.47.3</version>
                         <configuration>
                             <activeRecipes>
                                 <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class McpReconnectIT {
+class McpReconnectIT {
 
     private static Process process;
     private static DefaultMcpClient mcpClient;
@@ -37,7 +37,7 @@ public class McpReconnectIT {
     }
 
     @Test
-    public void testReconnect() throws IOException, TimeoutException, InterruptedException {
+    void reconnect() throws IOException, TimeoutException, InterruptedException {
         executeAToolAndAssertSuccess();
 
         // kill the server and restart it
@@ -65,7 +65,7 @@ public class McpReconnectIT {
                 .name("echoString")
                 .arguments("{\"input\": \"abc\"}")
                 .build();
-        String result = mcpClient.executeTool(toolExecutionRequest);
+        String result = mcpClient.executeTool(toolExecutionRequest).resultText();
         assertThat(result).isEqualTo("abc");
     }
 }

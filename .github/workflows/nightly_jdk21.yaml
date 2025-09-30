@@ -2,7 +2,7 @@ name: Nightly Build JDK 21
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # daily at 04:00 UTC
+    - cron: '0 1 * * *'  # daily at 01:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
           - 21
         include:
           - java_version: '21'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama,!langchain4j-vespa,!langchain4j-document-loader-playwright'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
@@ -39,12 +39,12 @@ jobs:
         uses: jbangdev/setup-jbang@main
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
-          ## compile and verify javadocs on ALL modules
+          ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
             --fail-at-end \
             ${{ matrix.mvn_opts }}
           
-          ## run tests for some modules
+          ## run integration tests
           mvn -B -U verify \
               --fail-at-end \
               -Dmaven.test.failure.ignore=true \
@@ -54,11 +54,15 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
+          AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
+          AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
           AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
           AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           ELASTICSEARCH_CLOUD_API_KEY: ${{ secrets.ELASTICSEARCH_CLOUD_API_KEY }}
           ELASTICSEARCH_CLOUD_URL: ${{ secrets.ELASTICSEARCH_CLOUD_URL }}
           GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
@@ -84,7 +88,7 @@ jobs:
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
-          CI_DELAY_SECONDS_BEDROCK: 2
+          CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22

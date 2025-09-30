@@ -11,6 +11,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -56,6 +57,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -139,9 +141,10 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever)
-                .retrieve(Query.from(
-                        query, Metadata.from(UserMessage.from(query), "default", asList(userMessage, aiMessage))));
+        verify(contentRetriever).retrieve(argThat(q -> q.text().equals(query)
+                && q.metadata().chatMessage().equals(UserMessage.from(query))
+                && q.metadata().chatMemoryId().equals("default")
+                && q.metadata().chatMemory().equals(List.of(userMessage, aiMessage))));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -177,8 +180,10 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever)
-                .retrieve(Query.from(query, Metadata.from(UserMessage.from(query), memoryId, emptyList())));
+        verify(contentRetriever).retrieve(argThat(q -> q.text().equals(query)
+                && q.metadata().chatMessage().equals(UserMessage.from(query))
+                && q.metadata().chatMemoryId().equals(memoryId)
+                && q.metadata().chatMemory().isEmpty()));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -283,14 +288,21 @@ class AiServicesWithRagIT {
         String query = "Hey what's up?";
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
-        ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
+        ContentRetriever contentRetriever1 = spy(EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build());
+
+        ContentRetriever contentRetriever2 = spy(EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
                 .maxResults(1)
                 .build());
 
         Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
-        retrieverToDescription.put(contentRetriever, "car rental company terms of use");
+        retrieverToDescription.put(contentRetriever1, "car rental company terms of use 1");
+        retrieverToDescription.put(contentRetriever2, "car rental company terms of use 2");
 
         QueryRouter queryRouter = LanguageModelQueryRouter.builder()
                 .chatModel(model)
@@ -311,8 +323,11 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).isNotBlank();
 
-        verify(contentRetriever).retrieve(Query.from(query, Metadata.from(UserMessage.from(query), "default", null)));
-        verifyNoMoreInteractions(contentRetriever);
+        verify(contentRetriever1).retrieve(argThat(q -> q.text().equals(query)));
+        verifyNoMoreInteractions(contentRetriever1);
+
+        verify(contentRetriever2).retrieve(argThat(q -> q.text().equals(query)));
+        verifyNoMoreInteractions(contentRetriever2);
     }
 
     @Disabled("Fixed in https://github.com/langchain4j/langchain4j/pull/2311")
@@ -403,7 +418,20 @@ class AiServicesWithRagIT {
         QueryRouter queryRouter = new LanguageModelQueryRouter(model, retrieverToDescription);
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.9, 0.7)));
+        when(scoringModel.scoreAll(any(), any())).thenAnswer(invocation -> {
+            List<TextSegment> segments = (List<TextSegment>) invocation.getArguments()[0];
+            List<Double> scores = segments.stream()
+                    .map(segment -> {
+                        if (segment.text().contains(ALLOWED_CANCELLATION_PERIOD_DAYS)
+                                || segment.text().contains(MIN_BOOKING_PERIOD_DAYS)) {
+                            return 0.9;
+                        } else {
+                            return 0.1;
+                        }
+                    })
+                    .toList();
+            return Response.from(scores);
+        });
         ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
                 .scoringModel(scoringModel)
                 .querySelector(
