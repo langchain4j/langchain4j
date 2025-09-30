@@ -1,9 +1,8 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Objects;
 
 public class JsonArraySchema implements JsonSchemaElement {
 
@@ -12,7 +11,7 @@ public class JsonArraySchema implements JsonSchemaElement {
 
     public JsonArraySchema(Builder builder) {
         this.description = builder.description;
-        this.items = ensureNotNull(builder.items, "items");
+        this.items = builder.items;
     }
 
     @Override
@@ -53,8 +52,7 @@ public class JsonArraySchema implements JsonSchemaElement {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         JsonArraySchema that = (JsonArraySchema) o;
-        return Objects.equals(this.description, that.description)
-                && Objects.equals(this.items, that.items);
+        return Objects.equals(this.description, that.description) && Objects.equals(this.items, that.items);
     }
 
     @Override
@@ -64,9 +62,6 @@ public class JsonArraySchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonArraySchema {" +
-                "description = " + quoted(description) +
-                ", items = " + items +
-                " }";
+        return "JsonArraySchema {" + "description = " + quoted(description) + ", items = " + items + " }";
     }
 }

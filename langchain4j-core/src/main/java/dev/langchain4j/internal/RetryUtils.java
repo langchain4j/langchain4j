@@ -3,11 +3,10 @@ package dev.langchain4j.internal;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.NonRetriableException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Random;
 import java.util.concurrent.Callable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility class for retrying actions.
@@ -17,8 +16,7 @@ public final class RetryUtils {
 
     private static final Random RANDOM = new Random();
 
-    private RetryUtils() {
-    }
+    private RetryUtils() {}
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
 
@@ -49,8 +47,7 @@ public final class RetryUtils {
             /**
              * Construct a RetryPolicy.Builder.
              */
-            public Builder() {
-            }
+            public Builder() {}
 
             /**
              * Sets the default maximum number of retries.
@@ -133,11 +130,7 @@ public final class RetryUtils {
          * @param jitterScale The jitter scale.
          * @param backoffExp  The backoff exponent.
          */
-        public RetryPolicy(
-                int maxRetries,
-                int delayMillis,
-                double jitterScale,
-                double backoffExp) {
+        public RetryPolicy(int maxRetries, int delayMillis, double jitterScale, double backoffExp) {
             this.maxRetries = maxRetries;
             this.delayMillis = delayMillis;
             this.jitterScale = jitterScale;
@@ -151,7 +144,7 @@ public final class RetryUtils {
          * @return The raw delay in milliseconds.
          */
         public double rawDelayMs(int retry) {
-            return ((double) delayMillis) * Math.pow(backoffExp, retry);
+            return delayMillis * Math.pow(backoffExp, retry);
         }
 
         /**
@@ -216,8 +209,10 @@ public final class RetryUtils {
                         throw e instanceof RuntimeException re ? re : new LangChain4jException(e);
                     }
 
-                    log.warn("A retriable exception occurred. Remaining retries: %s of %s"
-                            .formatted(maxRetries - retry, maxRetries), e);
+                    log.warn(
+                            "A retriable exception occurred. Remaining retries: %s of %s"
+                                    .formatted(maxRetries - retry, maxRetries),
+                            e);
 
                     sleep(retry);
                 }
@@ -274,10 +269,12 @@ public final class RetryUtils {
      * @throws RuntimeException if the action fails on all attempts.
      */
     public static void withRetry(Runnable action, int maxRetries) {
-        DEFAULT_RETRY_POLICY.withRetry(() -> {
-            action.run();
-            return null;
-        }, maxRetries);
+        DEFAULT_RETRY_POLICY.withRetry(
+                () -> {
+                    action.run();
+                    return null;
+                },
+                maxRetries);
     }
 
     /**
@@ -320,7 +317,8 @@ public final class RetryUtils {
      * @return The result of the action if it is successful.
      * @throws RuntimeException if the action fails on all attempts.
      */
-    public static <T> T withRetryMappingExceptions(Callable<T> action, int maxRetries, ExceptionMapper exceptionMapper) {
+    public static <T> T withRetryMappingExceptions(
+            Callable<T> action, int maxRetries, ExceptionMapper exceptionMapper) {
         return withRetry(() -> exceptionMapper.withExceptionMapper(action), maxRetries);
     }
 }

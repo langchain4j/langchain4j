@@ -1,17 +1,12 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
@@ -21,7 +16,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.0-flash-lite")
-            .logRequestsAndResponses(false) // images are huge in logs
+            .logRequests(false) // images are huge in logs
+            .logResponses(false)
             .build();
 
     @Override
@@ -29,7 +25,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -43,19 +39,28 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
+    }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
     }
 }

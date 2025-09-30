@@ -3,9 +3,11 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Internal;
@@ -83,7 +85,7 @@ class InternalOllamaHelper {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
                         .name(toolCall.getFunction().getName())
-                        .arguments(toJson(toolCall.getFunction().getArguments()))
+                        .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
                 .toList();
     }
@@ -125,11 +127,21 @@ class InternalOllamaHelper {
         }
     }
 
-    static AiMessage aiMessageFrom(OllamaChatResponse ollamaChatResponse) {
-        return ollamaChatResponse.getMessage().getToolCalls() != null
-                ? AiMessage.from(
-                        toToolExecutionRequests(ollamaChatResponse.getMessage().getToolCalls()))
-                : AiMessage.from(ollamaChatResponse.getMessage().getContent());
+    static AiMessage aiMessageFrom(Message message, boolean returnThinking) {
+        String content = message.getContent();
+
+        String thinking = null;
+        if (returnThinking) {
+            thinking = message.getThinking();
+        }
+
+        List<ToolCall> toolCalls = getOrDefault(message.getToolCalls(), List.of());
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(content) ? null : content)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(toToolExecutionRequests(toolCalls))
+                .build();
     }
 
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
@@ -164,6 +176,7 @@ class InternalOllamaHelper {
                 .stream(stream)
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
+                .think(requestParameters.think())
                 .build();
     }
 

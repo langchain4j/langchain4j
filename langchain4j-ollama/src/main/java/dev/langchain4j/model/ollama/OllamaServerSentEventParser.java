@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -26,7 +27,7 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 ServerSentEvent sse = new ServerSentEvent(null, line);

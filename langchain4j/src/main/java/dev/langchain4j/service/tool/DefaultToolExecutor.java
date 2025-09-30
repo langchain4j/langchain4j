@@ -1,8 +1,12 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationContext;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,6 +19,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
@@ -22,18 +29,32 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Object object;
     private final Method originalMethod;
     private final Method methodToInvoke;
+    private final boolean wrapToolArgumentsExceptions;
+    private final boolean propagateToolExecutionExceptions;
+
+    public DefaultToolExecutor(Builder builder) {
+        this.object = ensureNotNull(builder.object, "object");
+        this.originalMethod = ensureNotNull(builder.originalMethod, "originalMethod");
+        this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
+        this.wrapToolArgumentsExceptions = getOrDefault(builder.wrapToolArgumentsExceptions, false);
+        this.propagateToolExecutionExceptions = getOrDefault(builder.propagateToolExecutionExceptions, false);
+    }
 
     public DefaultToolExecutor(Object object, Method method) {
-        this.object = Objects.requireNonNull(object, "object");
-        this.originalMethod = Objects.requireNonNull(method, "method");
+        this.object = ensureNotNull(object, "object");
+        this.originalMethod = ensureNotNull(method, "method");
         this.methodToInvoke = this.originalMethod;
+        this.wrapToolArgumentsExceptions = false;
+        this.propagateToolExecutionExceptions = false;
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
-        this.object = Objects.requireNonNull(object, "object");
-        Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
+        this.object = ensureNotNull(object, "object");
+        ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
         this.originalMethod = findMethod(object, toolExecutionRequest);
         this.methodToInvoke = this.originalMethod;
+        this.wrapToolArgumentsExceptions = false;
+        this.propagateToolExecutionExceptions = false;
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -60,15 +81,17 @@ public class DefaultToolExecutor implements ToolExecutor {
      * @param methodToInvoke the method that should actually be invoked
      */
     public DefaultToolExecutor(Object object, Method originalMethod, Method methodToInvoke) {
-        this.object = Objects.requireNonNull(object, "object");
-        this.originalMethod = Objects.requireNonNull(originalMethod, "originalMethod");
-        this.methodToInvoke = Objects.requireNonNull(methodToInvoke, "methodToInvoke");
+        this.object = ensureNotNull(object, "object");
+        this.originalMethod = ensureNotNull(originalMethod, "originalMethod");
+        this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
+        this.wrapToolArgumentsExceptions = false;
+        this.propagateToolExecutionExceptions = false;
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    @Override
+    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+        Object[] arguments = prepareArguments(request, context);
 
-        Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
             return execute(arguments);
         } catch (IllegalAccessException e) {
@@ -78,15 +101,61 @@ public class DefaultToolExecutor implements ToolExecutor {
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                return e2.getCause().getMessage();
+                if (propagateToolExecutionExceptions) {
+                    throw new ToolExecutionException(e2.getCause());
+                } else {
+                    return ToolExecutionResult.builder()
+                            .isError(true)
+                            .resultText(e2.getCause().getMessage())
+                            .build();
+                }
             }
         } catch (InvocationTargetException e) {
-            return  e.getCause().getMessage();
+            if (propagateToolExecutionExceptions) {
+                throw new ToolExecutionException(e.getCause());
+            } else {
+                return ToolExecutionResult.builder()
+                        .isError(true)
+                        .resultText(e.getCause().getMessage())
+                        .build();
+            }
         }
     }
 
-    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        InvocationContext invocationContext = InvocationContext.builder()
+                .chatMemoryId(memoryId)
+                .build();
+
+        ToolExecutionResult result = executeWithContext(request, invocationContext);
+
+        return result.resultText();
+    }
+
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
+        try {
+            Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
+            return prepareArguments(originalMethod, argumentsMap, context);
+        } catch (Exception e) {
+            if (wrapToolArgumentsExceptions) {
+                throw new ToolArgumentsException(unwrapRuntimeException(e));
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+        String resultText = toText(result);
+        return ToolExecutionResult.builder()
+                .result(result)
+                .resultText(resultText)
+                .build();
+    }
+
+    private String toText(Object result) {
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
@@ -97,7 +166,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -106,13 +175,23 @@ public class DefaultToolExecutor implements ToolExecutor {
             Parameter parameter = parameters[i];
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
-                arguments[i] = memoryId;
+                arguments[i] = context.chatMemoryId();
+                continue;
+            }
+
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                arguments[i] = context.invocationParameters();
+                continue;
+            }
+
+            if (parameter.getType() == InvocationContext.class) {
+                arguments[i] = context;
                 continue;
             }
 
             String parameterName = parameter.getName();
-            if (argumentsMap.containsKey(parameterName)) {
-                Object argument = argumentsMap.get(parameterName);
+            Object argument = argumentsMap.get(parameterName);
+            if (argument != null) {
                 Class<?> parameterClass = parameter.getType();
                 Type parameterType = parameter.getParameterizedType();
 
@@ -257,5 +336,60 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static boolean hasNoFractionalPart(Double doubleValue) {
         return doubleValue.equals(Math.floor(doubleValue));
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Object object;
+        private Method originalMethod;
+        private Method methodToInvoke;
+        private Boolean wrapToolArgumentsExceptions;
+        private Boolean propagateToolExecutionExceptions;
+
+        public Builder object(Object object) {
+            this.object = object;
+            return this;
+        }
+
+        public Builder originalMethod(Method originalMethod) {
+            this.originalMethod = originalMethod;
+            return this;
+        }
+
+        public Builder methodToInvoke(Method methodToInvoke) {
+            this.methodToInvoke = methodToInvoke;
+            return this;
+        }
+
+        /**
+         * If set to {@code true}, exceptions that occur during tool argument parsing or preparation
+         * will be wrapped in a {@link ToolArgumentsException}.
+         * <p>
+         * The default value is {@code false}.
+         */
+        public Builder wrapToolArgumentsExceptions(Boolean wrapToolArgumentsExceptions) {
+            this.wrapToolArgumentsExceptions = wrapToolArgumentsExceptions;
+            return this;
+        }
+
+        /**
+         * If set to {@code true}, exceptions that occur during tool execution will be thrown
+         * instead of being returned as an exception message string.
+         * These exceptions will be wrapped in a {@link ToolExecutionException}.
+         * <p>
+         * The default value is {@code false}.
+         */
+        public Builder propagateToolExecutionExceptions(Boolean propagateToolExecutionExceptions) {
+            this.propagateToolExecutionExceptions = propagateToolExecutionExceptions;
+            return this;
+        }
+
+        public DefaultToolExecutor build() {
+            return new DefaultToolExecutor(this);
+        }
     }
 }

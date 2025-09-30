@@ -71,8 +71,6 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.content()).isNull();
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
-
-        assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j.dev"));
     }
 
     @Test

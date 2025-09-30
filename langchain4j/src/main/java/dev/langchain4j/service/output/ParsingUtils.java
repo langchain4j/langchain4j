@@ -4,6 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 
 import java.lang.reflect.Type;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -12,6 +13,7 @@ import java.util.function.Supplier;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
+import static java.nio.charset.StandardCharsets.*;
 
 @Internal
 class ParsingUtils {
@@ -44,7 +46,7 @@ class ParsingUtils {
                                                                 Supplier<CT> emptyCollectionSupplier,
                                                                 String type) {
         if (text == null) {
-            throw ParsingUtils.outputParsingException(text, type, null);
+            throw outputParsingException(text, type, null);
         }
 
         if (isJson(text)) {
@@ -102,6 +104,14 @@ class ParsingUtils {
     }
 
     static OutputParsingException outputParsingException(String text, String type, Throwable cause) {
-        return new OutputParsingException("Failed to parse %s into %s".formatted(quoted(text), type), cause);
+        return new OutputParsingException("Failed to parse %s (base64: %s) into %s".formatted(
+                quoted(text), quoted(toBase64(text)), type), cause);
+    }
+
+    private static String toBase64(String s) {
+        if (s == null) {
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
     }
 }

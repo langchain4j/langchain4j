@@ -1,5 +1,14 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -10,21 +19,12 @@ import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
@@ -37,6 +37,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String user;
     private final Integer maxRetries;
     private final Integer maxSegmentsPerBatch;
+    private final String encodingFormat;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
@@ -50,6 +51,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
@@ -58,6 +60,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.user = builder.user;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
+        this.encodingFormat = builder.encodingFormat;
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }
 
@@ -118,9 +121,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .model(modelName)
                 .dimensions(dimensions)
                 .user(user)
+                .encodingFormat(encodingFormat)
                 .build();
 
-        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
+        EmbeddingResponse response =
+                withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
@@ -152,7 +157,9 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer maxSegmentsPerBatch;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
+        private String encodingFormat;
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
@@ -223,6 +230,15 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public OpenAiEmbeddingModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
@@ -230,6 +246,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public OpenAiEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 

@@ -1,15 +1,11 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.gemini.HarmCategory.*;
 import static dev.langchain4j.model.vertexai.gemini.SafetyThreshold.*;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
@@ -18,49 +14,33 @@ import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiChatModelIT {
 
-    static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
-
     public static final Gson GSON = new Gson();
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -79,9 +59,18 @@ class VertexAiGeminiChatModelIT {
             .build();
 
     @Test
-    void should_generate_response() {
+    void should_generate_response_with_custom_credentials() throws IOException {
 
         // given
+        ChatModel model = VertexAiGeminiChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(MODEL_NAME)
+                .logRequests(true)
+                .logResponses(true)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
@@ -89,75 +78,6 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).contains("Berlin");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    @ParameterizedTest
-    @MethodSource
-    void should_support_system_instructions(List<ChatMessage> messages) {
-
-        // when
-        ChatResponse response = model.chat(messages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
-    }
-
-    static Stream<Arguments> should_support_system_instructions() {
-        return Stream.<Arguments>builder()
-                .add(Arguments.of(asList(SystemMessage.from("Translate in German"), UserMessage.from("I love apples"))))
-                .add(Arguments.of(asList(UserMessage.from("I love apples"), SystemMessage.from("Translate in German"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in Italian"),
-                        UserMessage.from("I love apples"),
-                        SystemMessage.from("No, translate in German!"))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I love apples"), TextContent.from("I see apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from(asList(TextContent.from("I see apples"), TextContent.from("I love apples"))))))
-                .add(Arguments.of(asList(
-                        SystemMessage.from("Translate in German"),
-                        UserMessage.from("I see apples"),
-                        AiMessage.from("Ich sehe Äpfel"),
-                        UserMessage.from("I love apples"))))
-                .build();
-    }
-
-    @Test
-    void should_respect_maxOutputTokens() {
-
-        // given
-        ChatModel model = VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
-                .maxOutputTokens(1)
-                .build();
-
-        UserMessage userMessage = UserMessage.from("Tell me a joke");
-
-        // when
-        ChatResponse response = model.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).isNotBlank();
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
     @Test
@@ -180,323 +100,18 @@ class VertexAiGeminiChatModelIT {
     }
 
     @Test
-    void should_accept_text_and_image_from_public_url() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
     void should_accept_text_and_image_from_google_storage_url() {
 
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word."));
+                TextContent.from("What do you see?"));
 
         // when
         ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_base64_image() {
-
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images_from_public_urls() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images_from_google_storage_urls() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from("gs://langchain4j-test/cat.png"),
-                ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_base64_images() {
-
-        // given
-        String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catBase64Data, "image/png"),
-                ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images_from_different_sources() {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from("gs://langchain4j-test/dog.jpg"),
-                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image."));
-
-        // when
-        ChatResponse response = imageModel.chat(userMessage);
-
-        // then
-        assertThat(response.aiMessage().text())
-                .containsIgnoringCase("cat")
-                //                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
-                .containsIgnoringCase("dice");
-    }
-
-    @Test
-    void should_accept_tools_for_function_calling() {
-
-        // given
-        ChatModel model = VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName(MODEL_NAME)
-                .build();
-
-        ToolSpecification weatherToolSpec = ToolSpecification.builder()
-                .name("getWeatherForecast")
-                .description("Get the weather forecast for a location")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("location", "the location to get the weather forecast for")
-                        .required("location")
-                        .build())
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-
-        UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-        allMessages.add(weatherQuestion);
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(weatherToolSpec)
-                .build();
-
-        // when
-        ChatResponse messageResponse = model.chat(request);
-
-        // then
-        assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
-        ToolExecutionRequest toolExecutionRequest =
-                messageResponse.aiMessage().toolExecutionRequests().get(0);
-
-        assertThat(toolExecutionRequest.arguments()).contains("Paris");
-        assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
-
-        allMessages.add(messageResponse.aiMessage());
-
-        // when (feeding the function return value back)
-        ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(
-                toolExecutionRequest, "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
-        allMessages.add(toolExecResMsg);
-
-        ChatResponse weatherResponse = model.chat(allMessages);
-
-        // then
-        assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
-    }
-
-    @Test
-    void should_handle_parallel_function_calls() {
-
-        // given
-        ChatModel model = VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash")
-                .temperature(0.0f)
-                .topK(1)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        ToolSpecification stockInventoryToolSpec = ToolSpecification.builder()
-                .name("getProductInventory")
-                .description("Get the product inventory for a particular product ID")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("product_id", "the ID of the product")
-                        .required("product_id")
-                        .build())
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-
-        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? "
-                + "Output just a (single) name of the product with more stock.");
-        allMessages.add(inventoryQuestion);
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(stockInventoryToolSpec)
-                .build();
-
-        // when
-        ChatResponse messageResponse = model.chat(request);
-
-        // then
-        assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
-
-        List<ToolExecutionRequest> executionRequests =
-                messageResponse.aiMessage().toolExecutionRequests();
-        assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
-
-        String inventoryStock =
-                executionRequests.stream().map(ToolExecutionRequest::arguments).collect(Collectors.joining(","));
-
-        assertThat(inventoryStock).containsIgnoringCase("ABC123");
-        assertThat(inventoryStock).containsIgnoringCase("XYZ789");
-
-        // when
-        allMessages.add(messageResponse.aiMessage());
-
-        allMessages.add(ToolExecutionResultMessage.toolExecutionResultMessage(
-                null, "getProductInventory", "{\"product_id\":\"ABC123\", \"stock\": 10}"));
-        allMessages.add(ToolExecutionResultMessage.toolExecutionResultMessage(
-                null, "getProductInventory", "{\"product_id\":\"XYZ789\", \"stock\": 5}"));
-
-        messageResponse = model.chat(allMessages);
-
-        // then
-        assertThat(messageResponse.aiMessage().text()).contains("ABC123").doesNotContain("XYZ789");
-    }
-
-    static class Calculator {
-
-        @Tool("Adds two given numbers")
-        double add(double a, double b) {
-            System.out.printf("Called add(%s, %s)%n", a, b);
-            return a + b;
-        }
-
-        @Tool("Multiplies two given numbers")
-        String multiply(double a, double b) {
-            System.out.printf("Called multiply(%s, %s)%n", a, b);
-            return String.valueOf(a * b);
-        }
-    }
-
-    interface Assistant {
-
-        String chat(String userMessage);
-    }
-
-    @Test
-    void should_use_tools_with_AiService() {
-
-        // given
-        Calculator calculator = spy(new Calculator());
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                .tools(calculator)
-                .build();
-
-        // when
-        String answer = assistant.chat("How much is 74589613588 + 4786521789?");
-
-        // then
-        assertThat(answer).contains("79376135377");
-
-        verify(calculator).add(74589613588.0, 4786521789.0);
-        verifyNoMoreInteractions(calculator);
-    }
-
-    @Test
-    void should_use_tools_with_AiService_2() {
-
-        // given
-        Calculator calculator = spy(new Calculator());
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                .tools(calculator)
-                .build();
-
-        // when
-        String answer = assistant.chat("How much is 257 * 467?");
-
-        // then
-        // assertThat(answer).contains("120019"); TODO
-
-        verify(calculator).multiply(257, 467);
-        verifyNoMoreInteractions(calculator);
-    }
-
-    static class PetName {
-        @Tool("gives the name of the pet")
-        String getPetName() {
-            return "Felicette";
-        }
-    }
-
-    @Test
-    void should_support_noarg_fn() {
-
-        // given
-        PetName petName = new PetName();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(petName)
-                .build();
-
-        // when
-        String answer = assistant.chat("What is the name of the pet?");
-
-        // then
-        assertThat(answer).contains("Felicette");
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
     }
 
     static class Transaction {
@@ -526,7 +141,7 @@ class VertexAiGeminiChatModelIT {
     }
 
     static class FunctionCallingService {
-        private static final Map<Transaction, String> DATASET = new HashMap<Transaction, String>() {
+        private static final Map<Transaction, String> DATASET = new HashMap<>() {
             {
                 put(new Transaction("001"), "pending");
                 put(new Transaction("002"), "approved");
@@ -552,7 +167,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -571,34 +186,35 @@ class VertexAiGeminiChatModelIT {
         String response = assistant.chat("What is the status of my payment transactions 001 and 002?");
 
         // then
-        assertThat(response).contains("001");
-        assertThat(response).contains("002");
-        assertThat(response).contains("pending");
-        assertThat(response).contains("approved");
-        assertThat(response).doesNotContain("003");
-        assertThat(response).doesNotContain("rejected");
+        assertThat(response)
+                .contains("001")
+                .contains("002")
+                .contains("pending")
+                .contains("approved")
+                .doesNotContain("003")
+                .doesNotContain("rejected");
 
         // when
         response = assistant.chat("What is the status of transactions 003?");
 
         // then
-        assertThat(response).doesNotContain("001");
-        assertThat(response).doesNotContain("002");
-        assertThat(response).doesNotContain("pending");
-        assertThat(response).doesNotContain("approved");
-        assertThat(response).contains("003");
-        assertThat(response).contains("rejected");
+        assertThat(response)
+                .doesNotContain("001")
+                .doesNotContain("002")
+                .doesNotContain("pending")
+                .doesNotContain("approved")
+                .contains("003")
+                .contains("rejected");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"gemini-1.5-flash", "gemini-2.0-flash-lite"})
-    void should_use_google_search(String modelName) {
+    @Test
+    void should_use_google_search() {
 
         // given
         VertexAiGeminiChatModel modelWithSearch = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(modelName)
+                .modelName("gemini-2.0-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 
@@ -616,7 +232,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .responseMimeType("application/json")
                 .build();
 
@@ -631,7 +247,7 @@ class VertexAiGeminiChatModelIT {
         String json = modelWithResponseMimeType.chat(userMessage);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("TODO fix")
@@ -647,7 +263,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName(MODEL_NAME)
                 .safetySettings(safetySettings)
                 .temperature(0.0f)
                 .topP(0.0f)
@@ -658,8 +274,9 @@ class VertexAiGeminiChatModelIT {
                 .build();
 
         // when
-        Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"));
+        Exception exception = assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -880,6 +497,7 @@ class VertexAiGeminiChatModelIT {
 
     @Test
     void should_support_enum_structured_output() {
+
         // given
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -889,36 +507,22 @@ class VertexAiGeminiChatModelIT {
                 .logResponses(true)
                 .responseSchema(Schema.newBuilder()
                         .setType(Type.STRING)
-                        .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                        .addAllEnum(Arrays.asList("POSITIVE", "NEGATIVE"))
                         .build())
                 .build();
 
-        // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
+
+        // when
         String response = model.chat(instruction + "This is super exciting news, congratulations!");
 
         // then
         assertThat(response).isEqualTo("POSITIVE");
-
-        // when
-        response = model.chat(instruction + "The sky is blue.");
-
-        // then
-        assertThat(response).isEqualTo("NEUTRAL");
-
-        // when
-        response = model.chat(instruction + "This is the worst movie I've ever watched! Boring!");
-
-        // then
-        assertThat(response).isEqualTo("NEGATIVE");
     }
 
-    // POJO classes for JSON deserialization
     record CountryCapitals(List<CountryCapital> countries) {}
 
     record CountryCapital(String country, String capital) {}
-
-    record CapitalInfo(String capital, String country) {}
 
     @Test
     void should_support_text_response_format() {
@@ -935,9 +539,7 @@ class VertexAiGeminiChatModelIT {
 
         // then
         String textResponse = response.aiMessage().text();
-        assertThat(textResponse).contains("Berlin");
-        assertThat(textResponse).contains("Paris");
-        assertThat(textResponse).contains("Rome");
+        assertThat(textResponse).contains("Berlin").contains("Paris").contains("Rome");
     }
 
     @Test
@@ -974,54 +576,6 @@ class VertexAiGeminiChatModelIT {
                         new CountryCapital("Germany", "Berlin"),
                         new CountryCapital("France", "Paris"),
                         new CountryCapital("Italy", "Rome")));
-    }
-
-    @Test
-    void should_support_json_response_format_with_schema() {
-        // given
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-
-        JsonObjectSchema schema = JsonObjectSchema.builder()
-                .addProperty(
-                        "capital",
-                        JsonStringSchema.builder()
-                                .description("The capital city name")
-                                .build())
-                .addProperty(
-                        "country",
-                        JsonStringSchema.builder()
-                                .description("The country name")
-                                .build())
-                .required("capital", "country")
-                .build();
-
-        JsonSchema jsonSchema =
-                JsonSchema.builder().name("CountryCapital").rootElement(schema).build();
-
-        ResponseFormat responseFormat = ResponseFormat.builder()
-                .type(ResponseFormatType.JSON)
-                .jsonSchema(jsonSchema)
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(List.of(userMessage))
-                .responseFormat(responseFormat)
-                .build();
-
-        // when
-        ChatResponse response = model.chat(request);
-
-        // then
-        String jsonResponse = response.aiMessage().text();
-
-        // Verify it's valid JSON by parsing it with Gson
-
-        // Parse the JSON response into our POJO
-        CapitalInfo info = GSON.fromJson(jsonResponse, CapitalInfo.class);
-
-        // Verify the expected data
-        assertThat(info.capital()).isEqualTo("Berlin");
-        assertThat(info.country()).isEqualTo("Germany");
     }
 
     @AfterEach

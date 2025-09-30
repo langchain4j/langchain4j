@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(
                 builder.httpClientBuilder,
                 builder.apiKey,
+                builder.baseUrl,
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
@@ -55,68 +57,19 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logRequests,
+                builder.logResponses,
+                builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
                 builder.listeners,
                 builder.maxRetries,
                 builder.thinkingConfig,
+                builder.returnThinking,
+                builder.sendThinking,
                 builder.defaultRequestParameters);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
-    }
-
-    /**
-     * @deprecated please use {@link #GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiGeminiChatModel(
-            String apiKey,
-            String modelName,
-            Integer maxRetries,
-            Double temperature,
-            Integer topK,
-            Integer seed,
-            Double topP,
-            Integer maxOutputTokens,
-            Integer logprobs,
-            Duration timeout,
-            ResponseFormat responseFormat,
-            List<String> stopSequences,
-            GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution,
-            Boolean includeCodeExecutionOutput,
-            Boolean logRequestsAndResponses,
-            Boolean responseLogprobs,
-            Boolean enableEnhancedCivicAnswers,
-            List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners) {
-        super(
-                null,
-                apiKey,
-                modelName,
-                temperature,
-                topK,
-                seed,
-                topP,
-                null,
-                null,
-                maxOutputTokens,
-                logprobs,
-                timeout,
-                responseFormat,
-                stopSequences,
-                toolConfig,
-                allowCodeExecution,
-                includeCodeExecutionOutput,
-                logRequestsAndResponses,
-                responseLogprobs,
-                enableEnhancedCivicAnswers,
-                safetySettings,
-                listeners,
-                maxRetries,
-                null,
-                null);
-        this.supportedCapabilities = Set.of();
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -134,7 +87,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
-                () -> geminiService.generateContent(chatRequest.modelName(), apiKey, request), maxRetries);
+                () -> geminiService.generateContent(chatRequest.modelName(), request), maxRetries);
 
         return processResponse(geminiResponse);
     }
@@ -164,7 +117,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return null;
         }
 
-        return fromGPartsToAiMessage(candidate.getContent().getParts(), this.includeCodeExecutionOutput);
+        return fromGPartsToAiMessage(candidate.getContent().getParts(), includeCodeExecutionOutput, returnThinking);
     }
 
     private TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
@@ -200,6 +153,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl;
         private String modelName;
         private Integer maxRetries;
         private Double temperature;
@@ -216,10 +170,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Integer logprobs;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
@@ -251,6 +210,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
@@ -334,13 +298,74 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiGeminiChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public GoogleAiGeminiChatModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
         }
 
+        /**
+         * Specifies the config to enable <a href="https://ai.google.dev/gemini-api/docs/thinking">thinking</a>.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
         public GoogleAiGeminiChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
             this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} block from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Please note that when {@code returnThinking} is not set (is {@code null}) and {@code thinkingConfig} is set,
+         * thinking/reasoning text will be prepended to the actual response inside the {@link AiMessage#text()} field.
+         *
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #sendThinking(Boolean)
+         */
+        public GoogleAiGeminiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #returnThinking(Boolean)
+         */
+        public GoogleAiGeminiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

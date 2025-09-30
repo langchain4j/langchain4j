@@ -244,7 +244,7 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void arrayWithAnyOf() throws JsonProcessingException {
+    void arrayWithAnyOf() throws JsonProcessingException {
         // trimmed version of the tool from @modelcontextprotocol/server-github
         String text =
                 // language=json
@@ -323,7 +323,7 @@ class ToolSpecificationHelperTest {
         JsonArraySchema comments = (JsonArraySchema) parameters.properties().get("comments");
         assertThat(comments.items()).isInstanceOf(JsonAnyOfSchema.class);
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) comments.items();
-        assertThat(anyOf.anyOf().size()).isEqualTo(2);
+        assertThat(anyOf.anyOf()).hasSize(2);
 
         JsonSchemaElement option1 = anyOf.anyOf().get(0);
         assertThat(option1).isInstanceOf(JsonObjectSchema.class);
@@ -335,7 +335,7 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void nullTypeName() throws JsonProcessingException {
+    void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
         String text =
                 """
@@ -362,5 +362,86 @@ class ToolSpecificationHelperTest {
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications.get(0).parameters().properties().get("value"))
                 .isInstanceOf(JsonObjectSchema.class);
+    }
+
+    @Test
+    void nullType() throws JsonProcessingException {
+        // the 'type' parameter is "null" and so most not be present
+        // trimmed version from Atalassian's MCP server
+        String text =
+                """
+                [{
+                  "name": "createCompassCustomFieldDefinition",
+                  "description": "Create a new Compass custom field definition",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "cloudId": {
+                        "type": "string",
+                        "description": "Unique identifier for an Atlassian Cloud instance in the form of a UUID. Can also be a site URL. If not working, use the 'getAccessibleAtlassianResources' tool to find accessible Cloud IDs."
+                      },
+                      "fieldSelections": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "null"
+                            },
+                            "description": "An list of options for the custom field definition, expressed as maps. The keys should be the options, and the values should all be null. Only used for SingleSelect and MultiSelect custom field definitions."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "An list of options for the custom field definition, expressed as maps. The keys should be the options, and the values should all be null. Only used for SingleSelect and MultiSelect custom field definitions."
+                      }
+                    },
+                    "required": [
+                      "cloudId"
+                    ],
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                  }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications.get(0).parameters().properties().get("fieldSelections"))
+                .isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema jsAny = (JsonAnyOfSchema)
+                toolSpecifications.get(0).parameters().properties().get("fieldSelections");
+        assertThat(jsAny.anyOf()).hasSize(2);
+        assertThat(jsAny.anyOf().get(0)).isInstanceOf(JsonObjectSchema.class);
+        assertThat(jsAny.anyOf().get(1)).isInstanceOf(JsonNullSchema.class);
+    }
+
+    @Test
+    void arrayWithoutSpecifiedType() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "something",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "arrayparam": {
+                          "type": "array",
+                          "description": "An array of whatever you like"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "$schema": "http://json-schema.org/draft-07/schema#"
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        JsonSchemaElement parameter =
+                toolSpecifications.get(0).parameters().properties().get("arrayparam");
+        assertThat(parameter).isInstanceOf(JsonArraySchema.class);
+        assertThat(((JsonArraySchema) parameter).items()).isNull();
     }
 }

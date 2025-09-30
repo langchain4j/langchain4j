@@ -20,11 +20,11 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
 
 abstract class BaseGeminiChatModel {
 
     protected final GeminiService geminiService;
-    protected final String apiKey;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean includeCodeExecutionOutput;
@@ -32,6 +32,8 @@ abstract class BaseGeminiChatModel {
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
+    protected final Boolean returnThinking;
+    protected final boolean sendThinking;
     protected final Integer seed;
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
@@ -42,6 +44,7 @@ abstract class BaseGeminiChatModel {
     protected BaseGeminiChatModel(
             HttpClientBuilder httpClientBuilder,
             String apiKey,
+            String baseUrl,
             String modelName,
             Double temperature,
             Integer topK,
@@ -58,14 +61,29 @@ abstract class BaseGeminiChatModel {
             Boolean allowCodeExecution,
             Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean logRequests,
+            Boolean logResponses,
+            Logger logger,
             Boolean responseLogprobs,
             Boolean enableEnhancedCivicAnswers,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
             Integer maxRetries,
             GeminiThinkingConfig thinkingConfig,
+            Boolean returnThinking,
+            Boolean sendThinking,
             ChatRequestParameters defaultRequestParameters) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        ensureNotBlank(apiKey, "apiKey");
+        this.geminiService = new GeminiService(
+                httpClientBuilder,
+                apiKey,
+                baseUrl,
+                getOrDefault(logRequestsAndResponses, false),
+                getOrDefault(logRequests, false),
+                getOrDefault(logResponses, false),
+                logger,
+                timeout);
+
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
         this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
@@ -73,12 +91,12 @@ abstract class BaseGeminiChatModel {
         this.listeners = copy(listeners);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.thinkingConfig = thinkingConfig;
+        this.returnThinking = returnThinking;
+        this.sendThinking = getOrDefault(sendThinking, false);
         this.seed = seed;
         this.responseLogprobs = getOrDefault(responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
         this.logprobs = logprobs;
-        this.geminiService =
-                new GeminiService(httpClientBuilder, getOrDefault(logRequestsAndResponses, false), timeout);
 
         ChatRequestParameters parameters;
         if (defaultRequestParameters != null) {
@@ -106,7 +124,8 @@ abstract class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction);
+        List<GeminiContent> geminiContentList =
+                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -130,6 +149,7 @@ abstract class BaseGeminiChatModel {
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
+                        .responseLogprobs(responseLogprobs)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .build())
@@ -177,6 +197,7 @@ abstract class BaseGeminiChatModel {
         return switch (toolChoice) {
             case AUTO -> GeminiMode.AUTO;
             case REQUIRED -> GeminiMode.ANY;
+            case NONE -> GeminiMode.NONE;
         };
     }
 

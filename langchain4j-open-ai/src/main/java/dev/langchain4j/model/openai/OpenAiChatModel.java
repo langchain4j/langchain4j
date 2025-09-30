@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -8,11 +9,15 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -47,10 +52,11 @@ public class OpenAiChatModel implements ChatModel {
     private final Integer maxRetries;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final String responseFormat;
+    private final String responseFormatString;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
 
     private final List<ChatModelListener> listeners;
 
@@ -66,6 +72,7 @@ public class OpenAiChatModel implements ChatModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
@@ -95,7 +102,7 @@ public class OpenAiChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -106,11 +113,13 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .customParameters(openAiParameters.customParameters())
                 .build();
-        this.responseFormat = builder.responseFormat;
+        this.responseFormatString = builder.responseFormatString;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -122,7 +131,7 @@ public class OpenAiChatModel implements ChatModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
-        if ("json_schema".equals(responseFormat)) {
+        if ("json_schema".equals(responseFormatString)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -137,8 +146,10 @@ public class OpenAiChatModel implements ChatModel {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -148,10 +159,11 @@ public class OpenAiChatModel implements ChatModel {
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
+                .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(openAiResponse))
+                .aiMessage(aiMessageFrom(openAiResponse, returnThinking))
                 .metadata(responseMetadata)
                 .build();
     }
@@ -192,7 +204,8 @@ public class OpenAiChatModel implements ChatModel {
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
         private Set<Capability> supportedCapabilities;
-        private String responseFormat;
+        private ResponseFormat responseFormat;
+        private String responseFormatString;
         private Boolean strictJsonSchema;
         private Integer seed;
         private String user;
@@ -201,10 +214,12 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
 
@@ -298,8 +313,17 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
-        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
+        public OpenAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
+            this.responseFormatString = responseFormat;
             return this;
         }
 
@@ -352,6 +376,22 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
         public OpenAiChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -369,6 +409,15 @@ public class OpenAiChatModel implements ChatModel {
 
         public OpenAiChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

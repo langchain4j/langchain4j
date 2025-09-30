@@ -27,15 +27,6 @@
         "allPublicFields": true
     },
     {
-        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true,
-        "allDeclaredFields": true,
-        "allPublicFields": true
-    },
-    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -99,6 +90,15 @@
       "allPublicFields": true
     },
     {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMessage",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -109,6 +109,15 @@
     },
     {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicRedactedThinkingContent",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -154,6 +163,15 @@
     },
     {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicThinking",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -223,5 +241,23 @@
         "allPublicMethods": true,
         "allDeclaredFields": true,
         "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
     }
 ]

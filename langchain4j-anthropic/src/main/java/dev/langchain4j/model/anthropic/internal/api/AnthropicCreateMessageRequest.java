@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
 
 @JsonInclude(NON_NULL)
@@ -26,6 +25,7 @@ public class AnthropicCreateMessageRequest {
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
     public AnthropicThinking thinking;
+    public AnthropicMetadata metadata;
 
     public AnthropicCreateMessageRequest() {}
 
@@ -41,7 +41,8 @@ public class AnthropicCreateMessageRequest {
             Integer topK,
             List<AnthropicTool> tools,
             AnthropicToolChoice toolChoice,
-            AnthropicThinking thinking) {
+            AnthropicThinking thinking,
+            AnthropicMetadata metadata) {
         this.model = model;
         this.messages = messages;
         this.system = system;
@@ -54,6 +55,7 @@ public class AnthropicCreateMessageRequest {
         this.tools = tools;
         this.toolChoice = toolChoice;
         this.thinking = thinking;
+        this.metadata = metadata;
     }
 
     public String getModel() {
@@ -152,23 +154,33 @@ public class AnthropicCreateMessageRequest {
         this.thinking = thinking;
     }
 
+    public AnthropicMetadata getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(AnthropicMetadata metadata) {
+        this.metadata = metadata;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public Builder toBuilder() {
-        return new Builder().model(this.model)
-                .messages(this.messages)
-                .system(this.system)
-                .maxTokens(this.maxTokens)
-                .stopSequences(this.stopSequences)
-                .stream(this.stream)
-                .temperature(this.temperature)
-                .topP(this.topP)
-                .topK(this.topK)
-                .tools(this.tools)
-                .toolChoice(this.toolChoice)
-                .thinking(this.thinking);
+        return new Builder()
+                        .model(this.model)
+                        .messages(this.messages)
+                        .system(this.system)
+                        .maxTokens(this.maxTokens)
+                        .stopSequences(this.stopSequences)
+                        .stream(this.stream)
+                        .temperature(this.temperature)
+                        .topP(this.topP)
+                        .topK(this.topK)
+                        .tools(this.tools)
+                        .toolChoice(this.toolChoice)
+                        .thinking(this.thinking)
+                        .metadata(this.metadata);
     }
 
     public static class Builder {
@@ -185,6 +197,7 @@ public class AnthropicCreateMessageRequest {
         private List<AnthropicTool> tools;
         private AnthropicToolChoice toolChoice;
         private AnthropicThinking thinking;
+        private AnthropicMetadata metadata;
 
         public Builder model(String model) {
             this.model = model;
@@ -246,6 +259,11 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
+        public Builder metadata(AnthropicMetadata metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
         public AnthropicCreateMessageRequest build() {
             return new AnthropicCreateMessageRequest(
                     model,
@@ -259,7 +277,8 @@ public class AnthropicCreateMessageRequest {
                     topK,
                     tools,
                     toolChoice,
-                    thinking);
+                    thinking,
+                    metadata);
         }
     }
 }

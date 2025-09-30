@@ -53,6 +53,11 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
+    }
 
     @Override
     protected boolean assertResponseId() {
@@ -64,8 +69,14 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 
     @AfterEach

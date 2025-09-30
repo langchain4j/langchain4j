@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -9,7 +10,9 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -22,6 +25,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         super(
                 builder.httpClientBuilder,
                 builder.apiKey,
+                builder.baseUrl,
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
@@ -38,66 +42,18 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.logRequests,
+                builder.logResponses,
+                builder.logger,
                 builder.responseLogprobs,
                 builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
                 builder.listeners,
                 null,
                 builder.thinkingConfig,
+                builder.returnThinking,
+                builder.sendThinking,
                 builder.defaultRequestParameters);
-    }
-
-    /**
-     * @deprecated please use {@link #GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiGeminiStreamingChatModel(
-            String apiKey,
-            String modelName,
-            Double temperature,
-            Integer topK,
-            Double topP,
-            Integer seed,
-            Integer maxOutputTokens,
-            Duration timeout,
-            ResponseFormat responseFormat,
-            List<String> stopSequences,
-            GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution,
-            Boolean includeCodeExecutionOutput,
-            Boolean logRequestsAndResponses,
-            Boolean responseLogprobs,
-            Boolean enableEnhancedCivicAnswers,
-            Integer logprobs,
-            List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners,
-            Integer maxRetries) {
-        super(
-                null,
-                apiKey,
-                modelName,
-                temperature,
-                topK,
-                seed,
-                topP,
-                null,
-                null,
-                maxOutputTokens,
-                logprobs,
-                timeout,
-                responseFormat,
-                stopSequences,
-                toolConfig,
-                allowCodeExecution,
-                includeCodeExecutionOutput,
-                logRequestsAndResponses,
-                responseLogprobs,
-                enableEnhancedCivicAnswers,
-                safetySettings,
-                listeners,
-                maxRetries,
-                null,
-                null);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
@@ -112,8 +68,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
-        geminiService.generateContentStream(
-                request.modelName(), apiKey, geminiRequest, includeCodeExecutionOutput, handler);
+        geminiService.generateContentStream(request.modelName(), geminiRequest,
+                includeCodeExecutionOutput, returnThinking, handler);
     }
 
     @Override
@@ -131,6 +87,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl;
         private String modelName;
         private Double temperature;
         private Integer topK;
@@ -147,11 +104,16 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
 
         GoogleAiGeminiStreamingChatModelBuilder() {}
 
@@ -181,6 +143,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
@@ -259,6 +226,25 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        public GoogleAiGeminiStreamingChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public GoogleAiGeminiStreamingChatModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
@@ -270,15 +256,52 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         }
 
         /**
-         * @deprecated retries are not supported for streaming model
+         * Specifies the config to enable <a href="https://ai.google.dev/gemini-api/docs/thinking">thinking</a>.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
          */
-        @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-        public GoogleAiGeminiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
+        public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
             return this;
         }
 
-        public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
-            this.thinkingConfig = thinkingConfig;
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} block from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Please note that when {@code returnThinking} is not set (is {@code null}) and {@code thinkingConfig} is set,
+         * thinking/reasoning text will be prepended to the actual response inside the {@link AiMessage#text()} field
+         * and {@link StreamingChatResponseHandler#onPartialResponse(String)} will be invoked
+         * instead of {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)}.
+         *
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #sendThinking(Boolean)
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #thinkingConfig(GeminiThinkingConfig)
+         * @see #returnThinking(Boolean)
+         */
+        public GoogleAiGeminiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

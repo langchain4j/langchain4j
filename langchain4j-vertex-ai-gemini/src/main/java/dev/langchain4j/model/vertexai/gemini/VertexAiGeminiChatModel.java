@@ -11,6 +11,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
@@ -151,24 +152,24 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             // only a subset of functions allowed to be used by the model
             this.toolConfig = switch (builder.toolCallingMode) {
                 case NONE ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.NONE)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.NONE)
+                                    .build())
+                            .build();
                 case AUTO ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.AUTO)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.AUTO)
+                                    .build())
+                            .build();
                 case ANY ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.ANY)
-                                        .addAllAllowedFunctionNames(this.allowedFunctionNames)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.ANY)
+                                    .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                                    .build())
+                            .build();
             };
 
         } else {
@@ -179,14 +180,20 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                     .build();
         }
 
-        this.vertexAI = new VertexAI.Builder()
+        VertexAI.Builder vertexAiBuilder = new VertexAI.Builder()
                 .setProjectId(ensureNotBlank(builder.project, "project"))
                 .setLocation(ensureNotBlank(builder.location, "location"))
-                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
-                .build();
+                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
 
-        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        if (builder.credentials != null) {
+            GoogleCredentials scopedCredentials =
+                    builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+            vertexAiBuilder.setCredentials(scopedCredentials);
+        }
+
+        this.vertexAI = vertexAiBuilder.build();
+
+        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.logRequests = getOrDefault(builder.logRequests, false);
@@ -311,21 +318,12 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
                 .build();
 
-        this.generativeModel = new GenerativeModel(modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        this.generativeModel = new GenerativeModel(modelName, vertexAI).withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(maxRetries, 2);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
@@ -451,7 +449,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                         .responseFormat(responseFormat)
                         .build())
                 .build();
-        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+        final ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext =
                 new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
@@ -462,7 +460,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             }
         });
 
-        GenerateContentResponse response = null;
+        final GenerateContentResponse response;
         try {
             response = withRetryMappingExceptions(
                     () -> finalModel.generateContent(instructionAndContent.contents), maxRetries);
@@ -491,24 +489,20 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .map(Part::getFunctionCall)
                 .toList();
 
-        Response finalResponse = null;
-        AiMessage aiMessage;
+        final Response<AiMessage> finalResponse;
+        final AiMessage aiMessage;
 
         if (!functionCalls.isEmpty()) {
             List<ToolExecutionRequest> toolExecutionRequests = FunctionCallHelper.fromFunctionCalls(functionCalls);
 
             aiMessage = AiMessage.from(toolExecutionRequests);
-            finalResponse = Response.from(
-                    aiMessage,
-                    TokenUsageMapper.map(response.getUsageMetadata()),
-                    FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
         } else {
             aiMessage = AiMessage.from(ResponseHandler.getText(response));
-            finalResponse = Response.from(
-                    aiMessage,
-                    TokenUsageMapper.map(response.getUsageMetadata()),
-                    FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
         }
+        finalResponse = Response.from(
+                aiMessage,
+                TokenUsageMapper.map(response.getUsageMetadata()),
+                FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
 
         ChatResponse listenerResponse = ChatResponse.builder()
                 .aiMessage(aiMessage)
@@ -582,6 +576,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
+        private GoogleCredentials credentials;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -690,6 +685,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         public VertexAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
+        public VertexAiGeminiChatModelBuilder credentials(GoogleCredentials credentials) {
+            this.credentials = credentials;
+            return this;
         }
 
         public VertexAiGeminiChatModel build() {

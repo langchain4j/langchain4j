@@ -1,13 +1,29 @@
 package dev.langchain4j.data.audio;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 import java.net.URI;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
+/**
+ * Represents audio data that can be used with various AI model implementations.
+ * This class supports multiple formats for storing audio:
+ *
+ * <ul>
+ *   <li><b>URL:</b> A reference to audio data located at a specific URI</li>
+ *   <li><b>Binary Data:</b> Raw binary audio data as a byte array, primarily used by
+ *       implementations like Azure OpenAI</li>
+ *   <li><b>Base64 Data:</b> Base64 encoded string representation of audio data, primarily
+ *       used by implementations like OpenAI</li>
+ * </ul>
+ *
+ * Different AI model implementations may require different audio data formats,
+ * so this class provides flexibility to support various use cases.
+ */
 public class Audio {
 
     private final URI url;
+    private final byte[] binaryData;
     private final String base64Data;
     private final String mimeType;
 
@@ -18,6 +34,7 @@ public class Audio {
      */
     private Audio(Builder builder) {
         this.url = builder.url;
+        this.binaryData = builder.binaryData;
         this.base64Data = builder.base64Data;
         this.mimeType = builder.mimeType;
     }
@@ -41,9 +58,22 @@ public class Audio {
     }
 
     /**
-     * Get the base64 data of the audio.
+     * Get the raw binary data of the audio as a byte array.
+     * This format is primarily used by implementations like Azure OpenAI that require
+     * raw binary audio data for processing.
      *
-     * @return the base64 data of the audio, or null if not set.
+     * @return the raw binary data of the audio as a byte array, or null if not set.
+     */
+    public byte[] binaryData() {
+        return binaryData;
+    }
+
+    /**
+     * Get the Base64 encoded string representation of the audio data.
+     * This format is primarily used by implementations like OpenAI that accept
+     * Base64 encoded audio data in API requests.
+     *
+     * @return the Base64 encoded string representation of the audio data, or null if not set.
      */
     public String base64Data() {
         return base64Data;
@@ -64,22 +94,22 @@ public class Audio {
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
         return Objects.equals(this.url, that.url)
+                && Objects.equals(this.binaryData, that.binaryData)
                 && Objects.equals(this.base64Data, that.base64Data)
                 && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data, mimeType);
+        return Objects.hash(url, binaryData, base64Data, mimeType);
     }
 
     @Override
     public String toString() {
-        return "Audio {" +
-                " url = " + quoted(url) +
-                ", base64Data = " + quoted(base64Data) +
-                ", mimeType = " + quoted(mimeType) +
-                " }";
+        return "Audio {" + " url = "
+                + quoted(url) + ", base64Data = "
+                + quoted(base64Data) + ", mimeType = "
+                + quoted(mimeType) + " }";
     }
 
     /**
@@ -88,14 +118,14 @@ public class Audio {
     public static class Builder {
 
         private URI url;
+        private byte[] binaryData;
         private String base64Data;
         private String mimeType;
 
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Set the url of the audio.
@@ -119,9 +149,24 @@ public class Audio {
         }
 
         /**
-         * Set the base64 data of the audio.
+         * Set the raw binary data of the audio as a byte array.
+         * This is the preferred format for implementations like Azure OpenAI that require
+         * raw binary audio data for processing.
          *
-         * @param base64Data the base64 data of the audio.
+         * @param binaryData the raw binary data of the audio as a byte array.
+         * @return {@code this}
+         */
+        public Builder binaryData(byte[] binaryData) {
+            this.binaryData = binaryData;
+            return this;
+        }
+
+        /**
+         * Set the Base64 encoded string representation of the audio data.
+         * This is the preferred format for implementations like OpenAI that accept
+         * Base64 encoded audio data in API requests.
+         *
+         * @param base64Data the Base64 encoded string representation of the audio.
          * @return {@code this}
          */
         public Builder base64Data(String base64Data) {

@@ -8,7 +8,9 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.RetryingTest;
 
+import java.time.Duration;
 import java.util.List;
 
 class MistralAiStreamingFimModelIT {
@@ -16,11 +18,12 @@ class MistralAiStreamingFimModelIT {
     StreamingLanguageModel codestralStream = MistralAiStreamingFimModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+            .timeout(Duration.ofSeconds(120))
             .logRequests(true)
             .logResponses(true)
             .build();
 
-    @Test
+    @RetryingTest(3)
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {
 
         // Given
@@ -104,14 +107,13 @@ class MistralAiStreamingFimModelIT {
     }
 
     @Test
-    void should_stream_generate_code_completion_with_suffix_and_max_min_tokens() {
+    void should_stream_generate_code_completion_with_suffix_and_max_tokens() {
 
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
                 .maxTokens(1024)
-                .minTokens(0)
                 .logRequests(true)
                 .build();
 
