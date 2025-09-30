@@ -663,6 +663,60 @@ public interface ExpertsAgent {
 
 In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
 
+Note that it is also possible to mix the programmatic and declarative styles of defining agents and agentic systems, so that an agent can be configured partially using annotations and partially using the agent builders. It is also allowed to completely define an agent declaratively and then programmatically implement an agentic system using the agent's class as a subagent. For instance, it would be possible to declaratively define the `CreativeWriter` and `AudienceEditor` agents as follows:
+
+```java
+public interface CreativeWriter {
+
+    @UserMessage("""
+            You are a creative writer.
+            Generate a draft of a story long no more than 3 sentence around the given topic.
+            Return only the story and nothing else.
+            The topic is {{topic}}.
+            """)
+    @Agent(description = "Generate a story based on the given topic", outputName = "story")
+    String generateStory(@V("topic") String topic);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return baseModel();
+    }
+}
+
+public interface AudienceEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better align with the target audience of {{audience}}.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent(description = "Edit a story to better fit a given audience", outputName = "story")
+    String editStory(@V("story") String story, @V("audience") String audience);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return baseModel();
+    }
+}
+```
+
+and then programmatically concatenating them in a sequence simply using their classes as subagents.
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(CreativeWriter.class, AudienceEditor.class)
+        .outputName("story")
+        .build();
+
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "audience", "young adults"
+);
+
+String story = (String) novelCreator.invoke(input);
+```
+
 ## Memory and context engineering
 
 All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
