@@ -11,6 +11,25 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.nio.file.Path;
 
+/**
+ * GPULlama3 implementation of the langchain4j ChatModel interface.
+ *
+ * This model provides synchronous chat capabilities using the GPULlama3.java library,
+ * supporting both CPU and GPU execution modes. The model maintains conversation state
+ * and automatically separates thinking content from actual responses.
+ *
+ * <p>Example usage:
+ * <pre>{@code
+ * GPULlama3ChatModel model = GPULlama3ChatModel.builder()
+ *     .modelPath(Paths.get("path/to/model.gguf"))
+ *     .temperature(0.7)
+ *     .maxTokens(2048)
+ *     .onGPU(true)
+ *     .build();
+ *
+ * ChatResponse response = model.chat(chatRequest);
+ * }</pre>
+ */
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
 
     // @formatter:off

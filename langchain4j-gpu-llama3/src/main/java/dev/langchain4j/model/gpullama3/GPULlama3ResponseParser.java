@@ -4,11 +4,18 @@ package dev.langchain4j.model.gpullama3;
  * Utility class for parsing GPULlama3 model responses that contain thinking content.
  *
  * GPULlama3 models can generate responses with embedded thinking content in the format:
- * <think>thinking content...</think>actual response content
+ * &lt;think&gt;thinking content...&lt;/think&gt;actual response content
  *
  * This parser separates the thinking content from the actual response content.
  */
 public class GPULlama3ResponseParser {
+
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
+    private GPULlama3ResponseParser() {
+        // Utility class - prevent instantiation
+    }
 
     /**
      * Represents the parsed components of a GPULlama3 model response.

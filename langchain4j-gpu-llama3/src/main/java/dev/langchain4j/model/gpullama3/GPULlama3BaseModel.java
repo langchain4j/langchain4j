@@ -1,8 +1,6 @@
 package dev.langchain4j.model.gpullama3;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,6 +15,26 @@ import org.beehive.gpullama3.model.format.ChatFormat;
 import org.beehive.gpullama3.model.loader.ModelLoader;
 import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 
+/**
+ * Abstract base class for GPULlama3 chat models providing core functionality for
+ * conversation management and token generation.
+ *
+ * <p>This class handles:
+ * <ul>
+ *   <li>Model initialization and configuration</li>
+ *   <li>Conversation state management (stateful approach)</li>
+ *   <li>Token encoding and decoding using proper chat formats</li>
+ *   <li>Both CPU and GPU execution modes</li>
+ *   <li>System and user message processing</li>
+ * </ul>
+ *
+ * <p>The class maintains conversation history across multiple requests, allowing
+ * for natural multi-turn conversations without requiring clients to manage
+ * conversation state explicitly.
+ *
+ * <p>Subclasses should implement specific model interfaces (e.g., ChatModel or
+ * StreamingChatModel) while leveraging this base functionality.
+ */
 abstract class GPULlama3BaseModel {
     private Integer maxTokens;
     private Boolean onGPU;
