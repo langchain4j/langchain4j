@@ -6,6 +6,7 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -114,7 +115,11 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
+        InvocationContext invocationContext = InvocationContext.builder()
+                .chatMemoryId(memoryId)
+                .build();
+
+        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
 
         assertThat(args)
                 .containsExactly(
@@ -145,7 +150,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, memoryId))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, invocationContext))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
@@ -575,5 +580,13 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         // then
         assertThat(toolResult).isEqualTo(errorMessage);
+
+        // when
+        ToolExecutionResult toolExecutionResult = toolExecutor.executeWithContext(toolRequest, null);
+
+        // then
+        assertThat(toolExecutionResult.isError()).isTrue();
+        assertThat(toolExecutionResult.result()).isNull();
+        assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
     }
 }

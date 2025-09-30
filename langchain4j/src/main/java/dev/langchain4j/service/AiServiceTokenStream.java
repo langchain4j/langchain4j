@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -18,8 +19,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
-    private final Object memoryId;
+    private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
@@ -78,7 +79,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.retrievedContents = copy(parameters.gretrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
-        this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
+        this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
     }
@@ -155,7 +156,7 @@ public class AiServiceTokenStream implements TokenStream {
                         .messages(messages)
                         .toolSpecifications(toolSpecifications)
                         .build(),
-                memoryId);
+                invocationContext.chatMemoryId());
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
@@ -165,7 +166,7 @@ public class AiServiceTokenStream implements TokenStream {
         var handler = new AiServiceStreamingResponseHandler(
                 chatExecutor,
                 context,
-                memoryId,
+                invocationContext,
                 partialResponseHandler,
                 partialThinkingHandler,
                 beforeToolExecutionHandler,

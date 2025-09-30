@@ -13,13 +13,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.StreamSupport.stream;
 
 class RequestLoggingInterceptor implements Interceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(RequestLoggingInterceptor.class);
+    private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(RequestLoggingInterceptor.class);
 
     private static final Pattern BEARER_PATTERN = Pattern.compile("(Bearer\\s*)([\\w-]{5})([\\w-]+)([\\w-]{2})");
+
+    private final Logger log;
+
+    RequestLoggingInterceptor(Logger logger) {
+        this.log = getOrDefault(logger, DEFAULT_LOG);
+    }
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();
@@ -69,7 +76,7 @@ class RequestLoggingInterceptor implements Interceptor {
         }
     }
 
-    private static String getBody(Request request) {
+    private String getBody(Request request) {
         try {
             Buffer buffer = new Buffer();
             request.body().writeTo(buffer);

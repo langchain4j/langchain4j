@@ -1,12 +1,18 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.HumanInTheLoop;
+import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
+import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
+import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -54,8 +60,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
@@ -63,6 +73,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DeclarativeAgentIT {
+
+    @Test
+    void declarative_single_agent_tests() {
+        CreativeWriter creativeWriter = AgenticServices.createAgenticSystem(CreativeWriter.class, baseModel());
+
+        String story = creativeWriter.generateStory("dragons and wizards");
+        assertThat(story).isNotBlank();
+    }
 
     public interface StoryCreator {
 
@@ -79,7 +97,53 @@ public class DeclarativeAgentIT {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithConfigurableStyleEditor {
+
+        @SequenceAgent(outputName = "styledStory", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = StyleEditor.class)
+        })
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_sequence_without_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNull();
+    }
+
+    @Test
+    void declarative_sequence_with_agent_configuration_tests() {
+        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
+            if (ctx.agentServiceClass() == StyleEditor.class) {
+                ctx.agentBuilder().outputName("styledStory");
+            }
+        });
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithModel extends StoryCreator {
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_model_tests() {
+        StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithModel.class);
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
     }
 
     @Test
@@ -117,20 +181,20 @@ public class DeclarativeAgentIT {
         StoryCreatorWithErrorRecovery storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithErrorRecovery.class, baseModel());
 
         String story = storyCreator.write(null, "fantasy", "young adults");
-        System.out.println(story);
+        assertThat(story).isNotBlank();
     }
 
     public interface StyleReviewLoopAgent {
 
         @LoopAgent(
-                description = "Review the given story to ensure it aligns with the specified style",
+                description = "Review and score the given story to ensure it aligns with the specified style",
                 outputName = "story", maxIterations = 5,
                 subAgents = {
                     @SubAgent(type = StyleScorer.class, outputName = "score"),
                     @SubAgent(type = StyleEditor.class, outputName = "story")
             }
         )
-        String write(@V("story") String story);
+        String reviewAndScore(@V("story") String story);
 
         @ExitCondition
         static boolean exit(@V("score") double score) {
@@ -153,13 +217,117 @@ public class DeclarativeAgentIT {
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
-        System.out.println(story);
+        assertThat(story).isNotBlank();
 
         AgenticScope agenticScope = result.agenticScope();
         assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
         assertThat(agenticScope.readState("style")).isEqualTo("comedy");
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    static AtomicInteger loopCount;
+
+    public interface StyleReviewLoopAgentWithCounter {
+
+        @LoopAgent(
+                description = "Review the given story to ensure it aligns with the specified style",
+                outputName = "story", maxIterations = 5,
+                subAgents = {
+                    @SubAgent(type = StyleScorer.class, outputName = "score"),
+                    @SubAgent(type = StyleEditor.class, outputName = "story")
+            }
+        )
+        String write(@V("story") String story);
+
+        @ExitCondition(testExitAtLoopEnd = true)
+        static boolean exit(@V("score") double score, @LoopCounter int loopCounter) {
+            loopCount.set(loopCounter);
+            return score >= 0.8;
+        }
+    }
+
+    public interface StoryCreatorWithReviewWithCounter {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgentWithCounter.class, outputName = "story")
+        })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    @Test
+    void declarative_loop_with_counter_tests() {
+        loopCount = new AtomicInteger();
+        StoryCreatorWithReviewWithCounter storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithCounter.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
+        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+
+        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
+        assertThat(styleEditorAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+
+        loopCount = null;
+    }
+
+    public interface CreativeWriterWithListener extends CreativeWriter {
+        @BeforeAgentInvocation
+        static void beforeAgentInvocation(AgentRequest request) {
+            requestedTopic = (String) request.inputs().get("topic");
+        }
+    }
+
+    public interface StyleReviewLoopAgentWithListener extends StyleReviewLoopAgent {
+        @AfterAgentInvocation
+        static void afterAgentInvocation(AgentResponse response) {
+            finalScore = response.agenticScope().readState("score", 0.0);
+        }
+    }
+
+    public interface StoryCreatorWithReviewWithListener {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = CreativeWriterWithListener.class, outputName = "story"),
+                @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputName = "story")
+        })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    static String requestedTopic;
+    static Double finalScore;
+
+    @Test
+    void declarative_listeners_tests() {
+        assertThat(requestedTopic).isNull();
+        assertThat(finalScore).isNull();
+
+        StoryCreatorWithReviewWithListener storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithListener.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(requestedTopic).isEqualTo("dragons and wizards");
+        assertThat(finalScore).isGreaterThanOrEqualTo(0.8);
+
+        requestedTopic = null;
+        finalScore = null;
     }
 
     public interface ExpertsAgent {
@@ -182,8 +350,8 @@ public class DeclarativeAgentIT {
         }
 
         @ActivationCondition(LegalExpert.class)
-        static boolean activateLegal(@V("category") RequestCategory category) {
-            return category == RequestCategory.LEGAL;
+        static boolean activateLegal(AgenticScope agenticScope) {
+            return agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL;
         }
     }
 
@@ -202,7 +370,7 @@ public class DeclarativeAgentIT {
 
         ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
-        System.out.println(response);
+        assertThat(response).isNotBlank();
 
         AgenticScope agenticScope = result.agenticScope();
         assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
@@ -238,7 +406,6 @@ public class DeclarativeAgentIT {
     void declarative_parallel_tests() {
         EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
-        System.out.println(plans);
         assertThat(plans).hasSize(3);
     }
 
@@ -259,6 +426,11 @@ public class DeclarativeAgentIT {
         static ChatModel chatModel() {
             return plannerModel();
         }
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
     }
 
     @Test
@@ -267,7 +439,7 @@ public class DeclarativeAgentIT {
         ResultWithAgenticScope<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
-        System.out.println(story);
+        assertThat(story).isNotBlank();
 
         DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
         assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
@@ -279,7 +451,6 @@ public class DeclarativeAgentIT {
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
-        System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
     }
 
@@ -290,7 +461,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A medical expert")
         @Agent("A medical expert")
         String medical(@MemoryId String memoryId, @V("request") String request);
 
@@ -312,7 +482,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A legal expert")
         @Agent("A legal expert")
         String legal(@MemoryId String memoryId, @V("request") String request);
 
@@ -334,7 +503,6 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Tool("A technical expert")
         @Agent("A technical expert")
         String technical(@MemoryId String memoryId, @V("request") String request);
 
@@ -399,7 +567,6 @@ public class DeclarativeAgentIT {
         AgenticScopePersister.setStore(store);
 
         String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
-        System.out.println(response1);
 
         AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("1");
         assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
@@ -407,7 +574,6 @@ public class DeclarativeAgentIT {
         assertThat(store.getLoadedIds()).isEmpty();
 
         String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
-        System.out.println(response2);
 
         AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
@@ -420,10 +586,8 @@ public class DeclarativeAgentIT {
         assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
 
         String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
-        System.out.println(legalResponse1);
 
         String legalResponse2 = expertRouterAgent.ask("2", "Should I sue my neighbor who caused this damage?");
-        System.out.println(legalResponse2);
 
         assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
 
@@ -500,10 +664,74 @@ public class DeclarativeAgentIT {
 
         SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
-
-        System.out.println(result);
+        assertThat(result).isNotBlank();
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+    }
+
+    private static final CyclicBarrier barrier = new CyclicBarrier(2);
+    private static final AtomicReference<String> request = new AtomicReference<>();
+    private static final AtomicReference<String> audience = new AtomicReference<>();
+
+    public interface AudienceRetriever {
+
+        @HumanInTheLoop(description = "Generate a story based on the given topic", outputName = "audience", async = true)
+        static void request(@V("topic") String topic) {
+            request.set("Which audience for topic " + topic + "?");
+        }
+
+        @HumanInTheLoopResponseSupplier
+        static String response() {
+            try {
+                barrier.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                throw new RuntimeException(e);
+            }
+            return "young adults";
+        }
+    }
+
+    public static class BarrierAwaiter {
+
+        @Agent
+        public static void await() {
+            try {
+                barrier.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static class AudienceReader {
+
+        @Agent
+        public static void readAudience(AgenticScope agenticScope) {
+            audience.set(agenticScope.readState("audience", ""));
+        }
+    }
+
+    public interface StoryCreatorWithHumanInTheLoop {
+
+        @SequenceAgent(outputName = "story", subAgents = {
+                @SubAgent(type = AudienceRetriever.class, outputName = "audience"),
+                @SubAgent(type = CreativeWriter.class, outputName = "story"),
+                @SubAgent(type = BarrierAwaiter.class),
+                @SubAgent(type = AudienceEditor.class, outputName = "story"),
+                @SubAgent(type = AudienceReader.class)
+        })
+        String write(@V("topic") String topic);
+    }
+
+    @Test
+    void declarative_human_in_the_loop_tests() {
+        StoryCreatorWithHumanInTheLoop storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithHumanInTheLoop.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards");
+        System.out.println(story);
+
+        assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
+        assertThat(audience.get()).isEqualTo("young adults");
     }
 }

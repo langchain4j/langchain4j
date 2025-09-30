@@ -41,7 +41,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }

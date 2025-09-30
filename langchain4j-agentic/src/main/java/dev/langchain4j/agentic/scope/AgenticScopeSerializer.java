@@ -37,6 +37,6 @@ public class AgenticScopeSerializer {
      * @see AgenticScopeSerializer For details on serialization.
      */
     public static DefaultAgenticScope fromJson(String json) {
-        return CODEC.fromJson(json).normalizeAfterDeserialization();
+        return CODEC.fromJson(json);
     }
 }
