@@ -441,9 +441,7 @@
                 <version>1.7.0-beta13-SNAPSHOT</version>
             </dependency>
 
-
             <!-- document loaders -->
-
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
