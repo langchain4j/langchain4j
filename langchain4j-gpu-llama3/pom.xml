@@ -10,15 +10,15 @@
 
     <artifactId>langchain4j-gpu-llama3</artifactId>
     <name>LangChain4j :: Integration :: GPULlama3.java</name>
-    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM- Requires Java 21+</description>
+    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 21+</description>
 
     <properties>
+        <maven.compiler.release>21</maven.compiler.release>
         <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
         <maven.test.skip>true</maven.test.skip>
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
-        <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
     <dependencies>
