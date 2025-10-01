@@ -23,16 +23,13 @@ import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
  * <p>This class handles:
  * <ul>
  *   <li>Model initialization and configuration</li>
- *   <li>Conversation state management (stateful approach)</li>
+ *   <li>Conversation state management (stateless approach)</li>
  *   <li>Token encoding and decoding using proper chat formats</li>
  *   <li>Both CPU and GPU execution modes</li>
  *   <li>System and user message processing</li>
  *   <li>Automatic resource cleanup using modern Cleaner API</li>
  * </ul>
  *
- * <p>The class maintains conversation history across multiple requests, allowing
- * for natural multi-turn conversations without requiring clients to manage
- * conversation state explicitly.
  *
  * <p>GPU resources are automatically cleaned up when the model is garbage collected,
  * but can also be manually freed using {@link #freeTornadoVMGPUResources()} or
@@ -44,15 +41,14 @@ import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 abstract class GPULlama3BaseModel implements AutoCloseable {
     private static final Cleaner CLEANER = Cleaner.create();
 
+    private final Integer START_POSITION = 0;
     private Integer maxTokens;
     private Boolean onGPU;
     private Model model;
     private Sampler sampler;
 
-    //
-    int startPosition;
     State state;
-    List<Integer> conversationTokens;
+    List<Integer> promptTokens;
     ChatFormat chatFormat;
     TornadoVMMasterPlan tornadoVMPlan;
 
@@ -77,33 +73,17 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
                 .orElseThrow(() -> new IllegalArgumentException("ChatRequest has no UserMessage"));
     }
 
-    // @formatter:off
-    public void init(
-            Path modelPath,
-            Double temperature,
-            Double topP,
-            Integer seed,
-            Integer maxTokens,
-            Boolean onGPU) {
+    public void init(Path modelPath, Double temperature, Double topP, Integer seed, Integer maxTokens, Boolean onGPU) {
         this.maxTokens = maxTokens;
         this.onGPU = onGPU;
 
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
+            this.state = model.createNewState();
             this.sampler = Sampler.selectSampler(
                     model.configuration().vocabularySize(), temperature.floatValue(), topP.floatValue(), seed);
 
-            this.state = model.createNewState();
-            this.conversationTokens = new ArrayList<>();
             this.chatFormat = model.chatFormat();
-
-            if (model.shouldAddBeginOfText()) {
-                conversationTokens.add(chatFormat.getBeginOfText());
-            }
-
-            startPosition = 0;
-
-            // we cannot add system message here, we add in modelResponse()
 
             if (onGPU) {
                 tornadoVMPlan = TornadoVMMasterPlan.initializeTornadoVMPlan(state, model);
@@ -116,6 +96,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
             throw new RuntimeException("Failed to load model from " + modelPath, e);
         }
     }
+    // @formatter:off
 
     public Model getModel() {
         return model;
@@ -133,27 +114,31 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
      * @return
      */
     public String modelResponse(ChatRequest request, IntConsumer tokenConsumer) {
-
         String systemText = extractSystemPrompt(request);
+        this.promptTokens = new ArrayList<>();
+
+        if (model.shouldAddBeginOfText()) {
+            promptTokens.add(chatFormat.getBeginOfText());
+        }
+
         if (model.shouldAddSystemPrompt() && !systemText.isEmpty()) {
-            conversationTokens.addAll(
-                    chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemText)));
+            promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemText)));
         }
 
         String userText = extractUserPrompt(request);
-        conversationTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, userText)));
+        promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, userText)));
 
         // Prompt the model to generate the assistant response by adding the header**
         List<Integer> assistantHeader = chatFormat.encodeHeader(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, ""));
-        conversationTokens.addAll(assistantHeader);
+        promptTokens.addAll(assistantHeader);
         Set<Integer> stopTokens = chatFormat.getStopTokens();
         List<Integer> responseTokens;
 
         if (onGPU) {
             responseTokens = model.generateTokensGPU(
                     state,
-                    startPosition,
-                    conversationTokens.subList(startPosition, conversationTokens.size()),
+                    START_POSITION,
+                    promptTokens.subList(START_POSITION, promptTokens.size()),
                     stopTokens,
                     maxTokens,
                     sampler,
@@ -163,8 +148,8 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
         } else {
             responseTokens = model.generateTokens(
                     state,
-                    startPosition,
-                    conversationTokens.subList(startPosition, conversationTokens.size()),
+                    START_POSITION,
+                    promptTokens.subList(START_POSITION, promptTokens.size()),
                     stopTokens,
                     maxTokens,
                     sampler,
@@ -175,22 +160,18 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
         Integer stopToken = null;
         if (!responseTokens.isEmpty() && stopTokens.contains(responseTokens.getLast())) {
             stopToken = responseTokens.getLast();
-            // dbg
-            //System.out.println("Found stop token at end: " + stopToken + " = '" + model.tokenizer().decode(List.of(stopToken)) + "'");
             responseTokens.removeLast();
         }
 
         String responseText = model.tokenizer().decode(responseTokens);
 
         // Add the response content tokens to conversation history
-        conversationTokens.addAll(responseTokens);
+        promptTokens.addAll(responseTokens);
 
         // Add the stop token to complete the message
         if (stopToken != null) {
-            conversationTokens.add(stopToken);
+            promptTokens.add(stopToken);
         }
-
-        startPosition = conversationTokens.size();
 
         if (stopToken == null) {
             return "Ran out of context length...\n Increase context length with by passing to llama-tornado --max-tokens XXX";

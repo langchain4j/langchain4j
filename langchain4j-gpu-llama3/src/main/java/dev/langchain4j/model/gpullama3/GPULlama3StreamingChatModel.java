@@ -12,6 +12,24 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.nio.file.Path;
 
+/**
+ * GPULlama3 implementation of the langchain4j StreamingChatModel interface.
+ * <p>
+ * This model provides synchronous chat capabilities using the GPULlama3.java library,
+ * supporting both CPU and GPU execution modes. The model automatically separates thinking content from actual responses.
+ *
+ * <p>Example usage:
+ * <pre>{@code
+ * GPULlama3StreamingChatModel model = GPULlama3StreamingChatModel.builder()
+ *     .modelPath(Paths.get("path/to/model.gguf"))
+ *     .temperature(0.7)
+ *     .maxTokens(2048)
+ *     .onGPU(true)
+ *     .build();
+ *
+ * ChatResponse response = model.chat(chatRequest);
+ * }</pre>
+ */
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
     // @formatter:off

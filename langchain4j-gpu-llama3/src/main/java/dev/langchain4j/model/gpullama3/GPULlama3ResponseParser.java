@@ -131,8 +131,8 @@ public class GPULlama3ResponseParser {
      * @param model the GPULlama3 model instance for token decoding
      * @return a new StreamingThinkingParser instance
      */
-    public static StreamingParser createStreamingParser(StreamingChatResponseHandler handler,
-                                                                org.beehive.gpullama3.model.Model model) {
+    public static StreamingParser createStreamingParser(
+            StreamingChatResponseHandler handler, org.beehive.gpullama3.model.Model model) {
         return new StreamingParser(handler, model);
     }
 
@@ -156,8 +156,7 @@ public class GPULlama3ResponseParser {
          * @param handler the streaming response handler
          * @param model the GPULlama3 model instance for token decoding
          */
-        public StreamingParser(StreamingChatResponseHandler handler,
-                                       org.beehive.gpullama3.model.Model model) {
+        public StreamingParser(StreamingChatResponseHandler handler, org.beehive.gpullama3.model.Model model) {
             this.handler = handler;
             this.model = model;
         }
@@ -232,16 +231,14 @@ public class GPULlama3ResponseParser {
          * Checks if the text at the given position starts with "&lt;think&gt;".
          */
         private boolean isStartOfThinkTag(String text, int position) {
-            return position + 7 <= text.length() &&
-                    text.regionMatches(position, "<think>", 0, 7);
+            return position + 7 <= text.length() && text.regionMatches(position, "<think>", 0, 7);
         }
 
         /**
          * Checks if the text at the given position starts with "&lt;/think&gt;".
          */
         private boolean isStartOfEndThinkTag(String text, int position) {
-            return position + 8 <= text.length() &&
-                    text.regionMatches(position, "</think>", 0, 8);
+            return position + 8 <= text.length() && text.regionMatches(position, "</think>", 0, 8);
         }
     }
 }
