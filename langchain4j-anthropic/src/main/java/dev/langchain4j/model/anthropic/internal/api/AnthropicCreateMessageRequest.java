@@ -2,11 +2,13 @@ package dev.langchain4j.model.anthropic.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -26,9 +28,28 @@ public class AnthropicCreateMessageRequest {
     public AnthropicToolChoice toolChoice;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
+    public Map<String, Object> customParameters;
 
     public AnthropicCreateMessageRequest() {}
 
+    public AnthropicCreateMessageRequest(Builder builder) {
+        this.model = builder.model;
+        this.messages = builder.messages;
+        this.system = builder.system;
+        this.maxTokens = builder.maxTokens;
+        this.stopSequences = builder.stopSequences;
+        this.stream = builder.stream;
+        this.temperature = builder.temperature;
+        this.topP = builder.topP;
+        this.topK = builder.topK;
+        this.tools = builder.tools;
+        this.toolChoice = builder.toolChoice;
+        this.thinking = builder.thinking;
+        this.metadata = builder.metadata;
+        this.customParameters = builder.customParameters;
+    }
+
+    @Deprecated(since = "1.7.0-beta13", forRemoval = true)
     public AnthropicCreateMessageRequest(
             String model,
             List<AnthropicMessage> messages,
@@ -162,6 +183,15 @@ public class AnthropicCreateMessageRequest {
         this.metadata = metadata;
     }
 
+    @JsonAnyGetter
+    public Map<String, Object> getCustomParameters() {
+        return customParameters;
+    }
+
+    public void setCustomParameters(Map<String, Object> customParameters) {
+        this.customParameters = customParameters;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -180,7 +210,8 @@ public class AnthropicCreateMessageRequest {
                         .tools(this.tools)
                         .toolChoice(this.toolChoice)
                         .thinking(this.thinking)
-                        .metadata(this.metadata);
+                        .metadata(this.metadata)
+                        .customParameters(this.customParameters);
     }
 
     public static class Builder {
@@ -198,6 +229,7 @@ public class AnthropicCreateMessageRequest {
         private AnthropicToolChoice toolChoice;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
+        private Map<String, Object> customParameters;
 
         public Builder model(String model) {
             this.model = model;
@@ -264,21 +296,13 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
+        public Builder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
+            return this;
+        }
+
         public AnthropicCreateMessageRequest build() {
-            return new AnthropicCreateMessageRequest(
-                    model,
-                    messages,
-                    system,
-                    maxTokens,
-                    stopSequences,
-                    stream,
-                    temperature,
-                    topP,
-                    topK,
-                    tools,
-                    toolChoice,
-                    thinking,
-                    metadata);
+            return new AnthropicCreateMessageRequest(this);
         }
     }
 }

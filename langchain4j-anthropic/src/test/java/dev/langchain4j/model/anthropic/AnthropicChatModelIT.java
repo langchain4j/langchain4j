@@ -3,10 +3,9 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -18,6 +17,9 @@ import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SpyingHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -28,6 +30,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -538,6 +541,39 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_send_custom_parameters() {
+
+        // given
+        record Edit(String type) {}
+        record ContextManagement(List<Edit> edits) { }
+        Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .beta("context-management-2025-06-27")
+                .customParameters(customParameters)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+
+        assertThat(spyingHttpClient.request().body().contains("context_management"));
     }
 
     static String randomString(int length) {
