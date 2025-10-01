@@ -185,7 +185,7 @@ class AnthropicChatModelIT {
         assertThatThrownBy(() -> model.chat(
                         systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
                 .isExactlyInstanceOf(dev.langchain4j.exception.InvalidRequestException.class)
-                .hasMessageContaining("at least one message is required");
+                .hasMessageContaining("messages: Field required");
     }
 
     @Test
