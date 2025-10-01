@@ -1,3 +1,6 @@
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -9,17 +12,13 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.gpullama3.GPULlama3StreamingChatModel;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT {
     private static final Path MODEL_PATH = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
@@ -91,8 +90,7 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     @Disabled
-    protected void should_respect_stopSequences_in_default_model_parameters() {
-    }
+    protected void should_respect_stopSequences_in_default_model_parameters() {}
 
     // Override feature support methods to return false for unsupported features
     @Override
@@ -201,7 +199,8 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     @Disabled("GPU Llama3 does not support default model parameters")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    protected void
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
         // GPU Llama3 doesn't support default parameters
     }
 
@@ -219,8 +218,7 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     @Disabled("GPU Llama3 does not support image inputs")
-    protected void should_respect_user_message(StreamingChatModel model) {
-    }
+    protected void should_respect_user_message(StreamingChatModel model) {}
 
     @Override
     @Disabled("GPU Llama3 does not support image inputs")
@@ -260,8 +258,8 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     @Disabled("GPU Llama3 does not support default model parameters")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(StreamingChatModel model) {
-    }
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
+            StreamingChatModel model) {}
 
     @Override
     @Disabled("GPU Llama3 does not support maxOutputTokens parameter")
