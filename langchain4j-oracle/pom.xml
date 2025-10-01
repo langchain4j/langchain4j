@@ -15,7 +15,7 @@
 
     <properties>
         <jdbc.version>23.5.0.24.07</jdbc.version>
-        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <dependencies>
