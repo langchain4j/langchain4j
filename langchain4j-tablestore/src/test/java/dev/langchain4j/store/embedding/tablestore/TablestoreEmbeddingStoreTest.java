@@ -73,4 +73,28 @@ class TablestoreEmbeddingStoreTest {
     void embedding_to_string_null_array() {
         assertThatThrownBy(() -> embeddingToString(null)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void testEmbeddingToStringWithEmptyArray() {
+        float[] embedding = {};
+        String result = embeddingToString(embedding);
+        assertThat(result).isEqualTo("[]");
+    }
+
+    @Test
+    void testEmbeddingToStringWithNullArray() {
+        assertThatThrownBy(() -> embeddingToString(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void testParseEmbeddingStringWithEmptyArray() {
+        String embeddingString = "[]";
+        float[] result = parseEmbeddingString(embeddingString);
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void testParseEmbeddingStringWithNullString() {
+        assertThatThrownBy(() -> parseEmbeddingString(null)).isInstanceOf(IllegalArgumentException.class);
+    }
 }
