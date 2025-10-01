@@ -5,14 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import org.beehive.gpullama3.auxiliary.LastRunMetrics;
-import org.beehive.gpullama3.inference.sampler.Sampler;
-import org.beehive.gpullama3.inference.state.State;
-import org.beehive.gpullama3.model.Model;
-import org.beehive.gpullama3.model.format.ChatFormat;
-import org.beehive.gpullama3.model.loader.ModelLoader;
-import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
-
 import java.io.IOException;
 import java.lang.ref.Cleaner;
 import java.nio.file.Path;
@@ -20,6 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.IntConsumer;
+import org.beehive.gpullama3.auxiliary.LastRunMetrics;
+import org.beehive.gpullama3.inference.sampler.Sampler;
+import org.beehive.gpullama3.inference.state.State;
+import org.beehive.gpullama3.model.Model;
+import org.beehive.gpullama3.model.format.ChatFormat;
+import org.beehive.gpullama3.model.loader.ModelLoader;
+import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
 
 /**
  * Abstract base class for GPULlama3 chat models providing core functionality for conversation management and token generation.
@@ -66,7 +65,8 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
         try {
             this.model = ModelLoader.loadModel(modelPath, maxTokens, true, onGPU);
             this.state = model.createNewState();
-            this.sampler = Sampler.selectSampler(model.configuration().vocabularySize(), temperature.floatValue(), topP.floatValue(), seed);
+            this.sampler = Sampler.selectSampler(
+                    model.configuration().vocabularySize(), temperature.floatValue(), topP.floatValue(), seed);
 
             this.chatFormat = model.chatFormat();
 
@@ -187,11 +187,14 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
     private void processPromptMessages(List<ChatMessage> messageList) {
         for (ChatMessage msg : messageList) {
             if (msg instanceof UserMessage userMessage) {
-                promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, userMessage.singleText())));
+                promptTokens.addAll(chatFormat.encodeMessage(
+                        new ChatFormat.Message(ChatFormat.Role.USER, userMessage.singleText())));
             } else if (msg instanceof SystemMessage systemMessage && model.shouldAddSystemPrompt()) {
-                promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemMessage.text())));
+                promptTokens.addAll(
+                        chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemMessage.text())));
             } else if (msg instanceof AiMessage aiMessage) {
-                promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, aiMessage.text())));
+                promptTokens.addAll(
+                        chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, aiMessage.text())));
             }
         }
 
