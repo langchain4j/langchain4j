@@ -192,8 +192,8 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     private void validateConfiguration() {
-        if (onPartialResponseInvoked != 1) {
-            throw new IllegalConfigurationException("onPartialResponse must be invoked on TokenStream exactly 1 time");
+        if (onPartialResponseInvoked > 1) {
+            throw new IllegalConfigurationException("onPartialResponse can be invoked on TokenStream at most 1 time");
         }
         if (onPartialThinkingInvoked > 1) {
             throw new IllegalConfigurationException("onPartialThinking can be invoked on TokenStream at most 1 time");

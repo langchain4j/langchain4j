@@ -20,12 +20,14 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.mcp.registryclient.model.McpGetServerResponse;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
-import dev.langchain4j.mcp.registryclient.model.McpServer;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -90,14 +92,14 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     @Override
-    public McpServer getServerDetails(String id) {
-        Objects.requireNonNull(id, "id cannot be null");
+    public McpGetServerResponse getServerDetails(String serverName) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(HttpMethod.GET)
-                .url(baseUrl, "/v0/servers/" + id)
+                .url(baseUrl, "/v0/servers/" + URLEncoder.encode(serverName, StandardCharsets.UTF_8))
                 .addHeaders(currentHeaders())
                 .build();
-        return sendAndProcessResponse(httpRequest, McpServer.class);
+        return sendAndProcessResponse(httpRequest, McpGetServerResponse.class);
     }
 
     @Override

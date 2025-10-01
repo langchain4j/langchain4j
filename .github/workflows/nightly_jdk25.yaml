@@ -15,7 +15,7 @@ jobs:
           - 25
         include:
           - java_version: '25'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama,!langchain4j-vespa,!langchain4j-document-loader-playwright'
+            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-jlama,!langchain4j-vespa,!document-loaders/langchain4j-document-loader-playwright'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:

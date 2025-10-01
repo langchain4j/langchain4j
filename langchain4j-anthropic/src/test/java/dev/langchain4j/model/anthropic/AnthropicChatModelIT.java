@@ -65,11 +65,11 @@ class AnthropicChatModelIT {
     void should_respect_stop_sequences() {
 
         // given
-        List<String> stopSequences = singletonList("World");
+        List<String> stopSequences = List.of("World", " World");
 
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20241022)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .stopSequences(stopSequences)
                 .logRequests(true)
                 .logResponses(true)
