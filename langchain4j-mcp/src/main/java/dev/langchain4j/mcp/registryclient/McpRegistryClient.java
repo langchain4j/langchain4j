@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.registryclient;
 
+import dev.langchain4j.mcp.registryclient.model.McpGetServerResponse;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
-import dev.langchain4j.mcp.registryclient.model.McpServer;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
 
@@ -21,7 +21,7 @@ public interface McpRegistryClient {
     /**
      * Obtains the details for a single MCP server denoted by its ID.
      */
-    McpServer getServerDetails(String id);
+    McpGetServerResponse getServerDetails(String id);
 
     /**
      * Runs a health check against the MCP registry. If the registry is healthy,

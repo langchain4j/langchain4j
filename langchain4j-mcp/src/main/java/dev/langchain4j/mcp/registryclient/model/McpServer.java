@@ -38,6 +38,10 @@ public class McpServer {
         return schema;
     }
 
+    /**
+     * @deprecated This field was moved to the McpOfficialMeta object in schema version 2025-09-29
+     */
+    @Deprecated(forRemoval = true)
     public String getStatus() {
         return status;
     }

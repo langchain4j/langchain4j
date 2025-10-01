@@ -17,6 +17,12 @@ public class McpOfficialMeta {
     @JsonAlias("updated_at")
     private ZonedDateTime updatedAt;
 
+    private String status;
+
+    /**
+     * @deprecated This field was removed in the 2025-09-29 version of the schema.
+     */
+    @Deprecated(forRemoval = true)
     public String getServerId() {
         return serverId;
     }
@@ -31,5 +37,9 @@ public class McpOfficialMeta {
 
     public ZonedDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getStatus() {
+        return status;
     }
 }
