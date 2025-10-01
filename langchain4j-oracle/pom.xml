@@ -15,6 +15,7 @@
 
     <properties>
         <jdbc.version>23.5.0.24.07</jdbc.version>
+        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <dependencies>
@@ -28,6 +29,17 @@
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
             <version>${jdbc.version}</version>
+        </dependency>
+
+        <!-- document store dependencies -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <!-- Tests use the Universal Connection Pool as a JDBC DataSource -->
