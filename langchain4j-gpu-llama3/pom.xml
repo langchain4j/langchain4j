@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.7.0-beta13-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-gpu-llama3</artifactId>
+    <name>LangChain4j :: Integration :: GPULlama3.java</name>
+    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 21+</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
+        <maven.test.skip>true</maven.test.skip>
+        <maven.compiler.testSkip>true</maven.compiler.testSkip>
+        <skipTests>true</skipTests>
+        <skipITs>true</skipITs>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>io.github.beehive-lab</groupId>
+            <artifactId>gpu-llama3</artifactId>
+            <version>0.2.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.6.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- logging dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.17</version>
+        </dependency>
+
+        <!-- test dependencies -->
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.6.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.6.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.6.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-console-standalone</artifactId>
+            <version>1.10.1</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-test-classpath</id>
+                        <goals>
+                            <goal>build-classpath</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <includeScope>test</includeScope>
+                            <outputProperty>test.classpath</outputProperty>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Skip standard tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M9</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <phase>test-compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- TornadoVM Test Runner -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <executable>${env.JAVA_HOME}/bin/java</executable>
+                    <arguments>
+                        <argument>-server</argument>
+                        <argument>-XX:+UnlockExperimentalVMOptions</argument>
+                        <argument>-XX:+EnableJVMCI</argument>
+                        <argument>-XX:-UseCompressedClassPointers</argument>
+                        <argument>--enable-preview</argument>
+                        <argument>-Xms20g</argument>
+                        <argument>-Xmx20g</argument>
+                        <argument>-Djava.library.path=${tornado.sdk}/lib</argument>
+                        <argument>-Djdk.module.showModuleResolution=false</argument>
+                        <argument>--module-path=.:${tornado.sdk}/share/java/tornado</argument>
+                        <argument>-Dtornado.load.api.implementation=uk.ac.manchester.tornado.runtime.tasks.TornadoTaskGraph</argument>
+                        <argument>-Dtornado.load.runtime.implementation=uk.ac.manchester.tornado.runtime.TornadoCoreRuntime</argument>
+                        <argument>-Dtornado.load.tornado.implementation=uk.ac.manchester.tornado.runtime.common.Tornado</argument>
+                        <argument>-Dtornado.load.annotation.implementation=uk.ac.manchester.tornado.annotation.ASMClassVisitor</argument>
+                        <argument>-Dtornado.load.annotation.parallel=uk.ac.manchester.tornado.api.annotations.Parallel</argument>
+                        <argument>-Dtornado.tvm.maxbytecodesize=65536</argument>
+                        <argument>-Duse.tornadovm=true</argument>
+                        <argument>-Dtornado.threadInfo=false</argument>
+                        <argument>-Dtornado.debug=false</argument>
+                        <argument>-Dtornado.fullDebug=false</argument>
+                        <argument>-Dtornado.printKernel=false</argument>
+                        <argument>-Dtornado.print.bytecodes=false</argument>
+                        <argument>-Dtornado.device.memory=7GB</argument>
+                        <argument>-Dtornado.profiler=false</argument>
+                        <argument>-Dtornado.log.profiler=false</argument>
+                        <argument>-Dtornado.enable.fastMathOptimizations=true</argument>
+                        <argument>-Dtornado.enable.mathOptimizations=false</argument>
+                        <argument>-Dtornado.enable.nativeFunctions=fast</argument>
+                        <argument>-Dtornado.loop.interchange=true</argument>
+                        <argument>-Dtornado.eventpool.maxwaitevents=32000</argument>
+                        <argument>-Dtornado.opencl.compiler.flags=-cl-denorms-are-zero -cl-no-signed-zeros -cl-finite-math-only</argument>
+                        <argument>--upgrade-module-path</argument>
+                        <argument>${tornado.sdk}/share/java/graalJars</argument>
+                        <argument>@${tornado.sdk}/etc/exportLists/common-exports</argument>
+                        <argument>@${tornado.sdk}/etc/exportLists/opencl-exports</argument>
+                        <argument>--add-modules</argument>
+                        <argument>ALL-SYSTEM,tornado.runtime,tornado.annotation,tornado.drivers.common,tornado.drivers.opencl</argument>
+                        <argument>-cp</argument>
+                        <argument>${project.build.outputDirectory}:${project.build.testOutputDirectory}:${test.classpath}</argument>
+                        <argument>org.junit.platform.console.ConsoleLauncher</argument>
+                        <argument>--scan-classpath</argument>
+                        <argument>--include-classname</argument>
+                        <argument>.*IT</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>run-tests</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <!-- Override to enable -->
+                <maven.compiler.testSkip>false</maven.compiler.testSkip>
+                <!-- Override to enable -->
+                <skipTests>false</skipTests>
+                <!-- Override to enable -->
+                <skipITs>false</skipITs>
+                <!-- Override to enable -->
+            </properties>
+            <build>
+                <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
+            </build>
+        </profile>
+    </profiles>
+</project>

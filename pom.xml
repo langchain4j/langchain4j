@@ -209,6 +209,7 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+                <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
 
