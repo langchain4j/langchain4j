@@ -97,7 +97,7 @@ abstract class GPULlama3BaseModel {
         return ChatResponse.builder().aiMessage(aiMessage).build();
     }
 
-    public String modelStringResponse(ChatRequest request, Consumer<String> tokeCallBack) {
+    public String modelStringResponse(ChatRequest request, Consumer<String> tokenCallBack) {
         Options options = new Options(
                 modelPath,
                 extractUserPrompt(request),
@@ -112,7 +112,7 @@ abstract class GPULlama3BaseModel {
                 false, // echo
                 onGPU);
 
-        String responseText = model.runInstructOnceLangChain4J(sampler, options, tokeCallBack);
+        String responseText = model.runInstructOnceLangChain4J(sampler, options, tokenCallBack);
         return responseText;
     }
     // @formatter:on
