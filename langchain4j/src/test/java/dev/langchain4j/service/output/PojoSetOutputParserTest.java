@@ -1,5 +1,10 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -7,16 +12,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.Set;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class PojoSetOutputParserTest {
 
-    record Person(String name) {
-    }
+    record Person(String name) {}
 
     @ParameterizedTest
     @MethodSource
@@ -32,12 +30,13 @@ class PojoSetOutputParserTest {
     static Stream<Arguments> should_parse_set_of_pojo() {
         return Stream.of(
                 Arguments.of("{\"values\":[{\"name\":\"Klaus\"}]}", Set.of(new Person("Klaus"))),
-                Arguments.of("{\"values\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}", Set.of(new Person("Klaus"), new Person("Franny"))),
+                Arguments.of(
+                        "{\"values\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
+                        Set.of(new Person("Klaus"), new Person("Franny"))),
                 Arguments.of("", Set.of()),
                 Arguments.of(" ", Set.of()),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", Set.of(new Person("Klaus")))
-        );
+                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", Set.of(new Person("Klaus"))));
     }
 
     @ParameterizedTest
@@ -52,14 +51,15 @@ class PojoSetOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "banana",
-            "{\"values\": \"\"}",
-            "{\"values\":\"banana\"}",
-            "{\"values\":[\"banana\"]}",
-            "{\"values\":{\"name\":\"Klaus\"}}",
-            "{\"banana\":[{\"name\":\"Klaus\"}]}",
-    })
+    @ValueSource(
+            strings = {
+                "banana",
+                "{\"values\": \"\"}",
+                "{\"values\":\"banana\"}",
+                "{\"values\":[\"banana\"]}",
+                "{\"values\":{\"name\":\"Klaus\"}}",
+                "{\"banana\":[{\"name\":\"Klaus\"}]}",
+            })
     void should_fail_to_parse_invalid_input(String text) {
 
         // when-then
