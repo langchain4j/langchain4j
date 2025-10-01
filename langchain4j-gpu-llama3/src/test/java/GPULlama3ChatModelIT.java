@@ -34,19 +34,6 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
                 .build();
     }
 
-    @AfterAll
-    void tearDown() {
-        if (model != null) {
-            try {
-                model.freeTornadoVMGPUResources();
-                model = null;
-            } catch (Exception e) {
-                System.err.println("Error while cleaning up TornadoVM resources: " + e.getMessage());
-            }
-        }
-        System.gc();
-    }
-
     @Test
     void should_get_non_empty_response() {
         ChatRequest request = ChatRequest.builder()
