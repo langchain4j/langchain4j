@@ -11,11 +11,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class OracleEmbeddingModelIT extends OracleContainerTestBase {
 
+    // NB: Test requires ALL-MINILM-L6-V2.onnx to be downloaded
+    // and copied into the resource dir /models
+    @Disabled("Run test manually")
     @Test
     @DisplayName("embed with provider=database")
     void testEmbedONNX() throws SQLException {

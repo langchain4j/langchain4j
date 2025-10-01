@@ -24,11 +24,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class OracleIngestIT extends OracleContainerTestBase {
 
+    // NB: Test requires ALL-MINILM-L6-V2.onnx to be downloaded
+    // and copied into the resource dir /models
+    @Disabled("Run test manually")
     @Test
     @DisplayName("ingest")
     void testIngest() throws IOException, SQLException, URISyntaxException {
