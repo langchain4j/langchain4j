@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.store.embedding.chroma.ChromaApiVersion.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -11,6 +12,7 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -18,15 +20,15 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
  * Always uses cosine distance as the distance metric.
  */
-public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
+class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final ChromaClient chromaClient;
     private String collectionId;
@@ -35,22 +37,32 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Initializes a new instance of ChromaEmbeddingStore with the specified parameters.
      *
-     * @param baseUrl        The base URL of the Chroma service.
-     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
-     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
-     * @param logRequests    If true, requests to the Chroma service are logged.
-     * @param logResponses   If true, responses from the Chroma service are logged.
+     * @param builder The builder instance of ChromaEmbeddingStore.Builder.
      */
-    public ChromaEmbeddingStore(
-            String baseUrl, String collectionName, Duration timeout, boolean logRequests, boolean logResponses) {
-        this.collectionName = getOrDefault(collectionName, "default");
+    public ChromaEmbeddingStore(Builder builder) {
+        this.collectionName = getOrDefault(builder.collectionName, "default");
+        ChromaApiVersion apiVersion = Utils.getOrDefault(builder.apiVersion, V1);
 
-        this.chromaClient = new ChromaClient.Builder()
-                .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(5)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
+        if (apiVersion == V1) {
+            this.chromaClient = new ChromaClientV1.Builder()
+                    .baseUrl(builder.baseUrl)
+                    .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .build();
+
+        } else {
+            ChromaClientV2 chromaClientV2 = new ChromaClientV2.Builder()
+                    .baseUrl(builder.baseUrl)
+                    .tenantName(builder.tenantName)
+                    .databaseName(builder.databaseName)
+                    .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .build();
+            createTenantAndDbIfNotExists(chromaClientV2);
+            this.chromaClient = chromaClientV2;
+        }
 
         Collection collection = chromaClient.collection(this.collectionName);
         if (collection == null) {
@@ -60,17 +72,47 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    /**
+     * Initializes a new instance of ChromaEmbeddingStore (V1 API) with the specified parameters.
+     *
+     * @param baseUrl        The base URL of the Chroma service.
+     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
+     * @param logRequests    If true, requests to the Chroma service are logged.
+     * @param logResponses   If true, responses from the Chroma service are logged.
+     * @deprecated Only works with the V1 API, use the {@link #ChromaEmbeddingStore(Builder)} constructor instead.
+     */
+    @Deprecated(since = "1.7.0-beta13", forRemoval = true)
+    public ChromaEmbeddingStore(
+            String baseUrl, String collectionName, Duration timeout, boolean logRequests, boolean logResponses) {
+        this(builder()
+                .apiVersion(V1)
+                .baseUrl(baseUrl)
+                .collectionName(collectionName)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .timeout(timeout));
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
+        private ChromaApiVersion apiVersion;
         private String baseUrl;
+        private String tenantName;
+        private String databaseName;
         private String collectionName;
         private Duration timeout;
         private boolean logRequests;
         private boolean logResponses;
+
+        public Builder apiVersion(ChromaApiVersion apiVersion) {
+            this.apiVersion = apiVersion;
+            return this;
+        }
 
         /**
          * @param baseUrl The base URL of the Chroma service.
@@ -82,7 +124,28 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+         * @param tenantName The name of the tenant in the Chroma service.
+         *                   If not specified, "default" will be used.
+         * @return builder
+         */
+        public Builder tenantName(String tenantName) {
+            this.tenantName = tenantName;
+            return this;
+        }
+
+        /**
+         * @param databaseName The name of the database in the Chroma service.
+         *                     If not specified, "default" will be used.
+         * @return builder
+         */
+        public Builder databaseName(String databaseName) {
+            this.databaseName = databaseName;
+            return this;
+        }
+
+        /**
+         * @param collectionName The name of the collection in the Chroma service.
+         *                       If not specified, "default" will be used.
          * @return builder
          */
         public Builder collectionName(String collectionName) {
@@ -110,8 +173,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public ChromaEmbeddingStore build() {
-            return new ChromaEmbeddingStore(
-                    this.baseUrl, this.collectionName, this.timeout, this.logRequests, this.logResponses);
+            return new ChromaEmbeddingStore(this);
         }
     }
 
@@ -149,22 +211,29 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        int size = embeddings.size();
+
+        List<Map<String, Object>> metadatas;
+        List<String> documents;
+
+        if (textSegments == null) {
+            // Ensure same length
+            metadatas = Collections.nCopies(size, null);
+            documents = Collections.nCopies(size, null);
+        } else {
+            metadatas = textSegments.stream()
+                    .map(TextSegment::metadata)
+                    .map(Metadata::toMap)
+                    .collect(toList());
+
+            documents = textSegments.stream().map(TextSegment::text).collect(toList());
+        }
         AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest.builder()
                 .embeddings(embeddings.stream().map(Embedding::vector).collect(toList()))
                 .ids(ids)
-                .metadatas(
-                        textSegments == null
-                                ? null
-                                : textSegments.stream()
-                                        .map(TextSegment::metadata)
-                                        .map(Metadata::toMap)
-                                        .collect(toList()))
-                .documents(
-                        textSegments == null
-                                ? null
-                                : textSegments.stream().map(TextSegment::text).collect(toList()))
+                .metadatas(metadatas)
+                .documents(documents)
                 .build();
-
         chromaClient.addEmbeddings(collectionId, addEmbeddingsRequest);
     }
 
@@ -203,7 +272,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         createCollection();
     }
 
-    private @NotNull List<EmbeddingMatch<TextSegment>> queryAndFilter(QueryRequest queryRequest, double minScore) {
+    private List<EmbeddingMatch<TextSegment>> queryAndFilter(QueryRequest queryRequest, double minScore) {
         QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
         List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
         return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
@@ -245,5 +314,16 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         collectionId = chromaClient
                 .createCollection(new CreateCollectionRequest(this.collectionName))
                 .getId();
+    }
+
+    private void createTenantAndDbIfNotExists(ChromaClientV2 chromaClient) {
+        Tenant tenant = chromaClient.tenant();
+        if (tenant == null) {
+            chromaClient.createTenant();
+        }
+        Database database = chromaClient.database();
+        if (database == null) {
+            chromaClient.createDatabase();
+        }
     }
 }

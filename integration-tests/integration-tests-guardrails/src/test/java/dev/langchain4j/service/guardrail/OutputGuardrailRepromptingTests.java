@@ -122,9 +122,9 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
-            return OutputGuardrail.super.validate(params);
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
         }
 
         @Override
@@ -150,16 +150,16 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
             int v = spy.incrementAndGet();
-            var messages = params.requestParams().chatMemory().messages();
+            var messages = request.requestParams().chatMemory().messages();
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);
                 assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
                         .isEqualTo("Nope"));
-                assertThat(params.responseFromLLM().aiMessage().text()).isEqualTo("Nope");
+                assertThat(request.responseFromLLM().aiMessage().text()).isEqualTo("Nope");
                 return reprompt("Retry", "Retry");
             }
 
@@ -170,7 +170,7 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
 
                 assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
                         .isEqualTo("Nope"));
-                assertThat(params.responseFromLLM().aiMessage().text()).isEqualTo("Hello");
+                assertThat(request.responseFromLLM().aiMessage().text()).isEqualTo("Hello");
                 assertThat(beforeLast)
                         .isInstanceOfSatisfying(
                                 dev.langchain4j.data.message.UserMessage.class,
@@ -200,10 +200,10 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-            this.chatMemory.set(params.requestParams().chatMemory());
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
             int v = spy.incrementAndGet();
-            var messages = params.requestParams().chatMemory().messages();
+            var messages = request.requestParams().chatMemory().messages();
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);

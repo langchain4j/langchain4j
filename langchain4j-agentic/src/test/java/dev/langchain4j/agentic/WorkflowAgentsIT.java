@@ -48,6 +48,7 @@ import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 
 import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -731,5 +732,56 @@ public class WorkflowAgentsIT {
         eveningPlannerAgent.invoke(Map.of("mood", "romantic"));
         assertThat(foodDone).isTrue();
         assertThat(moviesDone).isTrue();
+    }
+
+    public interface CreativeWriterDeclarative {
+
+        @UserMessage("""
+                You are a creative writer.
+                Generate a draft of a story long no more than 3 sentence around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        @Agent(description = "Generate a story based on the given topic", outputName = "story")
+        String generateStory(@V("topic") String topic);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface AudienceEditorDeclarative {
+
+        @UserMessage("""
+            You are a professional editor.
+            Analyze and rewrite the following story to better align with the target audience of {{audience}}.
+            Return only the story and nothing else.
+            The story is "{{story}}".
+            """)
+        @Agent(description = "Edit a story to better fit a given audience", outputName = "story")
+        String editStory(@V("story") String story, @V("audience") String audience);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    @Test
+    void sequential_declarative_agents_as_classes_tests() {
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(CreativeWriterDeclarative.class, AudienceEditorDeclarative.class)
+                .outputName("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "audience", "young adults"
+        );
+
+        String story = (String) novelCreator.invoke(input);
+        System.out.println(story);
+        assertThat(story).containsIgnoringCase("dragon").containsIgnoringCase("wizard");
     }
 }

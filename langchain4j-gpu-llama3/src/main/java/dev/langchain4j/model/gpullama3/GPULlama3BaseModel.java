@@ -1,6 +1,8 @@
 package dev.langchain4j.model.gpullama3;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.lang.ref.Cleaner;
 import java.nio.file.Path;

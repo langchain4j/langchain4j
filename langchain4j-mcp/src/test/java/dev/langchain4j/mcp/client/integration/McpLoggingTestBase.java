@@ -24,8 +24,12 @@ public abstract class McpLoggingTestBase {
 
     @Test
     public void receiveInfoLogMessage() throws TimeoutException {
-        String result = mcpClient.executeTool(
-                ToolExecutionRequest.builder().arguments("{}").name("info").build());
+        String result = mcpClient
+                .executeTool(ToolExecutionRequest.builder()
+                        .arguments("{}")
+                        .name("info")
+                        .build())
+                .resultText();
         assertThat(result).isEqualTo("ok");
         List<McpLogMessage> receivedMessages = logMessageHandler.waitForAtLeastOneMessageAndGet(Duration.ofSeconds(10));
         assertThat(receivedMessages).hasSize(1);
@@ -37,8 +41,12 @@ public abstract class McpLoggingTestBase {
 
     @Test
     public void receiveDebugLogMessage() throws TimeoutException {
-        String result = mcpClient.executeTool(
-                ToolExecutionRequest.builder().arguments("{}").name("debug").build());
+        String result = mcpClient
+                .executeTool(ToolExecutionRequest.builder()
+                        .arguments("{}")
+                        .name("debug")
+                        .build())
+                .resultText();
         assertThat(result).isEqualTo("ok");
         List<McpLogMessage> receivedMessages = logMessageHandler.waitForAtLeastOneMessageAndGet(Duration.ofSeconds(10));
         assertThat(receivedMessages).hasSize(1);
