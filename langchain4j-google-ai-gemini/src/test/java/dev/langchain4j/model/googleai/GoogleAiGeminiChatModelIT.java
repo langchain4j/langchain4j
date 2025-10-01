@@ -159,12 +159,16 @@ class GoogleAiGeminiChatModelIT {
                 .modelName("gemini-2.5-flash-lite")
                 .build();
 
-        // when
         URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
-        ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"), TextContent.from("Give a summary of the video")));
+        UserMessage userMessage = UserMessage.from(
+                VideoContent.from(base64Data, "video/mp4"),
+                TextContent.from("What do you see on this video?")
+        );
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");

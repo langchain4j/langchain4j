@@ -15,7 +15,7 @@ jobs:
           - 17
         include:
           - java_version: '17'
-            mvn_opts: '-pl langchain4j-vespa,langchain4j-document-loader-playwright'
+            mvn_opts: '-pl langchain4j-vespa,document-loaders/langchain4j-document-loader-playwright'
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:

@@ -4,10 +4,8 @@ sidebar_position: 10
 
 # Hugging Face
 
-[HuggingFace Inference API](https://huggingface.co/docs/api-inference/index)
-
-- [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
-- [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
+In order to use [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers/index),
+you need to import the `langchain4j-open-ai` module, as Hugging Face Inference Providers API is OpenAI-compatible.
 
 
 ## Maven Dependency
@@ -15,18 +13,23 @@ sidebar_position: 10
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-hugging-face</artifactId>
-    <version>1.6.0-beta12</version>
+    <artifactId>langchain4j-open-ai</artifactId>
+    <version>1.6.0</version>
 </dependency>
 ```
 
-## APIs
-
-- `HuggingFaceChatModel`
-- `HuggingFaceLanguageModel`
-
-
 ## Examples
 
-- [HuggingFaceChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-hugging-face/src/test/java/dev/langchain4j/model/huggingface/HuggingFaceChatModelIT.java)
-- [HuggingFaceLanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-hugging-face/src/test/java/dev/langchain4j/model/huggingface/HuggingFaceLanguageModelIT.java)
+```java
+ChatModel model = OpenAiChatModel.builder()
+    .apiKey(System.getenv("HF_API_KEY"))
+    .baseUrl("https://router.huggingface.co/v1")
+    .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+    .build();
+
+StreamingChatModel streamingModel = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("HF_API_KEY"))
+    .baseUrl("https://router.huggingface.co/v1")
+    .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+    .build();
+```
