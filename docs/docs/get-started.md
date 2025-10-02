@@ -98,7 +98,7 @@ you can use the most recent `SNAPSHOT` dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.7.0-SNAPSHOT</version>
+        <version>1.8.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
