@@ -10,7 +10,7 @@ sidebar_position: 3
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.1</version>
 </dependency>
 ```
 

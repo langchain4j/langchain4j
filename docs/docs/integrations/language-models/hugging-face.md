@@ -14,7 +14,7 @@ you need to import the `langchain4j-open-ai` module, as Hugging Face Inference P
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.1</version>
 </dependency>
 ```
 
