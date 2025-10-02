@@ -30,11 +30,13 @@ import org.slf4j.LoggerFactory;
 
 public class StreamableHttpMcpTransport implements McpTransport {
 
-    private static final Logger log = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
+    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
+    private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private final String url;
     private final Map<String, String> customHeaders;
     private final boolean logResponses;
     private final boolean logRequests;
+    private final Logger trafficLog;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private volatile McpOperationHandler operationHandler;
@@ -45,6 +47,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
+        trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeaders = getOrDefault(builder.customHeaders, Map.of());
         HttpClient.Builder clientBuilder = HttpClient.newBuilder();
@@ -70,7 +73,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         String body = OBJECT_MAPPER.writeValueAsString(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
-            log.info("Request: " + body);
+            trafficLog.info("Request: {}", body);
         }
         final HttpRequest.Builder builder = HttpRequest.newBuilder();
         String sessionId = mcpSessionId.get();
@@ -132,7 +135,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                             Optional<String> mcpSessionId =
                                     responseInfo.headers().firstValue("Mcp-Session-Id");
                             if (mcpSessionId.isPresent()) {
-                                log.debug("Assigned MCP session ID: " + mcpSessionId);
+                                LOG.debug("Assigned MCP session ID: {}", mcpSessionId);
                                 StreamableHttpMcpTransport.this.mcpSessionId.set(mcpSessionId.get());
                             }
                             if (id != null
@@ -146,7 +149,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 return HttpResponse.BodySubscribers.mapping(
                                         HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), responseBody -> {
                                             if (logResponses) {
-                                                log.info("Response: " + responseBody);
+                                                trafficLog.info("Response: {}", responseBody);
                                             }
                                             if (id == null) {
                                                 future.complete(null);
@@ -193,6 +196,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
+        private Logger logger;
 
         /**
          * The URL of the MCP server.
@@ -232,6 +236,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public StreamableHttpMcpTransport.Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

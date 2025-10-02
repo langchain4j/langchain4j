@@ -10,7 +10,6 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.HostConfig;
-import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
@@ -53,6 +52,7 @@ public class DockerMcpTransport  implements McpTransport {
     private final List<String> command;
     private final Map<String, String> environment;
     private final boolean logEvents;
+    private final Logger logger;
     private final List<String> binds;
     private final Duration attachTimeout;
 
@@ -76,6 +76,7 @@ public class DockerMcpTransport  implements McpTransport {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
+        this.logger = builder.logger;
         this.binds = builder.binds;
         this.attachTimeout = builder.attachTimeout;
     }
@@ -220,7 +221,7 @@ public class DockerMcpTransport  implements McpTransport {
                     .withStdErr(true)
                     .withFollowStream(true)
                     .withStdIn(in)
-                    .exec(new DockerResultCallback(logEvents, messageHandler));
+                    .exec(new DockerResultCallback(logEvents, logger, messageHandler));
             callback.awaitStarted(attachTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
             out.write((request + "\n").getBytes());
@@ -261,6 +262,7 @@ public class DockerMcpTransport  implements McpTransport {
         private List<String> command;
         private Map<String, String> environment;
         private boolean logEvents;
+        private Logger logger;
         private List<String> binds;
         private Duration attachTimeout;
 
@@ -331,6 +333,15 @@ public class DockerMcpTransport  implements McpTransport {
 
         public DockerMcpTransport.Builder logEvents(boolean logEvents) {
             this.logEvents = logEvents;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public DockerMcpTransport.Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
