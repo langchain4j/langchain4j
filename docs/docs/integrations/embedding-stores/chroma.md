@@ -29,8 +29,8 @@ https://www.trychroma.com/
 ## Supported API Versions
 Chroma has multiple REST API versions:
 - until version 0.5.16: only API V1 is supported
-- versions >=0.5.16 to <=0.6.3: API V1 and V2 are supported (there are some bugs in V1 API introduced around 0.6.2)
-- versions >=0.7.0: only API V2 is supported, so you need to select the proper version
+- versions >= 0.5.16 to <= 0.6.3: API V1 and V2 are supported (there are some bugs in V1 API introduced around 0.6.2)
+- versions >= 0.7.0: only API V2 is supported, so you need to select the proper version
 when configuring the `ChromaEmbeddingStore`:
 ```java
 ChromaEmbeddingStore.builder()
