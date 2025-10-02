@@ -84,6 +84,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
     private final Boolean strictJsonSchema;
+    private final Integer maxCompletionTokens;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -162,6 +163,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.enhancements = builder.enhancements;
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -189,6 +191,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
+                .setMaxCompletionTokens(maxCompletionTokens)
                 .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias.isEmpty() ? null : logitBias)
@@ -259,6 +262,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
+        private Integer maxCompletionTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
@@ -368,6 +372,11 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 

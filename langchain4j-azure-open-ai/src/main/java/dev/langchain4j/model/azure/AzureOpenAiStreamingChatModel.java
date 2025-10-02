@@ -92,12 +92,15 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAIAsyncClient client;
     private final ChatRequestParameters defaultRequestParameters;
+
     private final Map<String, Integer> logitBias;
     private final String user;
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
     private final boolean strictJsonSchema;
+    private final Integer maxCompletionTokens;
+
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
@@ -174,6 +177,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.enhancements = builder.enhancements;
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
+
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -200,6 +205,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
+                .setMaxCompletionTokens(maxCompletionTokens)
                 .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias.isEmpty() ? null : logitBias)
@@ -353,6 +359,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
+        private Integer maxCompletionTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
@@ -462,6 +469,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
