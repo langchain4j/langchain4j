@@ -28,7 +28,7 @@ import java.util.Map;
  * Represents a store for embeddings using the Chroma backend.
  * Always uses cosine distance as the distance metric.
  */
-class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final ChromaClient chromaClient;
     private String collectionId;
