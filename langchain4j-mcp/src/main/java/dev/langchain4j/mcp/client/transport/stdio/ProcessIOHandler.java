@@ -12,22 +12,30 @@ import java.io.PrintStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 class ProcessIOHandler implements Runnable, Closeable {
 
     private final Process process;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(ProcessIOHandler.class);
-    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
+    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private final boolean logEvents;
+    private final Logger trafficLog;
     private final McpOperationHandler messageHandler;
     private final PrintStream out;
     private volatile boolean closed = false;
 
     public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents) {
+        this(process, messageHandler, logEvents, null);
+    }
+
+    public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents, Logger logger) {
         this.process = process;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
         this.out = new PrintStream(process.getOutputStream(), true);
+        this.trafficLog = getOrDefault(logger, DEFAULT_TRAFFIC_LOG);
     }
 
     @Override
@@ -42,7 +50,7 @@ class ProcessIOHandler implements Runnable, Closeable {
                     try {
                         messageHandler.handle(OBJECT_MAPPER.readTree(line));
                     } catch(JsonProcessingException e) {
-                        log.warn("Ignoring message received from the server because it is not valid JSON: " + line);
+                        log.warn("Ignoring message received from the server because it is not valid JSON: {}", line);
                     }
                 }
             } catch (IOException e) {

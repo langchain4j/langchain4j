@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,6 +25,7 @@ public class StdioMcpTransport implements McpTransport {
     private Process process;
     private ProcessIOHandler processIOHandler;
     private final boolean logEvents;
+    private final Logger logger;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
@@ -33,6 +35,7 @@ public class StdioMcpTransport implements McpTransport {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
+        this.logger = builder.logger;
     }
 
     @Override
@@ -50,7 +53,7 @@ public class StdioMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
+        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents, logger);
         // FIXME: where should we obtain the thread?
         new Thread(processIOHandler).start();
         stderrHandler = new ProcessStderrHandler(process);
@@ -141,6 +144,7 @@ public class StdioMcpTransport implements McpTransport {
         private List<String> command;
         private Map<String, String> environment;
         private boolean logEvents;
+        private Logger logger;
 
         public Builder command(List<String> command) {
             this.command = command;
@@ -154,6 +158,15 @@ public class StdioMcpTransport implements McpTransport {
 
         public Builder logEvents(boolean logEvents) {
             this.logEvents = logEvents;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging events.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
