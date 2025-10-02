@@ -1,12 +1,16 @@
 package dev.langchain4j.mcp.client;
 
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 class ToolExecutionHelper {
 
@@ -14,16 +18,28 @@ class ToolExecutionHelper {
 
     /**
      * Extracts a response from a CallToolResult message. This may be an error response.
+     * If the response contains both 'content' and 'structuredContent' elements, the
+     * structured content is given precedence.
      */
-    static String extractResult(JsonNode result) {
+    static ToolExecutionResult extractResult(JsonNode result) {
         if (result.has("result")) {
             JsonNode resultNode = result.get("result");
-            if (resultNode.has("content")) {
+            if (resultNode.has("structuredContent")
+                    && !resultNode.get("structuredContent").isNull()) {
+                JsonNode content = resultNode.get("structuredContent");
+                if (isError(resultNode)) {
+                    throw new ToolExecutionException(content.toString());
+                }
+                return ToolExecutionResult.builder()
+                        .result(toObject(content))
+                        .resultText(content.toString())
+                        .build();
+            } else if (resultNode.has("content")) {
                 String content = extractSuccessfulResult((ArrayNode) resultNode.get("content"));
                 if (isError(resultNode)) {
                     throw new ToolExecutionException(content);
                 }
-                return content;
+                return ToolExecutionResult.builder().resultText(content).build();
             } else {
                 throw new RuntimeException("Result does not contain 'content' element: " + result);
             }
@@ -39,6 +55,43 @@ class ToolExecutionHelper {
             }
             throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + result);
         }
+    }
+
+    /**
+     * Converts any JsonNode into a recursive Map using basic Java types
+     */
+    private static Object toObject(JsonNode content) {
+        return switch (content.getNodeType()) {
+            case BOOLEAN -> content.asBoolean();
+            case NUMBER ->
+                switch (content.numberType()) {
+                    case INT -> content.asInt();
+                    case LONG, BIG_INTEGER -> content.asLong();
+                    case FLOAT, DOUBLE, BIG_DECIMAL -> content.asDouble();
+                };
+            case STRING -> content.asText();
+            case NULL -> null;
+            case ARRAY ->
+                StreamSupport.stream(content.spliterator(), true)
+                        .map(element -> toObject(element))
+                        .collect(Collectors.toList());
+            case OBJECT -> {
+                Map<String, Object> map = new HashMap<>();
+                for (Map.Entry<String, JsonNode> property : content.properties()) {
+                    map.put(property.getKey(), toObject(property.getValue()));
+                }
+                yield map;
+            }
+            case BINARY -> {
+                try {
+                    yield content.binaryValue();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            case POJO -> new Object(); // shouldn't happen
+            case MISSING -> new Object(); // shouldn't happen
+        };
     }
 
     private static String extractSuccessfulResult(ArrayNode contents) {

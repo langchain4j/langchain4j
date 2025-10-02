@@ -13,6 +13,5 @@ public interface A2AClientBuilder<T> {
     A2AClientBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
     A2AClientBuilder<T> afterAgentInvocation(Consumer<AgentResponse> completionListener);
 
-
     T build();
 }

@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
@@ -56,6 +57,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkArguments;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
 import static dev.langchain4j.agentic.internal.AgentInvoker.parameterName;
@@ -597,7 +600,12 @@ public class AgenticServices {
 
         Optional<Method> humanInTheLoopMethod = getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
         if (humanInTheLoopMethod.isPresent()) {
-            return createHumanInTheLoopAgent(agentServiceClass, humanInTheLoopMethod, humanInTheLoopMethod.get());
+            return createHumanInTheLoopAgent(agentServiceClass, humanInTheLoopMethod.get());
+        }
+
+        Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
+        if (a2aClientMethod.isPresent()) {
+            return createA2AClientAgent(agentServiceClass, a2aClientMethod.get());
         }
 
         if (!agentServiceClass.isInterface()) {
@@ -615,8 +623,32 @@ public class AgenticServices {
         return null;
     }
 
-    private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Optional<Method> humanInTheLoopMethod, Method method) {
-        var humanInTheLoop = humanInTheLoopMethod.get().getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
+    private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
+        var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
+        var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
+                .inputNames(Stream.of(a2aMethod.getParameters()).map(AgentInvoker::parameterName).toArray(String[]::new))
+                .outputName(a2aClient.outputName())
+                .async(a2aClient.async());
+
+        getAnnotatedMethodOnClass(agentServiceClass, BeforeAgentInvocation.class)
+                .ifPresent(method -> {
+                    checkArguments(method, AgentRequest.class);
+                    checkReturnType(method, void.class);
+                    a2aClientBuilder.beforeAgentInvocation(request -> invokeStatic(method, request));
+                });
+
+        getAnnotatedMethodOnClass(agentServiceClass, AfterAgentInvocation.class)
+                .ifPresent(method -> {
+                    checkArguments(method, AgentResponse.class);
+                    checkReturnType(method, void.class);
+                    a2aClientBuilder.afterAgentInvocation(response -> invokeStatic(method, response));
+                });
+
+        return agentToExecutor(a2aClientBuilder.build());
+    }
+
+    private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
+        var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
         if (method.getParameterCount() != 1) {
             throw new IllegalArgumentException("Method " + method.getName() + " annotated with @" + HumanInTheLoop.class.getSimpleName() + " must have exactly one parameter");
         }

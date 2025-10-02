@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.6.0-beta12-SNAPSHOT</version>
+    <version>1.7.0-beta13-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -20,6 +20,7 @@
 
         <module>langchain4j-easy-rag</module>
         <module>langchain4j-mcp</module>
+        <module>langchain4j-mcp-docker</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -92,6 +93,7 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-azure-acads</module>
 
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
@@ -208,6 +210,7 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+                <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
 
