@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.6.0-beta12</version>
+    <version>1.7.1-beta14</version>
 </dependency>
 ```
 

@@ -4,10 +4,10 @@ import java.util.List;
 
 public class McpServerList {
 
-    private List<McpServer> servers;
+    private List<McpGetServerResponse> servers;
     private McpMetadata metadata;
 
-    public List<McpServer> getServers() {
+    public List<McpGetServerResponse> getServers() {
         return servers;
     }
 

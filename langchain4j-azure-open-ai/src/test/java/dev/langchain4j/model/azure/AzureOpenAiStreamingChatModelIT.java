@@ -153,6 +153,28 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(handler.get().aiMessage().text()).contains("Berlin");
     }
 
+    @Test
+    void should_support_maxCompletionTokens() {
+
+        // given
+        int maxCompletionTokens = 100;
+
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .maxCompletionTokens(maxCompletionTokens)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is the capital of Germany?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).contains("Berlin");
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
