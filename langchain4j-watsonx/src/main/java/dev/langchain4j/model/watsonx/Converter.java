@@ -155,6 +155,7 @@ class Converter {
 
                         builder.toolChoiceOption(com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoice.REQUIRED);
                     }
+                    case NONE -> {}
                 }
             }
         }

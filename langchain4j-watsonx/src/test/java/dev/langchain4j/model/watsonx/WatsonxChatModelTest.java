@@ -194,7 +194,6 @@ public class WatsonxChatModelTest {
     void testDoChatWithThinking() throws Exception {
 
         // --- TEST 1 ---
-
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
@@ -235,6 +234,34 @@ public class WatsonxChatModelTest {
         // --------------
 
         // --- TEST 2 ---
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(extractionTags)
+                            .build())
+                    .build());
+            assertEquals("Hello", result.aiMessage().text());
+            assertEquals("I'm thinking", result.aiMessage().thinking());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
+            assertEquals(
+                    ControlMessage.of("thinking"),
+                    chatRequestCaptor.getValue().getMessages().get(1));
+        });
+        // --------------
+
+        // --- TEST 3 ---
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
                     .url("https://test.com")
@@ -255,7 +282,7 @@ public class WatsonxChatModelTest {
         });
         // --------------
 
-        // --- TEST 3 ---
+        // --- TEST 4 ---
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
                     .url("https://test.com")
@@ -272,6 +299,34 @@ public class WatsonxChatModelTest {
                             .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                             .build()),
                     "The thinking/reasoning cannot be activated when tools are used");
+        });
+        // --------------
+
+        // --- TEST 5 ---
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(null)
+                            .build())
+                    .build());
+            assertEquals(
+                    "<think>I'm thinking</think><response>Hello</response>",
+                    result.aiMessage().text());
+            assertNull(result.aiMessage().thinking());
+            assertEquals(1, chatRequestCaptor.getValue().getMessages().size());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
         });
         // --------------
     }

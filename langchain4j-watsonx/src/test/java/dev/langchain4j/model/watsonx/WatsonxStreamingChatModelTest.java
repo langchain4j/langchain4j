@@ -191,6 +191,7 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void testDoChatWithThinking() throws Exception {
 
+        // --- TEST 1 ---
         var extractionTags = ExtractionTags.of("think", "response");
 
         var resultMessage = new ResultMessage(
@@ -272,6 +273,67 @@ public class WatsonxStreamingChatModelTest {
                 fail(e);
             }
         });
+        // -------
+
+        // --- TEST 2 ---
+        withChatServiceMock(() -> {
+            StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .spaceId("spaceId")
+                    .apiKey("api-key")
+                    .build();
+
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(ExtractionTags.of("think", "response"))
+                            .build())
+                    .build();
+
+            CountDownLatch latch = new CountDownLatch(1);
+            StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
+                    assertEquals(
+                            "This is the response", completeResponse.aiMessage().text());
+                    latch.countDown();
+                }
+
+                @Override
+                public void onPartialThinking(PartialThinking partialThinking) {
+                    assertEquals("I'm thinking", partialThinking.text());
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                boolean completed = latch.await(2, TimeUnit.SECONDS);
+                assertTrue(completed, "Handler did not complete in time");
+                assertEquals(
+                        com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
+                        chatRequestCaptor.getValue().getMessages().get(0));
+                assertEquals(
+                        ControlMessage.of("thinking"),
+                        chatRequestCaptor.getValue().getMessages().get(1));
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+        // --------------
     }
 
     @Test

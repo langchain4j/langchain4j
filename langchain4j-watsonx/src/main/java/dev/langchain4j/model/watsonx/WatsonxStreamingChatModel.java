@@ -11,6 +11,7 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
 import com.ibm.watsonx.ai.chat.model.PartialToolCall;
 import com.ibm.watsonx.ai.chat.model.Tool;
@@ -72,11 +73,14 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 : null;
 
         var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        final ExtractionTags tags;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp
+                && isThinkingActivable(wcrp.tags(), chatRequest.messages(), toolSpecifications)) {
             messages.add(THINKING);
-            watsonxChatRequest.thinking(tags);
-        }
+            watsonxChatRequest.thinking(wcrp.tags());
+            tags = wcrp.tags();
+        } else tags = null;
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
         chatService.chatStreaming(
