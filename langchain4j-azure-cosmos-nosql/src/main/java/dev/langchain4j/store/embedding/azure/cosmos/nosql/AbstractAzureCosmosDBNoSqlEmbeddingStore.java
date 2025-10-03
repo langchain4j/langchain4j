@@ -156,22 +156,18 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
             case HYBRID -> {
                 List<String> missing = new ArrayList<>();
-                if (cosmosVectorEmbeddingPolicy == null)
-                    missing.add("cosmosVectorEmbeddingPolicy");
-                if (cosmosFullTextPolicy == null)
-                    missing.add("cosmosFullTextPolicy");
-                if (indexingPolicy.getVectorIndexes().isEmpty())
-                    missing.add("vectorIndexes");
-                if (indexingPolicy.getCosmosFullTextIndexes().isEmpty())
-                    missing.add("fullTextIndexes");
+                if (cosmosVectorEmbeddingPolicy == null) missing.add("cosmosVectorEmbeddingPolicy");
+                if (cosmosFullTextPolicy == null) missing.add("cosmosFullTextPolicy");
+                if (indexingPolicy.getVectorIndexes().isEmpty()) missing.add("vectorIndexes");
+                if (indexingPolicy.getCosmosFullTextIndexes().isEmpty()) missing.add("fullTextIndexes");
                 if (!missing.isEmpty())
                     throw new AzureCosmosDBNoSqlRuntimeException("Missing for HYBRID: " + String.join(", ", missing));
             }
         }
         this.cosmosVectorEmbeddingPolicy = cosmosVectorEmbeddingPolicy;
         this.cosmosFullTextPolicy = cosmosFullTextPolicy;
-        CosmosContainerProperties collectionDefinition = new CosmosContainerProperties(this.containerName,
-                subPartitionKeyDefinition);
+        CosmosContainerProperties collectionDefinition =
+                new CosmosContainerProperties(this.containerName, subPartitionKeyDefinition);
         collectionDefinition.setIndexingPolicy(this.indexingPolicy);
 
         switch (this.searchQueryType) {
@@ -184,8 +180,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
         }
 
-        ThroughputProperties throughputProperties = ThroughputProperties
-                .createManualThroughput(this.vectorStoreThroughput);
+        ThroughputProperties throughputProperties =
+                ThroughputProperties.createManualThroughput(this.vectorStoreThroughput);
         CosmosAsyncDatabase cosmosAsyncDatabase = this.cosmosClient.getDatabase(this.databaseName);
         cosmosAsyncDatabase
                 .createContainerIfNotExists(collectionDefinition, throughputProperties)
@@ -283,8 +279,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                 .toList();
 
         try {
-            List<CosmosItemOperation> itemOperations = itemOperationsWithIds.stream().map(ImmutablePair::getValue)
-                    .collect(toList());
+            List<CosmosItemOperation> itemOperations =
+                    itemOperationsWithIds.stream().map(ImmutablePair::getValue).collect(toList());
 
             this.container
                     .executeBulkOperations(Flux.fromIterable(itemOperations))
@@ -344,12 +340,12 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
                             // Run a reactive query to fetch the document by ID
                             String query = String.format("SELECT * FROM c WHERE c.id = '%s'", id);
-                            CosmosPagedFlux<JsonNode> queryFlux = this.container.queryItems(query,
-                                    new CosmosQueryRequestOptions(), JsonNode.class);
+                            CosmosPagedFlux<JsonNode> queryFlux =
+                                    this.container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
 
                             // Block to retrieve the first page synchronously
                             List<JsonNode> documents = Objects.requireNonNull(
-                                    queryFlux.byPage(1).blockFirst())
+                                            queryFlux.byPage(1).blockFirst())
                                     .getResults();
 
                             if (documents == null || documents.isEmpty()) {
@@ -467,8 +463,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             throw new IllegalArgumentException("maxResults must be 1000 or less.");
         }
 
-        String searchWords = Arrays.stream(content.split("\\s+")).map(k -> "\"" + k + "\"")
-                .collect(Collectors.joining(", "));
+        String searchWords =
+                Arrays.stream(content.split("\\s+")).map(k -> "\"" + k + "\"").collect(Collectors.joining(", "));
 
         StringBuilder queryBuilder = new StringBuilder("SELECT TOP @topK * FROM c");
         List<SqlParameter> parameters = new ArrayList<>();
@@ -505,25 +501,24 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                 .get(0)
                 .getPath()
                 .substring(this.indexingPolicy
-                        .getCosmosFullTextIndexes()
-                        .get(0)
-                        .getPath()
-                        .lastIndexOf("/")
+                                .getCosmosFullTextIndexes()
+                                .get(0)
+                                .getPath()
+                                .lastIndexOf("/")
                         + 1);
 
-        String searchWords = Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'")
-                .collect(Collectors.joining(", "));
+        String searchWords =
+                Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'").collect(Collectors.joining(", "));
 
         StringBuilder queryBuilder = new StringBuilder(String.format(
                 "SELECT TOP @topK c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, "
                         + "VectorDistance(c.%s, @embedding) as score FROM c",
                 embeddingField));
 
-        List<SqlParameter> parameters = new ArrayList<> ();
+        List<SqlParameter> parameters = new ArrayList<>();
         parameters.add(new SqlParameter("@topK", maxResults));
         parameters.add(new SqlParameter("@embedding", referenceEmbedding.vectorAsList()));
         parameters.add(new SqlParameter("@searchWords", searchWords));
-
 
         if (filter != null) {
             queryBuilder.append(" AND").append(filterMapper.map(filter));
@@ -564,8 +559,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
         assert results != null;
 
-        List<EmbeddingMatch<TextSegment>> matches = getEmbeddingMatches(results, minScore,
-                azureCosmosDBSearchQueryType);
+        List<EmbeddingMatch<TextSegment>> matches =
+                getEmbeddingMatches(results, minScore, azureCosmosDBSearchQueryType);
 
         return new EmbeddingSearchResult<>(matches);
     }

@@ -95,13 +95,13 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
         this.partitionKeyPath = DEFAULT_PARTITION_KEY_PATH;
         this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
 
-        CosmosContainerProperties collectionDefinition = new CosmosContainerProperties(this.containerName,
-                this.partitionKeyPath);
+        CosmosContainerProperties collectionDefinition =
+                new CosmosContainerProperties(this.containerName, this.partitionKeyPath);
         IndexingPolicy indexingPolicy = getIndexingPolicy();
         collectionDefinition.setIndexingPolicy(indexingPolicy);
 
-        ThroughputProperties throughputProperties = ThroughputProperties
-                .createManualThroughput(this.vectorStoreThroughput);
+        ThroughputProperties throughputProperties =
+                ThroughputProperties.createManualThroughput(this.vectorStoreThroughput);
         CosmosAsyncDatabase cosmosAsyncDatabase = this.cosmosClient.getDatabase(this.databaseName);
         cosmosAsyncDatabase
                 .createContainerIfNotExists(collectionDefinition, throughputProperties)
@@ -128,9 +128,9 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
             parameters.add(new SqlParameter("@id", memoryId));
             SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
             return Objects.requireNonNull(this.container
-                    .queryItems(sqlQuerySpec, ChatMessage.class)
-                    .byPage(1)
-                    .blockFirst())
+                            .queryItems(sqlQuerySpec, ChatMessage.class)
+                            .byPage(1)
+                            .blockFirst())
                     .getResults();
         } catch (Exception e) {
             throw new AzureCosmosDBNoSqlRuntimeException("Exception while fetching documents: {}", e);
@@ -196,7 +196,7 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
 
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
-         * 
+         *
          * @param tokenCredential the credentials to authenticate with Azure Active
          *                        Directory
          * @return builder
