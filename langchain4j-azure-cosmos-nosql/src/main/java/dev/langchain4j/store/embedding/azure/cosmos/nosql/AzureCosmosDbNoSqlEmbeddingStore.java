@@ -164,8 +164,8 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             return this;
         }
 
-        public Builder cosmosFullTextPolicy(String cosmosFullTextPolicy) {
-            this.cosmosFullTextPolicy = new CosmosFullTextPolicy();
+        public Builder cosmosFullTextPolicy(CosmosFullTextPolicy cosmosFullTextPolicy) {
+            this.cosmosFullTextPolicy = cosmosFullTextPolicy;
             return this;
         }
 
