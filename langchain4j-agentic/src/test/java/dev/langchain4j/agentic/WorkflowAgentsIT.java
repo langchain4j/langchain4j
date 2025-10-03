@@ -516,18 +516,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
-                        medicalExpert)
-                .subAgents(
-                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
-                                == RequestCategory.TECHNICAL,
-                        technicalExpert)
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
-                        legalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
