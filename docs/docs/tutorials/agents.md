@@ -1111,6 +1111,186 @@ String result = (String) bankSupervisor.invoke(input);
 
 If both are provided, the invocation value overrides the build-time `supervisorContext`.
 
+## Peer-to-peer agentic systems
+
+All the agentic system discussed up to this point are based on a centralized and hierarchical architecture. In fact all the workflow patterns had a well-defined top-level agent coordinating the activities of multiple sub-agents in a programmatically predetermined way. Even the supervisor pattern, which is more flexible and dynamic thanks to the presence of its LLM-based planner agent, still relies on a coordinator agent that controls the interactions among the various sub-agents. This typology of architectures are suitable for many applications and scenarios, but they can also have some limitations, especially in terms of scalability and fault tolerance. This is why the `langchain4j-agentic` module also offers an alternative peer-to-peer approach for multi-agent systems, that can overcome these limitations by adopting a more decentralized and distributed strategy.
+
+In a peer-to-peer agentic systems there isn't any top level agent, and all agents are equal peers that are coordinated through the state of the `AgenticScope`. In particular, an agent is triggered by the presence of its own required inputs as state variables in the `AgenticScope`. Subsequently, a change in one or more of those variables, produced by the output of a different agent, can retrigger the invocation of that agent again. The process terminates either when the `AgenticScope` reaches a stable state and no agent can be invoked anymore, or when the predefined exit condition is satisfied, or when a maximum number of agent invocations has been reached.
+
+To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
+
+```java
+public interface ResearchAgent {
+
+    @Agent("Conduct research on a given topic")
+    String research(@V("topic") String topic);
+}
+```
+
+To this purpose the following 5 agents can be defined:
+
+```java
+public interface LiteratureAgent {
+
+    @SystemMessage("Search for scientific literature on the given topic and return a summary of the findings.")
+    @UserMessage("""
+            You are a scientific literature search agent.
+            Your task is to find relevant scientific papers on the topic provided by the user and summarize them.
+            Use the provided tool to search for scientific papers and return a summary of your findings.
+            The topic is: {{topic}}
+            """)
+    @Agent("Search for scientific literature on a given topic")
+    String searchLiterature(@V("topic") String topic);
+}
+
+public interface HypothesisAgent {
+
+    @SystemMessage("Based on the research findings, formulate a clear and concise hypothesis related to the given topic.")
+    @UserMessage("""
+            You are a hypothesis formulation agent.
+            Your task is to formulate a clear and concise hypothesis based on the research findings provided by the user.
+            The topic is: {{topic}}
+            The research findings are: {{researchFindings}}
+            """)
+    @Agent("Formulate hypothesis around a give topic based on research findings")
+    String makeHypothesis(@V("topic") String topic, @V("researchFindings") String researchFindings);
+}
+
+public interface CriticAgent {
+
+    @SystemMessage("Critically evaluate the given hypothesis related to the specified topic. Provide constructive feedback and suggest improvements if necessary.")
+    @UserMessage("""
+            You are a critical evaluation agent.
+            Your task is to critically evaluate the hypothesis provided by the user in relation to the specified topic.
+            Provide constructive feedback and suggest improvements if necessary.
+            If you need to, you can also perform additional research to validate or confute the hypothesis using the provided tool.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            """)
+    @Agent("Critically evaluate a hypothesis related to a given topic")
+    String criticHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis);
+}
+
+public interface ValidationAgent {
+
+    @SystemMessage("Validate the provided hypothesis on the given topic based on the critique provided.")
+    @UserMessage("""
+            You are a validation agent.
+            Your task is to validate the hypothesis provided by the user in relation to the specified topic based on the critique provided.
+            Validate the provided hypothesis, either confirming it or reformulating a different hypothesis based on the critique.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            The critique is: {{critique}}
+            """)
+    @Agent("Validate a hypothesis based on a given topic and critique")
+    String validateHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
+}
+
+public interface ScorerAgent {
+
+    @SystemMessage("Score the provided hypothesis on the given topic based on the critique provided.")
+    @UserMessage("""
+            You are a scoring agent.
+            Your task is to score the hypothesis provided by the user in relation to the specified topic based on the critique provided.
+            Score the provided hypothesis on a scale from 0.0 to 1.0, where 0.0 means the hypothesis is completely invalid and 1.0 means the hypothesis is fully valid.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            The critique is: {{critique}}
+            """)
+    @Agent("Score a hypothesis based on a given topic and critique")
+    double scoreHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
+}
+```
+
+These agents will be all provided with a tool capable of performing research on scientific literature, for instance downloading academic papers from arXiv, and then added to the P2P agentic system:
+
+```java
+ArxivCrawler arxivCrawler = new ArxivCrawler();
+
+LiteratureAgent literatureAgent = AgenticServices.agentBuilder(LiteratureAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputName("researchFindings")
+        .build();
+HypothesisAgent hypothesisAgent = AgenticServices.agentBuilder(HypothesisAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputName("hypothesis")
+        .build();
+CriticAgent criticAgent = AgenticServices.agentBuilder(CriticAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputName("critique")
+        .build();
+ValidationAgent validationAgent = AgenticServices.agentBuilder(ValidationAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputName("hypothesis")
+        .build();
+ScorerAgent scorerAgent = AgenticServices.agentBuilder(ScorerAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputName("score")
+        .build();
+
+ResearchAgent researcher = AgenticServices.p2pBuilder(ResearchAgent.class)
+        .subAgents(literatureAgent, hypothesisAgent, criticAgent, validationAgent, scorerAgent)
+        .outputName("hypothesis")
+        .exitCondition( agenticScope -> {
+            double score = agenticScope.readState("score", 0.0);
+            System.out.println("Current hypothesis score: " + score);
+            return score >= 0.85;
+        })
+        .maxAgentsInvocations(10)
+        .build();
+
+String hypothesis = researcher.research("black holes");
+```
+
+With this configuration the `researcher` p2p coordinator is passed with the topic of the research. At this point the only agent that can be invoked is the `literatureAgent`, because it is the only one that has all its required inputs, in this case the `topic`, present in the `AgenticScope`. The invocation of this agent produces the `researchFindings` variable, which is be added to the `AgenticScope` state, and this new variable triggers the invocation of the `HypothesisAgent`. Then this produces a `hypothesis` that in turn triggers the `criticAgent`. Finally, the `ValidationAgent` takes in input both the `hypothesis` and the `critique` and generates a new `hypothesis` that eventually retriggers the other agents again. In the meanwhile the `ScorerAgent` gives a `score` to the `hypothesis` and the process terminates when this `score` is greater than or equal to 0.85, or when a maximum of 10 agents invocations have been performed. The following image summarizes all the agents and variables involved in this execution.
+
+![](/img/p2p.png)
+
+For instance a typical run of this example could terminate because the `ScorerAgent` produced a score above the predetermined threshold
+
+```
+Current hypothesis score: 0.95
+```
+
+and the final output could be something like:
+
+```
+Based on the provided references, here are some key points about stochastic gravitational wave backgrounds (SGWBs) from primordial black holes (PBHs):
+
+1. **Detection Rates and Sources:**
+   - The detection rate of gravity waves emitted during parabolic encounters of stellar black holes in globular clusters was estimated by Kocsis et al. [85].
+   - Gravitational wave bursts from PBH hyperbolic encounters were discussed by García-Bellido and Nesseris [93].
+
+2. **Energy Emission:**
+   - The energy spectrum of gravitational waves from hyperbolic encounters was studied by De Vittori, Jetzer, and Klein [88].
+   - Gravitational wave energy emission and detection rates for PBH hyperbolic encounters were analyzed by García-Bellido and Nesseris [90].
+
+3. **Template Banks:**
+   - Template banks for gravitational waveforms from coalescing binary black holes (including non-spinning binaries) were developed by Ajith et al. [92].
+
+4. **Constraints on PBHs:**
+   - Constraints on primordial black holes were reviewed by Carr, Kohri, Sendouda, and Yokoyama [98].
+   - Universal gravitational wave signatures of cosmological solitons were discussed by Lozanov, Sasaki, and Takhistov [100].
+
+5. **Induced SGWBs:**
+   - Doubly peaked induced stochastic gravitational wave backgrounds were tested for baryogenesis from primordial black holes by Bhaumik et al. [101].
+   - Distinct signatures of spinning PBH domination and evaporation, including doubly peaked gravitational waves, dark relics, and CMB complementarity, were explored by Bhaumik et al. [101].
+
+6. **Future Detectors:**
+   - Future detectors like Taiji, LISA, DECIGO, Big Bang Observer, Cosmic Explorer, Einstein Telescope, and KAGRA are expected to contribute significantly to the detection of SGWBs from PBHs.
+
+7. **Pulsar Timing Arrays:**
+   - Pulsar timing arrays have been used to search for an isotropic stochastic gravitational wave background [73-75].
+
+8. **Template Banks and Simulations:**
+   - Template banks like those developed by Ajith et al. are crucial for matching observed signals with theoretical predictions.
+```
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.

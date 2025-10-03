@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
+import java.util.List;
 
 public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
 
@@ -40,6 +41,11 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     @Override
     public void afterInvocation(final AgentResponse response) {
         agentSpecification.afterInvocation(response);
+    }
+
+    @Override
+    public String[] argumentNames() {
+        throw new UnsupportedOperationException("Untyped agent does not know what arguments it needs");
     }
 
     @Override

@@ -25,6 +25,9 @@ import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
 import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.p2p.P2PAgentService;
+import dev.langchain4j.agentic.p2p.P2PAgentServiceImpl;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -42,7 +45,6 @@ import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -213,6 +215,10 @@ public class AgenticServices {
      */
     public static <T> SupervisorAgentService<T> supervisorBuilder(Class<T> agentServiceClass) {
         return SupervisorAgentServiceImpl.builder(agentServiceClass);
+    }
+
+    public static <T> P2PAgentService<T> p2pBuilder(Class<T> agentServiceClass) {
+        return P2PAgentServiceImpl.builder(agentServiceClass);
     }
 
     /**

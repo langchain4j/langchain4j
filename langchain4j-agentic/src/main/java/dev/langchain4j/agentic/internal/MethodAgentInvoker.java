@@ -47,6 +47,11 @@ public record MethodAgentInvoker(
     }
 
     @Override
+    public String[] argumentNames() {
+        return arguments.stream().map(AgentUtil.AgentArgument::name).toArray(String[]::new);
+    }
+
+    @Override
     public String toCard() {
         List<String> agentArguments = arguments.stream()
                 .map(AgentUtil.AgentArgument::name)
