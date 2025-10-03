@@ -12,6 +12,8 @@ import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
 import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
+import dev.langchain4j.agentic.p2p.P2PAgentService;
+import dev.langchain4j.agentic.p2p.P2PAgentServiceImpl;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -215,6 +217,10 @@ public class AgenticServices {
      */
     public static <T> SupervisorAgentService<T> supervisorBuilder(Class<T> agentServiceClass) {
         return SupervisorAgentServiceImpl.builder(agentServiceClass);
+    }
+
+    public static <T> P2PAgentService<T> p2pBuilder(Class<T> agentServiceClass) {
+        return P2PAgentServiceImpl.builder(agentServiceClass);
     }
 
     /**

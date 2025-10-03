@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.List;
 import java.util.Optional;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
@@ -22,6 +23,8 @@ public interface AgentInvoker extends AgentSpecification {
     Logger LOG = LoggerFactory.getLogger(AgentInvoker.class);
 
     Method method();
+
+    String[] argumentNames();
 
     String toCard();
 
