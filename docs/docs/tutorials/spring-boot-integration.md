@@ -211,8 +211,17 @@ class AiServiceRegisteredEventListener implements ApplicationListener<AiServiceR
 }
 ```
 
-## Flux
+##AI Agent
+If you want to use the AI agent, please include the following dependency:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-agentic</artifactId>
+    <version>1.8.0-beta15-SNAPSHOT</version>
+</dependency>
+```
 
+## Flux
 When streaming, you can use `Flux<String>` as a return type of AI Service:
 ```java
 @AiService
@@ -276,3 +285,4 @@ LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)
 - [High-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/aiservice/AssistantController.java) using [AI Services](/tutorials/ai-services)
 - [Example of customer support agent using Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/main/java/dev/langchain4j/example/CustomerSupportAgentApplication.java)
+
