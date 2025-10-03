@@ -155,6 +155,7 @@ class Converter {
 
                         builder.toolChoiceOption(com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoice.REQUIRED);
                     }
+                    case NONE -> {}
                 }
             }
         }
@@ -177,7 +178,7 @@ class Converter {
                     .map(Converter::toToolCall)
                     .toList();
         }
-        return new AssistantMessage(AssistantMessage.ROLE, aiMessage.text(), null, null, toolCalls);
+        return new AssistantMessage(AssistantMessage.ROLE, aiMessage.text(), null, null, null, toolCalls);
     }
 
     private static com.ibm.watsonx.ai.chat.model.UserMessage toUserMessage(UserMessage userMessage) {

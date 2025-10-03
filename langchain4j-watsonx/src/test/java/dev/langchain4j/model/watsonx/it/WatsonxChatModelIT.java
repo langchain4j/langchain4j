@@ -20,8 +20,7 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(createChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
-                .build());
+        return List.of(createChatModel("mistralai/mistral-medium-2505").build());
     }
 
     @Override
@@ -50,16 +49,40 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected void should_execute_a_tool_then_answer(ChatModel model) {
+        super.should_execute_a_tool_then_answer(
+                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+    }
+
+    @Override
+    protected void should_execute_a_tool_without_arguments_then_answer(ChatModel model) {
+        super.should_execute_a_tool_without_arguments_then_answer(
+                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+    }
+
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(ChatModel model) {
+        super.should_execute_multiple_tools_in_parallel_then_answer(
+                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_any_tool(ChatModel model) {
+        super.should_force_LLM_to_execute_any_tool(
+                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_specific_tool(ChatModel model) {
+        super.should_force_LLM_to_execute_specific_tool(
+                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+    }
+
+    @Override
     protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {
         // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
                 createChatModel("meta-llama/llama-3-3-70b-instruct").build());
-    }
-
-    @Override
-    protected void should_accept_single_image_as_base64_encoded_string(ChatModel model) {
-        super.should_respect_user_message(
-                createChatModel("mistralai/mistral-medium-2505").build());
     }
 
     @Override
