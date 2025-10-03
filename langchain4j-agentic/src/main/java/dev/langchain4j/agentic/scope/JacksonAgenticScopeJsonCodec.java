@@ -84,7 +84,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
         @JsonCreator
         public AgentMessageMixin(
                 @JsonProperty("agentName") String agentName,
-                @JsonProperty("agentUniqueName") String agentUniqueName,
+                @JsonProperty("agentagentId") String agentagentId,
                 @JsonProperty("message") ChatMessage message) {
         }
     }

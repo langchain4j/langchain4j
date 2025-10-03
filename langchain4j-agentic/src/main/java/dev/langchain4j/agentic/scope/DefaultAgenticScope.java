@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, String agentUniqueName, ChatMessage message) {}
+    public record AgentMessage(String agentName, String agentagentId, ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -165,8 +166,8 @@ public class DefaultAgenticScope implements AgenticScope {
     	if (chatMemory != null) {
             registerContextFromChatMemory(agentSpec, chatMemory);
     	} else if (output != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), chatMessagesAccess.lastUserMessage()));
-            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), AiMessage.aiMessage(output.toString())));
+            context.add(new AgentMessage(agentSpec.name(), agentSpec.agentId(), chatMessagesAccess.lastUserMessage()));
+            context.add(new AgentMessage(agentSpec.name(), agentSpec.agentId(), AiMessage.aiMessage(output.toString())));
         }
     }
 
@@ -184,9 +185,9 @@ public class DefaultAgenticScope implements AgenticScope {
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
         	if (agentMessages.get(i) instanceof UserMessage userMessage) {
         		// Only add to the agenticScope's context the last UserMessage ...
-        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), userMessage));
+        		context.add(new AgentMessage(agentSpec.name(), agentSpec.agentId(), userMessage));
         		// ... and last AiMessage response, all other messages are local to the invoked agent internals
-        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), aiMessage));
+        		context.add(new AgentMessage(agentSpec.name(), agentSpec.agentId(), aiMessage));
                 return;
         	}
         }
