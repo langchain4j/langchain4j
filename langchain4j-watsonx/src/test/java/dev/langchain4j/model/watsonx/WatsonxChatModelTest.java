@@ -191,9 +191,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testDoChatWithThinking() throws Exception {
-
-        // --- TEST 1 ---
+    void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
@@ -232,9 +230,55 @@ public class WatsonxChatModelTest {
                     ControlMessage.of("thinking"),
                     chatRequestCaptor.getValue().getMessages().get(1));
         });
-        // --------------
+    }
 
-        // --- TEST 2 ---
+    @Test
+    void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
+
+        var extractionTags = ExtractionTags.of("think", "response");
+        var resultMessage = new ResultMessage(
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        var field = ChatResponse.class.getDeclaredField("extractionTags");
+        field.setAccessible(true);
+        field.set(chatResponse, extractionTags);
+        chatResponse.setChoices(List.of(resultChoice));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(extractionTags)
+                            .build())
+                    .build());
+            assertEquals("Hello", result.aiMessage().text());
+            assertEquals("I'm thinking", result.aiMessage().thinking());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
+            assertEquals(
+                    ControlMessage.of("thinking"),
+                    chatRequestCaptor.getValue().getMessages().get(1));
+        });
+    }
+
+    @Test
+    void shouldThrowExceptionWhenThinkingUsedWithSystemMessage() {
+
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
                     .url("https://test.com")
@@ -253,9 +297,11 @@ public class WatsonxChatModelTest {
                             .build()),
                     "The thinking/reasoning cannot be activated when a system message is present");
         });
-        // --------------
+    }
 
-        // --- TEST 3 ---
+    @Test
+    void shouldThrowExceptionWhenThinkingUsedWithTools() {
+
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
                     .url("https://test.com")
@@ -273,7 +319,46 @@ public class WatsonxChatModelTest {
                             .build()),
                     "The thinking/reasoning cannot be activated when tools are used");
         });
-        // --------------
+    }
+
+    @Test
+    void shouldReturnRawTextWhenThinkingIsNotEnabled() {
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+
+        var resultMessage = new ResultMessage(
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.setChoices(List.of(resultChoice));
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .url("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(null)
+                            .build())
+                    .build());
+            assertEquals(
+                    "<think>I'm thinking</think><response>Hello</response>",
+                    result.aiMessage().text());
+            assertNull(result.aiMessage().thinking());
+            assertEquals(1, chatRequestCaptor.getValue().getMessages().size());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().getMessages().get(0));
+        });
     }
 
     @Test

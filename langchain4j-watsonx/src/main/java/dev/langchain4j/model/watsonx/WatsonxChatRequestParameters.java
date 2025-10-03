@@ -2,6 +2,8 @@ package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.time.Duration;
@@ -14,6 +16,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
     private final String projectId;
     private final String spaceId;
+    private final ExtractionTags tags;
     private final Map<String, Integer> logitBias;
     private final Boolean logprobs;
     private final Integer topLogprobs;
@@ -31,6 +34,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         this.seed = builder.seed;
         this.toolChoiceName = builder.toolChoiceName;
         this.timeLimit = builder.timeLimit;
+        this.tags = builder.tags;
     }
 
     public String projectId() {
@@ -65,6 +69,10 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return timeLimit;
     }
 
+    public ExtractionTags thinking() {
+        return tags;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -86,6 +94,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private Integer seed;
         private String toolChoiceName;
         private Duration timeLimit;
+        private ExtractionTags tags;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -99,6 +108,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 seed(getOrDefault(watsonxParameters.seed(), seed));
                 toolChoiceName(getOrDefault(watsonxParameters.toolChoiceName(), toolChoiceName));
                 timeLimit(getOrDefault(watsonxParameters.timeLimit(), timeLimit));
+                thinking(getOrDefault(watsonxParameters.thinking(), tags));
             }
             return this;
         }
@@ -140,6 +150,32 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder timeLimit(Duration timeLimit) {
             this.timeLimit = timeLimit;
+            return this;
+        }
+
+        /**
+         * Sets the tag names used to extract segmented content from the assistant's response.
+         * <p>
+         * The provided {@link ExtractionTags} define which XML-like tags (such as {@code <think>} and {@code <response>}) will be used to extract the
+         * response from the {@link AiMessage}.
+         * <p>
+         * If the {@code response} tag is not specified in {@link ExtractionTags}, it will automatically default to {@code "root"}, meaning that only
+         * the text nodes directly under the root element will be treated as the final response.
+         * <p>
+         * Example:
+         *
+         * <pre>{@code
+         * // Explicitly set both tags
+         * builder.thinking(ExtractionTags.of("think", "response")).build();
+         *
+         * // Only set reasoning tag — response defaults to "root"
+         * builder.thinking(ExtractionTags.of("think")).build();
+         * }</pre>
+         *
+         * @param tags an {@link ExtractionTags} instance containing the reasoning and (optionally) response tag names
+         */
+        public Builder thinking(ExtractionTags tags) {
+            this.tags = tags;
             return this;
         }
 
