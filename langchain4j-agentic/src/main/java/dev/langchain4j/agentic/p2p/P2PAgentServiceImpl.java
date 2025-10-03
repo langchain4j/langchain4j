@@ -9,13 +9,17 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,6 +33,10 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
         implements P2PAgentService<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(P2PAgentServiceImpl.class);
+
+    private ChatModel chatModel;
+
+    private VariablesExtractorAgent variablesExtractorAgent;
 
     private int maxAgentsInvocations = 10;
 
@@ -52,7 +60,19 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
                 new Class<?>[] {
                     agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class
                 },
-                new P2PInvocationHandler(agenticScope, agents));
+                new P2PInvocationHandler(agenticScope, agents, createVariablesExtractorAgent()));
+    }
+
+    private VariablesExtractorAgent createVariablesExtractorAgent() {
+        if (agentServiceClass == P2PAgent.class) {
+            if (chatModel == null) {
+                throw new IllegalArgumentException("ChatModel must be provided for untyped P2PAgentService");
+            }
+            return AiServices.builder(VariablesExtractorAgent.class).chatModel(chatModel).build();
+        } else {
+            LOG.warn("A ChatModel is useless for a typed P2PAgentService and will be ignored");
+        }
+        return null;
     }
 
     private class P2PInvocationHandler extends AbstractAgentInvocationHandler {
@@ -66,14 +86,28 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
 
         private volatile boolean terminating = false;
 
-        public P2PInvocationHandler(DefaultAgenticScope agenticScope, List<AgentExecutor> agents) {
+        private final VariablesExtractorAgent variablesExtractorAgent;
+        private Collection<String> variableNames;
+
+        public P2PInvocationHandler(DefaultAgenticScope agenticScope, List<AgentExecutor> agents, VariablesExtractorAgent variablesExtractorAgent) {
             super(P2PAgentServiceImpl.this, agenticScope);
             this.agents = agents;
             this.agentActivators = agents.stream().map(AgentActivator::new).toList();
+            this.variablesExtractorAgent = variablesExtractorAgent;
+            if (variablesExtractorAgent != null) {
+                this.variableNames = this.agentActivators.stream().map(AgentActivator::argumentNames).flatMap(Stream::of).distinct().toList();
+            }
         }
 
         @Override
         protected Object doAgentAction(DefaultAgenticScope agenticScope) {
+            if (variablesExtractorAgent != null) {
+                String request = agenticScope.readState("request", "");
+                Map<String, String> vars =  variablesExtractorAgent.extractVariables(request, variableNames);
+                LOG.info("Variables extracted from user's prompt: {}", vars);
+                vars.forEach(agenticScope::writeState);
+            }
+
             // First activation of agents that can run with the initial input
             for (AgentActivator agentActivator : agentActivators) {
                 if (agentActivator.canActivate(agenticScope)) {
@@ -99,7 +133,7 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
 
         @Override
         protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
-            return new P2PInvocationHandler(agenticScope, agents);
+            return new P2PInvocationHandler(agenticScope, agents, variablesExtractorAgent);
         }
 
         private void notifyStateChanged(DefaultAgenticScope agenticScope, String state) {
@@ -166,11 +200,25 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
                     executeAsync(agenticScope);
                 }
             }
+
+            private String[] argumentNames() {
+                return argumentNames;
+            }
         }
+    }
+
+    public static P2PAgentService<P2PAgent> builder() {
+        return new P2PAgentServiceImpl<>(P2PAgent.class, null);
     }
 
     public static <T> P2PAgentService<T> builder(Class<T> agentServiceClass) {
         return new P2PAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
+    }
+
+    @Override
+    public P2PAgentServiceImpl<T> chatModel(ChatModel chatModel) {
+        this.chatModel = chatModel;
+        return this;
     }
 
     @Override

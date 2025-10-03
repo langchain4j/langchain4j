@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.p2p;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
 import java.util.concurrent.Executor;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -30,4 +31,6 @@ public interface P2PAgentService<T> {
 
     P2PAgentService<T> exitCondition(Predicate<AgenticScope> exitCondition);
     P2PAgentService<T> exitCondition(BiPredicate<AgenticScope, Integer> exitCondition);
+
+    P2PAgentServiceImpl<T> chatModel(ChatModel chatModel);
 }
