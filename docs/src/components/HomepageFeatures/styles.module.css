@@ -8,4 +8,16 @@
 .featureSvg {
   height: 200px;
   width: 200px;
+  margin: 0 auto 1rem auto;
+  fill: var(--ifm-color-primary);
+  transition: transform 0.3s ease;
+}
+
+.featureCard {
+  display: flex;
+  align-items: stretch;
+}
+
+.featureSvg:hover {
+  transform: scale(1.1);
 }
