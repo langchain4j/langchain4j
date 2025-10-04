@@ -207,12 +207,12 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .stream()
                 .filter(obj -> {
                     Object metadataObj = obj.getProperties().get(metadataFieldName);
-                    if (!(metadataObj instanceof Map<?, ?> rawMetadata)) {
+                    if (!(metadataObj instanceof Map)) {
                         return false;
                     }
 
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> metadata = (Map<String, Object>) rawMetadata;
+                    Map<String, Object> metadata = (Map<String, Object>) metadataObj;
 
                     return filter.test(new Metadata(metadata));
                 })
