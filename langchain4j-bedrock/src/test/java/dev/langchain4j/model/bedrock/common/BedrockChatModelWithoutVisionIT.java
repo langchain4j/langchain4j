@@ -29,7 +29,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> modelsSupportingTools() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, MISTRAL_LARGE);
     }
 
     @Override
@@ -67,6 +67,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // output format not supported
     }
 

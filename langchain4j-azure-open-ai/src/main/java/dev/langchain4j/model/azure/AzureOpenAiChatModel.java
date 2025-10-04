@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERED;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,12 +21,14 @@ import static java.util.Arrays.asList;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
+import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
@@ -182,9 +185,9 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
-                .setStop(parameters.stopSequences())
+                .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
-                .setLogitBias(logitBias)
+                .setLogitBias(logitBias.isEmpty() ? null : logitBias)
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
@@ -197,16 +200,28 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                client.getChatCompletions(parameters.modelName(), options));
+        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.getChatCompletions(parameters.modelName(), options));
+
+        ChatChoice chatChoice = chatCompletions.getChoices().get(0);
+
+        if (chatChoice.getFinishReason() == CONTENT_FILTERED) {
+            String details;
+            try {
+                details = chatChoice.getContentFilterResults().toJsonString();
+            } catch (Exception ignored) {
+                details = "The content has been filtered, and no additional information is available.";
+            }
+            throw new ContentFilteredException(details);
+        }
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()))
+                .aiMessage(aiMessageFrom(chatChoice.getMessage()))
                 .metadata(ChatResponseMetadata.builder()
                         .id(chatCompletions.getId())
                         .modelName(chatCompletions.getModel())
                         .tokenUsage(tokenUsageFrom(chatCompletions.getUsage()))
-                        .finishReason(finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason()))
+                        .finishReason(finishReasonFrom(chatChoice.getFinishReason()))
                         .build())
                 .build();
     }

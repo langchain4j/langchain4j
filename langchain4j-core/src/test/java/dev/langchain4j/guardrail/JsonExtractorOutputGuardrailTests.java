@@ -61,7 +61,8 @@ class JsonExtractorOutputGuardrailTests {
         parseJsonRequiringTrimming(json, guardrail, expectedResult, input);
     }
 
-    private void parseJsonRequiringTrimming(String json, JsonExtractorOutputGuardrail<?> guardrail, Object expectedResult, String input) {
+    private void parseJsonRequiringTrimming(
+            String json, JsonExtractorOutputGuardrail<?> guardrail, Object expectedResult, String input) {
         var guardrailSpy = spy(guardrail);
         var result = guardrailSpy.validate(AiMessage.from(input));
 

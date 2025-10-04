@@ -22,7 +22,9 @@ public interface DocumentSource {
      * Returns the metadata associated with the source of the document.
      * This could include details such as the source location, date of creation, owner, etc.
      *
-     * @return A Metadata object containing information associated with the source of the document.
+     * @return A {@link Metadata} object containing information about the document
+     *         source, such as {@link Document#FILE_NAME} and
+     *         {@link Document#ABSOLUTE_DIRECTORY_PATH}.
      */
     Metadata metadata();
 }

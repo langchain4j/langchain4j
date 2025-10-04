@@ -188,6 +188,14 @@ String chat(@UserMessage String userMessage);
 
 String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
 
+String chat(@UserMessage String userMessage, @UserMessage Content content); // content can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image); // second argument can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
 @UserMessage("What is the capital of Germany?")
 String chat();
 
@@ -247,8 +255,26 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 </details>
 
 ## Multimodality
-AI services currently do not support multimodality,
-please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
+
+Additionally to the text content,
+AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
+
+```java
+String chat(@UserMessage String userMessage, @UserMessage Content content);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @UserMessage AudioContent audio);
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+```
+
+AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
+
+Please check [Content API](/tutorials/chat-and-language-models#multimodality)
+for more details on the available content types.
 
 
 ## Return Types
@@ -260,10 +286,12 @@ AI service will parse LLM-generated output into a desired type before returning
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
-the LLM (e.g., because tools were executed), it will summ token usages of all calls.
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
-- Executed [tools](/tutorials/ai-services#tools-function-calling)
-- `FinishReason`
+- All [tools](/tutorials/ai-services#tools-function-calling) executed during AI Service invocation (both requests and results)
+- `FinishReason` of the final chat response
+- All intermediate `ChatResponse`s
+- The final `ChatResponse`
 
 An example:
 ```java
@@ -521,8 +549,14 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+tokenStream
+    .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+    .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
+    .beforeToolExecution((Consumer<BeforeToolExecution> beforeToolExecution) -> System.out.println(beforeToolExecution))
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> System.out.println(response))
     .onError((Throwable error) -> error.printStackTrace())
@@ -536,7 +570,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.3.0-beta9</version>
 </dependency>
 ```
 ```java
@@ -685,8 +719,36 @@ More RAG examples can be found [here](https://github.com/langchain4j/langchain4j
 
 
 ## Auto-Moderation
+
+AI Services can automatically perform content moderation. When inappropriate content is detected, a `ModerationException` is thrown, which contains the original `Moderation` object.
+This object includes information about the flagged content, such as the specific text that was flagged.
+
+Auto-moderation can be configured when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
+```
+
+
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
+## Programmatic ChatRequest rewriting
+
+In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
+
+It is possible to do so by configuring the AI Service with a `UnaryOperator<ChatRequest>` implementing the transformation that be applied to the `ChatRequest`:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
+    .build();
+```
+
+In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
 
 ## Chaining multiple AI Services
 The more complex the logic of your LLM-powered application becomes,

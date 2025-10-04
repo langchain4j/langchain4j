@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatCharSequence;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
