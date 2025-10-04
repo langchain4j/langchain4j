@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -37,6 +39,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -180,9 +183,45 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        client.batch().objectsBatchDeleter()
+        List<String> allIds = client.data().objectsGetter()
                 .withClassName(objectClass)
-                .run();
+                .run()
+                .getResult()
+                .stream()
+                .map(WeaviateObject::getId)
+                .collect(Collectors.toList());
+
+        if (!allIds.isEmpty()) {
+            removeAll(allIds);
+        }
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+
+        List<String> allIds = client.data().objectsGetter()
+                .withClassName(objectClass)
+                .run()
+                .getResult()
+                .stream()
+                .filter(obj -> {
+                    Object metadataObj = obj.getProperties().get(metadataFieldName);
+                    if (!(metadataObj instanceof Map)) {
+                        return false;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> metadata = (Map<String, Object>) metadataObj;
+
+                    return filter.test(new Metadata(metadata));
+                })
+                .map(WeaviateObject::getId)
+                .collect(Collectors.toList());
+
+        if (!allIds.isEmpty()) {
+            removeAll(allIds);
+        }
     }
 
     /**
