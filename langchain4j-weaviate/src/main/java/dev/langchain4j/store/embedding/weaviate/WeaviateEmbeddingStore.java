@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -182,18 +183,45 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        client.batch().objectsBatchDeleter()
+        List<String> allIds = client.data().objectsGetter()
                 .withClassName(objectClass)
-                .run();
+                .run()
+                .getResult()
+                .stream()
+                .map(WeaviateObject::getId)
+                .collect(Collectors.toList());
+
+        if (!allIds.isEmpty()) {
+            removeAll(allIds);
+        }
     }
 
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        client.batch().objectsBatchDeleter()
+
+        List<String> allIds = client.data().objectsGetter()
                 .withClassName(objectClass)
-                .withWhere(WeaviateMetadataFilterMapper.map(filter))
-                .run();
+                .run()
+                .getResult()
+                .stream()
+                .filter(obj -> {
+                    Object metadataObj = obj.getProperties().get(metadataFieldName);
+                    if (!(metadataObj instanceof Map<?, ?> rawMetadata)) {
+                        return false;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> metadata = (Map<String, Object>) rawMetadata;
+
+                    return filter.test(new Metadata(metadata));
+                })
+                .map(WeaviateObject::getId)
+                .collect(Collectors.toList());
+
+        if (!allIds.isEmpty()) {
+            removeAll(allIds);
+        }
     }
 
     /**

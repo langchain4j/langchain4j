@@ -9,6 +9,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Collections.singletonList;
 
@@ -27,7 +31,7 @@ class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
             .port(weaviate.getFirstMappedPort())
             .objectClass("Test" + randomUUID().replace("-", ""))
             .consistencyLevel("ALL")
-            .metadataKeys(singletonList("id"))
+            .metadataKeys(Arrays.asList("id", "type"))
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
