@@ -732,7 +732,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_a_tool_without_arguments_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the time now?");
+        UserMessage userMessage = UserMessage.from("What is the time now? Use the get_current_time tool.");
 
         ToolSpecification timeTool =
                 ToolSpecification.builder().name("get_current_time").build();
