@@ -505,6 +505,18 @@
                 <version>1.8.0-beta15-SNAPSHOT</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-parser-markdown</artifactId>
+                <version>1.8.0-beta15-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-parser-yaml</artifactId>
+                <version>1.8.0-beta15-SNAPSHOT</version>
+            </dependency>
+
             <!-- document transformers -->
 
             <dependency>
