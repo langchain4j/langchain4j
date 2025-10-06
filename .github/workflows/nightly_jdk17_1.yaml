@@ -31,12 +31,12 @@ jobs:
           # create JSON array of module groups
           matrix=$(echo "$modules" | awk -v n="$group_size" '{
               group = int((NR-1)/n);
-              arr[group] = (arr[group] ? arr[group] " " $0 : $0);
+              arr[group] = (arr[group] ? arr[group] "," "\"" $0 "\"" : "\"" $0 "\"");
           }
           END {
-              printf("{\"group\": [");
+              printf("{\"modules\": [");
               for (i=0; i in arr; i++) {
-                  printf("%s\"%s\"", (i>0?",":""), arr[i]);
+                  printf("%s[%s]", (i>0?",":""), arr[i]);
               }
               print "]}";
           }')
@@ -72,15 +72,17 @@ jobs:
 
       - name: Build with JDK 17
         run: |
-          echo "🏗️ Building modules: ${{ matrix.group }}"
+          modules="${{ join(matrix.modules, ' ') }}"
+          echo "🏗️ Building modules: $modules"
+          
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
-            -pl ${{ matrix.group }} -am \
+            -pl "$modules" -am \
             --fail-at-end
 
           ## run integration tests
           mvn -B -U verify \
-            -pl ${{ matrix.group }} -am \
+            -pl "$modules" -am \
             --fail-at-end \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
