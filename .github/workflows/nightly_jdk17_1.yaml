@@ -73,7 +73,7 @@ jobs:
       - name: Build with JDK 17
         run: |
           modules="${{ join(matrix.modules, ',') }}"
-          exclude_modules="langchain4j-ollama,langchain4j-jlama,langchain4j-gpu-llama3"
+          exclude_modules="langchain4j-jlama,langchain4j-gpu-llama3"
           for ex in ${exclude_modules//,/ }; do
             modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
           done
@@ -87,6 +87,7 @@ jobs:
           ## run integration tests
           mvn -B -U verify \
             -pl "${modules}" -am \
+            -DskipOllamaITs -DskipMilvusITs
             --fail-at-end \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
