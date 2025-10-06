@@ -87,7 +87,7 @@ jobs:
           ## run integration tests
           mvn -B -U verify \
             -pl "${modules}" -am \
-            -DskipOllamaITs -DskipMilvusITs
+            -DskipOllamaITs -DskipMilvusITs \
             --fail-at-end \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
