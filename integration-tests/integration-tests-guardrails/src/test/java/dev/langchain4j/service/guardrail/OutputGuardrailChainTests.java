@@ -13,8 +13,13 @@ import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.UserMessage;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -532,4 +537,72 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
             return chatMemory.get();
         }
     }
+
+    public static class UppercaseOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            var message = request.responseFromLLM().aiMessage().text();
+            var isAllUppercase = message.chars()
+                    .filter(Character::isLetter)
+                    .allMatch(Character::isUpperCase);
+
+            if (isAllUppercase) {
+                return success();
+            } else {
+                return reprompt("The output must be in uppercase.", "Please provide the output in uppercase.");
+            }
+        }
+    }
+
+    public static class MapChatModel implements ChatModel {
+
+        private final Map<String, String> responses;
+
+        public MapChatModel(final Map<String, String> responses) {
+            this.responses = responses;
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            String request = getLastMessage(chatRequest);
+            String response = responses.get(request);
+            if (response == null) {
+                throw new IllegalArgumentException("No response found for request: " + request);
+            }
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(response))
+                    .build();
+        }
+
+        private static String getLastMessage(ChatRequest chatRequest) {
+            List<ChatMessage> messages = chatRequest.messages();
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                if (messages.get(i) instanceof dev.langchain4j.data.message.UserMessage userMessage) {
+                    return userMessage.singleText();
+                }
+            }
+            throw new IllegalArgumentException("No user message found");
+        }
+    }
+
+    public interface UppercaseAiService {
+        @OutputGuardrails({UppercaseOutputGuardrail.class})
+        String helloWorld(@UserMessage String message);
+
+        static UppercaseAiService create() {
+            Map<String, String> responses = Map.of(
+                    "SAY HELLO", "Hello world",
+                    "Please provide the output in uppercase.", "HELLO WORLD"
+            );
+            return createAiService(UppercaseAiService.class, builder -> builder.chatModel(new MapChatModel(responses)));
+        }
+    }
+
+    @Test
+    void successOnRewrittenResponse() {
+        UppercaseAiService aiService = UppercaseAiService.create();
+        assertThat(aiService.helloWorld("SAY HELLO")).isEqualTo("HELLO WORLD");
+    }
 }
+
