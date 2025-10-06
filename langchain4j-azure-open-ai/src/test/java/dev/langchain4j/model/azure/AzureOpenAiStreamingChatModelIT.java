@@ -157,7 +157,7 @@ class AzureOpenAiStreamingChatModelIT {
     void should_support_maxCompletionTokens() {
 
         // given
-        int maxCompletionTokens = 100;
+        int maxCompletionTokens = 200;
 
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())

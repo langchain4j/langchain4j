@@ -48,6 +48,13 @@ public class ToolExecution {
         return result.result();
     }
 
+    /**
+     * Indicates whether the tool execution result represents an error.
+     */
+    public boolean hasFailed() {
+        return result.isError();
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;

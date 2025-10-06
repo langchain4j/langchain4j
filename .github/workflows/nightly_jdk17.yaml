@@ -1,4 +1,4 @@
-name: Nightly Build JDK 17 Part 1
+name: Nightly Build JDK 17
 
 on:
   schedule:
@@ -6,50 +6,93 @@ on:
   workflow_dispatch:
 
 jobs:
-  java_build:
+  discover-modules:
     if: github.repository == 'langchain4j/langchain4j'
-    strategy:
-      fail-fast: false # do not cancel jobs on error
-      matrix:
-        java_version:
-          - 17
-        include:
-          - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus,!langchain4j-vespa,!document-loaders/langchain4j-document-loader-playwright'
-      max-parallel: 1
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ matrix.java_version }}
+      - id: set-matrix
+        shell: bash
+        run: |
+          echo "Discovering Maven modules..."
+          modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||' | grep -v '^$' | grep -v '^.$')
+          echo "Detected modules:"
+          echo "$modules"
+
+          # how many groups (jobs) to split into
+          N=5  # adjust this based on desired parallelism
+          count=$(echo "$modules" | wc -l)
+          group_size=$(( (count + N - 1) / N ))
+
+          # create JSON array of module groups
+          matrix=$(echo "$modules" | awk -v n="$group_size" '{
+              group = int((NR-1)/n);
+              arr[group] = (arr[group] ? arr[group] "," "\"" $0 "\"" : "\"" $0 "\"");
+          }
+          END {
+              printf("{\"modules\": [");
+              for (i=0; i in arr; i++) {
+                  printf("%s[%s]", (i>0?",":""), arr[i]);
+              }
+              print "]}";
+          }')
+
+          echo "Generated matrix: $matrix"
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  build:
+    needs: discover-modules
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-modules.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ matrix.java_version }}
+          java-version: 17
           distribution: 'temurin'
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
-        # Needed for langchain4j-vertex-ai and langchain4j-vertex-ai-gemini modules
-        uses: 'google-github-actions/auth@v2'
+        # Required for Google modules
+        uses: google-github-actions/auth@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup JBang
+        # Required for MCP module
         uses: jbangdev/setup-jbang@main
-      - name: Build with JDK ${{ matrix.java_version }}
+
+      - name: Build with JDK 17
         run: |
+          modules="${{ join(matrix.modules, ',') }}"
+          exclude_modules="langchain4j-jlama,langchain4j-gpu-llama3"
+          for ex in ${exclude_modules//,/ }; do
+            modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+          done
+          echo "Building modules: $modules"
+          
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
-            --fail-at-end \
-            ${{ matrix.mvn_opts }}
-          
+            -pl "${modules}" -am \
+            --fail-at-end
+
           ## run integration tests
           mvn -B -U verify \
-              --fail-at-end \
-              -Dmaven.test.failure.ignore=true \
-              -Dtinylog.writer.level=info \
-              ${{ matrix.mvn_opts }}
+            -pl "${modules}" -am \
+            --fail-at-end \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
+            -Dmaven.test.failure.ignore=true \
+            -Dtinylog.writer.level=info
+
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -93,16 +136,19 @@ jobs:
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
+      - name: Clean Docker
+        run: docker system prune -af || true
+
       - name: Upload Test Reports
         if: always() # always run even if the previous step failed or was cancelled
         uses: actions/upload-artifact@v4
         with:
-          name: Test-Reports-${{ matrix.java-version }}
+          name: Test-Reports-${{ strategy.job-index }}
           path: '**/target/*-reports/*'
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
         if: always() # always run even if the previous step failed or was cancelled
+        uses: mikepenz/action-junit-report@v5
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true

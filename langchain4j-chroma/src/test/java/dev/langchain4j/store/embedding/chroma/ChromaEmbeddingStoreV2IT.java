@@ -33,8 +33,8 @@ class ChromaEmbeddingStoreV2IT extends EmbeddingStoreWithFilteringIT {
             .baseUrl("http://" + chroma.getHost() + ":" + chroma.getFirstMappedPort())
             .apiVersion(ChromaApiVersion.V2)
             .collectionName(randomUUID())
-            .logRequests(true)
-            .logResponses(true)
+            .logRequests(false)
+            .logResponses(false)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
