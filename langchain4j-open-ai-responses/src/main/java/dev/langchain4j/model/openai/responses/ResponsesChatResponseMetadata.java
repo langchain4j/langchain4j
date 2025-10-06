@@ -2,9 +2,6 @@ package dev.langchain4j.model.openai.responses;
 
 import com.openai.models.responses.ResponseOutputItem;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -63,8 +60,7 @@ public final class ResponsesChatResponseMetadata extends ChatResponseMetadata {
      * Checks if this response contains encrypted reasoning content.
      */
     public boolean hasEncryptedReasoning() {
-        return reasoningItems.stream()
-                .anyMatch(item -> item.containsKey("encrypted_content"));
+        return reasoningItems.stream().anyMatch(item -> item.containsKey("encrypted_content"));
     }
 
     /**
@@ -98,16 +94,15 @@ public final class ResponsesChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public String toString() {
-        return "ResponsesChatResponseMetadata{" +
-                "id='" + id() + '\'' +
-                ", modelName='" + modelName() + '\'' +
-                ", tokenUsage=" + tokenUsage() +
-                ", finishReason=" + finishReason() +
-                ", created=" + created +
-                ", serviceTier='" + serviceTier + '\'' +
-                ", systemFingerprint='" + systemFingerprint + '\'' +
-                ", reasoningItems=" + reasoningItems +
-                '}';
+        return "ResponsesChatResponseMetadata{" + "id='"
+                + id() + '\'' + ", modelName='"
+                + modelName() + '\'' + ", tokenUsage="
+                + tokenUsage() + ", finishReason="
+                + finishReason() + ", created="
+                + created + ", serviceTier='"
+                + serviceTier + '\'' + ", systemFingerprint='"
+                + systemFingerprint + '\'' + ", reasoningItems="
+                + reasoningItems + '}';
     }
 
     public static Builder builder() {

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai.responses;
 
 import com.openai.core.JsonValue;
-import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.ResponsesModel;
@@ -11,14 +10,12 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseOutputItem;
-import com.openai.models.responses.ResponseUsage;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,14 +31,13 @@ class InternalResponsesHelper {
      * Converts a langchain4j ChatRequest to OpenAI SDK ResponseCreateParams.
      */
     static ResponseCreateParams.Builder toResponseCreateParams(
-            ChatRequest chatRequest,
-            OpenAiResponsesChatRequestParameters parameters) {
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
 
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder();
 
         // Set model
         if (parameters.modelName() != null) {
-            builder.model(parameters.modelName());  // String overload
+            builder.model(parameters.modelName()); // String overload
         }
 
         // Build input items list
@@ -49,7 +45,8 @@ class InternalResponsesHelper {
 
         // Add ALL non-message items from previous outputs (reasoning, tool calls, etc.)
         // Messages are handled separately via chatRequest.messages() to maintain full conversation history
-        if (parameters.previousOutputItems() != null && !parameters.previousOutputItems().isEmpty()) {
+        if (parameters.previousOutputItems() != null
+                && !parameters.previousOutputItems().isEmpty()) {
             parameters.previousOutputItems().forEach(outputItem -> {
                 // Extract and preserve all non-message items (reasoning, tool calls, etc.)
                 if (outputItem.isReasoning()) {
@@ -75,7 +72,8 @@ class InternalResponsesHelper {
                     inputItems.add(ResponseInputItem.ofCustomToolCall(outputItem.asCustomToolCall()));
                 }
                 // Note: LocalShellCall, McpCall, McpListTools, McpApprovalRequest, ImageGenerationCall
-                // use inner class types that are not directly compatible between ResponseOutputItem and ResponseInputItem.
+                // use inner class types that are not directly compatible between ResponseOutputItem and
+                // ResponseInputItem.
                 // These would need explicit conversion logic if needed in the future.
 
                 // Skip message items - those are maintained via chatRequest.messages() for full conversation history
@@ -83,9 +81,7 @@ class InternalResponsesHelper {
         }
 
         // Add ALL messages from current request (full conversation history)
-        chatRequest.messages().forEach(message ->
-            inputItems.add(convertChatMessageToInputItem(message))
-        );
+        chatRequest.messages().forEach(message -> inputItems.add(convertChatMessageToInputItem(message)));
 
         // Use inputOfResponse for structured input (supports encrypted reasoning)
         builder.inputOfResponse(inputItems);
@@ -97,9 +93,8 @@ class InternalResponsesHelper {
 
         if (parameters.include() != null && !parameters.include().isEmpty()) {
             // Convert List<String> to List<ResponseIncludable>
-            List<ResponseIncludable> includables = parameters.include().stream()
-                    .map(ResponseIncludable::of)
-                    .collect(Collectors.toList());
+            List<ResponseIncludable> includables =
+                    parameters.include().stream().map(ResponseIncludable::of).collect(Collectors.toList());
             builder.include(includables);
         }
 
@@ -112,17 +107,17 @@ class InternalResponsesHelper {
         if (parameters.reasoningEffort() != null) {
             ReasoningEffort effort = ReasoningEffort.of(parameters.reasoningEffort());
             builder.reasoning(Reasoning.builder()
-                .effort(effort)
-                .summary(Reasoning.Summary.AUTO)  // Compatible with encrypted_content
-                .build());
+                    .effort(effort)
+                    .summary(Reasoning.Summary.AUTO) // Compatible with encrypted_content
+                    .build());
         }
 
         if (parameters.metadata() != null) {
             // Convert Map<String, String> to ResponseCreateParams.Metadata
             ResponseCreateParams.Metadata.Builder metadataBuilder = ResponseCreateParams.Metadata.builder();
-            parameters.metadata().forEach((key, value) ->
-                metadataBuilder.putAdditionalProperty(key, JsonValue.from(value))
-            );
+            parameters
+                    .metadata()
+                    .forEach((key, value) -> metadataBuilder.putAdditionalProperty(key, JsonValue.from(value)));
             builder.metadata(metadataBuilder.build());
         }
 
@@ -146,7 +141,8 @@ class InternalResponsesHelper {
         }
 
         // Tool specifications (if supported by Responses API)
-        if (chatRequest.toolSpecifications() != null && !chatRequest.toolSpecifications().isEmpty()) {
+        if (chatRequest.toolSpecifications() != null
+                && !chatRequest.toolSpecifications().isEmpty()) {
             // For POC, we'll skip tools implementation
             // Full implementation would convert ToolSpecification to ResponseCreateParams tools
         }
@@ -185,11 +181,7 @@ class InternalResponsesHelper {
         }
 
         return ResponseInputItem.ofEasyInputMessage(
-            EasyInputMessage.builder()
-                .role(role)
-                .content(content)
-                .build()
-        );
+                EasyInputMessage.builder().role(role).content(content).build());
     }
 
     /**
@@ -202,21 +194,17 @@ class InternalResponsesHelper {
         AiMessage aiMessage = AiMessage.from(content);
 
         // Build metadata
-        ResponsesChatResponseMetadata.Builder metadataBuilder = ResponsesChatResponseMetadata.builder()
-                .id(response.id())
-                .modelName(extractModelName(response.model()));
+        ResponsesChatResponseMetadata.Builder metadataBuilder =
+                ResponsesChatResponseMetadata.builder().id(response.id()).modelName(extractModelName(response.model()));
 
         // Extract token usage if available
         response.usage().ifPresent(usage -> {
-            TokenUsage tokenUsage = new TokenUsage(
-                    (int) usage.inputTokens(),
-                    (int) usage.outputTokens()
-            );
+            TokenUsage tokenUsage = new TokenUsage((int) usage.inputTokens(), (int) usage.outputTokens());
             metadataBuilder.tokenUsage(tokenUsage);
         });
 
         // Extract created timestamp (Double in seconds)
-        metadataBuilder.created((long) (response.createdAt() * 1000));  // Convert to milliseconds
+        metadataBuilder.created((long) (response.createdAt() * 1000)); // Convert to milliseconds
 
         // Store raw output items (for encrypted reasoning chaining)
         List<ResponseOutputItem> outputItems = response.output();
@@ -250,16 +238,16 @@ class InternalResponsesHelper {
             for (ResponseOutputItem item : outputs) {
                 if (item.isMessage()) {
                     return item.asMessage().content().stream()
-                        .findFirst()
-                        .map(content -> {
-                            if (content.isOutputText()) {
-                                return content.asOutputText().text();
-                            } else if (content.isRefusal()) {
-                                return content.asRefusal().refusal();
-                            }
-                            return "";
-                        })
-                        .orElse("");
+                            .findFirst()
+                            .map(content -> {
+                                if (content.isOutputText()) {
+                                    return content.asOutputText().text();
+                                } else if (content.isRefusal()) {
+                                    return content.asRefusal().refusal();
+                                }
+                                return "";
+                            })
+                            .orElse("");
                 }
             }
         }
@@ -279,9 +267,9 @@ class InternalResponsesHelper {
                     reasoning.put("id", item.asReasoning().id());
 
                     // Extract encrypted content if present
-                    item.asReasoning().encryptedContent().ifPresent(encrypted ->
-                        reasoning.put("encrypted_content", encrypted)
-                    );
+                    item.asReasoning()
+                            .encryptedContent()
+                            .ifPresent(encrypted -> reasoning.put("encrypted_content", encrypted));
 
                     // Extract summary text if present
                     if (!item.asReasoning().summary().isEmpty()) {
@@ -323,6 +311,6 @@ class InternalResponsesHelper {
         } else if (model.isOnly()) {
             return model.asOnly().toString();
         }
-        return model.toString();  // Fallback
+        return model.toString(); // Fallback
     }
 }

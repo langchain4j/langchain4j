@@ -1,14 +1,13 @@
 package dev.langchain4j.model.openai.responses;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration tests for OpenAI Responses API POC.
@@ -56,7 +55,7 @@ class OpenAiResponsesChatModelIT {
                 .build();
 
         OpenAiResponsesChatRequestParameters params =
-            (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
+                (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
 
         // Verify stateless mode is always enabled
         assertFalse(params.store());
@@ -72,7 +71,7 @@ class OpenAiResponsesChatModelIT {
                 .build();
 
         OpenAiResponsesChatRequestParameters params =
-            (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
+                (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
 
         // Verify encrypted reasoning is included when enabled
         assertFalse(params.store());
@@ -86,7 +85,7 @@ class OpenAiResponsesChatModelIT {
         OpenAiResponsesChatModel model = OpenAiResponsesChatModel.builder()
                 .apiKey(OPENAI_API_KEY)
                 .modelName("gpt-5-mini")
-                .returnEncryptedReasoning(true)  // Required for chaining
+                .returnEncryptedReasoning(true) // Required for chaining
                 .build();
 
         // First request
@@ -106,8 +105,8 @@ class OpenAiResponsesChatModelIT {
         // Second request using previous output items
         OpenAiResponsesChatRequestParameters chainedParams = OpenAiResponsesChatRequestParameters.builder()
                 .modelName("gpt-5-mini")
-                .previousOutputItems(firstMetadata.outputItems())  // Pass encrypted reasoning
-                .include(List.of("reasoning.encrypted_content"))  // Request encrypted reasoning in response
+                .previousOutputItems(firstMetadata.outputItems()) // Pass encrypted reasoning
+                .include(List.of("reasoning.encrypted_content")) // Request encrypted reasoning in response
                 .build();
 
         ChatRequest secondRequest = ChatRequest.builder()

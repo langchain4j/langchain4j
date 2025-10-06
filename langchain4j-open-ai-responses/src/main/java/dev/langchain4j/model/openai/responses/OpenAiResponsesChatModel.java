@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.responses;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.responses.Response;
@@ -9,14 +12,10 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * OpenAI Responses API implementation using the official OpenAI Java SDK.
@@ -73,9 +72,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         // Custom headers
         if (builder.customHeaders != null) {
-            builder.customHeaders.forEach((key, value) ->
-                clientBuilder.putHeader(key, value)
-            );
+            builder.customHeaders.forEach((key, value) -> clientBuilder.putHeader(key, value));
         }
 
         return clientBuilder.build();
@@ -142,12 +139,11 @@ public class OpenAiResponsesChatModel implements ChatModel {
         // Merge default parameters with request parameters
         // This ensures model-level settings (like reasoningEffort) are applied
         OpenAiResponsesChatRequestParameters parameters =
-            (OpenAiResponsesChatRequestParameters) defaultRequestParameters
-                .overrideWith(chatRequest.parameters());
+                (OpenAiResponsesChatRequestParameters) defaultRequestParameters.overrideWith(chatRequest.parameters());
 
         // Convert to SDK parameters
-        ResponseCreateParams.Builder paramsBuilder = InternalResponsesHelper.toResponseCreateParams(
-            chatRequest, parameters);
+        ResponseCreateParams.Builder paramsBuilder =
+                InternalResponsesHelper.toResponseCreateParams(chatRequest, parameters);
 
         ResponseCreateParams params = paramsBuilder.build();
 

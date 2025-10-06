@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.responses.OpenAiResponsesChatModel;
 import dev.langchain4j.model.openai.responses.OpenAiResponsesChatRequestParameters;
 import dev.langchain4j.model.openai.responses.ResponsesChatResponseMetadata;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,14 +46,14 @@ public class EncryptedReasoningExample {
         OpenAiResponsesChatModel model = OpenAiResponsesChatModel.builder()
                 .apiKey(apiKey)
                 .modelName("gpt-5-mini")
-                .reasoningEffort("medium")  // gpt-5-mini uses reasoning_effort instead of temperature
-                .returnEncryptedReasoning(true)  // POC KEY FEATURE: encrypted reasoning for stateless chaining
+                .reasoningEffort("medium") // gpt-5-mini uses reasoning_effort instead of temperature
+                .returnEncryptedReasoning(true) // POC KEY FEATURE: encrypted reasoning for stateless chaining
                 .instructions("You are a helpful math tutor")
                 .build();
 
         System.out.println("Model Configuration:");
         OpenAiResponsesChatRequestParameters params =
-            (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
+                (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
         System.out.println("- Model: " + params.modelName());
         System.out.println("- Include: " + params.include());
         System.out.println();
@@ -75,12 +74,12 @@ public class EncryptedReasoningExample {
         // Build request with all messages and previous outputs
         OpenAiResponsesChatRequestParameters firstParams = OpenAiResponsesChatRequestParameters.builder()
                 .modelName("gpt-5-mini")
-                .previousOutputItems(previousOutputs)  // Empty on first turn
+                .previousOutputItems(previousOutputs) // Empty on first turn
                 .include(List.of("reasoning.encrypted_content"))
                 .build();
 
         ChatRequest firstRequest = ChatRequest.builder()
-                .messages(messages)  // All messages (just 1 initially)
+                .messages(messages) // All messages (just 1 initially)
                 .parameters(firstParams)
                 .build();
 
@@ -94,8 +93,10 @@ public class EncryptedReasoningExample {
         System.out.println("- Response ID: " + firstMetadata.id());
         System.out.println("- Model: " + firstMetadata.modelName());
         System.out.println("- Has encrypted reasoning: " + firstMetadata.hasEncryptedReasoning());
-        System.out.println("- Reasoning items count: " + firstMetadata.reasoningItems().size());
-        System.out.println("- Output items count: " + firstMetadata.outputItems().size());
+        System.out.println(
+                "- Reasoning items count: " + firstMetadata.reasoningItems().size());
+        System.out.println(
+                "- Output items count: " + firstMetadata.outputItems().size());
 
         // Display reasoning summary if available (in addition to encrypted content)
         if (!firstMetadata.reasoningItems().isEmpty()) {
@@ -125,12 +126,12 @@ public class EncryptedReasoningExample {
         // Build request with all messages and previous outputs
         OpenAiResponsesChatRequestParameters chainedParams = OpenAiResponsesChatRequestParameters.builder()
                 .modelName("gpt-5-mini")
-                .previousOutputItems(previousOutputs)  // Reasoning/tools from previous turns
+                .previousOutputItems(previousOutputs) // Reasoning/tools from previous turns
                 .include(List.of("reasoning.encrypted_content"))
                 .build();
 
         ChatRequest secondRequest = ChatRequest.builder()
-                .messages(messages)  // ALL messages (user1, assistant1, user2)
+                .messages(messages) // ALL messages (user1, assistant1, user2)
                 .parameters(chainedParams)
                 .build();
 
@@ -166,12 +167,12 @@ public class EncryptedReasoningExample {
         // Build request with all messages and all previous outputs
         OpenAiResponsesChatRequestParameters thirdParams = OpenAiResponsesChatRequestParameters.builder()
                 .modelName("gpt-5-mini")
-                .previousOutputItems(previousOutputs)  // All reasoning/tools from previous turns
+                .previousOutputItems(previousOutputs) // All reasoning/tools from previous turns
                 .include(List.of("reasoning.encrypted_content"))
                 .build();
 
         ChatRequest thirdRequest = ChatRequest.builder()
-                .messages(messages)  // ALL messages (full conversation history)
+                .messages(messages) // ALL messages (full conversation history)
                 .parameters(thirdParams)
                 .build();
 

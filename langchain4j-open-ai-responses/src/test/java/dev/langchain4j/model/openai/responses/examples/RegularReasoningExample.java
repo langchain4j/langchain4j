@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai.responses.examples;
 
-import com.openai.models.responses.ResponseOutputItem;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -8,7 +7,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.responses.OpenAiResponsesChatModel;
 import dev.langchain4j.model.openai.responses.OpenAiResponsesChatRequestParameters;
 import dev.langchain4j.model.openai.responses.ResponsesChatResponseMetadata;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,13 +43,13 @@ public class RegularReasoningExample {
         OpenAiResponsesChatModel model = OpenAiResponsesChatModel.builder()
                 .apiKey(apiKey)
                 .modelName("gpt-5-mini")
-                .reasoningEffort("medium")  // gpt-5-mini uses reasoning_effort instead of temperature
+                .reasoningEffort("medium") // gpt-5-mini uses reasoning_effort instead of temperature
                 .instructions("You are a helpful math tutor")
                 .build();
 
         System.out.println("Model Configuration:");
         OpenAiResponsesChatRequestParameters params =
-            (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
+                (OpenAiResponsesChatRequestParameters) model.defaultRequestParameters();
         System.out.println("- Model: " + params.modelName());
         System.out.println("- Reasoning effort: " + params.reasoningEffort());
         System.out.println();
@@ -68,7 +66,7 @@ public class RegularReasoningExample {
 
         // Build request with all messages
         ChatRequest firstRequest = ChatRequest.builder()
-                .messages(messages)  // All messages (just 1 initially)
+                .messages(messages) // All messages (just 1 initially)
                 .parameters(model.defaultRequestParameters())
                 .build();
 
@@ -81,7 +79,8 @@ public class RegularReasoningExample {
         System.out.println("Response Metadata:");
         System.out.println("- Response ID: " + firstMetadata.id());
         System.out.println("- Model: " + firstMetadata.modelName());
-        System.out.println("- Reasoning items count: " + firstMetadata.reasoningItems().size());
+        System.out.println(
+                "- Reasoning items count: " + firstMetadata.reasoningItems().size());
 
         // Display reasoning content if available
         if (!firstMetadata.reasoningItems().isEmpty()) {
@@ -109,7 +108,7 @@ public class RegularReasoningExample {
 
         // Build request with all messages
         ChatRequest secondRequest = ChatRequest.builder()
-                .messages(messages)  // ALL messages (user1, assistant1, user2)
+                .messages(messages) // ALL messages (user1, assistant1, user2)
                 .parameters(model.defaultRequestParameters())
                 .build();
 
@@ -143,7 +142,7 @@ public class RegularReasoningExample {
 
         // Build request with all messages
         ChatRequest thirdRequest = ChatRequest.builder()
-                .messages(messages)  // ALL messages (full conversation history)
+                .messages(messages) // ALL messages (full conversation history)
                 .parameters(model.defaultRequestParameters())
                 .build();
 

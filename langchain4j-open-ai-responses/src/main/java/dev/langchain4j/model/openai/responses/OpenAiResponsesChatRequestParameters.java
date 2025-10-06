@@ -14,7 +14,8 @@ import java.util.Objects;
 @Experimental
 public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestParameters {
 
-    public static final OpenAiResponsesChatRequestParameters EMPTY = OpenAiResponsesChatRequestParameters.builder().build();
+    public static final OpenAiResponsesChatRequestParameters EMPTY =
+            OpenAiResponsesChatRequestParameters.builder().build();
 
     private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
