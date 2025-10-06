@@ -199,7 +199,7 @@ class AzureOpenAiChatModelIT {
     void should_support_maxCompletionTokens() {
 
         // given
-        int maxCompletionTokens = 100;
+        int maxCompletionTokens = 200;
 
         ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
