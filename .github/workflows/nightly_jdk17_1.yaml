@@ -141,7 +141,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Test-Reports-${{ join(matrix.modules, ',') }}
+          name: Test-Reports-${{ substr(join(matrix.modules, ','), 0, 90) }}...
           path: '**/target/*-reports/*'
 
       - name: Publish Test Report
