@@ -18,8 +18,7 @@ jobs:
         shell: bash
         run: |
           echo "🔍 Discovering Maven modules..."
-          # find all direct submodules containing a pom.xml
-          modules=$(find . -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/pom.xml' ';' -print | sed 's|^\./||')
+          modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||')
           echo "Detected modules:"
           echo "$modules"
 
