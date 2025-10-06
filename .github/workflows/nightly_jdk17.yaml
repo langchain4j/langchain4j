@@ -140,14 +140,14 @@ jobs:
         run: docker system prune -af || true
 
       - name: Upload Test Reports
-        if: always()
+        if: always() # always run even if the previous step failed or was cancelled
         uses: actions/upload-artifact@v4
         with:
           name: Test-Reports-${{ strategy.job-index }}
           path: '**/target/*-reports/*'
 
       - name: Publish Test Report
-        if: always()
+        if: always() # always run even if the previous step failed or was cancelled
         uses: mikepenz/action-junit-report@v5
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
