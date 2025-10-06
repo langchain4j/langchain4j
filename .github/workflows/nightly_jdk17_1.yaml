@@ -1,4 +1,4 @@
-name: Nightly Build JDK 17 Part 1
+name: Nightly Build JDK 17
 
 on:
   schedule:
@@ -61,12 +61,14 @@ jobs:
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
+        # Required for Google modules
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup JBang
+        # Required for MCP module
         uses: jbangdev/setup-jbang@main
 
       - name: Build with JDK 17
@@ -87,7 +89,7 @@ jobs:
           mvn -B -U verify \
             -pl "${modules}" -am \
             --fail-at-end \
-            -DskipOllamaITs -DskipMilvusITs \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
 
