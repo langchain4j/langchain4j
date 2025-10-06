@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Internal
 class InternalAnthropicHelper {
@@ -52,7 +53,8 @@ class InternalAnthropicHelper {
             boolean stream,
             String toolChoiceName,
             Boolean disableParallelToolUse,
-            String userId) {
+            String userId,
+            Map<String, Object> customParameters) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -63,7 +65,8 @@ class InternalAnthropicHelper {
                 .temperature(chatRequest.temperature())
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
-                .thinking(thinking);
+                .thinking(thinking)
+                .customParameters(customParameters);
 
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));

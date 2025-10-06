@@ -35,6 +35,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 
 /**
@@ -70,6 +71,7 @@ public class AnthropicChatModel implements ChatModel {
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
+    private final Map<String, Object> customParameters;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -95,6 +97,7 @@ public class AnthropicChatModel implements ChatModel {
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
+        this.customParameters = copy(builder.customParameters);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -152,6 +155,7 @@ public class AnthropicChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private String userId;
+        private Map<String, Object> customParameters;
 
         public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -351,6 +355,11 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
+            return this;
+        }
+
         public AnthropicChatModel build() {
             return new AnthropicChatModel(this);
         }
@@ -369,7 +378,8 @@ public class AnthropicChatModel implements ChatModel {
                 false,
                 toolChoiceName,
                 disableParallelToolUse,
-                userId);
+                userId,
+                customParameters);
 
         AnthropicCreateMessageResponse response =
                 withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);

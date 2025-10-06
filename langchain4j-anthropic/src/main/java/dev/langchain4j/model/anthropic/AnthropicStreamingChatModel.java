@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 
 /**
@@ -66,6 +67,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
+    private final Map<String, Object> customParameters;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -107,6 +109,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
+        this.customParameters = copy(builder.customParameters);
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -142,6 +145,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private String userId;
+        private Map<String, Object> customParameters;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -332,6 +336,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(this);
         }
@@ -350,7 +359,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 true,
                 toolChoiceName,
                 disableParallelToolUse,
-                userId);
+                userId,
+                customParameters);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
