@@ -22,11 +22,8 @@ import java.util.List;
  * 4. Manual context management (accumulate response outputs across turns)
  * 5. Integration with langchain4j ChatModel interface
  *
- * IMPORTANT: Maintain TWO separate lists:
- * 1. List<ChatMessage> messages - Full conversation history (user + assistant messages)
- * 2. List<ResponseOutputItem> previousOutputs - API structures (for stateless mode)
- *
- * Pass all messages via .messages() and previous outputs via .previousOutputItems().
+ * IMPORTANT: Maintain conversation history via List<ChatMessage> messages.
+ * For basic conversation without reasoning features, you only need the messages list.
  *
  * Run with: export OPENAI_API_KEY="sk-your-key" && java BasicConversationExample
  */
@@ -60,9 +57,6 @@ public class BasicConversationExample {
         // Maintain conversation history (user + assistant messages)
         List<ChatMessage> messages = new ArrayList<>();
 
-        // Track previous response outputs (for stateless mode)
-        List<ResponseOutputItem> previousOutputs = new ArrayList<>();
-
         // First interaction
         System.out.println("First question:");
         System.out.println("User: What's the capital of France?");
@@ -91,9 +85,6 @@ public class BasicConversationExample {
         // Add assistant response to conversation history
         messages.add(firstResponse.aiMessage());
 
-        // Accumulate response output items (for stateless mode)
-        previousOutputs.addAll(firstMetadata.outputItems());
-
         // Second interaction - Follow-up question
         System.out.println("Follow-up question:");
         System.out.println("User: What's the population?");
@@ -101,15 +92,10 @@ public class BasicConversationExample {
         // Add user message to conversation history
         messages.add(UserMessage.from("What's the population?"));
 
-        // Build request with all messages and previous outputs
-        OpenAiResponsesChatRequestParameters secondParams = OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-4o")
-                .previousOutputItems(previousOutputs)  // From previous turns
-                .build();
-
+        // Build request with all messages
         ChatRequest secondRequest = ChatRequest.builder()
                 .messages(messages)  // ALL messages (user1, assistant1, user2)
-                .parameters(secondParams)
+                .parameters(model.defaultRequestParameters())
                 .build();
 
         ChatResponse secondResponse = model.doChat(secondRequest);
@@ -119,10 +105,6 @@ public class BasicConversationExample {
         // Add assistant response to conversation history
         messages.add(secondResponse.aiMessage());
 
-        // Accumulate second response output items
-        ResponsesChatResponseMetadata secondMetadata = (ResponsesChatResponseMetadata) secondResponse.metadata();
-        previousOutputs.addAll(secondMetadata.outputItems());
-
         // Third interaction - Context-dependent question
         System.out.println("Third question (demonstrating context continuity):");
         System.out.println("User: Tell me one interesting fact about that city");
@@ -130,15 +112,10 @@ public class BasicConversationExample {
         // Add user message to conversation history
         messages.add(UserMessage.from("Tell me one interesting fact about that city"));
 
-        // Build request with all messages and all previous outputs
-        OpenAiResponsesChatRequestParameters thirdParams = OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-4o")
-                .previousOutputItems(previousOutputs)  // All outputs from previous turns
-                .build();
-
+        // Build request with all messages
         ChatRequest thirdRequest = ChatRequest.builder()
                 .messages(messages)  // ALL messages (full conversation history)
-                .parameters(thirdParams)
+                .parameters(model.defaultRequestParameters())
                 .build();
 
         ChatResponse thirdResponse = model.doChat(thirdRequest);

@@ -23,11 +23,9 @@ import java.util.Map;
  * 4. Manual context management (accumulate response outputs across turns)
  * 5. Integration with langchain4j ChatModel interface
  *
- * IMPORTANT: Maintain TWO separate lists:
- * 1. List<ChatMessage> messages - Full conversation history (user + assistant messages)
- * 2. List<ResponseOutputItem> previousOutputs - API structures (reasoning, tools) for stateless mode
- *
- * Pass all messages via .messages() and reasoning/tools via .previousOutputItems().
+ * IMPORTANT: Maintain conversation history via List<ChatMessage> messages.
+ * Reasoning content/summary is for observability only - it is NOT passed back to the API.
+ * Only encrypted reasoning (EncryptedReasoningExample) needs to be passed back.
  *
  * Run with: export OPENAI_API_KEY="sk-your-key" && java RegularReasoningExample
  */
@@ -60,9 +58,6 @@ public class RegularReasoningExample {
 
         // Maintain conversation history (user + assistant messages)
         List<ChatMessage> messages = new ArrayList<>();
-
-        // Track previous response outputs for reasoning/tools (stateless mode)
-        List<ResponseOutputItem> previousOutputs = new ArrayList<>();
 
         // First interaction
         System.out.println("First question:");
@@ -105,9 +100,6 @@ public class RegularReasoningExample {
         // Add assistant response to conversation history
         messages.add(firstResponse.aiMessage());
 
-        // Accumulate response output items for reasoning/tools
-        previousOutputs.addAll(firstMetadata.outputItems());
-
         // Second interaction
         System.out.println("Follow-up question:");
         System.out.println("User: Now what is that result multiplied by 3?");
@@ -115,15 +107,10 @@ public class RegularReasoningExample {
         // Add user message to conversation history
         messages.add(UserMessage.from("Now what is that result multiplied by 3?"));
 
-        // Build request with all messages and previous outputs
-        OpenAiResponsesChatRequestParameters secondParams = OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-5-mini")
-                .previousOutputItems(previousOutputs)  // Reasoning/tools from previous turns
-                .build();
-
+        // Build request with all messages
         ChatRequest secondRequest = ChatRequest.builder()
                 .messages(messages)  // ALL messages (user1, assistant1, user2)
-                .parameters(secondParams)
+                .parameters(model.defaultRequestParameters())
                 .build();
 
         ChatResponse secondResponse = model.doChat(secondRequest);
@@ -147,9 +134,6 @@ public class RegularReasoningExample {
         // Add assistant response to conversation history
         messages.add(secondResponse.aiMessage());
 
-        // Accumulate second response output items
-        previousOutputs.addAll(secondMetadata.outputItems());
-
         // Third interaction
         System.out.println("Third question (demonstrating context continuity):");
         System.out.println("User: Can you summarize all the calculations we've done?");
@@ -157,15 +141,10 @@ public class RegularReasoningExample {
         // Add user message to conversation history
         messages.add(UserMessage.from("Can you summarize all the calculations we've done so far?"));
 
-        // Build request with all messages and all previous outputs
-        OpenAiResponsesChatRequestParameters thirdParams = OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-5-mini")
-                .previousOutputItems(previousOutputs)  // All reasoning/tools from previous turns
-                .build();
-
+        // Build request with all messages
         ChatRequest thirdRequest = ChatRequest.builder()
                 .messages(messages)  // ALL messages (full conversation history)
-                .parameters(thirdParams)
+                .parameters(model.defaultRequestParameters())
                 .build();
 
         ChatResponse thirdResponse = model.doChat(thirdRequest);
