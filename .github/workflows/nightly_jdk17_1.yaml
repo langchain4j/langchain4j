@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           echo "🔍 Discovering Maven modules..."
-          modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||')
+          modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||' | grep -v '^$' | grep -v '^.$')
           echo "Detected modules:"
           echo "$modules"
 
