@@ -31,7 +31,7 @@ RAG, and more.
 
 | Plain Java Property     | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Default Value   | Required/Optional                                                                                                                                                                                                                                                                 |
 |-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `datasource`            | The `DataSource` object used for database connections. If not provided, `host`, `port`, `user`, `password`, and `database` must be provided individually.                                                                                                                                                                                                                                                                                                      | None            | Required if `host`, `port`, `user`, `password`, and `database` are not provided individually.                                                                                                                                                                                     |
+| `datasource`            | The `DataSource` object used for database connections. Available only in the `PgVectorEmbeddingStore.datasourceBuilder()` builder variant. If not provided, `host`, `port`, `user`, `password`, and `database` must be provided individually in the `PgVectorEmbeddingStore.builder()` builder variant.                                                                                                                                                        | None            | Required if `host`, `port`, `user`, `password`, and `database` are not provided individually.                                                                                                                                                                                     |
 | `host`                  | Hostname of the PostgreSQL server. Required if `DataSource` is not provided.                                                                                                                                                                                                                                                                                                                                                                                   | None            | Required if `DataSource` is not provided                                                                                                                                                                                                                                          |
 | `port`                  | Port number of the PostgreSQL server. Required if `DataSource` is not provided.                                                                                                                                                                                                                                                                                                                                                                                | None            | Required if `DataSource` is not provided                                                                                                                                                                                                                                          |
 | `user`                  | Username for database authentication. Required if `DataSource` is not provided.                                                                                                                                                                                                                                                                                                                                                                                | None            | Required if `DataSource` is not provided                                                                                                                                                                                                                                          |
@@ -69,7 +69,7 @@ docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTG
 - ```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.
 - ```pgvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.
 
-Here are two code examples showing how to create a PgVectorEmbeddingStore. The first uses only the required parameters,
+Here are two code examples showing how to create a `PgVectorEmbeddingStore`. The first uses only the required parameters,
 while the second configures all available parameters.
 
 1. Only Required Parameters
@@ -88,34 +88,25 @@ EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
 
 2. All Parameters Set
 
-In this variant, we include all the commonly used optional parameters like DataSource, useIndex, indexListSize,
+In this variant, we include all the commonly used optional parameters like useIndex, indexListSize,
 createTable, dropTableFirst, and metadataStorageConfig. Adjust these values as needed:
 
  ```java
-DataSource dataSource = ...;                 // Pre-configured DataSource, if available
-
 EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
-        // Connection and table parameters
-        .datasource(dataSource)                      // Optional: If using a DataSource instead of host/port credentials
+        // Required parameters
         .host("localhost")
         .port(5432)
         .database("postgres")
         .user("my_user")
         .password("my_password")
         .table("my_embeddings")
+        .dimension(embeddingModel.dimension())
 
-        // Embedding dimension
-        .dimension(embeddingModel.dimension())      // Required: Must match the embedding model’s output dimension
-
-        // Indexing and performance options
+        // Optional parameters
         .useIndex(true)                             // Enable IVFFlat index
         .indexListSize(100)                         // Number of lists for IVFFlat index
-
-        // Table creation options
         .createTable(true)                          // Automatically create the table if it doesn’t exist
         .dropTableFirst(false)                      // Don’t drop the table first (set to true if you want a fresh start)
-
-        // Metadata storage format
         .metadataStorageConfig(MetadataStorageConfig.combinedJsonb()) // Store metadata as a combined JSONB column
 
         .build();
