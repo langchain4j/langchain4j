@@ -17,7 +17,7 @@ jobs:
       - id: set-matrix
         shell: bash
         run: |
-          echo "🔍 Discovering Maven modules..."
+          echo "Discovering Maven modules..."
           modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||' | grep -v '^$' | grep -v '^.$')
           echo "Detected modules:"
           echo "$modules"
@@ -76,7 +76,7 @@ jobs:
           for ex in ${exclude_modules//,/ }; do
             modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
           done
-          echo "🏗️ Building modules: $modules"
+          echo "Building modules: $modules"
           
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
