@@ -29,8 +29,8 @@ class ChromaEmbeddingStoreRemovalV2IT extends EmbeddingStoreWithRemovalIT {
             .baseUrl(chroma.getEndpoint())
             .collectionName(randomUUID())
             .apiVersion(ChromaApiVersion.V2)
-            .logRequests(true)
-            .logResponses(true)
+            .logRequests(false)
+            .logResponses(false)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
