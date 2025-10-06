@@ -189,8 +189,7 @@ class JSONMetadataHandlerTest {
 
         List<String> metadataKeys = Arrays.asList("key1", "key2", "key3");
 
-        JSONMetadataHandler jsonMetadataHandler =
-                new JSONMetadataHandler(metadataStorageConfig, metadataKeys);
+        JSONMetadataHandler jsonMetadataHandler = new JSONMetadataHandler(metadataStorageConfig, metadataKeys);
 
         assertThat(jsonMetadataHandler).isNotNull();
     }
