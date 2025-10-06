@@ -72,17 +72,17 @@ jobs:
 
       - name: Build with JDK 17
         run: |
-          modules="${{ join(matrix.modules, ' ') }}"
+          modules="${{ join(matrix.modules, ',') }}"
           echo "🏗️ Building modules: $modules"
           
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
-            -pl "$modules" -am \
+            -pl "${modules}" -am \
             --fail-at-end
 
           ## run integration tests
           mvn -B -U verify \
-            -pl "$modules" -am \
+            -pl "${modules}" -am \
             --fail-at-end \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
