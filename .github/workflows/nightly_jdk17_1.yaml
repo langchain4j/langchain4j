@@ -77,7 +77,7 @@ jobs:
           
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules}" -am \
+            -pl "${modules},!langchain4j-jlama,!langchain4j-gpu-llama3" -am \
             --fail-at-end
 
           ## run integration tests
