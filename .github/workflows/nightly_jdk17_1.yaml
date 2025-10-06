@@ -73,11 +73,15 @@ jobs:
       - name: Build with JDK 17
         run: |
           modules="${{ join(matrix.modules, ',') }}"
+          exclude_modules="langchain4j-jlama,langchain4j-gpu-llama3"
+          for ex in ${exclude_modules//,/ }; do
+            modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+          done
           echo "🏗️ Building modules: $modules"
           
           ## compile and verify javadocs
           mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules},!langchain4j-jlama,!langchain4j-gpu-llama3" -am \
+            -pl "${modules}" -am \
             --fail-at-end
 
           ## run integration tests
