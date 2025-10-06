@@ -161,6 +161,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai-responses</artifactId>
+                <version>1.7.0-beta13-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ovh-ai</artifactId>
                 <version>1.7.0-beta13-SNAPSHOT</version>
             </dependency>
