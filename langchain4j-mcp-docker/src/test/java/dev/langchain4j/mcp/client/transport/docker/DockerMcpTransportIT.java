@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,7 +83,7 @@ class DockerMcpTransportIT {
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isNotNull();
         assertThat(toolExecutionResultString).contains("timezone", "Europe/Paris", "datetime");
-        String currentDate = LocalDate.now().toString();
+        String currentDate = LocalDate.now(ZoneId.of("Europe/Paris")).toString();
         assertThat(toolExecutionResultString).contains(currentDate);
     }
 

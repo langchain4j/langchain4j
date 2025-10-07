@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 
@@ -96,6 +97,13 @@ class StreamingRequestExecutor<Response> {
 
         ServerSentEventListener listener = new ServerSentEventListener() {
 
+            SuccessfulHttpResponse response;
+
+            @Override
+            public void onOpen(SuccessfulHttpResponse response) {
+                this.response = response;
+            }
+
             @Override
             public void onEvent(ServerSentEvent event) {
 
@@ -107,9 +115,10 @@ class StreamingRequestExecutor<Response> {
                         errorHandler.accept(new RuntimeException(event.data()));
                         return;
                     }
-                    Response response = Json.fromJson(event.data(), responseClass);
-                    if (response != null) {
-                        partialResponseHandler.accept(new ParsedAndRawResponse<>(response, event)); // do not handle exception, fail-fast
+                    Response parsedResponse = Json.fromJson(event.data(), responseClass);
+                    if (parsedResponse != null) {
+                        // do not handle exception, fail-fast
+                        partialResponseHandler.accept(new ParsedAndRawResponse<>(parsedResponse, response, event));
                     }
                 } catch (Exception e) {
                     errorHandler.accept(e);

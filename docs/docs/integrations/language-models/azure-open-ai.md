@@ -66,7 +66,7 @@ ChatModel model = AzureOpenAiChatModel.builder()
         .build();
 ```
 
-This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and depoyment name.
+This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and deployment name.
 Other parameters can be customized by providing values in the builder.
 
 ### Spring Boot
