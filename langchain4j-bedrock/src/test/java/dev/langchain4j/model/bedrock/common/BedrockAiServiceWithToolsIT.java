@@ -23,6 +23,10 @@ class BedrockAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Disabled("Bedrock is too strict and expects assistant message after tool message")
     protected void should_keep_memory_consistent_using_return_immediate(ChatModel model) {}
 
+    @Override
+    @Disabled("Mistral is hallucinating in this test")
+    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel model) {}
+
     @AfterEach
     void afterEach() {
         sleepIfNeeded();
