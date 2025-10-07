@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -31,6 +32,8 @@ public class McpToolProvider implements ToolProvider {
     private final Function<ToolExecutor, ToolExecutor> toolWrapper;
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
     private final McpResourcesAsToolsPresenter resourcesAsToolsPresenter;
+    private final AtomicReference<BiFunction<McpClient, ToolSpecification, String>> toolNameMapper;
+    private final AtomicReference<BiFunction<McpClient, ToolSpecification, ToolSpecification>> toolSpecificationMapper;
 
     private McpToolProvider(Builder builder) {
         this(
@@ -38,7 +41,9 @@ public class McpToolProvider implements ToolProvider {
                 Utils.getOrDefault(builder.failIfOneServerFails, false),
                 builder.mcpToolsFilter,
                 builder.toolWrapper,
-                builder.resourcesAsToolsPresenter);
+                builder.resourcesAsToolsPresenter,
+                builder.toolNameMapper,
+                builder.toolSpecificationMapper);
     }
 
     protected McpToolProvider(
@@ -46,12 +51,16 @@ public class McpToolProvider implements ToolProvider {
             boolean failIfOneServerFails,
             BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
             Function<ToolExecutor, ToolExecutor> toolWrapper,
-            McpResourcesAsToolsPresenter resourcesAsToolsPresenter) {
+            McpResourcesAsToolsPresenter resourcesAsToolsPresenter,
+            BiFunction<McpClient, ToolSpecification, String> toolNameMapper,
+            BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper) {
         this.mcpClients = new CopyOnWriteArrayList<>(mcpClients);
         this.failIfOneServerFails = failIfOneServerFails;
         this.mcpToolsFilter = new AtomicReference<>(mcpToolsFilter);
         this.toolWrapper = toolWrapper;
         this.resourcesAsToolsPresenter = resourcesAsToolsPresenter;
+        this.toolNameMapper = new AtomicReference<>(toolNameMapper);
+        this.toolSpecificationMapper = new AtomicReference<>(toolSpecificationMapper);
     }
 
     /**
@@ -100,6 +109,23 @@ public class McpToolProvider implements ToolProvider {
     }
 
     /**
+     * Sets the tool name mapper overriding the current one.
+     * The mapper can be null, in which case the tool names will be used as-is.
+     */
+    public void setToolNameMapper(BiFunction<McpClient, ToolSpecification, String> toolNameMapper) {
+        this.toolNameMapper.set(toolNameMapper);
+    }
+
+    /**
+     * Sets the tool specification mapper overriding the current one.
+     * The mapper can be null, in which case the tool specifications will be used as-is.
+     */
+    public void setToolSpecificationMapper(
+            BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper) {
+        this.toolSpecificationMapper.set(toolSpecificationMapper);
+    }
+
+    /**
      * Resets the all the eventually existing tools filters.
      */
     public void resetFilters() {
@@ -115,13 +141,31 @@ public class McpToolProvider implements ToolProvider {
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
-            var defaultToolExecutor = new McpToolExecutor(mcpClient);
             try {
-                mcpClient.listTools().stream()
-                        .filter(tool -> mcpToolsFilter.test(mcpClient, tool))
-                        .forEach(toolSpecification -> {
-                            builder.add(toolSpecification, toolWrapper.apply(defaultToolExecutor));
-                        });
+                for (ToolSpecification originalSpec : mcpClient.listTools()) {
+                    if (mcpToolsFilter.test(mcpClient, originalSpec)) {
+                        BiFunction<McpClient, ToolSpecification, String> nameMapper = toolNameMapper.get();
+                        BiFunction<McpClient, ToolSpecification, ToolSpecification> specificationMapper =
+                                toolSpecificationMapper.get();
+                        ToolSpecification newSpec;
+                        // if a tool name mapper or specification mapper is defined, apply it to get the new tool
+                        // specification
+                        if (nameMapper != null) {
+                            newSpec = ToolSpecification.builder()
+                                    .name(nameMapper.apply(mcpClient, originalSpec))
+                                    .description(originalSpec.description())
+                                    .parameters(originalSpec.parameters())
+                                    .build();
+                        } else if (specificationMapper != null) {
+                            newSpec = specificationMapper.apply(mcpClient, originalSpec);
+                        } else {
+                            newSpec = originalSpec;
+                        }
+                        // lock down the created McpToolExecutor to the original 'real' tool name, not the mapped one
+                        ToolExecutor defaultToolExecutor = new McpToolExecutor(mcpClient, originalSpec.name());
+                        builder.add(newSpec, toolWrapper.apply(defaultToolExecutor));
+                    }
+                }
             } catch (IllegalConfigurationException e) {
                 throw e;
             } catch (Exception e) {
@@ -157,6 +201,8 @@ public class McpToolProvider implements ToolProvider {
         private Boolean failIfOneServerFails;
         private BiPredicate<McpClient, ToolSpecification> mcpToolsFilter = (mcp, tool) -> true;
         private Function<ToolExecutor, ToolExecutor> toolWrapper = Function.identity();
+        private BiFunction<McpClient, ToolSpecification, String> toolNameMapper;
+        private BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper;
 
         /**
          * The list of MCP clients to use for retrieving tools.
@@ -175,6 +221,9 @@ public class McpToolProvider implements ToolProvider {
 
         /**
          * The predicate to filter MCP provided tools.
+         * Filtering is applied *before* the name or specification mapping (see {@link #toolNameMapper(BiFunction)}
+         * and {@link #toolSpecificationMapper(BiFunction)}) so
+         * it should expect raw tool names as received from the MCP server.
          */
         public McpToolProvider.Builder filter(BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
             this.mcpToolsFilter = this.mcpToolsFilter.and(mcpToolsFilter);
@@ -183,6 +232,9 @@ public class McpToolProvider implements ToolProvider {
 
         /**
          * Filter MCP provided tools with a specific name.
+         * Filtering is applied *before* the name or specification mapping (see {@link #toolNameMapper(BiFunction)}
+         * and {@link #toolSpecificationMapper(BiFunction)}) so
+         * it should expect raw tool names as received from the MCP server.
          */
         public McpToolProvider.Builder filterToolNames(String... toolNames) {
             return filter(new ToolsNameFilter(toolNames));
@@ -215,6 +267,43 @@ public class McpToolProvider implements ToolProvider {
             return this;
         }
 
+        /**
+         * Defines a mapping function to customize the tool names as they are registered in the tool provider.
+         * By default, the tool names are used as-is.
+         * It is forbidden to set both a toolNameMapper and a toolSpecificationMapper at the same time.
+         * Filtering (see{@link #filter} and {@link #filterToolNames})
+         * is applied before name mapping.
+         */
+        public McpToolProvider.Builder toolNameMapper(BiFunction<McpClient, ToolSpecification, String> toolNameMapper) {
+            if (this.toolSpecificationMapper != null) {
+                throw new IllegalArgumentException(
+                        "It is forbidden to set both a toolNameMapper and a toolSpecificationMapper at the same time.");
+            }
+            this.toolNameMapper = toolNameMapper;
+            return this;
+        }
+
+        /**
+         * Defines a mapping function to customize the tool specifications as they are registered in the tool provider.
+         * By default, the tool descriptions are used as-is.
+         *
+         * NOTE: When writing the mapping function, don't forget to include the tool arguments as well (these should
+         * generally not be changed, perhaps except when adjusting the descriptions of arguments).
+         *
+         * It is forbidden to set both a toolNameMapper and a toolSpecificationMapper at the same time.
+         * Filtering (see{@link #filter} and {@link #filterToolNames})
+         * is applied before specification mapping.
+         */
+        public McpToolProvider.Builder toolSpecificationMapper(
+                BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper) {
+            if (this.toolNameMapper != null) {
+                throw new IllegalArgumentException(
+                        "It is forbidden to set both a toolNameMapper and a toolSpecificationMapper at the same time.");
+            }
+            this.toolSpecificationMapper = toolSpecificationMapper;
+            return this;
+        }
+
         public McpToolProvider build() {
             return new McpToolProvider(this);
         }
@@ -236,5 +325,4 @@ public class McpToolProvider implements ToolProvider {
             return toolNames.stream().anyMatch(name -> name.equals(tool.name()));
         }
     }
-
 }

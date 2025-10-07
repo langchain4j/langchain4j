@@ -81,10 +81,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeTool() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoString")
-                .arguments("{\"input\": \"abc\"}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{\"input\": \"abc\"}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("abc");
     }
@@ -93,10 +91,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeToolThatReturnsStructuredContent() {
         ToolProviderResult toolProviderResult = obtainTools();
         McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("structuredContent");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("structuredContent")
-                .arguments("")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("").build();
         ToolExecutionResult toolExecutionResult = executor.executeWithContext(
                 toolExecutionRequest, InvocationContext.builder().build());
         assertThat(toolExecutionResult.resultText()).isEqualTo("{\"bar\":1,\"baz\":\"hello\"}");
@@ -112,7 +108,6 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoString")
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
@@ -122,26 +117,11 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Test
-    public void executeNonExistentTool() {
-        // this should never happen when used through AI Service, as it will be handled by hallucinatedToolNameStrategy
-        ToolProviderResult toolProviderResult = obtainTools();
-        ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("THIS-TOOL-DOES-NOT-EXIST")
-                .arguments("{\"input\": 1}")
-                .build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolArgumentsException.class)
-                .hasMessage("Invalid tool name: THIS-TOOL-DOES-NOT-EXIST")
-                .hasFieldOrPropertyWithValue("errorCode", -32602);
-    }
-
-    @Test
     public void executeToolThatThrowsBusinessError() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("error");
         ToolExecutionRequest toolExecutionRequest =
-                ToolExecutionRequest.builder().name("error").arguments("{}").build();
+                ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("Internal error")
@@ -152,10 +132,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeToolThatReturnsError() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("errorResponse");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("errorResponse")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("This is an actual error");
@@ -165,19 +143,19 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void timeout() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("longOperation");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("longOperation")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
-        ToolExecutionRequest checkCancellationRequest = ToolExecutionRequest.builder()
-                .name("wasCancellationReceived")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest checkCancellationRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         // wait until the server can confirm that the cancellation notification was received
         await().timeout(Duration.ofSeconds(30))
-                .until(() -> executor.execute(checkCancellationRequest, null), is("true"));
+                .until(
+                        () -> toolProviderResult
+                                .toolExecutorByName("wasCancellationReceived")
+                                .execute(checkCancellationRequest, null),
+                        is("true"));
     }
 
     // this is specifically for 'executeToolWithUntypedArrayParameter'
