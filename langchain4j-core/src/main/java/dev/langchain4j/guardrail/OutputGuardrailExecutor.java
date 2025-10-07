@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
 import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
 import dev.langchain4j.data.message.UserMessage;
@@ -63,7 +64,7 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = executeGuardrails(accumulatedRequest);
+            result = rewriteResult(request, accumulatedRequest, executeGuardrails(accumulatedRequest));
 
             if (result.isSuccess()) {
                 return result;
@@ -103,6 +104,19 @@ public non-sealed class OutputGuardrailExecutor
             throw new OutputGuardrailException(MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages));
         }
 
+        return result;
+    }
+
+    private OutputGuardrailResult rewriteResult(OutputGuardrailRequest originalRequest, OutputGuardrailRequest validatedRequest, OutputGuardrailResult result) {
+        if (result.isSuccess() && !result.hasRewrittenResult()) {
+            String originalText = originalRequest.responseFromLLM().aiMessage().text();
+            String validatedText = validatedRequest.responseFromLLM().aiMessage().text();
+            if (!originalText.equals(validatedText)) {
+                // The text validated by the output guardrail is different form the original one because of a
+                // successful reprompt, so we need to create a new success result with the new text
+                return successWith(validatedText);
+            }
+        }
         return result;
     }
 
