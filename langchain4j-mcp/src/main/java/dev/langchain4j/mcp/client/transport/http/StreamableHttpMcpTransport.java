@@ -37,9 +37,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final boolean logRequests;
     private final Logger trafficLog;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
+    private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
+    private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
@@ -63,7 +64,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
-        return execute(operation, operation.getId())
+        this.initializeRequest = operation;
+        CompletableFuture<JsonNode> completableFuture = execute(operation, operation.getId());
+        initializeInProgress.set(completableFuture);
+        return completableFuture
+                .thenCompose(originalResponse -> {
+                    initializeInProgress.set(null);
+                    return CompletableFuture.completedFuture(originalResponse);
+                })
                 .thenCompose(originalResponse -> execute(new McpInitializationNotification(), null)
                         .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
@@ -76,7 +84,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
         final HttpRequest.Builder builder = HttpRequest.newBuilder();
         String sessionId = mcpSessionId.get();
-        if (sessionId != null) {
+        if (sessionId != null && !(message instanceof McpInitializeRequest)) {
             builder.header("Mcp-Session-Id", sessionId);
         }
         customHeaders.forEach(builder::header);
@@ -108,6 +116,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id) {
+        return execute(message, id, false);
+    }
+
+    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, boolean isRetry) {
+        CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
+        if (reinitializeInProgress != null) {
+            reinitializeInProgress.join();
+        }
         HttpRequest request = null;
         try {
             request = createRequest(message);
@@ -122,9 +138,27 @@ public class StreamableHttpMcpTransport implements McpTransport {
         httpClient
                 .sendAsync(request, responseInfo -> {
                     if (!isExpectedStatusCode(responseInfo.statusCode())) {
-                        future.completeExceptionally(
-                                new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
-                        return null;
+                        if (!(message instanceof McpInitializeRequest) && responseInfo.statusCode() == 404) {
+                            if (!isRetry) {
+                                initialize(StreamableHttpMcpTransport.this.initializeRequest)
+                                        .thenAccept(node -> {
+                                            execute(message, id, true)
+                                                    .thenAccept(future::complete)
+                                                    .exceptionally(t -> {
+                                                        future.completeExceptionally(t);
+                                                        return null;
+                                                    });
+                                        })
+                                        .exceptionally(t -> {
+                                            future.completeExceptionally(t);
+                                            return null;
+                                        });
+                            }
+                        } else {
+                            future.completeExceptionally(
+                                    new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
+                        }
+                        return HttpResponse.BodySubscribers.discarding();
                     } else {
                         Optional<String> contentType = responseInfo.headers().firstValue("Content-Type");
                         Optional<String> mcpSessionId = responseInfo.headers().firstValue("Mcp-Session-Id");
