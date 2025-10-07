@@ -12,21 +12,29 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     private static final Logger LOG = LoggerFactory.getLogger(DockerResultCallback.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
+    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private static final Pattern NEWLINE_PATTERN = Pattern.compile("([^\\r\\n]+)[\\r\\n]+");
 
     private final boolean logEvents;
+    private final Logger trafficLog;
     private final McpOperationHandler messageHandler;
 
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
     private final StringBuilder logAggregator = new StringBuilder();
 
     public DockerResultCallback(boolean logEvents, McpOperationHandler messageHandler) {
+        this(logEvents, null, messageHandler);
+    }
+
+    public DockerResultCallback(boolean logEvents, Logger logger, McpOperationHandler messageHandler) {
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
+        this.trafficLog = getOrDefault(logger, DEFAULT_TRAFFIC_LOG);
     }
 
     @Override
