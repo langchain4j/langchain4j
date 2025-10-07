@@ -151,10 +151,8 @@ public class McpToolProvider implements ToolProvider {
                         // if a tool name mapper or specification mapper is defined, apply it to get the new tool
                         // specification
                         if (nameMapper != null) {
-                            newSpec = ToolSpecification.builder()
+                            newSpec = originalSpec.toBuilder()
                                     .name(nameMapper.apply(mcpClient, originalSpec))
-                                    .description(originalSpec.description())
-                                    .parameters(originalSpec.parameters())
                                     .build();
                         } else if (specificationMapper != null) {
                             newSpec = specificationMapper.apply(mcpClient, originalSpec);

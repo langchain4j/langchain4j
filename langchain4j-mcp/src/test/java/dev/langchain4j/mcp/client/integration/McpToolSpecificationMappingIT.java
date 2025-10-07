@@ -44,9 +44,8 @@ public class McpToolSpecificationMappingIT {
                 .mcpClients(mcpClient)
                 .toolSpecificationMapper((client, toolSpec) -> {
                     // Prefix all tool names with "myprefix_" and convert the description to uppercase
-                    return ToolSpecification.builder()
+                    return toolSpec.toBuilder()
                             .name("myprefix_" + toolSpec.name())
-                            .parameters(toolSpec.parameters())
                             .description(toolSpec.description().toUpperCase())
                             .build();
                 })

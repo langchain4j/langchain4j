@@ -183,13 +183,13 @@ Bot bot = AiServices.builder(Bot.class)
 
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
-### MCP Tool name mapping
+### MCP Tool Name Mapping
 
 If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
 adjust an inappropriately chosen name), it may be useful to apply a tool name mapping function.
-This can be done by providing a `BiFunction<McpClient, ToolSpecification, String>` to the MCP tool provider.
+This can be done by specifying a `BiFunction<McpClient, ToolSpecification, String>` when creating the `McpToolProvider`.
 
-For example":
+For example:
 ```java
 McpToolProvider toolProvider = McpToolProvider.builder()
         .mcpClients(mcpClient1, mcpClient2)
@@ -202,6 +202,22 @@ McpToolProvider toolProvider = McpToolProvider.builder()
 
 After this, the `ToolSpecification` objects returned by the tool provider will contain the mapped (logical) names,
 but the generated `ToolExecutor` objects will be fixed to pass the original (physical) names to the server when invoking the tools.
+
+### MCP Tool Specification Mapping
+
+Similarly to MCP tool mapping (above), one can map complete `ToolSpecification`:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolSpecificationMapper((client, toolSpec) -> {
+            // Prefix all tool names with "myprefix_" and convert the description to uppercase
+            return toolSpec.toBuilder()
+                .name("myprefix_" + toolSpec.name())
+                .description(toolSpec.description().toUpperCase())
+                .build();
+        })
+        .build();
+```
 
 ## Logging
 

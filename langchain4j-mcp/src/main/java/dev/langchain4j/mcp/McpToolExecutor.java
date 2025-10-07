@@ -41,10 +41,8 @@ public class McpToolExecutor implements ToolExecutor {
 
     private ToolExecutionRequest sanitizeToolName(ToolExecutionRequest executionRequest) {
         if (fixedToolName.isPresent()) {
-            return ToolExecutionRequest.builder()
-                    .id(executionRequest.id())
+            return executionRequest.toBuilder()
                     .name(fixedToolName.get())
-                    .arguments(executionRequest.arguments())
                     .build();
         } else {
             return executionRequest;
