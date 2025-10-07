@@ -365,7 +365,7 @@ System.out.println(rawHttpResponse.headers());
 System.out.println(rawHttpResponse.statusCode());
 ```
 
-When using `OpenAiStreamingChatModel`, you can access raw Server-Sent Events:
+When using `OpenAiStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
 ```java
 List<ServerSentEvent> rawServerSentEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
 System.out.println(rawServerSentEvents.get(0).data());
