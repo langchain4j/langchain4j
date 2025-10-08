@@ -1,7 +1,20 @@
 name: release
 
 on:
+  repository_dispatch:
+    types: [ trigger-release ]
   workflow_dispatch:
+    inputs:
+      stableVersion:
+        description: "Stable release version (e.g., 1.8.0)"
+        required: true
+      betaVersion:
+        description: "Beta release version (e.g., 1.8.0-beta15)"
+        required: true
+
+env:
+  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
+  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
 
 jobs:
 
@@ -33,6 +46,35 @@ jobs:
         uses: atomicjar/testcontainers-cloud-setup-action@v1
         with:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
+
+      - name: Show inputs
+        run: |
+          echo "Stable version: ${{ env.STABLE_VERSION }}"
+          echo "Beta version: ${{ env.BETA_VERSION }}"
+
+      - name: Extract current stable SNAPSHOT version from POM property
+        id: extract-stable-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
+          echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Update stable versions
+        run: mvn versions:set -DnewVersion=${{ env.STABLE_VERSION }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update stable version property
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }}
+
+      - name: Extract current beta SNAPSHOT version from POM property
+        id: extract-beta-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
+          echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Update beta versions
+        run: mvn versions:set -DnewVersion=${{ env.BETA_VERSION }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update beta version property
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }}
 
       - name: release
         run: |
@@ -81,6 +123,18 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: Trigger release in the langchain4j/langchain4j-spring repo
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
+          repository: langchain4j/langchain4j-spring
+          event-type: trigger-release
+          client-payload: |
+            {
+              "stableVersion": "${{ env.STABLE_VERSION }}",
+              "betaVersion": "${{ env.BETA_VERSION }}"
+            }
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5

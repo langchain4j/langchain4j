@@ -34,6 +34,11 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
+      - name: Show inputs
+        run: |
+          echo "Stable version: ${{ env.STABLE_VERSION }}"
+          echo "Beta version: ${{ env.BETA_VERSION }}"
+
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
         run: |
@@ -69,7 +74,7 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: Trigger release in langchain4j-embeddings repo
+      - name: Trigger release in the langchain4j/langchain4j-embeddings repo
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
