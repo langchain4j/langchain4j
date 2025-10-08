@@ -2,6 +2,19 @@ name: release_core_and_parent
 
 on:
   workflow_dispatch:
+    inputs:
+      stableVersion:
+        description: "Stable release version (e.g., 1.8.0)"
+        required: true
+      betaVersion:
+        description: "Beta release version (e.g., 1.8.0-beta15)"
+        required: true
+      nextStableVersion:
+        description: "Next stable version (e.g. 1.9.0-SNAPSHOT)"
+        required: true
+      nextBetaVersion:
+        description: "Next beta version (e.g. 1.9.0-beta16-SNAPSHOT)"
+        required: true
 
 jobs:
 
@@ -22,6 +35,12 @@ jobs:
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Update stable versions
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ github.event.inputs.stableVersion }}-SNAPSHOT -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update beta versions
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.betaVersion }} -DoldVersion=${{ github.event.inputs.betaVersion }}-SNAPSHOT -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: release_core_and_parent
         run: |
