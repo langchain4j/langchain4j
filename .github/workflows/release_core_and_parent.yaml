@@ -36,17 +36,23 @@ jobs:
           REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
           echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
+      - name: Update stable versions
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update stable version property
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ github.event.inputs.stableVersion }}
+
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
         run: |
           REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
           echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
-      - name: Update stable versions
-        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
-
       - name: Update beta versions
         run: mvn versions:set -DnewVersion=${{ github.event.inputs.betaVersion }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update beta version property
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ github.event.inputs.betaVersion }}
 
       - name: release_core_and_parent
         run: |
