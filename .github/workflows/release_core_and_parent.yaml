@@ -42,8 +42,8 @@ jobs:
           event-type: trigger-release
           client-payload: |
             {
-              "stableVersion": "${{ github.event.inputs.stableVersion }}",
-              "betaVersion": "${{ github.event.inputs.betaVersion }}"
+              "stableVersion": "$STABLE_VERSION",
+              "betaVersion": "$BETA_VERSION"
             }
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
