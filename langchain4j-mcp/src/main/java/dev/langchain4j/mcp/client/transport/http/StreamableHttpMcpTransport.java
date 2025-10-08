@@ -17,7 +17,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.BodySubscriber;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -127,10 +126,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
                         return null;
                     } else {
-                        Optional<String> contentType =
-                                responseInfo.headers().firstValue("Content-Type");
-                        Optional<String> mcpSessionId =
-                                responseInfo.headers().firstValue("Mcp-Session-Id");
+                        Optional<String> contentType = responseInfo.headers().firstValue("Content-Type");
+                        Optional<String> mcpSessionId = responseInfo.headers().firstValue("Mcp-Session-Id");
                         if (mcpSessionId.isPresent()) {
                             LOG.debug("Assigned MCP session ID: {}", mcpSessionId);
                             StreamableHttpMcpTransport.this.mcpSessionId.set(mcpSessionId.get());
@@ -239,7 +236,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * Sets a custom {@link Logger} to be used for traffic logging (both requests and responses).
          * This logger will be used for both regular HTTP responses and Server-Sent Events (SSE) traffic.
          * If not specified, a default logger will be used.
-         * 
+         *
          * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
          * @return {@code this}.
          */

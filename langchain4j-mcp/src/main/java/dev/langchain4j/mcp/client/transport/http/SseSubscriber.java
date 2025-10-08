@@ -14,7 +14,11 @@ class SseSubscriber implements Flow.Subscriber<String> {
     private final McpOperationHandler operationHandler;
     private Flow.Subscription subscription;
 
-    SseSubscriber(CompletableFuture<JsonNode> future, boolean logResponses, McpOperationHandler operationHandler, Logger logger) {
+    SseSubscriber(
+            CompletableFuture<JsonNode> future,
+            boolean logResponses,
+            McpOperationHandler operationHandler,
+            Logger logger) {
         this.future = future;
         this.logResponses = logResponses;
         this.operationHandler = operationHandler;
