@@ -10,6 +10,10 @@ on:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
 
+env:
+  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
+  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
+
 jobs:
 
   release:
@@ -41,7 +45,6 @@ jobs:
               "stableVersion": "${{ github.event.inputs.stableVersion }}",
               "betaVersion": "${{ github.event.inputs.betaVersion }}"
             }
-
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
         run: |
@@ -49,10 +52,10 @@ jobs:
           echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update stable versions
-        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=$STABLE_VERSION -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ github.event.inputs.stableVersion }}
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=$STABLE_VERSION
 
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
@@ -61,10 +64,10 @@ jobs:
           echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update beta versions
-        run: mvn versions:set -DnewVersion=${{ github.event.inputs.betaVersion }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=$BETA_VERSION -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ github.event.inputs.betaVersion }}
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=$BETA_VERSION
 
       - name: release_core_and_parent
         run: |
