@@ -36,11 +36,23 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
+      - name: Extract current stable SNAPSHOT version from POM property
+        id: extract-stable-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
+          echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Extract current beta SNAPSHOT version from POM property
+        id: extract-beta-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
+          echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
       - name: Update stable versions
-        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ github.event.inputs.stableVersion }}-SNAPSHOT -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.stableVersion }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta versions
-        run: mvn versions:set -DnewVersion=${{ github.event.inputs.betaVersion }} -DoldVersion=${{ github.event.inputs.betaVersion }}-SNAPSHOT -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion=${{ github.event.inputs.betaVersion }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: release_core_and_parent
         run: |
