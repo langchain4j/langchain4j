@@ -67,6 +67,20 @@ jobs:
       - name: Update beta version property
         run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }}
 
+      - name: Remove integration-tests module from root POM
+        run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
+
+      - name: release_core_and_parent
+        run: |
+          mvn -B -U \
+            -pl langchain4j-core,langchain4j-parent \
+            -Psign \
+            clean deploy
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
       - name: Commit version changes
         run: |
           git config user.name "github-actions[bot]"
@@ -82,17 +96,6 @@ jobs:
         run: |
           git tag ${{ env.STABLE_VERSION }}
           git push origin ${{ env.STABLE_VERSION }}
-
-      - name: release_core_and_parent
-        run: |
-          mvn -B -U \
-            -pl langchain4j-core,langchain4j-parent \
-            -Psign \
-            clean deploy
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Trigger release in the langchain4j/langchain4j-embeddings repo
         uses: peter-evans/repository-dispatch@v4
