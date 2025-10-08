@@ -17,7 +17,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.BodySubscriber;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -30,11 +29,13 @@ import org.slf4j.LoggerFactory;
 
 public class StreamableHttpMcpTransport implements McpTransport {
 
-    private static final Logger log = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
+    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
+    private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private final String url;
     private final Map<String, String> customHeaders;
     private final boolean logResponses;
     private final boolean logRequests;
+    private final Logger trafficLog;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private volatile McpOperationHandler operationHandler;
@@ -45,6 +46,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
+        trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeaders = getOrDefault(builder.customHeaders, Map.of());
         HttpClient.Builder clientBuilder = HttpClient.newBuilder();
@@ -70,7 +72,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         String body = OBJECT_MAPPER.writeValueAsString(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
-            log.info("Request: " + body);
+            trafficLog.info("Request: {}", body);
         }
         final HttpRequest.Builder builder = HttpRequest.newBuilder();
         String sessionId = mcpSessionId.get();
@@ -118,49 +120,43 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         httpClient
-                .sendAsync(request, new HttpResponse.BodyHandler<Void>() {
-
-                    @Override
-                    public BodySubscriber<Void> apply(HttpResponse.ResponseInfo responseInfo) {
-                        if (!isExpectedStatusCode(responseInfo.statusCode())) {
-                            future.completeExceptionally(
-                                    new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
-                            return null;
+                .sendAsync(request, responseInfo -> {
+                    if (!isExpectedStatusCode(responseInfo.statusCode())) {
+                        future.completeExceptionally(
+                                new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
+                        return null;
+                    } else {
+                        Optional<String> contentType = responseInfo.headers().firstValue("Content-Type");
+                        Optional<String> mcpSessionId = responseInfo.headers().firstValue("Mcp-Session-Id");
+                        if (mcpSessionId.isPresent()) {
+                            LOG.debug("Assigned MCP session ID: {}", mcpSessionId);
+                            StreamableHttpMcpTransport.this.mcpSessionId.set(mcpSessionId.get());
+                        }
+                        if (id != null
+                                && contentType.isPresent()
+                                && contentType.get().contains("text/event-stream")) {
+                            // the server has started an SSE stream
+                            return HttpResponse.BodySubscribers.fromLineSubscriber(
+                                    new SseSubscriber(future, logResponses, operationHandler, trafficLog));
                         } else {
-                            Optional<String> contentType =
-                                    responseInfo.headers().firstValue("Content-Type");
-                            Optional<String> mcpSessionId =
-                                    responseInfo.headers().firstValue("Mcp-Session-Id");
-                            if (mcpSessionId.isPresent()) {
-                                log.debug("Assigned MCP session ID: " + mcpSessionId);
-                                StreamableHttpMcpTransport.this.mcpSessionId.set(mcpSessionId.get());
-                            }
-                            if (id != null
-                                    && contentType.isPresent()
-                                    && contentType.get().contains("text/event-stream")) {
-                                // the server has started an SSE stream
-                                return HttpResponse.BodySubscribers.fromLineSubscriber(
-                                        new SseSubscriber(future, logResponses, operationHandler));
-                            } else {
-                                // the server has returned a regular HTTP response
-                                return HttpResponse.BodySubscribers.mapping(
-                                        HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), responseBody -> {
-                                            if (logResponses) {
-                                                log.info("Response: " + responseBody);
-                                            }
-                                            if (id == null) {
-                                                future.complete(null);
-                                            }
-                                            try {
-                                                JsonNode node = OBJECT_MAPPER.readTree(responseBody);
-                                                operationHandler.handle(node);
-                                                return null;
-                                            } catch (IOException e) {
-                                                future.completeExceptionally(e);
-                                                return null;
-                                            }
-                                        });
-                            }
+                            // the server has returned a regular HTTP response
+                            return HttpResponse.BodySubscribers.mapping(
+                                    HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), responseBody -> {
+                                        if (logResponses) {
+                                            trafficLog.info("Response: {}", responseBody);
+                                        }
+                                        if (id == null) {
+                                            future.complete(null);
+                                        }
+                                        try {
+                                            JsonNode node = OBJECT_MAPPER.readTree(responseBody);
+                                            operationHandler.handle(node);
+                                            return null;
+                                        } catch (IOException e) {
+                                            future.completeExceptionally(e);
+                                            return null;
+                                        }
+                                    });
                         }
                     }
                 })
@@ -193,6 +189,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
+        private Logger logger;
 
         /**
          * The URL of the MCP server.
@@ -232,6 +229,19 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * Sets a custom {@link Logger} to be used for traffic logging (both requests and responses).
+         * This logger will be used for both regular HTTP responses and Server-Sent Events (SSE) traffic.
+         * If not specified, a default logger will be used.
+         *
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public StreamableHttpMcpTransport.Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

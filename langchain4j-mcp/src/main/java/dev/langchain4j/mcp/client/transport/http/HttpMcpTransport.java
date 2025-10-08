@@ -61,7 +61,7 @@ public class HttpMcpTransport implements McpTransport {
         httpClientBuilder.writeTimeout(timeout);
         this.logRequests = builder.logRequests;
         if (builder.logRequests) {
-            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor());
+            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor(builder.logger));
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
@@ -218,6 +218,7 @@ public class HttpMcpTransport implements McpTransport {
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
+        private Logger logger;
 
         /**
          * The initial URL where to connect to the server and request a SSE
@@ -245,6 +246,15 @@ public class HttpMcpTransport implements McpTransport {
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

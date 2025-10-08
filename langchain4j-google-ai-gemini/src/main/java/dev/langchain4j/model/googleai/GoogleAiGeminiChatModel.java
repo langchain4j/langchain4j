@@ -114,7 +114,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private AiMessage createAiMessage(GeminiCandidate candidate) {
         if (candidate == null || candidate.getContent() == null) {
-            return null;
+            return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
         }
 
         return fromGPartsToAiMessage(candidate.getContent().getParts(), includeCodeExecutionOutput, returnThinking);

@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -260,6 +261,11 @@ class OpenAiStreamingChatModelIT {
                         .build())
                 .build();
 
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("test-header", List.of("test-value")))
+                .build();
+
         List<ServerSentEvent> events = List.of(
                 new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\",\"refusal\":null},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"QK00Z4Pe\"}"),
                 new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"The\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"R9qgEHA\"}"),
@@ -271,7 +277,7 @@ class OpenAiStreamingChatModelIT {
                 new ServerSentEvent(null, "[DONE]")
         );
 
-        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(response, events);
 
         StreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
@@ -306,5 +312,8 @@ class OpenAiStreamingChatModelIT {
 
         List<ServerSentEvent> rawEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
         assertThat(rawEvents).isEqualTo(events.subList(0, events.size() - 1)); // without [DONE]
+
+        SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+        assertThat(rawResponse).isEqualTo(response);
     }
 }
