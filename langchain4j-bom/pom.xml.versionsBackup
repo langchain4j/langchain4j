@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.0.7-test-beta7</version>
+        <version>1.8.0-beta15-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -17,8 +17,8 @@
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <properties>
-        <langchain4j.stable.version>0.0.7-test</langchain4j.stable.version>
-        <langchain4j.beta.version>0.0.7-test-beta7</langchain4j.beta.version>
+        <langchain4j.stable.version>1.8.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.8.0-beta15-SNAPSHOT</langchain4j.beta.version>
     </properties>
 
     <dependencyManagement>
