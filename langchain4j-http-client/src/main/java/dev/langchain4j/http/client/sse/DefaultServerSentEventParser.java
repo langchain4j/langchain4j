@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.sse;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,7 +13,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();

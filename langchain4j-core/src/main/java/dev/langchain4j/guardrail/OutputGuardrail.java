@@ -30,12 +30,12 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
      * <p>
      * Implementation must not attempt to write to the memory or the augmentation result.
      *
-     * @param params
+     * @param request
      *            the parameters, including the response from the LLM, the memory, and the augmentation result.
      */
     @Override
-    default OutputGuardrailResult validate(OutputGuardrailRequest params) {
-        return validate(params.responseFromLLM().aiMessage());
+    default OutputGuardrailResult validate(OutputGuardrailRequest request) {
+        return validate(request.responseFromLLM().aiMessage());
     }
 
     /**

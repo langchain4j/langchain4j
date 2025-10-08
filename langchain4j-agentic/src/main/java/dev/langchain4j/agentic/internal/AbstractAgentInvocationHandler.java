@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -9,6 +11,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -19,8 +22,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
 public abstract class AbstractAgentInvocationHandler implements InvocationHandler {
+    protected final String name;
+    protected final String uniqueName;
+    protected final String description;
     protected final String outputName;
+
+    protected final Consumer<AgentRequest> beforeListener;
+    protected final Consumer<AgentResponse> afterListener;
 
     private final Class<?> agentServiceClass;
 
@@ -36,11 +47,16 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultAgenticScope agenticScope) {
-        this.agentServiceClass = workflowService.agentServiceClass;
-        this.outputName = workflowService.outputName;
-        this.beforeCall = workflowService.beforeCall;
-        this.errorHandler = workflowService.errorHandler;
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> service, DefaultAgenticScope agenticScope) {
+        this.agentServiceClass = service.agentServiceClass;
+        this.name = service.name;
+        this.uniqueName = uniqueAgentName(this.name);
+        this.description = service.description;
+        this.outputName = service.outputName;
+        this.beforeCall = service.beforeCall;
+        this.errorHandler = service.errorHandler;
+        this.beforeListener = service.beforeListener;
+        this.afterListener = service.afterListener;
         this.agenticScope = agenticScope;
     }
 
@@ -75,11 +91,27 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
 
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
+                case "name" -> name;
+                case "uniqueName" -> uniqueName;
+                case "description" -> description;
                 case "outputName" -> outputName;
+                case "async" -> false;
+                case "beforeInvocation" -> {
+                    beforeListener.accept((AgentRequest) args[0]);
+                    yield null;
+                }
+                case "afterInvocation" -> {
+                    afterListener.accept((AgentResponse) args[0]);
+                    yield null;
+                }
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on AgentInstance class : " + method.getName());
             };
+        }
+
+        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
+            return accessChatMemory(method.getName(), args[0]);
         }
 
         return executeAgentMethod(currentAgenticScope(registry, method, args), registry, method, args);
@@ -157,6 +189,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             }
         }
         return result;
+    }
+
+    protected Object accessChatMemory(String methodName, Object memoryId) {
+        throw new UnsupportedOperationException();
     }
 
     protected abstract Object doAgentAction(DefaultAgenticScope agenticScope);

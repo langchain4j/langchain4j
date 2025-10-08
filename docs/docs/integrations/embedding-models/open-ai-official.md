@@ -39,7 +39,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.7.1-beta14</version>
 </dependency>
 ```
 
@@ -55,12 +55,14 @@ import com.openai.models.embeddings.EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 
+import static com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
+
 // ....
 
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .build();
 ```
 
@@ -75,7 +77,7 @@ Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` met
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isAzure(true) // Not necessary if the base URL ends with `openai.azure.com`
         .build();
 ```
@@ -86,7 +88,7 @@ You can also use "passwordless" authentication, as described in the [OpenAI Offi
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isGitHubModels(true)
         .build();
 ```

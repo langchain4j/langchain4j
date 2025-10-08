@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.agent;
 
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -13,17 +14,27 @@ public class AgentInvocationHandler implements InvocationHandler {
     private final AiServiceContext context;
     private final AgentBuilder<?> builder;
     private final Object agent;
+    private final UserMessageRecorder messageRecorder;
     private final boolean agenticScopeDependent;
 
-    AgentInvocationHandler(AiServiceContext context, Object agent, AgentBuilder<?> builder, boolean agenticScopeDependent) {
+    AgentInvocationHandler(AiServiceContext context, Object agent, AgentBuilder<?> builder, UserMessageRecorder messageRecorder, boolean agenticScopeDependent) {
         this.context = context;
         this.agent = agent;
         this.builder = builder;
+        this.messageRecorder = messageRecorder;
         this.agenticScopeDependent = agenticScopeDependent;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+        if (method.getDeclaringClass() == ChatMessagesAccess.class) {
+            return switch (method.getName()) {
+                case "lastUserMessage" -> messageRecorder.lastUserMessage();
+                default -> throw new UnsupportedOperationException(
+                        "Unknown method on AgenticScopeOwner class : " + method.getName());
+            };
+        }
+
         if (method.getDeclaringClass() == AgenticScopeOwner.class) {
             return switch (method.getName()) {
                 case "withAgenticScope" -> agenticScopeDependent ?
@@ -48,7 +59,19 @@ public class AgentInvocationHandler implements InvocationHandler {
 
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
+                case "name" -> builder.name;
+                case "uniqueName" -> builder.uniqueName;
+                case "description" -> builder.description;
                 case "outputName" -> builder.outputName;
+                case "async" -> builder.async;
+                case "beforeInvocation" -> {
+                    builder.beforeListener.accept((AgentRequest) args[0]);
+                    yield null;
+                }
+                case "afterInvocation" -> {
+                    builder.afterListener.accept((AgentResponse) args[0]);
+                    yield null;
+                }
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on ChatMemoryAccess class : " + method.getName());

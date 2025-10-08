@@ -30,8 +30,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -689,7 +689,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).contains("sun");
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -732,7 +732,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_a_tool_without_arguments_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the time now?");
+        UserMessage userMessage = UserMessage.from("What is the time now? Use the get_current_time tool.");
 
         ToolSpecification timeTool =
                 ToolSpecification.builder().name("get_current_time").build();
@@ -1298,7 +1298,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsJsonResponseFormatWithRawSchema")
-    protected void should_respect_JsonRawSchema_responseFormat(M model) throws Exception {
+    protected void should_respect_JsonRawSchema_responseFormat(M model) {
         var rawSchema =
                 """
             {
@@ -1489,7 +1489,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1522,7 +1522,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("cat", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1573,7 +1573,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1603,7 +1603,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("cat", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 

@@ -1,29 +1,33 @@
 package dev.langchain4j.model.anthropic;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.anthropic.internal.api.*;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.AbstractMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.net.URI;
+import java.util.AbstractMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
 class AnthropicMapperTest {
+
+    static final String DICE_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     @ParameterizedTest
     @MethodSource
@@ -31,7 +35,7 @@ class AnthropicMapperTest {
         // when
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
 
-        //then
+        // then
         assertThat(anthropicMessages).containsExactlyElementsOf(expectedAnthropicMessages);
     }
 
@@ -39,60 +43,39 @@ class AnthropicMapperTest {
         return Stream.of(
                 Arguments.of(
                         singletonList(UserMessage.from("Hello")),
-                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))
-                ),
+                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))),
                 Arguments.of(
-                        asList(
-                                SystemMessage.from("Ignored"),
-                                UserMessage.from("Hello")
-                        ),
-                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))
-                ),
+                        asList(SystemMessage.from("Ignored"), UserMessage.from("Hello")),
+                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))),
                 Arguments.of(
-                        asList(
-                                UserMessage.from("Hello"),
-                                SystemMessage.from("Ignored")
-                        ),
-                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))
-                ),
+                        asList(UserMessage.from("Hello"), SystemMessage.from("Ignored")),
+                        singletonList(new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))))),
                 Arguments.of(
-                        asList(
-                                UserMessage.from("Hello"),
-                                AiMessage.from("Hi"),
-                                UserMessage.from("How are you?")
-                        ),
+                        asList(UserMessage.from("Hello"), AiMessage.from("Hi"), UserMessage.from("How are you?")),
                         asList(
                                 new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Hello"))),
                                 new AnthropicMessage(ASSISTANT, singletonList(new AnthropicTextContent("Hi"))),
-                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How are you?")))
-                        )
-                ),
+                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How are you?"))))),
                 Arguments.of(
                         asList(
                                 UserMessage.from("How much is 2+2?"),
-                                AiMessage.from(
-                                        ToolExecutionRequest.builder()
-                                                .id("12345")
-                                                .name("calculator")
-                                                .arguments("{\"first\": 2, \"second\": 2}")
-                                                .build()
-                                ),
-                                ToolExecutionResultMessage.from("12345", "calculator", "4")
-                        ),
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("12345")
+                                        .name("calculator")
+                                        .arguments("{\"first\": 2, \"second\": 2}")
+                                        .build()),
+                                ToolExecutionResultMessage.from("12345", "calculator", "4")),
                         asList(
                                 new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How much is 2+2?"))),
-                                new AnthropicMessage(ASSISTANT, singletonList(
-                                        AnthropicToolUseContent.builder()
+                                new AnthropicMessage(
+                                        ASSISTANT,
+                                        singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
                                                 .input(mapOf(entry("first", 2), entry("second", 2)))
-                                                .build()
-                                )),
-                                new AnthropicMessage(USER, singletonList(
-                                        new AnthropicToolResultContent("12345", "4", null)
-                                ))
-                        )
-                ),
+                                                .build())),
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
                 Arguments.of(
                         asList(
                                 UserMessage.from("How much is 2+2?"),
@@ -102,25 +85,22 @@ class AnthropicMapperTest {
                                                 .id("12345")
                                                 .name("calculator")
                                                 .arguments("{\"first\": 2, \"second\": 2}")
-                                                .build())
-                                ),
-                                ToolExecutionResultMessage.from("12345", "calculator", "4")
-                        ),
+                                                .build())),
+                                ToolExecutionResultMessage.from("12345", "calculator", "4")),
                         asList(
                                 new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How much is 2+2?"))),
-                                new AnthropicMessage(ASSISTANT, asList(
-                                        new AnthropicTextContent("<thinking>I need to use the calculator tool</thinking>"),
-                                        AnthropicToolUseContent.builder()
-                                                .id("12345")
-                                                .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
-                                                .build()
-                                )),
-                                new AnthropicMessage(USER, singletonList(
-                                        new AnthropicToolResultContent("12345", "4", null)
-                                ))
-                        )
-                ),
+                                new AnthropicMessage(
+                                        ASSISTANT,
+                                        asList(
+                                                new AnthropicTextContent(
+                                                        "<thinking>I need to use the calculator tool</thinking>"),
+                                                AnthropicToolUseContent.builder()
+                                                        .id("12345")
+                                                        .name("calculator")
+                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .build())),
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
                 Arguments.of(
                         asList(
                                 UserMessage.from("How much is 2+2 and 3+3?"),
@@ -134,76 +114,89 @@ class AnthropicMapperTest {
                                                 .id("67890")
                                                 .name("calculator")
                                                 .arguments("{\"first\": 3, \"second\": 3}")
-                                                .build()
-                                ),
+                                                .build()),
                                 ToolExecutionResultMessage.from("12345", "calculator", "4"),
-                                ToolExecutionResultMessage.from("67890", "calculator", "6")
-                        ),
+                                ToolExecutionResultMessage.from("67890", "calculator", "6")),
                         asList(
-                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How much is 2+2 and 3+3?"))),
-                                new AnthropicMessage(ASSISTANT, asList(
-                                        AnthropicToolUseContent.builder()
-                                                .id("12345")
-                                                .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
-                                                .build(),
-                                        AnthropicToolUseContent.builder()
-                                                .id("67890")
-                                                .name("calculator")
-                                                .input(mapOf(entry("first", 3), entry("second", 3)))
-                                                .build()
-                                )),
-                                new AnthropicMessage(USER, asList(
-                                        new AnthropicToolResultContent("12345", "4", null),
-                                        new AnthropicToolResultContent("67890", "6", null)
-                                ))
-                        )
-                ),
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicTextContent("How much is 2+2 and 3+3?"))),
+                                new AnthropicMessage(
+                                        ASSISTANT,
+                                        asList(
+                                                AnthropicToolUseContent.builder()
+                                                        .id("12345")
+                                                        .name("calculator")
+                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .build(),
+                                                AnthropicToolUseContent.builder()
+                                                        .id("67890")
+                                                        .name("calculator")
+                                                        .input(mapOf(entry("first", 3), entry("second", 3)))
+                                                        .build())),
+                                new AnthropicMessage(
+                                        USER,
+                                        asList(
+                                                new AnthropicToolResultContent("12345", "4", null),
+                                                new AnthropicToolResultContent("67890", "6", null))))),
                 Arguments.of(
                         asList(
                                 UserMessage.from("How much is 2+2 and 3+3?"),
-                                AiMessage.from(
-                                        ToolExecutionRequest.builder()
-                                                .id("12345")
-                                                .name("calculator")
-                                                .arguments("{\"first\": 2, \"second\": 2}")
-                                                .build()
-                                ),
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("12345")
+                                        .name("calculator")
+                                        .arguments("{\"first\": 2, \"second\": 2}")
+                                        .build()),
                                 ToolExecutionResultMessage.from("12345", "calculator", "4"),
-                                AiMessage.from(
-                                        ToolExecutionRequest.builder()
-                                                .id("67890")
-                                                .name("calculator")
-                                                .arguments("{\"first\": 3, \"second\": 3}")
-                                                .build()
-                                ),
-                                ToolExecutionResultMessage.from("67890", "calculator", "6")
-                        ),
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("67890")
+                                        .name("calculator")
+                                        .arguments("{\"first\": 3, \"second\": 3}")
+                                        .build()),
+                                ToolExecutionResultMessage.from("67890", "calculator", "6")),
                         asList(
-                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("How much is 2+2 and 3+3?"))),
-                                new AnthropicMessage(ASSISTANT, singletonList(
-                                        AnthropicToolUseContent.builder()
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicTextContent("How much is 2+2 and 3+3?"))),
+                                new AnthropicMessage(
+                                        ASSISTANT,
+                                        singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
                                                 .input(mapOf(entry("first", 2), entry("second", 2)))
-                                                .build()
-                                )),
-                                new AnthropicMessage(USER, singletonList(
-                                        new AnthropicToolResultContent("12345", "4", null)
-                                )),
-                                new AnthropicMessage(ASSISTANT, singletonList(
-                                        AnthropicToolUseContent.builder()
+                                                .build())),
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicToolResultContent("12345", "4", null))),
+                                new AnthropicMessage(
+                                        ASSISTANT,
+                                        singletonList(AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
                                                 .input(mapOf(entry("first", 3), entry("second", 3)))
-                                                .build()
-                                )),
-                                new AnthropicMessage(USER, singletonList(
-                                        new AnthropicToolResultContent("67890", "6", null)
-                                ))
-                        )
-                )
-        );
+                                                .build())),
+                                new AnthropicMessage(
+                                        USER, singletonList(new AnthropicToolResultContent("67890", "6", null))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(ImageContent.from(
+                                Image.builder().url(URI.create(DICE_IMAGE_URL)).build()))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(ImageContent.from(Image.builder()
+                                .base64Data("base64data")
+                                .mimeType("image/jpeg")
+                                .build()))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicImageContent.fromBase64("image/jpeg", "base64data"))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(
+                                TextContent.from("Describe this image"),
+                                ImageContent.from(Image.builder()
+                                        .url(URI.create(DICE_IMAGE_URL))
+                                        .build()))),
+                        singletonList(new AnthropicMessage(
+                                USER,
+                                asList(
+                                        new AnthropicTextContent("Describe this image"),
+                                        AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))));
     }
 
     @ParameterizedTest
@@ -235,21 +228,16 @@ class AnthropicMapperTest {
                                         .properties(singletonMap("parameter", singletonMap("type", "string")))
                                         .required(singletonList("parameter"))
                                         .build())
-                                .build()
-                ),
+                                .build()),
                 Arguments.of(
-                        ToolSpecification.builder()
-                                .name("tool")
-                                .build(),
+                        ToolSpecification.builder().name("tool").build(),
                         AnthropicTool.builder()
                                 .name("tool")
                                 .inputSchema(AnthropicToolSchema.builder()
                                         .properties(emptyMap())
                                         .required(emptyList())
                                         .build())
-                                .build()
-                )
-        );
+                                .build()));
     }
 
     @SafeVarargs

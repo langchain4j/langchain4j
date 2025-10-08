@@ -11,15 +11,23 @@ public class ParsedAndRawResponse<R> {
     private final SuccessfulHttpResponse rawHttpResponse;
     private final ServerSentEvent rawServerSentEvent;
 
-    ParsedAndRawResponse(R parsedResponse, SuccessfulHttpResponse rawHttpResponse) {
+    protected ParsedAndRawResponse(R parsedResponse, SuccessfulHttpResponse rawHttpResponse) {
         this.parsedResponse = parsedResponse;
         this.rawHttpResponse = rawHttpResponse;
         this.rawServerSentEvent = null;
     }
 
-    ParsedAndRawResponse(R parsedResponse, ServerSentEvent rawServerSentEvent) {
+    protected ParsedAndRawResponse(R parsedResponse, ServerSentEvent rawServerSentEvent) {
         this.parsedResponse = parsedResponse;
         this.rawHttpResponse = null;
+        this.rawServerSentEvent = rawServerSentEvent;
+    }
+
+    protected ParsedAndRawResponse(R parsedResponse,
+                                   SuccessfulHttpResponse rawHttpResponse,
+                                   ServerSentEvent rawServerSentEvent) {
+        this.parsedResponse = parsedResponse;
+        this.rawHttpResponse = rawHttpResponse;
         this.rawServerSentEvent = rawServerSentEvent;
     }
 

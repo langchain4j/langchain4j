@@ -1,7 +1,9 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -320,5 +322,63 @@ class ToolExecutorTest {
         assertThatThrownBy(() -> toolExecutor.execute(request, "DEFAULT"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(expectedError);
+    }
+
+    @Test
+    void should_specify_tool_executor_as_lambda() {
+
+        ToolExecutor toolExecutor = (request, memoryId) -> "result";
+
+        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+    }
+
+    @Test
+    void should_specify_tool_executor_as_lambda_typed() {
+
+        ToolExecutor toolExecutor = (ToolExecutionRequest request, Object memoryId) -> "result";
+
+        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+    }
+
+    @Test
+    void should_specify_tool_executor_as_anonymous_class() {
+
+        ToolExecutor toolExecutor = new ToolExecutor() {
+
+            @Override
+            public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+                return "result";
+            }
+
+            public void dummyMethod() { // ensure anonymous class cannot be converted into lambda during refactoring
+            }
+        };
+
+        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+    }
+
+    @Test
+    void should_specify_tool_executor_with_context_as_anonymous_class() {
+
+        ToolExecutor toolExecutor = new ToolExecutor() {
+
+            @Override
+            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+                return ToolExecutionResult.builder()
+                        .resultText("result")
+                        .build();
+            }
+
+            @Override
+            public String execute(ToolExecutionRequest request, Object memoryId) {
+                return null;
+            }
+        };
+
+        assertThat(toolExecutor.execute(null, null)).isNull();
+        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
     }
 }
