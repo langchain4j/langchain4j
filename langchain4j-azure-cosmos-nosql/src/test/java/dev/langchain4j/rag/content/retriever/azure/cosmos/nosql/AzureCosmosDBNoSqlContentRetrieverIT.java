@@ -32,7 +32,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
-public class AzureCosmosDBNoSqlContentRetrieverIT {
+class AzureCosmosDBNoSqlContentRetrieverIT {
 
     private static final String DATABASE_NAME = "test_database_langchain_java";
     private static final String VECTOR_CONTAINER = "test_container_vector";

@@ -29,8 +29,6 @@ import org.slf4j.LoggerFactory;
 public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoSqlEmbeddingStore
         implements ContentRetriever {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureCosmosDBNoSqlContentRetriever.class);
-
     private final EmbeddingModel embeddingModel;
     private final AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType;
     private final int maxResults;
@@ -79,6 +77,65 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
         this.maxResults = builder.maxResults;
         this.minScore = builder.minScore;
         this.filter = builder.filter;
+    }
+
+    @Deprecated(forRemoval=true)
+    public AzureCosmosDBNoSqlContentRetriever(String endpoint,
+                                              AzureKeyCredential keyCredential,
+                                              TokenCredential tokenCredential,
+                                              EmbeddingModel embeddingModel,
+                                              String databaseName,
+                                              String containerName,
+                                              String partitionKeyPath,
+                                              IndexingPolicy indexingPolicy,
+                                              CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+                                              CosmosFullTextPolicy cosmosFullTextPolicy,
+                                              Integer vectorStoreThroughput,
+                                              AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
+                                              Integer maxResults,
+                                              Double minScore,
+                                              Filter filter) {
+        ensureNotNull(endpoint, "endpoint");
+        ensureTrue(
+                (keyCredential != null && tokenCredential == null)
+                        || (keyCredential == null && tokenCredential != null),
+                "either keyCredential or tokenCredential must be set");
+
+        if (keyCredential != null) {
+            this.initialize(
+                    endpoint,
+                    keyCredential,
+                    null,
+                    databaseName,
+                    containerName,
+                    partitionKeyPath,
+                    indexingPolicy,
+                    cosmosVectorEmbeddingPolicy,
+                    cosmosFullTextPolicy,
+                    vectorStoreThroughput,
+                    azureCosmosDBSearchQueryType,
+                    null);
+        } else {
+            this.initialize(
+                    endpoint,
+                    null,
+                    tokenCredential,
+                    databaseName,
+                    containerName,
+                    partitionKeyPath,
+                    indexingPolicy,
+                    cosmosVectorEmbeddingPolicy,
+                    cosmosFullTextPolicy,
+                    vectorStoreThroughput,
+                    azureCosmosDBSearchQueryType,
+                    null);
+        }
+
+        this.embeddingModel = embeddingModel;
+        this.azureCosmosDBSearchQueryType = azureCosmosDBSearchQueryType;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
+        this.filter = filter;
     }
 
     @Override
