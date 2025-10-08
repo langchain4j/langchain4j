@@ -72,7 +72,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Release versions: stable=${{ env.STABLE_VERSION }}, beta=${{ env.BETA_VERSION }}"
+          git commit -m "Release versions ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
 
       - name: Push release branch
         run: |
@@ -80,8 +80,8 @@ jobs:
 
       - name: Tag release
         run: |
-          git tag v${{ env.STABLE_VERSION }}
-          git push origin v${{ env.STABLE_VERSION }}
+          git tag ${{ env.STABLE_VERSION }}
+          git push origin ${{ env.STABLE_VERSION }}
 
       - name: release_core_and_parent
         run: |
