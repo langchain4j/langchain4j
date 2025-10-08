@@ -23,8 +23,6 @@ import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQue
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoSqlEmbeddingStore
         implements ContentRetriever {
@@ -79,22 +77,23 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
         this.filter = builder.filter;
     }
 
-    @Deprecated(forRemoval=true)
-    public AzureCosmosDBNoSqlContentRetriever(String endpoint,
-                                              AzureKeyCredential keyCredential,
-                                              TokenCredential tokenCredential,
-                                              EmbeddingModel embeddingModel,
-                                              String databaseName,
-                                              String containerName,
-                                              String partitionKeyPath,
-                                              IndexingPolicy indexingPolicy,
-                                              CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
-                                              CosmosFullTextPolicy cosmosFullTextPolicy,
-                                              Integer vectorStoreThroughput,
-                                              AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
-                                              Integer maxResults,
-                                              Double minScore,
-                                              Filter filter) {
+    @Deprecated(forRemoval = true)
+    public AzureCosmosDBNoSqlContentRetriever(
+            String endpoint,
+            AzureKeyCredential keyCredential,
+            TokenCredential tokenCredential,
+            EmbeddingModel embeddingModel,
+            String databaseName,
+            String containerName,
+            String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
+            Integer vectorStoreThroughput,
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
+            Integer maxResults,
+            Double minScore,
+            Filter filter) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue(
                 (keyCredential != null && tokenCredential == null)
