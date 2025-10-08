@@ -1,6 +1,7 @@
 name: new_release_core_and_parent
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
