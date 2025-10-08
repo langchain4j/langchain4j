@@ -35,6 +35,7 @@
     </scm>
 
     <properties>
+        <langchain4j.beta.version>1.8.0-beta15-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
