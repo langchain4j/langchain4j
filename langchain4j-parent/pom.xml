@@ -35,6 +35,7 @@
     </scm>
 
     <properties>
+        <langchain4j.beta.version>1.8.0-beta15-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
@@ -66,7 +67,6 @@
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
-        <langchain4j-embeddings.version>1.8.0-beta15-SNAPSHOT</langchain4j-embeddings.version>
         <log4j.version>2.24.3</log4j.version>
         <logback.version>1.5.18</logback.version>
         <milvus-sdk-java.version>2.5.9</milvus-sdk-java.version>
@@ -128,7 +128,7 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-                <version>${langchain4j-embeddings.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -678,7 +678,10 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
-                    <autoPublish>false</autoPublish>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                    <!-- waitMaxTime is specified in seconds-->
+                    <waitMaxTime>1800</waitMaxTime>
                 </configuration>
             </plugin>
 
