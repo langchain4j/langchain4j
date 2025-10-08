@@ -9,12 +9,6 @@ on:
       betaVersion:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
-      nextStableVersion:
-        description: "Next stable version (e.g. 1.9.0-SNAPSHOT)"
-        required: true
-      nextBetaVersion:
-        description: "Next beta version (e.g. 1.9.0-beta16-SNAPSHOT)"
-        required: true
 
 jobs:
 
