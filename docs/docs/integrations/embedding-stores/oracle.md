@@ -12,7 +12,7 @@ the [AI Vector Search Feature](https://docs.oracle.com/en/database/oracle/oracle
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-oracle</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>0.0.6-test-beta14</version>
 
 </dependency>
 ```

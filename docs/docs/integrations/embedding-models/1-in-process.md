@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>0.0.6-test-beta14</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>0.0.6-test-beta14</version>
 </dependency>
 ```
 ```java
@@ -73,7 +73,7 @@ Example of using custom embedding model:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>0.0.6-test-beta14</version>
 </dependency>
 ```
 ```java
