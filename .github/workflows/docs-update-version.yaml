@@ -73,5 +73,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/docs
-          git commit -m "Update versions in documentation to ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
+          git commit -m "docu: update versions to ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
           git push origin "${{ steps.create-branch.outputs.branch }}"
+
+      - name: Trigger docu redeployment
+        if: steps.git-check.outputs.changed == 'true'
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
+          repository: langchain4j/langchain4j
+          event-type: trigger-docu-redeployment

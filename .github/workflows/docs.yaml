@@ -1,10 +1,8 @@
 name: Build and Publish Docs to GitHub Pages
 
 on:
-  release:
-    types:
-      - created
-  # Allow running this workflow manually from the Actions tab
+  repository_dispatch:
+    types: [ trigger-docu-redeployment ]
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
