@@ -24,30 +24,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java for Maven
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Extract current stable SNAPSHOT version from POM property
-        id: extract-stable-snapshot-version
+      - name: Extract current stable and beta versions from docs metadata
+        id: extract-current-versions
         run: |
-          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
-          echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
-
-      - name: Extract current beta SNAPSHOT version from POM property
-        id: extract-beta-snapshot-version
-        run: |
-          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
-          echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
-
-      - name: Show extracted versions
-        run: |
-          echo "Current stable version in docs: ${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }}"
-          echo "Current beta version in docs: ${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }}"
-          echo "New stable version: ${{ env.STABLE_VERSION }}"
-          echo "New beta version: ${{ env.BETA_VERSION }}"
+          STABLE_CURRENT=$(grep -E "^stableVersion:" docs/docs/get-started.md | sed 's/stableVersion: *//')
+          BETA_CURRENT=$(grep -E "^betaVersion:" docs/docs/get-started.md | sed 's/betaVersion: *//')
+          echo "stableCurrent=$STABLE_CURRENT" >> $GITHUB_OUTPUT
+          echo "betaCurrent=$BETA_CURRENT" >> $GITHUB_OUTPUT
+          echo "Found stable version in docs: $STABLE_CURRENT"
+          echo "Found beta version in docs: $BETA_CURRENT"
 
       - name: Create new branch
         id: create-branch
@@ -56,15 +41,22 @@ jobs:
           git checkout -b "$BRANCH_NAME"
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
-      - name: Replace stable versions in documentation
+      - name: Replace versions in docs recursively
         run: |
-          find docs/docs -type f \( -name "*.md" -o -name "*.xml" -o -name "*.gradle" \) -print0 | \
-          xargs -0 sed -i "s/${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }}/${{ env.STABLE_VERSION }}/g"
+          echo "Replacing all occurrences of stable and beta versions recursively under docs/docs/..."
+          
+          # Replace stable versions
+          grep -rl "${{ steps.extract-current-versions.outputs.stableCurrent }}" docs/docs | \
+            xargs sed -i "s/${{ steps.extract-current-versions.outputs.stableCurrent }}/${{ env.STABLE_VERSION }}/g" || true
 
-      - name: Replace beta versions in documentation
+          # Replace beta versions
+          grep -rl "${{ steps.extract-current-versions.outputs.betaCurrent }}" docs/docs | \
+            xargs sed -i "s/${{ steps.extract-current-versions.outputs.betaCurrent }}/${{ env.BETA_VERSION }}/g" || true
+
+      - name: Update metadata in get-started.md
         run: |
-          find docs/docs -type f \( -name "*.md" -o -name "*.xml" -o -name "*.gradle" \) -print0 | \
-          xargs -0 sed -i "s/${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }}/${{ env.BETA_VERSION }}/g"
+          sed -i "s/stableVersion: .*/stableVersion: ${{ env.STABLE_VERSION }}/" docs/docs/get-started.md
+          sed -i "s/betaVersion: .*/betaVersion: ${{ env.BETA_VERSION }}/" docs/docs/get-started.md
 
       - name: Check if any changes were made
         id: git-check
