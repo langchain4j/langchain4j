@@ -15,3 +15,7 @@ jobs:
       - name: Build and run
         run: |
           mvn -pl internal/langchain4j-docu-chatbot-updater clean compile exec:java
+        env:
+          GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
+          MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
+          MILVUS_URI: ${{ secrets.MILVUS_URI }}
