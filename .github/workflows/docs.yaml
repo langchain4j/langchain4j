@@ -2,7 +2,7 @@ name: "Documentation: build and deploy"
 
 on:
   repository_dispatch:
-    types: [ trigger-docu-redeployment ]
+    types: [ trigger-docs-build-and-deploy ]
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
