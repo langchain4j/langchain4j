@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.0.10-test-beta10</version>
+    <version>1.8.0-beta15-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -109,6 +109,7 @@
         <module>langchain4j-agentic-a2a</module>
 
         <!-- integration tests -->
+        <module>integration-tests</module>
 
         <!-- internal -->
         <module>internal/langchain4j-docu-chatbot-updater</module>
@@ -116,8 +117,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>0.0.10-test</langchain4j.stable.version>
-        <langchain4j.beta.version>0.0.10-test-beta10</langchain4j.beta.version>
+        <langchain4j.stable.version>1.8.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.8.0-beta15-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
