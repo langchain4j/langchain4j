@@ -1,5 +1,7 @@
 ---
 sidebar_position: 5
+stableVersion: 1.7.1
+betaVersion: 1.7.1-beta14
 ---
 
 # Get Started
