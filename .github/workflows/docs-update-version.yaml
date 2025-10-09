@@ -1,0 +1,85 @@
+name: Update Versions in Documentation
+
+on:
+  repository_dispatch:
+    types: [ trigger-release ]
+  workflow_dispatch:
+    inputs:
+      stableVersion:
+        description: "Stable release version (e.g., 1.8.0)"
+        required: true
+      betaVersion:
+        description: "Beta release version (e.g., 1.8.0-beta15)"
+        required: true
+
+env:
+  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
+  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java for Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Extract current stable SNAPSHOT version from POM property
+        id: extract-stable-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
+          echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Extract current beta SNAPSHOT version from POM property
+        id: extract-beta-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
+          echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Show extracted versions
+        run: |
+          echo "Current stable version in docs: ${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }}"
+          echo "Current beta version in docs: ${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }}"
+          echo "New stable version: ${{ env.STABLE_VERSION }}"
+          echo "New beta version: ${{ env.BETA_VERSION }}"
+
+      - name: Create new branch
+        id: create-branch
+        run: |
+          BRANCH_NAME="update-docs-versions-${{ env.STABLE_VERSION }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Replace stable versions in documentation
+        run: |
+          find docs/docs -type f \( -name "*.md" -o -name "*.xml" -o -name "*.gradle" \) -print0 | \
+          xargs -0 sed -i "s/${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }}/${{ env.STABLE_VERSION }}/g"
+
+      - name: Replace beta versions in documentation
+        run: |
+          find docs/docs -type f \( -name "*.md" -o -name "*.xml" -o -name "*.gradle" \) -print0 | \
+          xargs -0 sed -i "s/${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }}/${{ env.BETA_VERSION }}/g"
+
+      - name: Check if any changes were made
+        id: git-check
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/docs
+          git commit -m "Update versions in documentation to ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
+          git push origin "${{ steps.create-branch.outputs.branch }}"
