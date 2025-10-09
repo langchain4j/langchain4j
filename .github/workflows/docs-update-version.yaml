@@ -1,4 +1,4 @@
-name: Update Versions in Documentation
+name: "Documentation: update versions"
 
 on:
   repository_dispatch:

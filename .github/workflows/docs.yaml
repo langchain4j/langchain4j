@@ -1,4 +1,4 @@
-name: Build and Publish Docs to GitHub Pages
+name: "Documentation: build and deploy"
 
 on:
   repository_dispatch:
