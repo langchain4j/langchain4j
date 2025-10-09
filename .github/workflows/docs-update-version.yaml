@@ -2,7 +2,7 @@ name: "Documentation: update versions"
 
 on:
   repository_dispatch:
-    types: [ trigger-release ]
+    types: [ trigger-docs-update-version ]
   workflow_dispatch:
     inputs:
       stableVersion:
@@ -76,3 +76,11 @@ jobs:
           token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
           repository: langchain4j/langchain4j
           event-type: trigger-docs-build-and-deploy
+
+      - name: Trigger documentation chatbot update
+        if: steps.git-check.outputs.changed == 'true'
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
+          repository: langchain4j/langchain4j
+          event-type: trigger-docs-update-chatbot

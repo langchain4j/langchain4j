@@ -1,6 +1,8 @@
 name: "Documentation: update chatbot"
 
 on:
+  repository_dispatch:
+    types: [ trigger-docs-update-chatbot ]
   workflow_dispatch:
 
 jobs:
