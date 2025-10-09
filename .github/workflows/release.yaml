@@ -60,7 +60,7 @@ jobs:
             -DskipTests -DskipITs -DskipAnthropicITs \
             -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
             -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
-            -pl !langchain4j-core,!langchain4j-parent \
+            -pl !langchain4j-core,!langchain4j-parent,!internal/langchain4j-docu-chatbot-updater \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
