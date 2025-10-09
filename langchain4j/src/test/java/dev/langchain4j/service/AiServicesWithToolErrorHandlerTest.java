@@ -16,6 +16,17 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
     }
 
     @Override
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException e, AiServices<?> aiServiceBuilder) {
+        class Tools {
+            @Tool
+            String getWeatherThrowingExceptionWithoutMessage(String ignored) {
+                throw e;
+            }
+        }
+        aiServiceBuilder.tools(new Tools());
+    }
+
+    @Override
     protected void configureGetWeatherTool(AiServices<?> aiServiceBuilder) {
         class Tools {
             @Tool

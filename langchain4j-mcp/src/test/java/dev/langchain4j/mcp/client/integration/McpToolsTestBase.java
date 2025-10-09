@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
 
+import java.time.Duration;
+import java.util.Map;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -24,8 +26,6 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import java.time.Duration;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -38,7 +38,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(11);
+        assertThat(tools).hasSize(12);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -193,6 +193,11 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     @Override
     protected void configureGetWeatherThrowingExceptionTool(RuntimeException ignored, AiServices<?> aiServiceBuilder) {
         aiServiceBuilder.toolProvider(createMcpToolProvider());
+    }
+
+    @Override
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException ignored, AiServices<?> aiServiceBuilder) {
+        configureGetWeatherThrowingExceptionTool(ignored, aiServiceBuilder);
     }
 
     @Override

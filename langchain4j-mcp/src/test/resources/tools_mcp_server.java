@@ -87,6 +87,11 @@ public class tools_mcp_server {
     }
 
     @Tool
+    public ToolResponse getWeatherThrowingExceptionWithoutMessage(String arg0) {
+        return new ToolResponse(true, List.of());
+    }
+
+    @Tool
     public String getWeather(String arg0) {
         return "Sunny";
     }

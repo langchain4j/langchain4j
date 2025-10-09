@@ -26,6 +26,8 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
     protected abstract void configureGetWeatherThrowingExceptionTool(RuntimeException e, AiServices<?> aiServiceBuilder);
 
+    protected abstract void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException e, AiServices<?> aiServiceBuilder);
+
     protected abstract void configureGetWeatherTool(AiServices<?> aiServiceBuilder);
 
     interface Assistant {
@@ -67,6 +69,45 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
                 && toolResult.text().equals(toolErrorMessage)));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(boolean executeToolsConcurrently) {
+
+        // given
+        RuntimeException exceptionWithoutMessage = new RuntimeException();
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getWeatherThrowingExceptionWithoutMessage")
+                .arguments("{\"arg0\":\"Munich\"}")
+                .build();
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the weather")
+        ));
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
+
+        configureGetWeatherThrowingExceptionWithoutMessageTool(exceptionWithoutMessage, assistantBuilder);
+
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assistant.chat("What is the weather in Munich?");
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals("java.lang.RuntimeException")));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
