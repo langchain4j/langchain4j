@@ -1,4 +1,4 @@
-name: "Documentation: update documentation chatbot"
+name: "Documentation: update chatbot"
 
 on:
   workflow_dispatch:
