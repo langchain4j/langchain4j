@@ -104,6 +104,13 @@ jobs:
               "nextBetaVersion": "${{ env.NEXT_BETA_VERSION }}"
             }
 
+      - name: Trigger SNAPSHOT release for core and parent modules
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
+          repository: langchain4j/langchain4j
+          event-type: trigger-snapshot-release-core-and-parent
+
       - name: Trigger the same job in the langchain4j-spring repo
         uses: peter-evans/repository-dispatch@v4
         with:
