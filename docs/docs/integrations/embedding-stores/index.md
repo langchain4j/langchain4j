@@ -34,3 +34,4 @@ sidebar_position: 0
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
 | [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅               |                            | ✅                  |
+| [YugabyteDB](/integrations/embedding-stores/yugabytedb)                               | ✅                | ✅                          | ✅                   |
