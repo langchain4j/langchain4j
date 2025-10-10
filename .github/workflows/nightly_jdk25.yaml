@@ -85,7 +85,7 @@ jobs:
           mvn -B -U verify \
             -pl "${modules}" -am \
             --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipJlamaITs \
             -Dmaven.test.failure.ignore=true \
             -Dtinylog.writer.level=info
 

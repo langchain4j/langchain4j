@@ -16,6 +16,7 @@
         <jlama.version>0.8.4</jlama.version>
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
+        <skipJlamaITs>false</skipJlamaITs>
     </properties>
 
     <dependencies>
@@ -104,6 +105,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
+                    <skipTests>${skipJlamaITs}</skipTests>
                     <forkCount>1</forkCount>
                     <argLine>--add-modules=jdk.incubator.vector
                         --add-exports java.base/sun.nio.ch=ALL-UNNAMED
