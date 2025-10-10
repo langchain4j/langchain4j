@@ -53,7 +53,7 @@ jobs:
         run: mvn versions:set -DnewVersion=${{ env.STABLE_VERSION }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }}
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }} -DgenerateBackupPoms=false
 
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
@@ -65,7 +65,7 @@ jobs:
         run: mvn versions:set -DnewVersion=${{ env.BETA_VERSION }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }}
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }} -DgenerateBackupPoms=false
 
       - name: Remove integration-tests module from root POM
         run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
