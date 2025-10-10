@@ -41,12 +41,10 @@ abstract class WatsonxChat {
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
     protected final Set<Capability> supportedCapabilities;
-    protected final ExtractionTags tags;
 
     protected WatsonxChat(Builder<?> builder) {
         listeners = copy(builder.listeners);
         supportedCapabilities = copy(builder.supportedCapabilities);
-        tags = builder.tags;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -65,6 +63,7 @@ abstract class WatsonxChat {
         var projectId = getOrDefault(builder.projectId, watsonxParameters.projectId());
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
         var timeLimit = getOrDefault(builder.timeLimit, watsonxParameters.timeLimit());
+        var tags = getOrDefault(builder.tags, watsonxParameters.thinking());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
                 // Common parameters
@@ -87,6 +86,7 @@ abstract class WatsonxChat {
                 .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
                 .timeLimit(timeLimit)
+                .thinking(tags)
                 .build();
 
         var chatServiceBuilder = ChatService.builder();
@@ -98,7 +98,7 @@ abstract class WatsonxChat {
         }
 
         chatService = chatServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.url)
                 .modelId(modelName)
                 .version(builder.version)
                 .projectId(projectId)
@@ -114,7 +114,8 @@ abstract class WatsonxChat {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
 
-    boolean isThinkingActivable(List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
+    boolean isThinkingActivable(ExtractionTags tags, List<ChatMessage> messages, List<ToolSpecification> tools)
+            throws LangChain4jException {
         if (isNull(tags)) return false;
 
         if (!isNullOrEmpty(tools))

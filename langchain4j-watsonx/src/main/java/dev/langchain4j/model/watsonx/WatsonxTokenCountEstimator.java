@@ -52,7 +52,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
         }
 
         tokenizationService = tokenizationServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.url)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)

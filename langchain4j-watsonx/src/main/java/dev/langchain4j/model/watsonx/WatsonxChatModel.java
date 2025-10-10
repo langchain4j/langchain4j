@@ -10,6 +10,7 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -67,10 +68,13 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 : null;
 
         var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        ExtractionTags tags = null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp
+                && isThinkingActivable(wcrp.thinking(), chatRequest.messages(), toolSpecifications)) {
             messages.add(THINKING);
-            watsonxChatRequest.thinking(tags);
+            watsonxChatRequest.thinking(wcrp.thinking());
+            tags = wcrp.thinking();
         }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
