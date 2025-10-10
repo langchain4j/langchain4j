@@ -56,24 +56,28 @@ jobs:
           echo "currentBetaVersion=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update stable versions
-        run: mvn versions:set \
+        run: |
+          mvn versions:set \
           -DnewVersion=${{ env.NEXT_STABLE_VERSION }} \
           -DoldVersion=${{ steps.extract-current-stable.outputs.currentStableVersion }} \
           -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property \
+        run: |
+          mvn versions:set-property \
           -Dproperty=langchain4j.stable.version \
           -DnewVersion=${{ env.NEXT_STABLE_VERSION }}
 
       - name: Update beta versions
-        run: mvn versions:set \
+        run: |
+          mvn versions:set \
           -DnewVersion=${{ env.NEXT_BETA_VERSION }} \
           -DoldVersion=${{ steps.extract-current-beta.outputs.currentBetaVersion }} \
           -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property \
+        run: |
+          mvn versions:set-property \
           -Dproperty=langchain4j.beta.version \
           -DnewVersion=${{ env.NEXT_BETA_VERSION }}
 
