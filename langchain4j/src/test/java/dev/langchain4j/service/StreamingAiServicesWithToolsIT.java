@@ -63,9 +63,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
+
+    Logger log = LoggerFactory.getLogger(StreamingAiServicesWithToolsIT.class);
 
     static Stream<StreamingChatModel> models() {
         return Stream.of(OpenAiStreamingChatModel.builder()
@@ -262,6 +266,12 @@ class StreamingAiServicesWithToolsIT {
         inOrder2.verify(handler).onToolExecuted(argThat(te -> te.request().name().equals("getCurrentTemperature")));
 
         // then
+        log.info("should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) allThreadsByMethod: {}",
+                executor, handler.allThreadsByMethod);
+        log.info("should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) beforeToolExecutionThreads: {}",
+                executor, handler.beforeToolExecutionThreads);
+        log.info("should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) onToolExecutedThreads: {}",
+                executor, handler.onToolExecutedThreads);
         assertThat(handler.allThreads).hasSize(3); // 1 for handler, 2 for tools
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
