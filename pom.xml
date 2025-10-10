@@ -114,6 +114,9 @@
         <!-- internal -->
         <module>internal/langchain4j-docu-chatbot-updater</module>
 
+        <!-- observability -->
+        <module>langchain4j-micrometer</module>
+
     </modules>
 
     <properties>
