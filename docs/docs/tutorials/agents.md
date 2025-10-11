@@ -958,7 +958,7 @@ CreditAgent creditAgent = AgenticServices
         .tools(bankTool)
         .build();
 
-ExchangeAgent exchange = AgenticServices
+ExchangeAgent exchangeAgent = AgenticServices
         .agentBuilder(ExchangeAgent.class)
         .chatModel(BASE_MODEL)
         .tools(new ExchangeTool())
