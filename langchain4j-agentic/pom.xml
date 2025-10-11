@@ -11,6 +11,11 @@
     <artifactId>langchain4j-agentic</artifactId>
     <name>LangChain4j :: Agentic Framework</name>
 
+    <properties>
+        <jsoup.version>1.18.3</jsoup.version>
+        <pdfbox.version>3.0.5</pdfbox.version>
+    </properties>
+
     <developers>
         <developer>
             <id>mariofusco</id>
@@ -36,6 +41,25 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
             <version>1.8.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>${jsoup.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
