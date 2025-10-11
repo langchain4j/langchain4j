@@ -71,7 +71,7 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void sequential_agents_using_declrative_api_tests() {
+    void sequential_agents_using_declarative_api_tests() {
         check_sequential_agents(true);
     }
 
@@ -691,7 +691,7 @@ public class WorkflowAgentsIT {
         List<String> findMeal(@V("mood") String mood);
     }
 
-    public interface MovieExperttWithNotification {
+    public interface MovieExpertWithNotification {
 
         @UserMessage("""
             You are a great evening planner.
@@ -718,7 +718,7 @@ public class WorkflowAgentsIT {
                 .outputName("meals")
                 .build();
 
-        MovieExperttWithNotification movieExpert = AgenticServices.agentBuilder(MovieExperttWithNotification.class)
+        MovieExpertWithNotification movieExpert = AgenticServices.agentBuilder(MovieExpertWithNotification.class)
                 .chatModel(baseModel())
                 .tools(new NotificationTool(moviesDone))
                 .async(true)
