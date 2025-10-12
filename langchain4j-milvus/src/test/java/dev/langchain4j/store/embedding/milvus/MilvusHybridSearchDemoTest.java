@@ -1,11 +1,9 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import io.milvus.v2.common.ConsistencyLevel;
@@ -70,6 +68,7 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field")
                 .sparseVectorFieldName("sparse_vector_field")
+                .sparseMode(MilvusEmbeddingStore.MilvusSparseMode.CUSTOM)
                 .build();
     }
 
@@ -105,9 +104,9 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
         embeddingStore.addAll(denseEmbeddings, textSegments);
 
         // when - dense search (searchMode = 0)
-        EmbeddingSearchRequest denseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest denseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbedding)
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(5)
                 .build();
 
@@ -132,15 +131,15 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
     void should_perform_sparse_search_like_docs_example() {
         // given - similar to the sparse_search function in the docs
         SparseEmbedding querySparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L, 7L, 9L), Arrays.asList(0.1f, 0.3f, 0.5f, 0.7f, 0.9f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L, 7L, 9L}, new float[]{0.1f, 0.3f, 0.5f, 0.7f, 0.9f});
 
         // Add documents with sparse embeddings
         List<SparseEmbedding> sparseEmbeddings = Arrays.asList(
-                new SparseEmbedding(Arrays.asList(1L, 3L), Arrays.asList(0.1f, 0.3f)),
-                new SparseEmbedding(Arrays.asList(5L, 7L), Arrays.asList(0.5f, 0.7f)),
-                new SparseEmbedding(Arrays.asList(2L, 4L), Arrays.asList(0.2f, 0.4f)),
-                new SparseEmbedding(Arrays.asList(6L, 8L), Arrays.asList(0.6f, 0.8f)),
-                new SparseEmbedding(Arrays.asList(1L, 5L), Arrays.asList(0.1f, 0.5f)));
+                new SparseEmbedding(new long[]{1L, 3L}, new float[]{0.1f, 0.3f}),
+                new SparseEmbedding(new long[]{5L, 7L}, new float[]{0.5f, 0.7f}),
+                new SparseEmbedding(new long[]{2L, 4L}, new float[]{0.2f, 0.4f}),
+                new SparseEmbedding(new long[]{6L, 8L}, new float[]{0.6f, 0.8f}),
+                new SparseEmbedding(new long[]{1L, 5L}, new float[]{0.1f, 0.5f}));
 
         List<TextSegment> textSegments = Arrays.asList(
                 TextSegment.from("What is Java programming? How To Learn Java Programming Language?"),
@@ -153,9 +152,9 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 Arrays.asList("sparse1", "sparse2", "sparse3", "sparse4", "sparse5"), sparseEmbeddings, textSegments);
 
         // when - sparse search (searchMode = 1)
-        EmbeddingSearchRequest sparseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest sparseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(querySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(5)
                 .build();
 
@@ -172,7 +171,7 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
         String query = "How to start learning programming?";
         Embedding queryDenseEmbedding = embeddingModel.embed(query).content();
         SparseEmbedding querySparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L, 7L), Arrays.asList(0.1f, 0.3f, 0.5f, 0.7f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L, 7L}, new float[]{0.1f, 0.3f, 0.5f, 0.7f});
 
         // Add documents with both dense and sparse embeddings
         List<Embedding> denseEmbeddings = Arrays.asList(
@@ -189,11 +188,11 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 embeddingModel.embed("How can you make physics easy to learn?").content());
 
         List<SparseEmbedding> sparseEmbeddings = Arrays.asList(
-                new SparseEmbedding(Arrays.asList(1L, 3L), Arrays.asList(0.1f, 0.3f)),
-                new SparseEmbedding(Arrays.asList(5L, 7L), Arrays.asList(0.5f, 0.7f)),
-                new SparseEmbedding(Arrays.asList(2L, 4L), Arrays.asList(0.2f, 0.4f)),
-                new SparseEmbedding(Arrays.asList(6L, 8L), Arrays.asList(0.6f, 0.8f)),
-                new SparseEmbedding(Arrays.asList(1L, 5L), Arrays.asList(0.1f, 0.5f)));
+                new SparseEmbedding(new long[]{1L, 3L}, new float[]{0.1f, 0.3f}),
+                new SparseEmbedding(new long[]{5L, 7L}, new float[]{0.5f, 0.7f}),
+                new SparseEmbedding(new long[]{2L, 4L}, new float[]{0.2f, 0.4f}),
+                new SparseEmbedding(new long[]{6L, 8L}, new float[]{0.6f, 0.8f}),
+                new SparseEmbedding(new long[]{1L, 5L}, new float[]{0.1f, 0.5f}));
 
         List<TextSegment> textSegments = Arrays.asList(
                 TextSegment.from("What is the best way to start robotics? Which is the best development board?"),
@@ -209,10 +208,10 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 textSegments);
 
         // when - hybrid search (searchMode = 2)
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryDenseEmbedding)
                 .sparseEmbedding(querySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(5)
                 .build();
 
@@ -229,7 +228,7 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
         String query = "How to start learning programming?";
         Embedding queryDenseEmbedding = embeddingModel.embed(query).content();
         SparseEmbedding querySparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L, 7L), Arrays.asList(0.1f, 0.3f, 0.5f, 0.7f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L, 7L}, new float[]{0.1f, 0.3f, 0.5f, 0.7f});
 
         // Add a comprehensive set of documents
         List<Embedding> denseEmbeddings = Arrays.asList(
@@ -257,16 +256,16 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                         .content());
 
         List<SparseEmbedding> sparseEmbeddings = Arrays.asList(
-                new SparseEmbedding(Arrays.asList(1L, 3L), Arrays.asList(0.1f, 0.3f)),
-                new SparseEmbedding(Arrays.asList(5L, 7L), Arrays.asList(0.5f, 0.7f)),
-                new SparseEmbedding(Arrays.asList(2L, 4L), Arrays.asList(0.2f, 0.4f)),
-                new SparseEmbedding(Arrays.asList(6L, 8L), Arrays.asList(0.6f, 0.8f)),
-                new SparseEmbedding(Arrays.asList(1L, 5L), Arrays.asList(0.1f, 0.5f)),
-                new SparseEmbedding(Arrays.asList(3L, 7L), Arrays.asList(0.3f, 0.7f)),
-                new SparseEmbedding(Arrays.asList(2L, 6L), Arrays.asList(0.2f, 0.6f)),
-                new SparseEmbedding(Arrays.asList(4L, 8L), Arrays.asList(0.4f, 0.8f)),
-                new SparseEmbedding(Arrays.asList(1L, 7L), Arrays.asList(0.1f, 0.7f)),
-                new SparseEmbedding(Arrays.asList(3L, 5L), Arrays.asList(0.3f, 0.5f)));
+                new SparseEmbedding(new long[]{1L, 3L}, new float[]{0.1f, 0.3f}),
+                new SparseEmbedding(new long[]{5L, 7L}, new float[]{0.5f, 0.7f}),
+                new SparseEmbedding(new long[]{2L, 4L}, new float[]{0.2f, 0.4f}),
+                new SparseEmbedding(new long[]{6L, 8L}, new float[]{0.6f, 0.8f}),
+                new SparseEmbedding(new long[]{1L, 5L}, new float[]{0.1f, 0.5f}),
+                new SparseEmbedding(new long[]{3L, 7L}, new float[]{0.3f, 0.7f}),
+                new SparseEmbedding(new long[]{2L, 6L}, new float[]{0.2f, 0.6f}),
+                new SparseEmbedding(new long[]{4L, 8L}, new float[]{0.4f, 0.8f}),
+                new SparseEmbedding(new long[]{1L, 7L}, new float[]{0.1f, 0.7f}),
+                new SparseEmbedding(new long[]{3L, 5L}, new float[]{0.3f, 0.5f}));
 
         List<TextSegment> textSegments =
                 SAMPLE_DOCUMENTS.stream().limit(10).map(TextSegment::from).toList();
@@ -278,24 +277,24 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 textSegments);
 
         // when - perform all three types of searches
-        EmbeddingSearchRequest denseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest denseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryDenseEmbedding)
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(10)
                 .build();
         EmbeddingSearchResult<TextSegment> denseResults = embeddingStore.search(denseSearchRequest);
 
-        EmbeddingSearchRequest sparseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest sparseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(querySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(10)
                 .build();
         EmbeddingSearchResult<TextSegment> sparseResults = embeddingStore.search(sparseSearchRequest);
 
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryDenseEmbedding)
                 .sparseEmbedding(querySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
         EmbeddingSearchResult<TextSegment> hybridResults = embeddingStore.search(hybridSearchRequest);
@@ -325,12 +324,12 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
         // given
         String query = "How to start learning programming?";
         Embedding queryDenseEmbedding = embeddingModel.embed(query).content();
-        SparseEmbedding emptySparseEmbedding = new SparseEmbedding(Arrays.asList(), Arrays.asList());
+        SparseEmbedding emptySparseEmbedding = new SparseEmbedding(new long[]{}, new float[]{});
 
         // Add a document with both dense and empty sparse embedding
         Embedding denseEmbedding =
                 embeddingModel.embed("What is Java programming?").content();
-        SparseEmbedding sparseEmbedding = new SparseEmbedding(Arrays.asList(1L, 3L), Arrays.asList(0.1f, 0.3f));
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[]{1L, 3L}, new float[]{0.1f, 0.3f});
 
         embeddingStore.addAllHybrid(
                 Arrays.asList("test_id"),
@@ -339,10 +338,10 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
                 Arrays.asList(TextSegment.from("What is Java programming?")));
 
         // when - hybrid search with empty sparse embedding
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryDenseEmbedding)
                 .sparseEmbedding(emptySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(5)
                 .build();
 
@@ -383,9 +382,9 @@ class MilvusHybridSearchDemoTest implements WithAssertions {
         embeddingStore.addAll(denseEmbeddings, textSegments);
 
         // when
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbedding)
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(5)
                 .build();
 

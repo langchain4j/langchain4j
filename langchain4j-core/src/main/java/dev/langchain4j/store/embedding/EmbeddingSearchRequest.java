@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Objects;
@@ -18,11 +17,9 @@ import java.util.Objects;
 public class EmbeddingSearchRequest {
 
     private final Embedding queryEmbedding;
-    private final SparseEmbedding sparseEmbedding;
     private final int maxResults;
     private final double minScore;
     private final Filter filter;
-    private final EmbeddingSearchMode searchMode; // DENSE (default), SPARSE, HYBRID
 
     /**
      * Creates an instance of an EmbeddingSearchRequest.
@@ -44,27 +41,18 @@ public class EmbeddingSearchRequest {
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
-        this.sparseEmbedding = null;
-        this.searchMode = EmbeddingSearchMode.DENSE;
     }
 
-    /*
-     * @param searchMode     The search mode to be used. 0 - dense vector search, 1 - full-text search (sparse vector), 2 - hybrid search.
-     *                       This is an optional parameter. Default: 0
-     */
-    public EmbeddingSearchRequest(
-            Embedding queryEmbedding,
-            SparseEmbedding sparseEmbedding,
-            Integer maxResults,
-            Double minScore,
-            Filter filter,
-            EmbeddingSearchMode searchMode) {
-        this.queryEmbedding = queryEmbedding;
-        this.sparseEmbedding = sparseEmbedding;
+    /** This constructor is used when subclass (e.g., MilvusEmbeddingSearchRequest) needs to allow null queryEmbedding for sparse embedding only */
+    protected EmbeddingSearchRequest(Embedding queryEmbedding,
+                                     Integer maxResults,
+                                     Double minScore,
+                                     Filter filter,
+                                     boolean allowNullQueryEmbedding) {
+        this.queryEmbedding = allowNullQueryEmbedding ? queryEmbedding : ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
-        this.searchMode = getOrDefault(searchMode, EmbeddingSearchMode.DENSE);
     }
 
     public static EmbeddingSearchRequestBuilder builder() {
@@ -87,42 +75,30 @@ public class EmbeddingSearchRequest {
         return filter;
     }
 
-    public EmbeddingSearchMode searchMode() {
-        return searchMode;
-    }
-
-    public SparseEmbedding sparseEmbedding() {
-        return sparseEmbedding;
-    }
-
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof EmbeddingSearchRequest other)) return false;
         return this.maxResults == other.maxResults
                 && this.minScore == other.minScore
                 && Objects.equals(this.queryEmbedding, other.queryEmbedding)
-                && Objects.equals(this.filter, other.filter)
-                && this.searchMode == other.searchMode
-                && Objects.equals(this.sparseEmbedding, other.sparseEmbedding);
+                && Objects.equals(this.filter, other.filter);
     }
 
     public int hashCode() {
-        return Objects.hash(queryEmbedding, maxResults, minScore, filter, searchMode, sparseEmbedding);
+        return Objects.hash(queryEmbedding, maxResults, minScore, filter);
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", sparseEmbedding="
-                + this.sparseEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter="
-                + this.filter + ", searchMode=" + this.searchMode + ")";
+        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding
+                + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter="
+                + this.filter + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
         private Embedding queryEmbedding;
-        private SparseEmbedding sparseEmbedding;
         private Integer maxResults;
         private Double minScore;
         private Filter filter;
-        private EmbeddingSearchMode searchMode;
 
         EmbeddingSearchRequestBuilder() {}
 
@@ -146,24 +122,12 @@ public class EmbeddingSearchRequest {
             return this;
         }
 
-        public EmbeddingSearchRequestBuilder searchMode(EmbeddingSearchMode searchMode) {
-            this.searchMode = searchMode;
-            return this;
-        }
-
-        public EmbeddingSearchRequestBuilder sparseEmbedding(SparseEmbedding sparseEmbedding) {
-            this.sparseEmbedding = sparseEmbedding;
-            return this;
-        }
-
         public EmbeddingSearchRequest build() {
             return new EmbeddingSearchRequest(
                     this.queryEmbedding,
-                    this.sparseEmbedding,
                     this.maxResults,
                     this.minScore,
-                    this.filter,
-                    this.searchMode);
+                    this.filter);
         }
     }
 }

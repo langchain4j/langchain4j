@@ -6,9 +6,6 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.gson.JsonObject;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.IndexParam;
@@ -22,6 +19,7 @@ import io.milvus.v2.service.vector.request.HybridSearchReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.QueryReq;
 import io.milvus.v2.service.vector.request.SearchReq;
+import io.milvus.v2.service.vector.request.data.EmbeddedText;
 import io.milvus.v2.service.vector.request.data.FloatVec;
 import io.milvus.v2.service.vector.request.data.SparseFloatVec;
 import io.milvus.v2.service.vector.request.ranker.BaseRanker;
@@ -54,15 +52,15 @@ class CollectionRequestBuilder {
     }
 
     static SearchReq buildSearchRequest(
-            EmbeddingSearchRequest embeddingSearchRequest,
+            MilvusEmbeddingSearchRequest embeddingSearchRequest,
             String collectionName,
             FieldDefinition fieldDefinition,
             IndexParam.MetricType metricType,
             IndexParam.MetricType sparseMetricType,
             ConsistencyLevel consistencyLevel) {
-        EmbeddingSearchMode searchMode = embeddingSearchRequest.searchMode();
+        MilvusEmbeddingSearchMode searchMode = embeddingSearchRequest.searchMode();
 
-        if (Objects.equals(searchMode, EmbeddingSearchMode.DENSE)) {
+        if (Objects.equals(searchMode, MilvusEmbeddingSearchMode.DENSE)) {
             return createDenseSearchReq(
                     collectionName,
                     embeddingSearchRequest.queryEmbedding(),
@@ -72,19 +70,31 @@ class CollectionRequestBuilder {
                     embeddingSearchRequest.maxResults(),
                     embeddingSearchRequest.filter());
         } else {
-            return createSparseSearchReq(
-                    collectionName,
-                    embeddingSearchRequest.sparseEmbedding(),
-                    fieldDefinition,
-                    sparseMetricType,
-                    consistencyLevel,
-                    embeddingSearchRequest.maxResults(),
-                    embeddingSearchRequest.filter());
+            if(embeddingSearchRequest.sparseEmbedding() != null) {
+                return createSparseSearchReq(
+                        collectionName,
+                        embeddingSearchRequest.sparseEmbedding(),
+                        fieldDefinition,
+                        sparseMetricType,
+                        consistencyLevel,
+                        embeddingSearchRequest.maxResults(),
+                        embeddingSearchRequest.filter());
+            } else {
+                // Milvus auto-generated sparse embedding（BM25）
+                return createSparseSearchReq(
+                        collectionName,
+                        embeddingSearchRequest.sparseQueryText(),
+                        fieldDefinition,
+                        sparseMetricType,
+                        consistencyLevel,
+                        embeddingSearchRequest.maxResults(),
+                        embeddingSearchRequest.filter());
+            }
         }
     }
 
     static HybridSearchReq buildHybridSearchRequest(
-            EmbeddingSearchRequest embeddingSearchRequest,
+            MilvusEmbeddingSearchRequest embeddingSearchRequest,
             String collectionName,
             FieldDefinition fieldDefinition,
             IndexParam.MetricType metricType,
@@ -95,6 +105,7 @@ class CollectionRequestBuilder {
                 fieldDefinition,
                 embeddingSearchRequest.queryEmbedding(),
                 embeddingSearchRequest.sparseEmbedding(),
+                embeddingSearchRequest.sparseQueryText(),
                 metricType,
                 sparseMetricType,
                 embeddingSearchRequest.filter(),
@@ -130,6 +141,7 @@ class CollectionRequestBuilder {
         return builder.build();
     }
 
+    // This is the method for sparse search only with pre-computed sparse embedding
     static SearchReq createSparseSearchReq(
             String collectionName,
             SparseEmbedding sparseEmbedding,
@@ -141,6 +153,41 @@ class CollectionRequestBuilder {
         SearchReq.SearchReqBuilder builder = SearchReq.builder()
                 .collectionName(collectionName)
                 .data(Collections.singletonList(new SparseFloatVec(sparseEmbedding.vectorAsSortedMap())))
+                .annsField(fieldDefinition.getSparseVectorFieldName())
+                .metricType(metricType)
+                .consistencyLevel(consistencyLevel)
+                .topK(maxResults)
+                .outputFields(Arrays.asList(
+                        fieldDefinition.getIdFieldName(),
+                        fieldDefinition.getTextFieldName(),
+                        fieldDefinition.getMetadataFieldName()));
+
+        if (filter != null) {
+            builder.filter(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        }
+        return builder.build();
+    }
+
+    // This is the method for sparse search only with a query string - Milvus auto-computed sparse embedding (BM25)
+    static SearchReq createSparseSearchReq(
+            String collectionName,
+            String queryText,
+            FieldDefinition fieldDefinition,
+            IndexParam.MetricType metricType,
+            ConsistencyLevel consistencyLevel,
+            int maxResults,
+            Filter filter) {
+        if (metricType != IndexParam.MetricType.BM25) {
+            throw new IllegalArgumentException(
+                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in)."
+            );
+        }
+        if (queryText == null || queryText.isBlank()) {
+            throw new IllegalArgumentException("queryText must not be null or empty");
+        }
+        SearchReq.SearchReqBuilder builder = SearchReq.builder()
+                .collectionName(collectionName)
+                .data(Collections.singletonList(new EmbeddedText(queryText)))
                 .annsField(fieldDefinition.getSparseVectorFieldName())
                 .metricType(metricType)
                 .consistencyLevel(consistencyLevel)
@@ -174,6 +221,7 @@ class CollectionRequestBuilder {
         return builder.build();
     }
 
+    // This is the method for hybrid search with pre-computed sparse embedding
     static AnnSearchReq createSparseAnnSearchReq(
             FieldDefinition fieldDefinition,
             SparseEmbedding sparseEmbedding,
@@ -192,10 +240,39 @@ class CollectionRequestBuilder {
         return builder.build();
     }
 
+    // This is the method for hybrid search with a query string - Milvus auto-computed sparse embedding (BM25)
+    static AnnSearchReq createSparseAnnSearchReq(
+            FieldDefinition fieldDefinition,
+            String queryText,
+            IndexParam.MetricType metricType,
+            Filter filter,
+            int maxResults) {
+        if (metricType != IndexParam.MetricType.BM25) {
+            throw new IllegalArgumentException(
+                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in)."
+            );
+        }
+        if (queryText == null || queryText.isBlank()) {
+            throw new IllegalArgumentException("queryText must not be null or empty");
+        }
+        // Milvus auto-generated sparse embedding（BM25）
+        AnnSearchReq.AnnSearchReqBuilder builder = AnnSearchReq.builder()
+                .vectorFieldName(fieldDefinition.getSparseVectorFieldName())
+                .vectors(Collections.singletonList(new EmbeddedText(queryText)))
+                .metricType(metricType)
+                .topK(maxResults);
+
+        if (filter != null) {
+            builder.expr(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        }
+        return builder.build();
+    }
+
     static HybridSearchReq createHybridSearchReq(
             FieldDefinition fieldDefinition,
             Embedding denseEmbedding,
             SparseEmbedding sparseEmbedding,
+            String queryText,
             IndexParam.MetricType metricType,
             IndexParam.MetricType sparseMetricType,
             Filter filter,
@@ -205,8 +282,14 @@ class CollectionRequestBuilder {
             ConsistencyLevel consistencyLevel) {
         List<AnnSearchReq> searchRequests = new ArrayList<>();
         searchRequests.add(createDenseAnnSearchReq(fieldDefinition, denseEmbedding, metricType, filter, maxResults));
-        searchRequests.add(
-                createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filter, maxResults));
+        if(sparseEmbedding != null) {
+            searchRequests.add(
+                    createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filter, maxResults));
+        } else {
+            // Milvus auto-generated sparse embedding（BM25）
+            searchRequests.add(
+                    createSparseAnnSearchReq(fieldDefinition, queryText, sparseMetricType, filter, maxResults));
+        }
         return HybridSearchReq.builder()
                 .collectionName(collectionName)
                 .searchRequests(searchRequests)

@@ -1,4 +1,4 @@
-package dev.langchain4j.data.embedding;
+package dev.langchain4j.store.embedding.milvus;
 
 import java.util.Arrays;
 import java.util.List;
@@ -6,27 +6,27 @@ import java.util.SortedMap;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-class SparseEmbeddingTest implements WithAssertions {
+class MilvusSparseEmbeddingTest implements WithAssertions {
 
     @Test
     void should_create_sparse_embedding() {
         // given
-        List<Long> indices = Arrays.asList(1L, 3L, 5L);
-        List<Float> values = Arrays.asList(0.1f, 0.3f, 0.5f);
+        long[] indices = {1L, 3L, 5L};
+        float[] values = {0.1f, 0.3f, 0.5f};
 
         // when
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // then
-        assertThat(sparseEmbedding.getIndices()).isEqualTo(indices);
-        assertThat(sparseEmbedding.getValues()).isEqualTo(values);
+        assertThat(sparseEmbedding.getIndices()).isEqualTo(new long[]{1L, 3L, 5L});
+        assertThat(sparseEmbedding.getValues()).isEqualTo(new float[]{0.1f, 0.3f, 0.5f});
     }
 
     @Test
     void should_throw_exception_when_indices_and_values_have_different_sizes() {
         // given
-        List<Long> indices = Arrays.asList(1L, 3L);
-        List<Float> values = Arrays.asList(0.1f, 0.3f, 0.5f);
+        long[] indices = {1L, 2L};
+        float[] values = {0.1f, 0.2f, 0.3f};
 
         // when & then
         assertThatThrownBy(() -> new SparseEmbedding(indices, values))
@@ -37,8 +37,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_throw_exception_when_indices_and_values_have_different_sizes_reversed() {
         // given
-        List<Long> indices = Arrays.asList(1L, 3L, 5L);
-        List<Float> values = Arrays.asList(0.1f, 0.3f);
+        long[] indices = {1L, 2L, 3L};
+        float[] values = {0.1f, 0.2f};
 
         // when & then
         assertThatThrownBy(() -> new SparseEmbedding(indices, values))
@@ -49,8 +49,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_create_sorted_map_from_sparse_embedding() {
         // given
-        List<Long> indices = Arrays.asList(5L, 1L, 3L);
-        List<Float> values = Arrays.asList(0.5f, 0.1f, 0.3f);
+        long[] indices = {5L, 1L, 3L};
+        float[] values = {0.5f, 0.1f, 0.3f};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when
@@ -69,8 +69,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_handle_empty_sparse_embedding() {
         // given
-        List<Long> indices = Arrays.asList();
-        List<Float> values = Arrays.asList();
+        long[] indices = {};
+        float[] values = {};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when
@@ -85,8 +85,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_handle_single_element_sparse_embedding() {
         // given
-        List<Long> indices = Arrays.asList(42L);
-        List<Float> values = Arrays.asList(0.42f);
+        long[] indices = {42L};
+        float[] values = {0.42f};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when
@@ -100,8 +100,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_handle_duplicate_indices() {
         // given
-        List<Long> indices = Arrays.asList(1L, 1L, 2L);
-        List<Float> values = Arrays.asList(0.1f, 0.2f, 0.3f);
+        long[] indices = {1L, 1L, 2L};
+        float[] values = {0.1f, 0.2f, 0.3f};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when
@@ -116,8 +116,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_handle_negative_indices() {
         // given
-        List<Long> indices = Arrays.asList(-1L, 0L, 1L);
-        List<Float> values = Arrays.asList(-0.1f, 0.0f, 0.1f);
+        long[] indices = {-1L, 0L, 1L};
+        float[] values = {-0.1f, 0.0f, 0.1f};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when
@@ -136,8 +136,8 @@ class SparseEmbeddingTest implements WithAssertions {
     @Test
     void should_handle_large_indices() {
         // given
-        List<Long> indices = Arrays.asList(Long.MAX_VALUE, Long.MIN_VALUE, 0L);
-        List<Float> values = Arrays.asList(1.0f, -1.0f, 0.0f);
+        long[] indices = {Long.MAX_VALUE, Long.MIN_VALUE, 0L};
+        float[] values = {1.0f, -1.0f, 0.0f};
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // when

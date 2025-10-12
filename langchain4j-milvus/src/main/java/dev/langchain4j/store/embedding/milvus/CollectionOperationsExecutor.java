@@ -19,6 +19,7 @@ import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.response.InsertResp;
 import io.milvus.v2.service.vector.response.QueryResp;
 import io.milvus.v2.service.vector.response.SearchResp;
+import io.milvus.common.clientenum.FunctionType;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,8 @@ class CollectionOperationsExecutor {
     }
 
     static void createCollection(
-            MilvusClientV2 milvusClientV2, String collectionName, FieldDefinition fieldDefinition, int dimension) {
+            MilvusClientV2 milvusClientV2, String collectionName, FieldDefinition fieldDefinition,
+            int dimension, MilvusEmbeddingStore.MilvusSparseMode sparseMode) {
         try {
             List<CreateCollectionReq.FieldSchema> fields = List.of(
                     CreateCollectionReq.FieldSchema.builder()
@@ -76,9 +78,25 @@ class CollectionOperationsExecutor {
                             .dimension(dimension)
                             .build());
 
-            CreateCollectionReq.CollectionSchema schema = CreateCollectionReq.CollectionSchema.builder()
-                    .fieldSchemaList(fields)
-                    .build();
+            CreateCollectionReq.CollectionSchema schema = null;
+            if (sparseMode == MilvusEmbeddingStore.MilvusSparseMode.BM25) {
+                 List<CreateCollectionReq.Function> functions = List.of(
+                        CreateCollectionReq.Function.builder()
+                                .functionType(FunctionType.BM25)
+                                .name("bm25_text_to_sparse")
+                                .inputFieldNames(List.of(fieldDefinition.getTextFieldName()))
+                                .outputFieldNames(List.of(fieldDefinition.getSparseVectorFieldName()))
+                                .build()
+                );
+                schema = CreateCollectionReq.CollectionSchema.builder()
+                        .fieldSchemaList(fields)
+                        .functionList(functions)
+                        .build();
+            } else {
+                schema = CreateCollectionReq.CollectionSchema.builder()
+                        .fieldSchemaList(fields)
+                        .build();
+            }
 
             CreateCollectionReq req = CreateCollectionReq.builder()
                     .collectionName(collectionName)

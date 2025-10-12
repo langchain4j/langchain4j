@@ -1,16 +1,14 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import io.milvus.v2.common.ConsistencyLevel;
 import java.util.Arrays;
 import java.util.List;
+import io.milvus.v2.common.IndexParam;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +29,7 @@ import org.testcontainers.milvus.MilvusContainer;
  * Reference: https://milvus.io/docs/hybrid_search_with_milvus.md
  */
 @Testcontainers
-class MilvusBGE3ModelIntegrationTest implements WithAssertions {
+class MilvusBGE3ModelIT implements WithAssertions {
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
@@ -77,6 +75,7 @@ class MilvusBGE3ModelIntegrationTest implements WithAssertions {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field")
                 .sparseVectorFieldName("sparse_vector_field")
+                .sparseMode(MilvusEmbeddingStore.MilvusSparseMode.CUSTOM)
                 .build();
     }
 
@@ -126,16 +125,16 @@ class MilvusBGE3ModelIntegrationTest implements WithAssertions {
             // Create sparse indices and values based on text characteristics
             // This is a simplified simulation - real BGE-M3 would use learned sparse representations
             if (lowerText.contains("programming") || lowerText.contains("java") || lowerText.contains("computer")) {
-                return new SparseEmbedding(Arrays.asList(1L, 3L, 5L, 7L), Arrays.asList(0.8f, 0.6f, 0.4f, 0.2f));
+                return new SparseEmbedding(new long[]{1L, 3L, 5L, 7L}, new float[]{0.8f, 0.6f, 0.4f, 0.2f});
             } else if (lowerText.contains("robotics") || lowerText.contains("robot")) {
-                return new SparseEmbedding(Arrays.asList(2L, 4L, 6L, 8L), Arrays.asList(0.7f, 0.5f, 0.3f, 0.1f));
+                return new SparseEmbedding(new long[]{2L, 4L, 6L, 8L}, new float[]{0.7f, 0.5f, 0.3f, 0.1f});
             } else if (lowerText.contains("security") || lowerText.contains("information")) {
-                return new SparseEmbedding(Arrays.asList(3L, 5L, 7L, 9L), Arrays.asList(0.6f, 0.4f, 0.2f, 0.8f));
+                return new SparseEmbedding(new long[]{3L, 5L, 7L, 9L}, new float[]{0.6f, 0.4f, 0.2f, 0.8f});
             } else if (lowerText.contains("language") || lowerText.contains("speak") || lowerText.contains("french")) {
-                return new SparseEmbedding(Arrays.asList(4L, 6L, 8L, 10L), Arrays.asList(0.5f, 0.3f, 0.1f, 0.7f));
+                return new SparseEmbedding(new long[]{4L, 6L, 8L, 10L}, new float[]{0.5f, 0.3f, 0.1f, 0.7f});
             } else {
                 // Default sparse embedding for other topics
-                return new SparseEmbedding(Arrays.asList(1L, 2L, 3L, 4L), Arrays.asList(0.3f, 0.3f, 0.2f, 0.2f));
+                return new SparseEmbedding(new long[]{1L, 2L, 3L, 4L}, new float[]{0.3f, 0.3f, 0.2f, 0.2f});
             }
         }
     }
@@ -193,10 +192,10 @@ class MilvusBGE3ModelIntegrationTest implements WithAssertions {
         EmbeddingResult queryEmbeddings = bge3Model.generateEmbeddings(query);
 
         // Perform hybrid search (similar to the docs example)
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbeddings.getDenseEmbedding())
                 .sparseEmbedding(queryEmbeddings.getSparseEmbedding())
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(5)
                 .build();
 
@@ -250,26 +249,26 @@ class MilvusBGE3ModelIntegrationTest implements WithAssertions {
         EmbeddingResult queryEmbeddings = bge3Model.generateEmbeddings(query);
 
         // Dense search
-        EmbeddingSearchRequest denseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest denseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbeddings.getDenseEmbedding())
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(5)
                 .build();
         EmbeddingSearchResult<TextSegment> denseResults = embeddingStore.search(denseSearchRequest);
 
         // Sparse search
-        EmbeddingSearchRequest sparseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest sparseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(queryEmbeddings.getSparseEmbedding())
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(5)
                 .build();
         EmbeddingSearchResult<TextSegment> sparseResults = embeddingStore.search(sparseSearchRequest);
 
         // Hybrid search
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbeddings.getDenseEmbedding())
                 .sparseEmbedding(queryEmbeddings.getSparseEmbedding())
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(5)
                 .build();
         EmbeddingSearchResult<TextSegment> hybridResults = embeddingStore.search(hybridSearchRequest);
@@ -327,10 +326,10 @@ class MilvusBGE3ModelIntegrationTest implements WithAssertions {
         String query = "How to start learning programming?";
         EmbeddingResult queryEmbeddings = bge3Model.generateEmbeddings(query);
 
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbeddings.getDenseEmbedding())
                 .sparseEmbedding(queryEmbeddings.getSparseEmbedding())
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
 

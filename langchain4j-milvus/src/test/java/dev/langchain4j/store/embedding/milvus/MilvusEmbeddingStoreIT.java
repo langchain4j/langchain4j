@@ -5,12 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -47,6 +45,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             .metadataFieldName("metadata_field")
             .vectorFieldName("vector_field")
             .sparseVectorFieldName("sparse_vector_field")
+            .sparseMode(MilvusEmbeddingStore.MilvusSparseMode.CUSTOM)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -66,6 +65,19 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return embeddingModel;
     }
 
+    @Override
+    protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
+                .queryEmbedding(embeddingModel().embed("test").content())
+                .maxResults(1000)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+
+        return searchResult.matches();
+    }
+
+
     @Test
     void should_not_retrieve_embeddings_when_searching() {
 
@@ -81,6 +93,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field")
                 .sparseVectorFieldName("sparse_vector_field")
+                .sparseMode(MilvusEmbeddingStore.MilvusSparseMode.CUSTOM)
                 .build();
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();
@@ -119,6 +132,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .metadataFieldName("metadata_field")
                 .vectorFieldName("vector_field")
                 .sparseVectorFieldName("sparse_vector_field")
+                .sparseMode(MilvusEmbeddingStore.MilvusSparseMode.CUSTOM)
                 .build();
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();
@@ -145,9 +159,9 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     void should_perform_sparse_search() {
         // given
         SparseEmbedding sparseEmbedding1 =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
         SparseEmbedding sparseEmbedding2 =
-                new SparseEmbedding(Arrays.asList(2L, 4L, 6L), Arrays.asList(0.2f, 0.4f, 0.6f));
+                new SparseEmbedding(new long[]{2L, 4L, 6L}, new float[]{0.2f, 0.4f, 0.6f});
 
         TextSegment textSegment1 = TextSegment.from("document about technology");
         TextSegment textSegment2 = TextSegment.from("document about science");
@@ -158,9 +172,9 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 Arrays.asList(textSegment1, textSegment2));
 
         // when
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(sparseEmbedding1)
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(10)
                 .build();
 
@@ -179,9 +193,9 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         Embedding denseEmbedding2 = embeddingModel.embed("science document").content();
 
         SparseEmbedding sparseEmbedding1 =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
         SparseEmbedding sparseEmbedding2 =
-                new SparseEmbedding(Arrays.asList(2L, 4L, 6L), Arrays.asList(0.2f, 0.4f, 0.6f));
+                new SparseEmbedding(new long[]{2L, 4L, 6L}, new float[]{0.2f, 0.4f, 0.6f});
 
         TextSegment textSegment1 = TextSegment.from("document about technology");
         TextSegment textSegment2 = TextSegment.from("document about science");
@@ -193,10 +207,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 Arrays.asList(textSegment1, textSegment2));
 
         // when
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding1)
                 .sparseEmbedding(sparseEmbedding1)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
 
@@ -212,19 +226,19 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     void should_throw_exception_for_hybrid_search_without_dense_embedding() {
         // given
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
 
         // when & then
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(sparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
 
         assertThatThrownBy(() -> embeddingStore.search(searchRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
-                        "Both queryEmbedding and sparseEmbedding must be provided for hybrid search (searchMode=2)");
+                        "HYBRID requires dense queryEmbedding and either sparseEmbedding or sparseQueryText");
     }
 
     @Test
@@ -233,23 +247,23 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         Embedding denseEmbedding = embeddingModel.embed("test document").content();
 
         // when & then
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
 
         assertThatThrownBy(() -> embeddingStore.search(searchRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
-                        "Both queryEmbedding and sparseEmbedding must be provided for hybrid search (searchMode=2)");
+                        "HYBRID requires dense queryEmbedding and either sparseEmbedding or sparseQueryText");
     }
 
     @Test
     void should_handle_empty_sparse_embedding_in_hybrid_search() {
         // given
         Embedding denseEmbedding = embeddingModel.embed("test document").content();
-        SparseEmbedding emptySparseEmbedding = new SparseEmbedding(Arrays.asList(), Arrays.asList());
+        SparseEmbedding emptySparseEmbedding = new SparseEmbedding(new long[]{}, new float[]{});
 
         TextSegment textSegment = TextSegment.from("test document");
 
@@ -260,10 +274,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 Arrays.asList(textSegment));
 
         // when
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding)
                 .sparseEmbedding(emptySparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(10)
                 .build();
 
@@ -280,7 +294,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         Embedding denseEmbedding =
                 embeddingModel.embed("artificial intelligence").content();
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L, 7L), Arrays.asList(0.1f, 0.3f, 0.5f, 0.7f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L, 7L}, new float[]{0.1f, 0.3f, 0.5f, 0.7f});
 
         TextSegment textSegment1 = TextSegment.from("document about AI and machine learning");
         TextSegment textSegment2 = TextSegment.from("document about neural networks");
@@ -294,32 +308,32 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                         embeddingModel.embed("neural networks").content(),
                         embeddingModel.embed("data science").content()),
                 Arrays.asList(
-                        new SparseEmbedding(Arrays.asList(1L, 3L), Arrays.asList(0.1f, 0.3f)),
-                        new SparseEmbedding(Arrays.asList(5L, 7L), Arrays.asList(0.5f, 0.7f)),
-                        new SparseEmbedding(Arrays.asList(2L, 4L), Arrays.asList(0.2f, 0.4f))),
+                        new SparseEmbedding(new long[]{1L, 3L}, new float[]{0.1f, 0.3f}),
+                        new SparseEmbedding(new long[]{5L, 7L}, new float[]{0.5f, 0.7f}),
+                        new SparseEmbedding(new long[]{2L, 4L}, new float[]{0.2f, 0.4f})),
                 Arrays.asList(textSegment1, textSegment2, textSegment3));
 
         // when - dense search
-        EmbeddingSearchRequest denseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest denseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding)
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(3)
                 .build();
         EmbeddingSearchResult<TextSegment> denseResult = embeddingStore.search(denseSearchRequest);
 
         // when - sparse search
-        EmbeddingSearchRequest sparseSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest sparseSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(sparseEmbedding)
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(3)
                 .build();
         EmbeddingSearchResult<TextSegment> sparseResult = embeddingStore.search(sparseSearchRequest);
 
         // when - hybrid search
-        EmbeddingSearchRequest hybridSearchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest hybridSearchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding)
                 .sparseEmbedding(sparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(3)
                 .build();
         EmbeddingSearchResult<TextSegment> hybridResult = embeddingStore.search(hybridSearchRequest);

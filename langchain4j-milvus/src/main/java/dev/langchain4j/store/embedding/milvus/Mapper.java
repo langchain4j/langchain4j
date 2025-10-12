@@ -14,7 +14,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.RelevanceScore;
@@ -47,12 +46,12 @@ class Mapper {
     static List<SortedMap<Long, Float>> toSparseVectors(List<SparseEmbedding> embeddings) {
         return embeddings.stream()
                 .map(e -> {
-                    List<Long> indices = e.getIndices();
-                    List<Float> values = e.getValues();
+                    long[] indices = e.getIndices();
+                    float[] values = e.getValues();
 
                     SortedMap<Long, Float> map = new TreeMap<>();
-                    for (int i = 0; i < indices.size(); i++) {
-                        map.put(indices.get(i), values.get(i));
+                    for (int i = 0; i < indices.length; i++) {
+                        map.put(indices[i], values[i]);
                     }
                     return map;
                 })

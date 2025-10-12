@@ -29,14 +29,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.SparseEmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
@@ -64,7 +62,7 @@ import java.util.TreeMap;
  * Supports storing {@link Metadata} and filtering by it using a {@link Filter}
  * (provided inside an {@link EmbeddingSearchRequest}).
  */
-public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
+public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String DEFAULT_ID_FIELD_NAME = "id";
     private static final String DEFAULT_TEXT_FIELD_NAME = "text";
@@ -82,6 +80,7 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
     private final boolean autoFlushOnInsert;
     private final FieldDefinition fieldDefinition;
     private final Integer dimension;
+    private final MilvusSparseMode sparseMode;
 
     public MilvusEmbeddingStore(
             String host,
@@ -105,7 +104,8 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
             String textFieldName,
             String metadataFiledName,
             String vectorFiledName,
-            String sparseVectorFieldName) {
+            String sparseVectorFieldName,
+            MilvusSparseMode sparseMode) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
                 collectionName,
@@ -122,7 +122,8 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
                 textFieldName,
                 metadataFiledName,
                 vectorFiledName,
-                sparseVectorFieldName);
+                sparseVectorFieldName,
+                sparseMode);
     }
 
     public MilvusEmbeddingStore(
@@ -141,11 +142,17 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
             String textFieldName,
             String metadataFiledName,
             String vectorFiledName,
-            String sparseVectorFieldName) {
+            String sparseVectorFieldName,
+            MilvusSparseMode sparseMode) {
         this.milvusClientV2 = ensureNotNull(milvusClientV2, "milvusClientV2");
         this.collectionName = getOrDefault(collectionName, "default");
         this.metricType = getOrDefault(metricType, IndexParam.MetricType.COSINE);
-        this.sparseMetricType = getOrDefault(sparseMetricType, IndexParam.MetricType.IP);
+        this.sparseMode = getOrDefault(sparseMode, MilvusSparseMode.BM25);
+        if(this.sparseMode == MilvusSparseMode.BM25) {
+            this.sparseMetricType = getOrDefault(sparseMetricType, IndexParam.MetricType.BM25);
+        } else {
+            this.sparseMetricType = getOrDefault(sparseMetricType, IndexParam.MetricType.IP);
+        }
         this.baseRanker = getOrDefault(baseRanker, new RRFRanker(60));
         this.consistencyLevel = getOrDefault(consistencyLevel, ConsistencyLevel.EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
@@ -163,19 +170,29 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
                     this.milvusClientV2,
                     this.collectionName,
                     this.fieldDefinition,
-                    ensureNotNull(dimension, "dimension"));
+                    ensureNotNull(dimension, "dimension"),
+                    this.sparseMode);
             createIndex(
                     this.milvusClientV2,
                     this.collectionName,
                     this.fieldDefinition.getVectorFieldName(),
                     getOrDefault(indexType, IndexParam.IndexType.FLAT),
                     this.metricType);
-            createIndex(
-                    this.milvusClientV2,
-                    this.collectionName,
-                    this.fieldDefinition.getSparseVectorFieldName(),
-                    getOrDefault(sparseIndexType, IndexParam.IndexType.SPARSE_INVERTED_INDEX),
-                    this.sparseMetricType);
+            if(this.sparseMode == MilvusSparseMode.BM25) {
+                createIndex(
+                        this.milvusClientV2,
+                        this.collectionName,
+                        this.fieldDefinition.getSparseVectorFieldName(),
+                        IndexParam.IndexType.SPARSE_INVERTED_INDEX,
+                        IndexParam.MetricType.BM25);
+            } else {
+                createIndex(
+                        this.milvusClientV2,
+                        this.collectionName,
+                        this.fieldDefinition.getSparseVectorFieldName(),
+                        getOrDefault(sparseIndexType, IndexParam.IndexType.SPARSE_INVERTED_INDEX),
+                        this.sparseMetricType);
+            }
         }
 
         loadCollectionInMemory(this.milvusClientV2, collectionName);
@@ -250,13 +267,33 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
     }
 
     @Override
-    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        MilvusEmbeddingSearchRequest milvusRequest;
+        if (request instanceof MilvusEmbeddingSearchRequest) {
+            milvusRequest = (MilvusEmbeddingSearchRequest) request;
+        } else {
+            milvusRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
+                    .queryEmbedding(request.queryEmbedding())
+                    .maxResults(request.maxResults())
+                    .minScore(request.minScore())
+                    .filter(request.filter())
+                    .build();
+        }
+        return search(milvusRequest);
+    }
+
+
+    public EmbeddingSearchResult<TextSegment> search(MilvusEmbeddingSearchRequest embeddingSearchRequest) {
         SearchResp searchResp;
-        if (Objects.equals(embeddingSearchRequest.searchMode(), EmbeddingSearchMode.HYBRID)) {
+        if (Objects.equals(embeddingSearchRequest.searchMode(), MilvusEmbeddingSearchMode.HYBRID)) {
+            // Accept either manual sparse or auto text sparse
+            boolean hasSparse = embeddingSearchRequest.sparseEmbedding() != null
+                    || (embeddingSearchRequest.sparseQueryText() != null
+                    && !embeddingSearchRequest.sparseQueryText().isBlank());
             // Validate that both dense and sparse embeddings are provided for hybrid search
-            if (embeddingSearchRequest.queryEmbedding() == null || embeddingSearchRequest.sparseEmbedding() == null) {
+            if (embeddingSearchRequest.queryEmbedding() == null || !hasSparse) {
                 throw new IllegalArgumentException(
-                        "Both queryEmbedding and sparseEmbedding must be provided for hybrid search (searchMode=2)");
+                        "HYBRID requires dense queryEmbedding and either sparseEmbedding or sparseQueryText");
             }
 
             HybridSearchReq hybridSearchReq = buildHybridSearchRequest(
@@ -319,7 +356,9 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
             row.addProperty(fieldDefinition.getTextFieldName(), textScalars.get(i));
             row.add(fieldDefinition.getMetadataFieldName(), metadataJsons.get(i));
             row.add(fieldDefinition.getVectorFieldName(), gson.toJsonTree(denseVectors.get(i)));
-            row.add(fieldDefinition.getSparseVectorFieldName(), gson.toJsonTree(emptySparse));
+            if(this.sparseMode == MilvusSparseMode.CUSTOM) {
+                row.add(fieldDefinition.getSparseVectorFieldName(), gson.toJsonTree(emptySparse));
+            }
 
             rows.add(row);
         }
@@ -330,10 +369,13 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
         }
     }
 
-    @Override
     public void addAllSparse(List<String> ids, List<SparseEmbedding> embeddings, List<TextSegment> textSegments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
+        }
+
+        if (this.sparseMode != MilvusSparseMode.CUSTOM) {
+            throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
         }
 
         List<String> textScalars = toScalars(textSegments, ids.size());
@@ -362,7 +404,6 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
         }
     }
 
-    @Override
     public void addAllHybrid(
             List<String> ids,
             List<Embedding> denseEmbeddings,
@@ -370,6 +411,10 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
             List<TextSegment> textSegments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(denseEmbeddings) || isNullOrEmpty(sparseEmbeddings)) {
             return;
+        }
+
+        if (this.sparseMode != MilvusSparseMode.CUSTOM) {
+            throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
         }
 
         List<String> textScalars = toScalars(textSegments, ids.size());
@@ -466,6 +511,12 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
                 this.milvusClientV2, this.collectionName, format("%s != \"\"", this.fieldDefinition.getIdFieldName()));
     }
 
+
+    public enum MilvusSparseMode {
+        BM25, // built-in sparse vector from text
+        CUSTOM // user provided sparse vector
+    }
+
     public static class Builder {
         private MilvusClientV2 milvusClientV2;
         private String host;
@@ -490,6 +541,7 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
         private String metadataFieldName;
         private String vectorFieldName;
         private String sparseVectorFieldName;
+        private MilvusSparseMode sparseMode;
 
         public Builder milvusClient(MilvusClientV2 milvusClientV2) {
             this.milvusClientV2 = milvusClientV2;
@@ -694,7 +746,7 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
          *
          * @param baseRanker the component that combines and reorders the similarity scores from multiple ANN sub-searches (e.g., dense and sparse) into a single final ranking.
          *                   Default value: new RRFRanker(60).
-         * @return builer
+         * @return builder
          */
         public Builder baseRanker(BaseRanker baseRanker) {
             this.baseRanker = baseRanker;
@@ -716,10 +768,23 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
          *
          * @param sparseIndexType  The type of the index.
          *                         Default value: SPARSE_INVERTED_INDEX.
-         * @return builer
+         * @return builder
          */
         public Builder sparseIndexType(IndexParam.IndexType sparseIndexType) {
             this.sparseIndexType = sparseIndexType;
+            return this;
+        }
+
+        /**
+         *
+         * @param sparseMode  The mode of sparse vector generation.
+         *                    BM25 - use Milvus built-in sparse vector generation from text (sparseQueryText in search request must be provided).
+         *                    CUSTOM - user provides sparse vector (sparseEmbedding in search request must be provided).
+         *                    Default value: BM25.
+         * @return builder
+         */
+        public Builder sparseMode(MilvusSparseMode sparseMode) {
+            this.sparseMode = sparseMode;
             return this;
         }
 
@@ -747,7 +812,8 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
                         textFieldName,
                         metadataFieldName,
                         vectorFieldName,
-                        sparseVectorFieldName);
+                        sparseVectorFieldName,
+                        sparseMode);
             }
             return new MilvusEmbeddingStore(
                     milvusClientV2,
@@ -765,7 +831,8 @@ public class MilvusEmbeddingStore implements SparseEmbeddingStore<TextSegment> {
                     textFieldName,
                     metadataFieldName,
                     vectorFieldName,
-                    sparseVectorFieldName);
+                    sparseVectorFieldName,
+                    sparseMode);
         }
     }
 }

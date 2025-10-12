@@ -3,8 +3,6 @@ package dev.langchain4j.store.embedding.milvus;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
-import dev.langchain4j.store.embedding.EmbeddingSearchMode;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.IndexParam;
@@ -25,9 +23,9 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_build_dense_search_request() {
         // given
         Embedding queryEmbedding = Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f));
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbedding)
-                .searchMode(EmbeddingSearchMode.DENSE) // dense search
+                .searchMode(MilvusEmbeddingSearchMode.DENSE) // dense search
                 .maxResults(5)
                 .minScore(0.5)
                 .build();
@@ -53,10 +51,10 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_build_sparse_search_request() {
         // given
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .sparseEmbedding(sparseEmbedding)
-                .searchMode(EmbeddingSearchMode.SPARSE) // sparse search
+                .searchMode(MilvusEmbeddingSearchMode.SPARSE) // sparse search
                 .maxResults(10)
                 .minScore(0.3)
                 .build();
@@ -83,11 +81,11 @@ class CollectionRequestBuilderTest implements WithAssertions {
         // given
         Embedding queryEmbedding = Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f));
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        MilvusEmbeddingSearchRequest searchRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbedding)
                 .sparseEmbedding(sparseEmbedding)
-                .searchMode(EmbeddingSearchMode.HYBRID) // hybrid search
+                .searchMode(MilvusEmbeddingSearchMode.HYBRID) // hybrid search
                 .maxResults(15)
                 .minScore(0.7)
                 .build();
@@ -150,7 +148,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_create_sparse_search_request() {
         // given
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
 
         // when
         SearchReq result = createSparseSearchReq(
@@ -175,7 +173,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
         // given
         Embedding queryEmbedding = Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f));
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
         RRFRanker ranker = new RRFRanker(60);
 
         // when
@@ -183,6 +181,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 FIELD_DEFINITION,
                 queryEmbedding,
                 sparseEmbedding,
+                null,
                 IndexParam.MetricType.COSINE,
                 IndexParam.MetricType.IP,
                 null, // filter
@@ -233,7 +232,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_create_sparse_ann_search_request() {
         // given
         SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
 
         // when
         var result = createSparseAnnSearchReq(

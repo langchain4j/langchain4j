@@ -4,7 +4,6 @@ import static dev.langchain4j.store.embedding.milvus.Mapper.toSparseVectors;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toVectors;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.embedding.SparseEmbedding;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -32,8 +31,8 @@ class MapperTest implements WithAssertions {
     void should_convert_sparse_embeddings_to_sparse_vectors() {
         // given
         List<SparseEmbedding> sparseEmbeddings = Arrays.asList(
-                new SparseEmbedding(Arrays.asList(1L, 3L, 5L), Arrays.asList(0.1f, 0.3f, 0.5f)),
-                new SparseEmbedding(Arrays.asList(2L, 4L), Arrays.asList(0.2f, 0.4f)));
+                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f}),
+                new SparseEmbedding(new long[]{2L, 4L}, new float[]{0.2f, 0.4f}));
 
         // when
         List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
@@ -70,7 +69,7 @@ class MapperTest implements WithAssertions {
     @Test
     void should_handle_empty_sparse_embedding() {
         // given
-        List<SparseEmbedding> sparseEmbeddings = Arrays.asList(new SparseEmbedding(Arrays.asList(), Arrays.asList()));
+        List<SparseEmbedding> sparseEmbeddings = Arrays.asList(new SparseEmbedding(new long[]{}, new float[]{}));
 
         // when
         List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
@@ -84,7 +83,7 @@ class MapperTest implements WithAssertions {
     void should_handle_unsorted_indices_in_sparse_embedding() {
         // given
         List<SparseEmbedding> sparseEmbeddings =
-                Arrays.asList(new SparseEmbedding(Arrays.asList(5L, 1L, 3L), Arrays.asList(0.5f, 0.1f, 0.3f)));
+                Arrays.asList(new SparseEmbedding(new long[]{5L, 1L, 3L}, new float[]{0.5f, 0.1f, 0.3f}));
 
         // when
         List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
@@ -103,7 +102,7 @@ class MapperTest implements WithAssertions {
     void should_handle_duplicate_indices_in_sparse_embedding() {
         // given
         List<SparseEmbedding> sparseEmbeddings =
-                Arrays.asList(new SparseEmbedding(Arrays.asList(1L, 1L, 2L), Arrays.asList(0.1f, 0.2f, 0.3f)));
+                Arrays.asList(new SparseEmbedding(new long[]{1L, 1L, 2L}, new float[]{0.1f, 0.2f, 0.3f}));
 
         // when
         List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
@@ -120,7 +119,7 @@ class MapperTest implements WithAssertions {
     void should_handle_negative_indices_in_sparse_embedding() {
         // given
         List<SparseEmbedding> sparseEmbeddings =
-                Arrays.asList(new SparseEmbedding(Arrays.asList(1L, -1L, 0L), Arrays.asList(0.1f, -0.1f, 0.0f)));
+                Arrays.asList(new SparseEmbedding(new long[]{1L, -1L, 0L}, new float[]{0.1f, -0.1f, 0.0f}));
 
         // when
         List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
