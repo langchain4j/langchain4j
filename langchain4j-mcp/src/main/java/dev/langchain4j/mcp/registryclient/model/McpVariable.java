@@ -48,4 +48,17 @@ public class McpVariable {
     public String getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return "McpVariable{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", value='" + value + '\'' +
+                '}';
+    }
 }

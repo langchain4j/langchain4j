@@ -79,4 +79,22 @@ public class McpRuntimeArgument {
     public List<McpVariable> getVariables() {
         return variables;
     }
+
+    @Override
+    public String toString() {
+        return "McpRuntimeArgument{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRepeated=" + isRepeated +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", name='" + name + '\'' +
+                ", type='" + type + '\'' +
+                ", value='" + value + '\'' +
+                ", valueHint='" + valueHint + '\'' +
+                ", variables=" + variables +
+                '}';
+    }
 }

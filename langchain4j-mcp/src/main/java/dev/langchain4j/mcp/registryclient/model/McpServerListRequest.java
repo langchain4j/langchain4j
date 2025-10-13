@@ -78,4 +78,15 @@ public class McpServerListRequest {
             return new McpServerListRequest(cursor, limit, search, updatedSince, version);
         }
     }
+
+    @Override
+    public String toString() {
+        return "McpServerListRequest{" +
+                "cursor='" + cursor + '\'' +
+                ", limit=" + limit +
+                ", search='" + search + '\'' +
+                ", updatedSince=" + updatedSince +
+                ", version='" + version + '\'' +
+                '}';
+    }
 }

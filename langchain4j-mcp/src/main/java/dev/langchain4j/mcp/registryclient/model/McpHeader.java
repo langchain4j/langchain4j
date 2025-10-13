@@ -60,4 +60,19 @@ public class McpHeader {
     public boolean isSecret() {
         return isSecret;
     }
+
+    @Override
+    public String toString() {
+        return "McpHeader{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", name='" + name + '\'' +
+                ", value='" + value + '\'' +
+                ", variables=" + variables +
+                '}';
+    }
 }

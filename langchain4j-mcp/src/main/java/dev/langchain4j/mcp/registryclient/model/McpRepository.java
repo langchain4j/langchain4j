@@ -37,4 +37,14 @@ public class McpRepository {
     public void setUrl(final String url) {
         this.url = url;
     }
+
+    @Override
+    public String toString() {
+        return "McpRepository{" +
+                "id='" + id + '\'' +
+                ", source='" + source + '\'' +
+                ", subfolder='" + subfolder + '\'' +
+                ", url='" + url + '\'' +
+                '}';
+    }
 }

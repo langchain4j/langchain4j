@@ -42,4 +42,15 @@ public class McpOfficialMeta {
     public String getStatus() {
         return status;
     }
+
+    @Override
+    public String toString() {
+        return "McpOfficialMeta{" +
+                "serverId='" + serverId + '\'' +
+                ", isLatest=" + isLatest +
+                ", publishedAt=" + publishedAt +
+                ", updatedAt=" + updatedAt +
+                ", status='" + status + '\'' +
+                '}';
+    }
 }

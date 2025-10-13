@@ -80,4 +80,22 @@ public class McpPackageArgument {
     public String getValueHint() {
         return valueHint;
     }
+
+    @Override
+    public String toString() {
+        return "McpPackageArgument{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRepeated=" + isRepeated +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", name='" + name + '\'' +
+                ", type='" + type + '\'' +
+                ", value='" + value + '\'' +
+                ", valueHint='" + valueHint + '\'' +
+                ", variables=" + variables +
+                '}';
+    }
 }

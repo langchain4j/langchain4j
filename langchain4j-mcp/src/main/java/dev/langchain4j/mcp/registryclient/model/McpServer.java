@@ -69,4 +69,20 @@ public class McpServer {
     public List<McpPackage> getPackages() {
         return packages;
     }
+
+    @Override
+    public String toString() {
+        return "McpServer{" +
+                "name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", schema='" + schema + '\'' +
+                ", status='" + status + '\'' +
+                ", repository=" + repository +
+                ", version='" + version + '\'' +
+                ", websiteUrl='" + websiteUrl + '\'' +
+                ", remotes=" + remotes +
+                ", meta=" + meta +
+                ", packages=" + packages +
+                '}';
+    }
 }
