@@ -8,8 +8,7 @@ import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -47,9 +46,12 @@ public class McpRegistryClientIT {
 
     @Test
     public void testListServersUpdatedSince() {
-        ZonedDateTime updatedSince = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(30);
-        McpServerList response = client.listServers(
-                McpServerListRequest.builder().updatedSince(updatedSince).build());
+        // NOTE: the DateTimes are evaluated in UTC
+        LocalDateTime updatedSince = LocalDateTime.now().minusDays(30);
+        McpServerList response = client.listServers(McpServerListRequest.builder()
+                .updatedSince(updatedSince)
+                .version("latest")
+                .build());
         assertThat(response.getServers()).hasSizeGreaterThanOrEqualTo(1);
         // assert that all returned servers have been updated since 30 days ago
         assertThat(response.getServers())
