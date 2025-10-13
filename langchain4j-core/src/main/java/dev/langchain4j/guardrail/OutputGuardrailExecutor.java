@@ -114,7 +114,7 @@ public non-sealed class OutputGuardrailExecutor
             if (!originalText.equals(validatedText)) {
                 // The text validated by the output guardrail is different form the original one because of a
                 // successful reprompt, so we need to create a new success result with the new text
-                return successWith(validatedText);
+                return successWith(originalRequest.responseFromLLM().aiMessage().withText(validatedText));
             }
         }
         return result;
