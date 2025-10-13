@@ -11,6 +11,7 @@ import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,11 +46,16 @@ public class McpRegistryClientIT {
         verifyMetadataOfServer(server);
     }
 
+    // FIXME: disabled because the official registry seems to ignore the 'updatedSince' parameter
+    // and returns servers with an earlier last update...
+    @Disabled
     @Test
     public void testListServersUpdatedSince() {
         ZonedDateTime updatedSince = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(30);
-        McpServerList response = client.listServers(
-                McpServerListRequest.builder().updatedSince(updatedSince).build());
+        McpServerList response = client.listServers(McpServerListRequest.builder()
+                .updatedSince(updatedSince)
+                .version("latest")
+                .build());
         assertThat(response.getServers()).hasSizeGreaterThanOrEqualTo(1);
         // assert that all returned servers have been updated since 30 days ago
         assertThat(response.getServers())
