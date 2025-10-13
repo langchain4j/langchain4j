@@ -277,3 +277,52 @@ See more details [here](/tutorials/spring-boot-integration#observability).
 ## Third-party Integrations
 
 - [Arize Phoenix](https://github.com/Arize-ai/phoenix)
+
+### OpenTelemetry GenAI instrumentation
+
+The community-maintained [otel-genai-bridges](https://github.com/dineshkumarkummara/otel-genai-bridges) project ships a Spring Boot starter that auto-instruments LangChain4j chat applications using the [OpenTelemetry Generative AI semantic conventions](https://github.com/open-telemetry/semantic-conventions/tree/main/docs/gen-ai).
+
+#### Why use it?
+
+- Wraps any `ChatLanguageModel` bean and emits spans, events, and metrics.
+- Captures prompts, completions, tool calls, latency, token usage, cost, and RAG retrieval latency out of the box.
+- Provides Docker Compose samples (Collector → Tempo/Prometheus → Grafana) with prebuilt Grafana dashboards.
+
+#### Getting started
+
+Add the starter to your Spring Boot project:
+
+```xml
+<!-- pom.xml -->
+<dependency>
+  <groupId>com.dineshkumarkummara.otel</groupId>
+  <artifactId>langchain4j-otel</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+Enable the starter via `application.yaml`:
+
+```yaml
+otel:
+  langchain4j:
+    enabled: true
+    system: openai
+    default-model: gpt-4o
+    capture-prompts: true
+    capture-completions: true
+    cost:
+      enabled: true
+      input-per-thousand: 0.0005
+      output-per-thousand: 0.0015
+```
+
+The nested `cost` stanza is optional; include it when you want cost-per-token metrics.
+
+With the dependency on the classpath, the starter locates `ChatLanguageModel` beans automatically and wraps them with telemetry.
+
+#### Observability view
+
+![Grafana latency panel](https://github.com/dineshkumarkummara/otel-genai-bridges/raw/main/docs/screenshots/grafana-latency.png)
+
+For a full working example (including the observability stack and Semantic Kernel parity), see [dineshkumarkummara/otel-genai-bridges](https://github.com/dineshkumarkummara/otel-genai-bridges).
