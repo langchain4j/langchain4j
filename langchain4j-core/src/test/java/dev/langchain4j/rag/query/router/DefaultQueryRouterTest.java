@@ -121,4 +121,41 @@ class DefaultQueryRouterTest {
         // then - router returns retrievers even with null query
         assertThat(retrievers).containsExactly(retriever);
     }
+
+    @Test
+    void should_return_unmodifiable_collection() {
+        // given
+        ContentRetriever retriever1 = mock(ContentRetriever.class);
+        ContentRetriever retriever2 = mock(ContentRetriever.class);
+        QueryRouter router = new DefaultQueryRouter(retriever1, retriever2);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(Query.from("query"));
+
+        // then
+        assertThatThrownBy(() -> retrievers.add(mock(ContentRetriever.class)))
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> retrievers.remove(retriever1)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> retrievers.clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void should_handle_whitespace_only_query() {
+        // when/then
+        assertThatThrownBy(() -> Query.from("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("text cannot be null or blank");
+
+        assertThatThrownBy(() -> Query.from("\t\n\r"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("text cannot be null or blank");
+    }
+
+    @Test
+    void should_handle_null_query_text() {
+        // when/then
+        assertThatThrownBy(() -> Query.from(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("text cannot be null or blank");
+    }
 }
