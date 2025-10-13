@@ -1,22 +1,48 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.agentic.Models.baseModel;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.Agents.AudienceEditor;
+import dev.langchain4j.agentic.Agents.CategoryRouter;
+import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.EveningPlan;
+import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
+import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
+import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
+import dev.langchain4j.agentic.Agents.FoodExpert;
+import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.LegalExpertWithMemory;
+import dev.langchain4j.agentic.Agents.MedicalExpert;
+import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
+import dev.langchain4j.agentic.Agents.MovieExpert;
+import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.StyleEditor;
+import dev.langchain4j.agentic.Agents.StyleScorer;
+import dev.langchain4j.agentic.Agents.StyledWriter;
+import dev.langchain4j.agentic.Agents.TechnicalExpert;
+import dev.langchain4j.agentic.Agents.TechnicalExpertWithMemory;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,35 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import dev.langchain4j.agentic.Agents.CreativeWriter;
-import dev.langchain4j.agentic.Agents.AudienceEditor;
-import dev.langchain4j.agentic.Agents.StyleEditor;
-import dev.langchain4j.agentic.Agents.StyleScorer;
-import dev.langchain4j.agentic.Agents.StyledWriter;
-import dev.langchain4j.agentic.Agents.CategoryRouter;
-import dev.langchain4j.agentic.Agents.MedicalExpert;
-import dev.langchain4j.agentic.Agents.TechnicalExpert;
-import dev.langchain4j.agentic.Agents.LegalExpert;
-import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
-import dev.langchain4j.agentic.Agents.TechnicalExpertWithMemory;
-import dev.langchain4j.agentic.Agents.LegalExpertWithMemory;
-import dev.langchain4j.agentic.Agents.RequestCategory;
-import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
-import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
-import dev.langchain4j.agentic.Agents.MovieExpert;
-import dev.langchain4j.agentic.Agents.FoodExpert;
-import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
-import dev.langchain4j.agentic.Agents.EveningPlan;
-
-import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.plannerModel;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.Test;
 
 public class WorkflowAgentsIT {
 
@@ -71,16 +69,16 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void sequential_agents_using_declrative_api_tests() {
+    void sequential_agents_using_declarative_api_tests() {
         check_sequential_agents(true);
     }
 
     void check_sequential_agents(boolean useDeclarativeAPI) {
-        CreativeWriter creativeWriter = useDeclarativeAPI ?
-                spy(AgenticServices.agentBuilder(CreativeWriterWithModel.class)
+        CreativeWriter creativeWriter = useDeclarativeAPI
+                ? spy(AgenticServices.agentBuilder(CreativeWriterWithModel.class)
                         .outputName("story")
-                        .build()) :
-                spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                        .build())
+                : spy(AgenticServices.agentBuilder(CreativeWriter.class)
                         .chatModel(baseModel())
                         .outputName("story")
                         .build());
@@ -103,8 +101,7 @@ public class WorkflowAgentsIT {
         Map<String, Object> input = Map.of(
                 "topic", "dragons and wizards",
                 "style", "fantasy",
-                "audience", "young adults"
-        );
+                "audience", "young adults");
 
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
@@ -140,13 +137,10 @@ public class WorkflowAgentsIT {
                 // missing "topic" entry to trigger an error
                 // "topic", "dragons and wizards",
                 "style", "fantasy",
-                "audience", "young adults"
-        );
+                "audience", "young adults");
 
-        assertThat(
-                assertThrows(AgentInvocationException.class,
-                        () -> novelCreator.invoke(input))
-        ).hasMessageContaining("topic");
+        assertThat(assertThrows(AgentInvocationException.class, () -> novelCreator.invoke(input)))
+                .hasMessageContaining("topic");
     }
 
     @Test
@@ -171,8 +165,9 @@ public class WorkflowAgentsIT {
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
                 .errorHandler(errorContext -> {
-                    if (errorContext.agentName().equals("generateStory") &&
-                            errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
+                    if (errorContext.agentName().equals("generateStory")
+                            && errorContext.exception() instanceof MissingArgumentException mEx
+                            && mEx.argumentName().equals("topic")) {
                         errorContext.agenticScope().writeState("topic", "dragons and wizards");
                         errorRecoveryCalled.set(true);
                         return ErrorRecoveryResult.retry();
@@ -186,8 +181,7 @@ public class WorkflowAgentsIT {
                 // missing "topic" entry to trigger an error
                 // "topic", "dragons and wizards",
                 "style", "fantasy",
-                "audience", "young adults"
-        );
+                "audience", "young adults");
 
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
@@ -282,16 +276,17 @@ public class WorkflowAgentsIT {
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
                 .subAgents(
                         humanInTheLoop, // asks user for the audience in a non-blocking way
-                        creativeWriter, // doesn't need the audience so it can generate the story without waiting for the human-in-the-loop response
-                        AgenticServices.agentAction(barrier::await), // unblock the human-in-the-loop making its response available
+                        creativeWriter, // doesn't need the audience so it can generate the story without waiting for
+                        // the human-in-the-loop response
+                        AgenticServices.agentAction(
+                                barrier::await), // unblock the human-in-the-loop making its response available
                         audienceEditor, // use the audience provided by the human-in-the-loop
-                        AgenticServices.agentAction(agenticScope -> audience.set(agenticScope.readState("audience", "")))) // read the audience state, just for test purposes
+                        AgenticServices.agentAction(agenticScope -> audience.set(agenticScope.readState(
+                                "audience", "")))) // read the audience state, just for test purposes
                 .outputName("story")
                 .build();
 
-        Map<String, Object> input = Map.of(
-                "topic", "dragons and wizards"
-        );
+        Map<String, Object> input = Map.of("topic", "dragons and wizards");
 
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
@@ -309,7 +304,8 @@ public class WorkflowAgentsIT {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputName("story")
-                .beforeAgentInvocation(request -> requestedTopic.set(request.inputs().get("topic")))
+                .beforeAgentInvocation(
+                        request -> requestedTopic.set(request.inputs().get("topic")))
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
@@ -325,8 +321,9 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
-                .afterAgentInvocation(response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .afterAgentInvocation(
+                        response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
@@ -336,8 +333,7 @@ public class WorkflowAgentsIT {
 
         Map<String, Object> input = Map.of(
                 "topic", "dragons and wizards",
-                "style", "comedy"
-        );
+                "style", "comedy");
 
         ResultWithAgenticScope<String> result = styledWriter.invokeWithAgenticScope(input);
         String story = result.result();
@@ -350,8 +346,7 @@ public class WorkflowAgentsIT {
         assertThat(agenticScope.contextAsConversation("editStory"))
                 .isNotBlank()
                 .isEqualTo(agenticScope.contextAsConversation(styleEditor));
-        assertThat(agenticScope.contextAsConversation("notExistingAgent"))
-                .isBlank();
+        assertThat(agenticScope.contextAsConversation("notExistingAgent")).isBlank();
 
         assertThat(requestedTopic.get()).isEqualTo("dragons and wizards");
         assertThat(finalScore.get()).isGreaterThanOrEqualTo(0.8);
@@ -389,7 +384,7 @@ public class WorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .testExitAtLoopEnd(testExitAtLoopEnd)
-                .exitCondition( (agenticScope, loop) -> {
+                .exitCondition((agenticScope, loop) -> {
                     loopCount.set(loop);
                     return agenticScope.readState("score", 0.0) >= 0.8;
                 })
@@ -416,14 +411,13 @@ public class WorkflowAgentsIT {
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
-        assertThat(scoreAgentCalls)
-                .hasSizeBetween(1, 5)
-                .hasSize(loopCount.get());
+        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+                .isGreaterThanOrEqualTo(0.8);
 
         List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
-        assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get()-1);
+        assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
     @Test
@@ -441,14 +435,13 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .output(agenticScope -> agenticScope.readState("score", 0.0))
                 .build();
 
         double score = (double) styleReviewLoop.invoke(Map.of(
                 "story", "Once upon a time there were a wizard and a dragon",
-                "style", "fantasy"
-        ));
+                "style", "fantasy"));
 
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
@@ -474,9 +467,18 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
                 .build();
 
         ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
@@ -514,12 +516,22 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
-                .subAgents( agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
                 .build();
 
-        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
+        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
+                        ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputName("response")
                 .build();
@@ -541,7 +553,7 @@ public class WorkflowAgentsIT {
         AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        AgenticScopeRegistry registry = ((AgenticScopeOwner)expertRouterAgent).registry();
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) expertRouterAgent).registry();
         assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
 
         // Clear the in-memory registry to simulate a restart
@@ -598,7 +610,6 @@ public class WorkflowAgentsIT {
         var builder = AgenticServices.parallelBuilder(EveningPlannerAgent.class)
                 .subAgents(foodExpert, movieExpert)
                 .outputName("plans")
-
                 .output(agenticScope -> {
                     List<String> movies = agenticScope.readState("movies", List.of());
                     List<String> meals = agenticScope.readState("meals", List.of());
@@ -677,7 +688,8 @@ public class WorkflowAgentsIT {
 
     public interface FoodExpertWithNotification {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a great evening planner.
             Propose a list of 3 meals matching the given mood.
             The mood is {{mood}}.
@@ -691,9 +703,10 @@ public class WorkflowAgentsIT {
         List<String> findMeal(@V("mood") String mood);
     }
 
-    public interface MovieExperttWithNotification {
+    public interface MovieExpertWithNotification {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a great evening planner.
             Propose a list of 3 movies matching the given mood.
             The mood is {{mood}}.
@@ -718,7 +731,7 @@ public class WorkflowAgentsIT {
                 .outputName("meals")
                 .build();
 
-        MovieExperttWithNotification movieExpert = AgenticServices.agentBuilder(MovieExperttWithNotification.class)
+        MovieExpertWithNotification movieExpert = AgenticServices.agentBuilder(MovieExpertWithNotification.class)
                 .chatModel(baseModel())
                 .tools(new NotificationTool(moviesDone))
                 .async(true)
@@ -736,7 +749,8 @@ public class WorkflowAgentsIT {
 
     public interface CreativeWriterDeclarative {
 
-        @UserMessage("""
+        @UserMessage(
+                """
                 You are a creative writer.
                 Generate a draft of a story long no more than 3 sentence around the given topic.
                 Return only the story and nothing else.
@@ -753,7 +767,8 @@ public class WorkflowAgentsIT {
 
     public interface AudienceEditorDeclarative {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a professional editor.
             Analyze and rewrite the following story to better align with the target audience of {{audience}}.
             Return only the story and nothing else.
@@ -777,8 +792,7 @@ public class WorkflowAgentsIT {
 
         Map<String, Object> input = Map.of(
                 "topic", "dragons and wizards",
-                "audience", "young adults"
-        );
+                "audience", "young adults");
 
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
