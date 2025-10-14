@@ -26,7 +26,8 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
         return internalExecute(agenticScope, invokedAgent, async);
     }
 
-    private Object handleAgentFailure(AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent) {
+    private Object handleAgentFailure(
+            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
@@ -38,18 +39,18 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
     private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, boolean async) {
         try {
             AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
-            Object response = async ?
-                    new AsyncResponse<>(() -> {
+            Object response = async
+                    ? new AsyncResponse<>(() -> {
                         try {
                             return agentInvoker.invoke(agenticScope, invokedAgent, args);
                         } catch (AgentInvocationException e) {
                             return handleAgentFailure(e, agenticScope, invokedAgent);
                         }
-                    }) :
-                    agentInvoker.invoke(agenticScope, invokedAgent, args);
-            String outputName = agentInvoker.outputName();
-            if (outputName != null && !outputName.isBlank()) {
-                agenticScope.writeState(outputName, response);
+                    })
+                    : agentInvoker.invoke(agenticScope, invokedAgent, args);
+            String outputKey = agentInvoker.outputKey();
+            if (outputKey != null && !outputKey.isBlank()) {
+                agenticScope.writeState(outputKey, response);
             }
             agenticScope.registerAgentCall(agentInvoker, invokedAgent, args, response);
             return response;

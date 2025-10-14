@@ -1,12 +1,12 @@
 package dev.langchain4j.agentic.declarative;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as a supervisor agent that can autonomously coordinate and invoke multiple sub-agents.
@@ -50,11 +50,11 @@ public @interface SupervisorAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
 
     /**
      * Array of sub-agents that can be invoked by the supervisor agent.

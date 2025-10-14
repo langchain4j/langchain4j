@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.supervisor;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
@@ -22,19 +24,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class SupervisorAgentServiceImpl<T> extends AbstractService<T, SupervisorAgentServiceImpl<T>>
         implements SupervisorAgentService<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(SupervisorAgentServiceImpl.class);
     public static final String SUPERVISOR_CONTEXT_KEY = "supervisorContext";
-    public static final String SUPERVISOR_CONTEXT_PREFIX = "Use the following supervisor context to better understand " +
-            "constraints, policies or preferences when creating the plan ";
+    public static final String SUPERVISOR_CONTEXT_PREFIX = "Use the following supervisor context to better understand "
+            + "constraints, policies or preferences when creating the plan ";
 
     private ChatModel chatModel;
 
@@ -131,8 +130,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 case "getChatMemory" -> plannerAgent.getChatMemory(memoryId);
                 case "evictChatMemory" -> plannerAgent.evictChatMemory(memoryId);
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on ChatMemoryAccess class : " + methodName);
+                    throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + methodName);
             };
         }
 
@@ -150,10 +148,11 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 PlannerAgent planner = isAgenticScopeDependent()
                         ? agenticScope.getOrCreateAgent(agentId(), SupervisorAgentServiceImpl.this::buildPlannerAgent)
                         : this.plannerAgent;
-                String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY) ?
-                        SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'." :
-                        "";
-                AgentInvocation agentInvocation = planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
+                String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
+                        ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
+                        : "";
+                AgentInvocation agentInvocation =
+                        planner.plan(memoryId, agentsList, request, lastResponse, supervisorContext);
                 LOG.info("Agent Invocation: {}", agentInvocation);
 
                 if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
@@ -173,18 +172,20 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
                 }
 
                 agentInvocation.getArguments().forEach(agenticScope::writeState);
-                // the supervisor always uses synchronous execution to allow the planner reasoning over the actual results
+                // the supervisor always uses synchronous execution to allow the planner reasoning over the actual
+                // results
                 lastResponse = agentExec.syncExecute(agenticScope).toString();
             }
 
             Object result = result(agenticScope, request, lastResponse, done);
-            if (outputName != null) {
-                agenticScope.writeState(outputName, result);
+            if (outputKey != null) {
+                agenticScope.writeState(outputKey, result);
             }
             return result;
         }
 
-        private Object result(DefaultAgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
+        private Object result(
+                DefaultAgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
             if (hasOutputFunction()) {
                 return output.apply(agenticScope);
             }
@@ -209,7 +210,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
 
         private String agentId() {
-            return outputName + "@Supervisor";
+            return outputKey + "@Supervisor";
         }
     }
 
@@ -263,8 +264,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
             if (!agentExecutor.agentInvoker().description().isEmpty()) {
                 this.agents.put(agentExecutor.agentInvoker().uniqueName(), agentExecutor);
             } else {
-                throw new IllegalArgumentException("Agent '" + agentExecutor.agentInvoker().name()
-                        + "' must have a non-empty description in order to be used by the supervisor agent.");
+                throw new IllegalArgumentException(
+                        "Agent '" + agentExecutor.agentInvoker().name()
+                                + "' must have a non-empty description in order to be used by the supervisor agent.");
             }
         }
         this.agentsList = this.agents.values().stream()

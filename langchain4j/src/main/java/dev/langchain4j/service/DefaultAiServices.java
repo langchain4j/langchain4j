@@ -126,7 +126,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private void validateMethods() {
         if (!context.aiServiceClass.isInterface()) {
             throw illegalConfiguration(
-                    "The type implemented by the AI Service must be an interface, found '%s'", context.aiServiceClass.getName());
+                    "The type implemented by the AI Service must be an interface, found '%s'",
+                    context.aiServiceClass.getName());
         }
 
         for (Method method : context.aiServiceClass.getMethods()) {

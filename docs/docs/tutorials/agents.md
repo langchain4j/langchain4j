@@ -47,16 +47,16 @@ It is now possible to build an instance of this agent using the `AgenticServices
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(myChatModel)
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
 
 In essence agents are plain AI services, providing the same features, but with the ability to be combined with other agents to create more complex workflows and agentic systems. 
 
-The other main difference with an AI service is the presence of the `outputName` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system. Alternatively, the output name can be also declared directly in the `@Agent` annotation instead of programmatically like in this example, so that it could be omitted in the code and added here.
+The other main difference with an AI service is the presence of the `outputKey` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system. Alternatively, the output name can be also declared directly in the `@Agent` annotation instead of programmatically like in this example, so that it could be omitted in the code and added here.
 
 ```java
-@Agent(outputName = "story", description = "Generates a story based on the given topic")
+@Agent(outputKey = "story", description = "Generates a story based on the given topic")
 ```
 
 The `AgenticServices` class provides a set of static factory methods to create and define all kinds of agents made available by the `langchain4j-agentic` framework.
@@ -116,25 +116,25 @@ At this point it is possible to create a sequential workflow that combines these
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 AudienceEditor audienceEditor = AgenticServices
         .agentBuilder(AudienceEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 UntypedAgent novelCreator = AgenticServices
         .sequenceBuilder()
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 Map<String, Object> input = Map.of(
@@ -173,7 +173,7 @@ so that the `novelCreator` agent can be created and used as follows:
 NovelCreator novelCreator = AgenticServices
         .sequenceBuilder(NovelCreator.class)
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 String story = novelCreator.createNovel("dragons and wizards", "young adults", "fantasy");
@@ -207,13 +207,13 @@ Then it is possible to use this agent in a loop with the `StyleEditor` one to it
 StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyleScorer styleScorer = AgenticServices
         .agentBuilder(StyleScorer.class)
         .chatModel(BASE_MODEL)
-        .outputName("score")
+        .outputKey("score")
         .build();
 
 UntypedAgent styleReviewLoop = AgenticServices
@@ -259,13 +259,13 @@ implementing a more complex workflow that combines the story generation and styl
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyledWriter styledWriter = AgenticServices
         .sequenceBuilder(StyledWriter.class)
         .subAgents(creativeWriter, styleReviewLoop)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 String story = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
@@ -310,20 +310,20 @@ Since the work of the two experts is independent, it is possible to invoke them 
 FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("meals")
+        .outputKey("meals")
         .build();
 
 MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("movies")
+        .outputKey("movies")
         .build();
 
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
         .executor(Executors.newFixedThreadPool(2))
-        .outputName("plans")
+        .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
             List<String> meals = agenticScope.readState("meals", List.of());
@@ -400,23 +400,23 @@ implementing a conditional workflow that invokes the appropriate agent based on 
 CategoryRouter routerAgent = AgenticServices
         .agentBuilder(CategoryRouter.class)
         .chatModel(BASE_MODEL)
-        .outputName("category")
+        .outputKey("category")
         .build();
 
 MedicalExpert medicalExpert = AgenticServices
         .agentBuilder(MedicalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 LegalExpert legalExpert = AgenticServices
         .agentBuilder(LegalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 TechnicalExpert technicalExpert = AgenticServices
         .agentBuilder(TechnicalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -428,7 +428,7 @@ UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
 ExpertRouterAgent expertRouterAgent = AgenticServices
         .sequenceBuilder(ExpertRouterAgent.class)
         .subAgents(routerAgent, expertsAgent)
-        .outputName("response")
+        .outputKey("response")
         .build();
 
 String response = expertRouterAgent.ask("I broke my leg what should I do");
@@ -447,21 +447,21 @@ FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
         .async(true)
-        .outputName("meals")
+        .outputKey("meals")
         .build();
 
 MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
         .async(true)
-        .outputName("movies")
+        .outputKey("movies")
         .build();
 
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
         .executor(Executors.newFixedThreadPool(2))
-        .outputName("plans")
+        .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
             List<String> meals = agenticScope.readState("meals", List.of());
@@ -502,7 +502,7 @@ For instance, if a necessary argument is omitted from the very first example of 
 UntypedAgent novelCreator = AgenticServices
         .sequenceBuilder()
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 Map<String, Object> input = Map.of(
@@ -533,7 +533,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
             }
             return ErrorRecoveryResult.throwException();
         })
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
 
@@ -544,7 +544,7 @@ Tracking and logging the agents' invocations can be crucial for debugging and un
 ```java
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
     .chatModel(baseModel())
-    .outputName("story")
+    .outputKey("story")
     .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
     .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
     .build();
@@ -561,9 +561,9 @@ For instance the `EveningPlannerAgent` implementing the parallel workflow progra
 ```java
 public interface EveningPlannerAgent {
 
-    @ParallelAgent(outputName = "plans", subAgents = {
-            @SubAgent(type = FoodExpert.class, outputName = "meals"),
-            @SubAgent(type = MovieExpert.class, outputName = "movies")
+    @ParallelAgent(outputKey = "plans", subAgents = {
+            @SubAgent(type = FoodExpert.class, outputKey = "meals"),
+            @SubAgent(type = MovieExpert.class, outputKey = "movies")
     })
     List<EveningPlan> plan(@V("mood") String mood);
 
@@ -637,10 +637,10 @@ To give another example of this declarative API, let's redefine through it the `
 ```java
 public interface ExpertsAgent {
 
-    @ConditionalAgent(outputName = "response", subAgents = {
-            @SubAgent(type = MedicalExpert.class, outputName = "response"),
-            @SubAgent(type = TechnicalExpert.class, outputName = "response"),
-            @SubAgent(type = LegalExpert.class, outputName = "response")
+    @ConditionalAgent(outputKey = "response", subAgents = {
+            @SubAgent(type = MedicalExpert.class, outputKey = "response"),
+            @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
+            @SubAgent(type = LegalExpert.class, outputKey = "response")
     })
     String askExpert(@V("request") String request);
 
@@ -674,7 +674,7 @@ public interface CreativeWriter {
             Return only the story and nothing else.
             The topic is {{topic}}.
             """)
-    @Agent(description = "Generate a story based on the given topic", outputName = "story")
+    @Agent(description = "Generate a story based on the given topic", outputKey = "story")
     String generateStory(@V("topic") String topic);
 
     @ChatModelSupplier
@@ -691,7 +691,7 @@ public interface AudienceEditor {
         Return only the story and nothing else.
         The story is "{{story}}".
         """)
-    @Agent(description = "Edit a story to better fit a given audience", outputName = "story")
+    @Agent(description = "Edit a story to better fit a given audience", outputKey = "story")
     String editStory(@V("story") String story, @V("audience") String audience);
 
     @ChatModelSupplier
@@ -706,7 +706,7 @@ and then programmatically concatenating them in a sequence simply using their cl
 ```java
 UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .subAgents(CreativeWriter.class, AudienceEditor.class)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 Map<String, Object> input = Map.of(
@@ -743,7 +743,7 @@ MedicalExpertWithMemory medicalExpert = AgenticServices
         .agentBuilder(MedicalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -792,7 +792,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
         .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -815,7 +815,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
         .summarizedContext("medical", "technical")
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -1121,7 +1121,7 @@ For instance the `ExchangeAgent` used in the supervisor example has been probabl
 public class ExchangeOperator {
 
     @Agent(value = "A money exchanger that converts a given amount of money from the original to the target currency",
-            outputName = "exchange")
+            outputKey = "exchange")
     public Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency) {
         // invoke the REST API to perform the currency exchange
     }
@@ -1207,7 +1207,7 @@ AstrologyAgent astrologyAgent = AgenticServices
 HumanInTheLoop humanInTheLoop = AgenticServices
         .humanInTheLoopBuilder()
         .description("An agent that asks the zodiac sign of the user")
-        .outputName("sign")
+        .outputKey("sign")
         .requestWriter(request -> {
             System.out.println(request);
             System.out.print("> ");
@@ -1248,12 +1248,12 @@ For instance if the `CreativeWriter` agent used in the first example was defined
 ```java
 UntypedAgent creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL)
-        .inputNames("topic")
-        .outputName("story")
+        .inputKeys("topic")
+        .outputKey("story")
         .build();
 ```
 
-The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputNames` method.
+The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
 
 Alternatively, it is possible to define a local interface for the A2A agent like:
 
@@ -1270,7 +1270,7 @@ so that it can be used in a more type-safe way, and the input names are automati
 ```java
 A2ACreativeWriter creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
 

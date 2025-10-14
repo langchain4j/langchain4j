@@ -7,9 +7,9 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-
-public record MethodAgentInvoker(Method method, AgentSpecification agentSpecification, List<AgentUtil.AgentArgument> arguments) implements AgentInvoker {
+public record MethodAgentInvoker(
+        Method method, AgentSpecification agentSpecification, List<AgentUtil.AgentArgument> arguments)
+        implements AgentInvoker {
 
     @Override
     public String name() {
@@ -27,8 +27,8 @@ public record MethodAgentInvoker(Method method, AgentSpecification agentSpecific
     }
 
     @Override
-    public String outputName() {
-        return agentSpecification.outputName();
+    public String outputKey() {
+        return agentSpecification.outputKey();
     }
 
     @Override

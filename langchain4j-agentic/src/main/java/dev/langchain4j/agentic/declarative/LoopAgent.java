@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of a loop agent, used to orchestrate the agentic workflow
@@ -19,10 +19,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
- *                 outputName = "story", maxIterations = 5,
+ *                 outputKey = "story", maxIterations = 5,
  *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputName = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputName = "story")
+ *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
+ *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
  *             }
  *         )
  *         String write(@V("story") String story);
@@ -50,11 +50,11 @@ public @interface LoopAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
 
     /**
      * Array of sub-agents that will be invoked in parallel.

@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
@@ -13,13 +16,10 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 public abstract class AbstractService<T, S> {
 
     private static final Function<AgenticScope, Object> DEFAULT_OUTPUT_FUNCTION = agenticScope -> null;
-    private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> { };
+    private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> {};
 
     protected final Class<T> agentServiceClass;
 
@@ -27,7 +27,7 @@ public abstract class AbstractService<T, S> {
 
     protected String name;
     protected String description;
-    protected String outputName;
+    protected String outputKey;
     protected Function<AgenticScope, Object> output = DEFAULT_OUTPUT_FUNCTION;
 
     protected Consumer<AgentRequest> beforeListener = request -> {};
@@ -62,8 +62,8 @@ public abstract class AbstractService<T, S> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputName())) {
-            this.outputName = agent.outputName();
+        if (!isNullOrBlank(agent.outputKey())) {
+            this.outputKey = agent.outputKey();
         }
     }
 
@@ -82,8 +82,8 @@ public abstract class AbstractService<T, S> {
         return (S) this;
     }
 
-    public S outputName(String outputName) {
-        this.outputName = outputName;
+    public S outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return (S) this;
     }
 
