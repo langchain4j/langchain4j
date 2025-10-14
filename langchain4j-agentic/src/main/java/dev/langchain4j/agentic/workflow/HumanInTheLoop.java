@@ -5,7 +5,14 @@ import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public record HumanInTheLoop(String inputName, String outputKey, String description, Consumer<?> requestWriter, boolean async, Supplier<?> responseReader) implements AgentSpecsProvider {
+public record HumanInTheLoop(
+        String inputName,
+        String outputKey,
+        String description,
+        Consumer<?> requestWriter,
+        boolean async,
+        Supplier<?> responseReader)
+        implements AgentSpecsProvider {
 
     @Agent("An agent that asks the user for missing information")
     public Object askUser(Object request) {

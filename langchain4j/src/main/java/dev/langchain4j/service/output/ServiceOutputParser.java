@@ -1,5 +1,11 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -7,16 +13,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.TypeUtils.getRawClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 @Internal
 public class ServiceOutputParser {

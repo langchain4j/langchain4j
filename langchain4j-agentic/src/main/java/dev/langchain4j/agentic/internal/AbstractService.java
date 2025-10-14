@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
@@ -13,13 +16,10 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 public abstract class AbstractService<T, S> {
 
     private static final Function<AgenticScope, Object> DEFAULT_OUTPUT_FUNCTION = agenticScope -> null;
-    private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> { };
+    private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> {};
 
     protected final Class<T> agentServiceClass;
 

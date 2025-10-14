@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Java methods annotated with {@code @Agent} are considered agents that other agents can invoke.

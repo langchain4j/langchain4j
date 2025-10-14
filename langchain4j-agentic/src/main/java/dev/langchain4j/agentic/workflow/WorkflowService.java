@@ -4,8 +4,8 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,5 +31,6 @@ public interface WorkflowService<T, W> {
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
     T beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
+
     T afterAgentInvocation(Consumer<AgentResponse> completionListener);
 }

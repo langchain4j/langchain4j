@@ -1,19 +1,19 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
@@ -34,9 +34,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     private String[] inputNames(A2AClientSpecification a2AClientInstance) {
-        return isUntyped() ?
-                a2AClientInstance.inputNames() :
-                Stream.of(method.getParameters()).map(AgentInvoker::parameterName).toArray(String[]::new);
+        return isUntyped()
+                ? a2AClientInstance.inputNames()
+                : Stream.of(method.getParameters())
+                        .map(AgentInvoker::parameterName)
+                        .toArray(String[]::new);
     }
 
     @Override
@@ -86,9 +88,9 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped() ?
-                new AgentInvocationArguments(agenticScope.state(), new Object[] { agenticScope.state() }) :
-                agentInvocationArguments(agenticScope);
+        return isUntyped()
+                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
+                : agentInvocationArguments(agenticScope);
     }
 
     private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
@@ -101,7 +103,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
-        return new AgentInvocationArguments(namedArgs, positionalArgs);    }
+        return new AgentInvocationArguments(namedArgs, positionalArgs);
+    }
 
     private boolean isUntyped() {
         return method.getDeclaringClass() == UntypedAgent.class;

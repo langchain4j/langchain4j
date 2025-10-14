@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as a supplier of response for human-in-the-loop agent.
@@ -30,5 +30,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface HumanInTheLoopResponseSupplier {
-}
+public @interface HumanInTheLoopResponseSupplier {}

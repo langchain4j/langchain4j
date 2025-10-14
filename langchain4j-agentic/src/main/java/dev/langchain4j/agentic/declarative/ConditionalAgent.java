@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of a conditional agent, generally used to route the agentic workflow toward

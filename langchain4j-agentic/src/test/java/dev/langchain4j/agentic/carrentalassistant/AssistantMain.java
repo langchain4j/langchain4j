@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.carrentalassistant;
 
+import static dev.langchain4j.agentic.Models.baseModel;
+
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.carrentalassistant.domain.CustomerInfo;
@@ -16,8 +18,6 @@ import dev.langchain4j.agentic.carrentalassistant.services.TowingAgentService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-
-import static dev.langchain4j.agentic.Models.baseModel;
 
 public class AssistantMain {
 
@@ -41,7 +41,8 @@ public class AssistantMain {
     }
 
     private static CarRentalAssistant createAssistant() {
-        CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(CustomerInfoExtractionService.class)
+        CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(
+                        CustomerInfoExtractionService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .outputKey("customerInfo")
@@ -103,9 +104,9 @@ public class AssistantMain {
                     writeEmergency(agenticScope, emergencies.getMedical(), "medical");
                     writeEmergency(agenticScope, emergencies.getPolice(), "police");
                 })
-                .subAgents( agenticScope -> agenticScope.hasState("fireEmergency"), fireAgent)
-                .subAgents( agenticScope -> agenticScope.hasState("medicalEmergency"), medicalAgent)
-                .subAgents( agenticScope -> agenticScope.hasState("policeEmergency"), policeAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("fireEmergency"), fireAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("medicalEmergency"), medicalAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("policeEmergency"), policeAgent)
                 .build();
 
         return AgenticServices.sequenceBuilder()
