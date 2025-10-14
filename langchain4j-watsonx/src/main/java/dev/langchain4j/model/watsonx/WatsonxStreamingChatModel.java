@@ -11,6 +11,7 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
 import com.ibm.watsonx.ai.chat.model.PartialToolCall;
 import com.ibm.watsonx.ai.chat.model.Tool;
@@ -43,7 +44,7 @@ import java.util.Set;
  *     .url("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
- *     .modelName("ibm/granite-3-8b-instruct")
+ *     .modelName("ibm/granite-3-3-8b-instruct")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
@@ -72,11 +73,13 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 : null;
 
         var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        final ExtractionTags tags;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
-            messages.add(THINKING);
-            watsonxChatRequest.thinking(tags);
-        }
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
+            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
+            watsonxChatRequest.thinking(wcrp.thinking());
+            tags = wcrp.thinking().getExtractionTags();
+        } else tags = null;
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
         chatService.chatStreaming(

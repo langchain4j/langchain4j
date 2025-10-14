@@ -23,8 +23,7 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(createStreamingChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
-                .build());
+        return List.of(createStreamingChatModel("mistralai/mistral-medium-2505").build());
     }
 
     @Override
@@ -54,15 +53,44 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    public boolean supportsSingleImageInputAsPublicURL() {
-        // Watsonx does not support images as URLs, only as Base64-encoded strings
-        return false;
+    protected void should_execute_a_tool_then_answer(StreamingChatModel model) {
+        super.should_execute_a_tool_then_answer(
+                createStreamingChatModel("mistralai/mistral-small-3-1-24b-instruct-2503")
+                        .build());
     }
 
     @Override
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
-        super.should_respect_user_message(
-                createStreamingChatModel("mistralai/mistral-medium-2505").build());
+    protected void should_execute_a_tool_without_arguments_then_answer(StreamingChatModel model) {
+        super.should_execute_a_tool_without_arguments_then_answer(
+                createStreamingChatModel("mistralai/mistral-small-3-1-24b-instruct-2503")
+                        .build());
+    }
+
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
+        super.should_execute_multiple_tools_in_parallel_then_answer(
+                createStreamingChatModel("mistralai/mistral-small-3-1-24b-instruct-2503")
+                        .build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_any_tool(StreamingChatModel model) {
+        super.should_force_LLM_to_execute_any_tool(
+                createStreamingChatModel("mistralai/mistral-small-3-1-24b-instruct-2503")
+                        .build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_specific_tool(StreamingChatModel model) {
+        super.should_force_LLM_to_execute_specific_tool(
+                createStreamingChatModel("mistralai/mistral-small-3-1-24b-instruct-2503")
+                        .build());
+    }
+
+    @Override
+    public boolean supportsSingleImageInputAsPublicURL() {
+        // Watsonx does not support images as URLs, only as Base64-encoded strings
+        return false;
     }
 
     @Override

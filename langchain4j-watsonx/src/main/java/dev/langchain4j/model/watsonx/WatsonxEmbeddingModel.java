@@ -45,7 +45,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
         }
 
         embeddingService = embeddingServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.url)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)

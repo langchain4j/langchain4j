@@ -46,7 +46,7 @@ public class WatsonxScoringModel implements ScoringModel {
         }
 
         rerankService = rerankServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.url)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)
