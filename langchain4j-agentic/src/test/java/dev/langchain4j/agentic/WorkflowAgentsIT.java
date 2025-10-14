@@ -700,7 +700,7 @@ public class WorkflowAgentsIT {
             the provided tool, to notify that you have completed your task.
             """)
         @Agent
-        List<String> findMeal(@V("mood") String mood, AgenticScope agenticScope);
+        List<String> findMeal(@V("mood") String mood);
     }
 
     public interface MovieExpertWithNotification {
@@ -716,7 +716,7 @@ public class WorkflowAgentsIT {
             to notify that you have completed your task.
             """)
         @Agent
-        List<String> findMovie(@V("mood") String mood, AgenticScope agenticScope);
+        List<String> findMovie(@V("mood") String mood);
     }
 
     @Test

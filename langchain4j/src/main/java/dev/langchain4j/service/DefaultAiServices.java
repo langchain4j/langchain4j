@@ -64,7 +64,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Stream;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -468,18 +467,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
-                        if (args == null) {
-                            return Optional.empty();
-                        }
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
+                        if (args != null) {
+                            for (int i = 0; i < params.length; i++) {
+                                Parameter parameter = params[i];
+                                if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                                    InvocationParameters invocationParameters = (InvocationParameters) args[i];
+                                    ensureNotNull(invocationParameters, "InvocationParameters");
+                                    return Optional.of(invocationParameters);
+                                }
                             }
                         }
-                        return Optional.empty();
+                        return Optional.ofNullable(InvocationParameters.getCurrentParameters());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
