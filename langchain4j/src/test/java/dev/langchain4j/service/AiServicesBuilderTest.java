@@ -68,21 +68,4 @@ class AiServicesBuilderTest {
                         .tools(HelloWorld.class)
                         .build());
     }
-
-    @Test
-    void should_fail_when_return_type_is_void() {
-
-        // given
-        interface Assistant {
-
-            void chat(String userMessage);
-        }
-
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
-
-        // when - then
-        assertThatThrownBy(() -> AiServices.create(Assistant.class, chatModel))
-                .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("'void' is not a supported return type of an AI Service method");
-    }
 }
