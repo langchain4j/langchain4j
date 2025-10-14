@@ -112,7 +112,7 @@ public class InvocationParameters {
         setCurrentParameters(this);
     }
 
-    public static void setCurrentParameters(InvocationParameters invocationParameters) {
+    public static void setCurrent(InvocationParameters invocationParameters) {
         currentInvocationParameters.set(invocationParameters);
     }
 
