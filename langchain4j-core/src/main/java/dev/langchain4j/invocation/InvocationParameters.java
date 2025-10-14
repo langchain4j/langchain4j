@@ -109,7 +109,7 @@ public class InvocationParameters {
     }
 
     public void setAsCurrent() {
-        setCurrentParameters(this);
+        setCurrent(this);
     }
 
     public static void setCurrent(InvocationParameters invocationParameters) {

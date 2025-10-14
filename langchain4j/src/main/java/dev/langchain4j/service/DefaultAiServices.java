@@ -477,7 +477,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 }
                             }
                         }
-                        return Optional.ofNullable(InvocationParameters.getCurrentParameters());
+                        return Optional.ofNullable(InvocationParameters.current());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

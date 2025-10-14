@@ -38,7 +38,7 @@ public interface AgentInvoker extends AgentSpecification {
         new InvocationParameters(Map.of(AgenticScope.class.getName(), agenticScope)).setAsCurrent();
         Object result = internalInvoke(agent, args);
         try {
-            InvocationParameters.resetCurrentParameters();
+            InvocationParameters.removeCurrent();
             afterInvocation(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
         } catch (Exception e) {
             LOG.error("After agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
