@@ -138,10 +138,6 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
 
             Class<?> returnType = method.getReturnType();
-            if (returnType == void.class) {
-                throw illegalConfiguration(
-                        "'%s' is not a supported return type of an AI Service method", returnType.getName());
-            }
             if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }

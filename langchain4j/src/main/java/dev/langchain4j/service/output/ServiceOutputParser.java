@@ -49,6 +49,10 @@ public class ServiceOutputParser {
             return Response.from(chatResponse.aiMessage(), chatResponse.tokenUsage(), chatResponse.finishReason());
         }
 
+        if (rawClass == void.class || rawClass == Void.class) {
+            return null;
+        }
+
         AiMessage aiMessage = chatResponse.aiMessage();
         if (rawClass == AiMessage.class) {
             return aiMessage;
@@ -114,6 +118,8 @@ public class ServiceOutputParser {
                 || type == AiMessage.class
                 || type == TokenStream.class
                 || type == Response.class
-                || type == Map.class;
+                || type == Map.class
+                || type == void.class
+                || type == Void.class;
     }
 }
