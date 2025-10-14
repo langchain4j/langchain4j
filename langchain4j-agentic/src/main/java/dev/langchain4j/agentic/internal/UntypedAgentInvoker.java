@@ -23,8 +23,8 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public String outputName() {
-        return agentSpecification.outputName();
+    public String outputKey() {
+        return agentSpecification.outputKey();
     }
 
     @Override
@@ -49,6 +49,6 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return new AgentInvocationArguments(agenticScope.state(), new Object[] { agenticScope.state() });
+        return new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()});
     }
 }

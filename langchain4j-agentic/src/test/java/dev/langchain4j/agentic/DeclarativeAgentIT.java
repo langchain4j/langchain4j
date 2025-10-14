@@ -1,19 +1,49 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.plannerModel;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import dev.langchain4j.agentic.Agents.AudienceEditor;
+import dev.langchain4j.agentic.Agents.CategoryRouter;
+import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.EveningPlan;
+import dev.langchain4j.agentic.Agents.FoodExpert;
+import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.MedicalExpert;
+import dev.langchain4j.agentic.Agents.MovieExpert;
+import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.StyleEditor;
+import dev.langchain4j.agentic.Agents.StyleScorer;
+import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
-import dev.langchain4j.agentic.declarative.ErrorHandler;
-import dev.langchain4j.agentic.declarative.HumanInTheLoop;
-import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
-import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
 import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
+import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.ConditionalAgent;
+import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.ExitCondition;
+import dev.langchain4j.agentic.declarative.HumanInTheLoop;
+import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
+import dev.langchain4j.agentic.declarative.LoopAgent;
+import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.declarative.ParallelAgent;
+import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.declarative.SubAgent;
+import dev.langchain4j.agentic.declarative.SupervisorAgent;
+import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
+import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
@@ -21,19 +51,6 @@ import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.declarative.ActivationCondition;
-import dev.langchain4j.agentic.declarative.ConditionalAgent;
-import dev.langchain4j.agentic.declarative.ParallelExecutor;
-import dev.langchain4j.agentic.declarative.ExitCondition;
-import dev.langchain4j.agentic.declarative.LoopAgent;
-import dev.langchain4j.agentic.declarative.Output;
-import dev.langchain4j.agentic.declarative.ParallelAgent;
-import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.SubAgent;
-import dev.langchain4j.agentic.declarative.SupervisorAgent;
-import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.declarative.SupervisorRequest;
-import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -42,22 +59,6 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-
-import dev.langchain4j.agentic.Agents.CreativeWriter;
-import dev.langchain4j.agentic.Agents.AudienceEditor;
-import dev.langchain4j.agentic.Agents.StyleEditor;
-import dev.langchain4j.agentic.Agents.StyleScorer;
-import dev.langchain4j.agentic.Agents.CategoryRouter;
-import dev.langchain4j.agentic.Agents.MedicalExpert;
-import dev.langchain4j.agentic.Agents.TechnicalExpert;
-import dev.langchain4j.agentic.Agents.LegalExpert;
-import dev.langchain4j.agentic.Agents.RequestCategory;
-import dev.langchain4j.agentic.Agents.FoodExpert;
-import dev.langchain4j.agentic.Agents.MovieExpert;
-import dev.langchain4j.agentic.Agents.EveningPlan;
-
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BrokenBarrierException;
@@ -66,11 +67,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.plannerModel;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 public class DeclarativeAgentIT {
 
@@ -84,11 +81,13 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreator {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = AudienceEditor.class, outputName = "story"),
-                @SubAgent(type = StyleEditor.class, outputName = "story")
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -102,17 +101,20 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithConfigurableStyleEditor {
 
-        @SequenceAgent(outputName = "styledStory", subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = AudienceEditor.class, outputName = "story"),
-                @SubAgent(type = StyleEditor.class)
-        })
+        @SequenceAgent(
+                outputKey = "styledStory",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = StyleEditor.class)
+                })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
     @Test
     void declarative_sequence_without_agent_configuration_tests() {
-        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel());
+        StoryCreatorWithConfigurableStyleEditor storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNull();
@@ -120,11 +122,12 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_with_agent_configuration_tests() {
-        StoryCreatorWithConfigurableStyleEditor storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
-            if (ctx.agentServiceClass() == StyleEditor.class) {
-                ctx.agentBuilder().outputName("styledStory");
-            }
-        });
+        StoryCreatorWithConfigurableStyleEditor storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
+                    if (ctx.agentServiceClass() == StyleEditor.class) {
+                        ctx.agentBuilder().outputKey("styledStory");
+                    }
+                });
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -150,25 +153,27 @@ public class DeclarativeAgentIT {
     void declarative_sequence_with_error_tests() {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
 
-        assertThat(
-                assertThrows(AgentInvocationException.class,
-                        () -> storyCreator.write(null, "fantasy", "young adults"))
-        ).hasMessageContaining("topic");
+        assertThat(assertThrows(
+                        AgentInvocationException.class, () -> storyCreator.write(null, "fantasy", "young adults")))
+                .hasMessageContaining("topic");
     }
 
     public interface StoryCreatorWithErrorRecovery {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = AudienceEditor.class, outputName = "story"),
-                @SubAgent(type = StyleEditor.class, outputName = "story")
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @ErrorHandler
         static ErrorRecoveryResult errorHandler(ErrorContext errorContext) {
-            if (errorContext.agentName().equals("generateStory") &&
-                    errorContext.exception() instanceof MissingArgumentException mEx && mEx.argumentName().equals("topic")) {
+            if (errorContext.agentName().equals("generateStory")
+                    && errorContext.exception() instanceof MissingArgumentException mEx
+                    && mEx.argumentName().equals("topic")) {
                 errorContext.agenticScope().writeState("topic", "dragons and wizards");
                 return ErrorRecoveryResult.retry();
             }
@@ -178,7 +183,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_sequence_with_error_recover_tests() {
-        StoryCreatorWithErrorRecovery storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithErrorRecovery.class, baseModel());
+        StoryCreatorWithErrorRecovery storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithErrorRecovery.class, baseModel());
 
         String story = storyCreator.write(null, "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -188,12 +194,12 @@ public class DeclarativeAgentIT {
 
         @LoopAgent(
                 description = "Review and score the given story to ensure it aligns with the specified style",
-                outputName = "story", maxIterations = 5,
+                outputKey = "story",
+                maxIterations = 5,
                 subAgents = {
-                    @SubAgent(type = StyleScorer.class, outputName = "score"),
-                    @SubAgent(type = StyleEditor.class, outputName = "story")
-            }
-        )
+                    @SubAgent(type = StyleScorer.class, outputKey = "score"),
+                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                })
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -204,16 +210,19 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
+                })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
     @Test
     void declarative_sequence_and_loop_tests() {
-        StoryCreatorWithReview storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
+        StoryCreatorWithReview storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -232,12 +241,12 @@ public class DeclarativeAgentIT {
 
         @LoopAgent(
                 description = "Review the given story to ensure it aligns with the specified style",
-                outputName = "story", maxIterations = 5,
+                outputKey = "story",
+                maxIterations = 5,
                 subAgents = {
-                    @SubAgent(type = StyleScorer.class, outputName = "score"),
-                    @SubAgent(type = StyleEditor.class, outputName = "story")
-            }
-        )
+                    @SubAgent(type = StyleScorer.class, outputKey = "score"),
+                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                })
         String write(@V("story") String story);
 
         @ExitCondition(testExitAtLoopEnd = true)
@@ -249,17 +258,20 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithCounter {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = StyleReviewLoopAgentWithCounter.class, outputName = "story")
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = StyleReviewLoopAgentWithCounter.class, outputKey = "story")
+                })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
     @Test
     void declarative_loop_with_counter_tests() {
         loopCount = new AtomicInteger();
-        StoryCreatorWithReviewWithCounter storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithCounter.class, baseModel());
+        StoryCreatorWithReviewWithCounter storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithCounter.class, baseModel());
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -296,10 +308,12 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithListener {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = CreativeWriterWithListener.class, outputName = "story"),
-                @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputName = "story")
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriterWithListener.class, outputKey = "story"),
+                    @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputKey = "story")
+                })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -311,7 +325,8 @@ public class DeclarativeAgentIT {
         assertThat(requestedTopic).isNull();
         assertThat(finalScore).isNull();
 
-        StoryCreatorWithReviewWithListener storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithListener.class, baseModel());
+        StoryCreatorWithReviewWithListener storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithListener.class, baseModel());
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -332,11 +347,13 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent(outputName = "response", subAgents = {
-                @SubAgent(type = MedicalExpert.class, outputName = "response"),
-                @SubAgent(type = TechnicalExpert.class, outputName = "response"),
-                @SubAgent(type = LegalExpert.class, outputName = "response")
-        })
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {
+                    @SubAgent(type = MedicalExpert.class, outputKey = "response"),
+                    @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
+                    @SubAgent(type = LegalExpert.class, outputKey = "response")
+                })
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpert.class)
@@ -357,10 +374,12 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent {
 
-        @SequenceAgent(outputName = "response", subAgents = {
-                @SubAgent(type = CategoryRouter.class, outputName = "category"),
-                @SubAgent(type = ExpertsAgent.class, outputName = "response")
-        })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {
+                    @SubAgent(type = CategoryRouter.class, outputKey = "category"),
+                    @SubAgent(type = ExpertsAgent.class, outputKey = "response")
+                })
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
 
@@ -378,10 +397,12 @@ public class DeclarativeAgentIT {
 
     public interface EveningPlannerAgent {
 
-        @ParallelAgent(outputName = "plans", subAgents = {
-                @SubAgent(type = FoodExpert.class, outputName = "meals"),
-                @SubAgent(type = MovieExpert.class, outputName = "movies")
-        })
+        @ParallelAgent(
+                outputKey = "plans",
+                subAgents = {
+                    @SubAgent(type = FoodExpert.class, outputKey = "meals"),
+                    @SubAgent(type = MovieExpert.class, outputKey = "movies")
+                })
         List<EveningPlan> plan(@V("mood") String mood);
 
         @ParallelExecutor
@@ -404,17 +425,21 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_parallel_tests() {
-        EveningPlannerAgent eveningPlannerAgent = AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
+        EveningPlannerAgent eveningPlannerAgent =
+                AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         assertThat(plans).hasSize(3);
     }
 
     public interface SupervisorStoryCreator {
 
-        @SupervisorAgent(outputName = "story", responseStrategy = SupervisorResponseStrategy.LAST, subAgents = {
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
-        })
+        @SupervisorAgent(
+                outputKey = "story",
+                responseStrategy = SupervisorResponseStrategy.LAST,
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
+                })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @SupervisorRequest
@@ -435,7 +460,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_supervisor_tests() {
-        SupervisorStoryCreator styledWriter = AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, baseModel());
+        SupervisorStoryCreator styledWriter =
+                AgenticServices.createAgenticSystem(SupervisorStoryCreator.class, baseModel());
         ResultWithAgenticScope<String> result = styledWriter.write("dragons and wizards", "comedy");
 
         String story = result.result();
@@ -451,12 +477,14 @@ public class DeclarativeAgentIT {
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+                .isGreaterThanOrEqualTo(0.8);
     }
 
     public interface MedicalExpertWithMemory {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a medical expert.
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -477,7 +505,8 @@ public class DeclarativeAgentIT {
 
     public interface LegalExpertWithMemory {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a legal expert.
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -498,7 +527,8 @@ public class DeclarativeAgentIT {
 
     public interface TechnicalExpertWithMemory {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a technical expert.
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -519,11 +549,16 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgentWithMemory {
 
-        @ConditionalAgent(outputName = "response", subAgents = {
-                @SubAgent(type = MedicalExpertWithMemory.class, outputName = "response"),
-                @SubAgent(type = TechnicalExpertWithMemory.class, outputName = "response"),
-                @SubAgent(type = LegalExpertWithMemory.class, outputName = "response", summarizedContext = {"medical", "technical"})
-        })
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {
+                    @SubAgent(type = MedicalExpertWithMemory.class, outputKey = "response"),
+                    @SubAgent(type = TechnicalExpertWithMemory.class, outputKey = "response"),
+                    @SubAgent(
+                            type = LegalExpertWithMemory.class,
+                            outputKey = "response",
+                            summarizedContext = {"medical", "technical"})
+                })
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpertWithMemory.class)
@@ -550,18 +585,21 @@ public class DeclarativeAgentIT {
         }
     }
 
-    public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess  {
+    public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
-        @SequenceAgent(outputName = "response", subAgents = {
-                @SubAgent(type = CategoryRouterWithModel.class, outputName = "category"),
-                @SubAgent(type = ExpertsAgentWithMemory.class, outputName = "response")
-        })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {
+                    @SubAgent(type = CategoryRouterWithModel.class, outputKey = "category"),
+                    @SubAgent(type = ExpertsAgentWithMemory.class, outputKey = "response")
+                })
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
 
     @Test
     void declarative_memory_tests() {
-        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgentWithMemory.class);
+        ExpertRouterAgentWithMemory expertRouterAgent =
+                AgenticServices.createAgenticSystem(ExpertRouterAgentWithMemory.class);
 
         JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
         AgenticScopePersister.setStore(store);
@@ -578,7 +616,7 @@ public class DeclarativeAgentIT {
         AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        AgenticScopeRegistry registry = ((AgenticScopeOwner)expertRouterAgent).registry();
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) expertRouterAgent).registry();
         assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
 
         // Clear the in-memory registry to simulate a restart
@@ -612,10 +650,12 @@ public class DeclarativeAgentIT {
     static SupervisorAgentIT.BankTool bankTool = new SupervisorAgentIT.BankTool();
 
     public interface WithdrawAgent {
-        @SystemMessage("""
+        @SystemMessage(
+                """
             You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
-        @UserMessage("""
+        @UserMessage(
+                """
             Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
@@ -628,10 +668,12 @@ public class DeclarativeAgentIT {
     }
 
     public interface CreditAgent {
-        @SystemMessage("""
+        @SystemMessage(
+                """
             You are a banker that can only credit US dollars (USD) to a user account.
             """)
-        @UserMessage("""
+        @UserMessage(
+                """
             Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
@@ -639,16 +681,15 @@ public class DeclarativeAgentIT {
 
         @ToolsSupplier
         static Object[] tools() {
-            return new Object[] { bankTool };
+            return new Object[] {bankTool};
         }
     }
 
     public interface SupervisorBanker {
 
-        @SupervisorAgent(responseStrategy = SupervisorResponseStrategy.SUMMARY, subAgents = {
-                @SubAgent(type = WithdrawAgent.class),
-                @SubAgent(type = CreditAgent.class)
-        })
+        @SupervisorAgent(
+                responseStrategy = SupervisorResponseStrategy.SUMMARY,
+                subAgents = {@SubAgent(type = WithdrawAgent.class), @SubAgent(type = CreditAgent.class)})
         String invoke(@V("request") String request);
 
         @ChatModelSupplier
@@ -676,7 +717,7 @@ public class DeclarativeAgentIT {
 
     public interface AudienceRetriever {
 
-        @HumanInTheLoop(description = "Generate a story based on the given topic", outputName = "audience", async = true)
+        @HumanInTheLoop(description = "Generate a story based on the given topic", outputKey = "audience", async = true)
         static void request(@V("topic") String topic) {
             request.set("Which audience for topic " + topic + "?");
         }
@@ -714,19 +755,22 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithHumanInTheLoop {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = AudienceRetriever.class, outputName = "audience"),
-                @SubAgent(type = CreativeWriter.class, outputName = "story"),
-                @SubAgent(type = BarrierAwaiter.class),
-                @SubAgent(type = AudienceEditor.class, outputName = "story"),
-                @SubAgent(type = AudienceReader.class)
-        })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = AudienceRetriever.class, outputKey = "audience"),
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = BarrierAwaiter.class),
+                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = AudienceReader.class)
+                })
         String write(@V("topic") String topic);
     }
 
     @Test
     void declarative_human_in_the_loop_tests() {
-        StoryCreatorWithHumanInTheLoop storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithHumanInTheLoop.class, baseModel());
+        StoryCreatorWithHumanInTheLoop storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithHumanInTheLoop.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards");
         System.out.println(story);

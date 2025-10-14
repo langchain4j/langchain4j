@@ -229,7 +229,7 @@ public class SupervisorAgentIT {
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(outputName = "exchange")
+        @Agent(outputKey = "exchange")
         Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
@@ -277,7 +277,7 @@ public class SupervisorAgentIT {
         @Agent(
                 description =
                         "A money exchanger that converts a given amount of money from the original to the target currency",
-                outputName = "exchange")
+                outputKey = "exchange")
         public Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
