@@ -46,7 +46,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     private String name;
     private String uniqueName;
-    private String[] inputNames;
+    private String[] inputKeys;
     private String outputKey;
     private boolean async;
 
@@ -80,7 +80,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     @Override
     public T build() {
-        if (agentServiceClass == UntypedAgent.class && inputNames == null) {
+        if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
 
@@ -114,7 +114,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                         if (method.getDeclaringClass() == A2AClientSpecification.class) {
                             return switch (method.getName()) {
                                 case "agentCard" -> agentCard;
-                                case "inputNames" -> inputNames;
+                                case "inputKeys" -> inputKeys;
                                 default ->
                                     throw new UnsupportedOperationException(
                                             "Unknown method on A2AClientInstance class : " + method.getName());
@@ -133,8 +133,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
-            for (String inputName : inputNames) {
-                parts.add(new TextPart(params.get(inputName).toString()));
+            for (String inputKey : inputKeys) {
+                parts.add(new TextPart(params.get(inputKey).toString()));
             }
         } else {
             for (Object arg : args) {
@@ -191,8 +191,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> inputNames(String... inputNames) {
-        this.inputNames = inputNames;
+    public DefaultA2AClientBuilder<T> inputKeys(String... inputKeys) {
+        this.inputKeys = inputKeys;
         return this;
     }
 

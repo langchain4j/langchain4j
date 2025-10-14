@@ -1248,12 +1248,12 @@ For instance if the `CreativeWriter` agent used in the first example was defined
 ```java
 UntypedAgent creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL)
-        .inputNames("topic")
+        .inputKeys("topic")
         .outputKey("story")
         .build();
 ```
 
-The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputNames` method.
+The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
 
 Alternatively, it is possible to define a local interface for the A2A agent like:
 

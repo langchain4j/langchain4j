@@ -721,7 +721,7 @@ public class AgenticServices {
     private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
-                .inputNames(Stream.of(a2aMethod.getParameters())
+                .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(a2aClient.outputKey())
@@ -754,7 +754,7 @@ public class AgenticServices {
                 .description(humanInTheLoop.description())
                 .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
-                .inputName(parameterName(method.getParameters()[0]))
+                .inputKey(parameterName(method.getParameters()[0]))
                 .requestWriter(arg -> invokeStatic(method, arg));
 
         getAnnotatedMethodOnClass(agentServiceClass, HumanInTheLoopResponseSupplier.class)

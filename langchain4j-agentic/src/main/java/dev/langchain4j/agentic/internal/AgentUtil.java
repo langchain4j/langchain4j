@@ -60,7 +60,7 @@ public class AgentUtil {
                         agenticMethod,
                         new AgentSpecificationImpl(
                                 name, uniqueName, spec.description(), spec.outputKey(), spec.async(), x -> {}, x -> {}),
-                        List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName())))
+                        List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputKey())))
                 : AgentInvoker.fromMethod(
                         new AgentSpecificationImpl(
                                 name,

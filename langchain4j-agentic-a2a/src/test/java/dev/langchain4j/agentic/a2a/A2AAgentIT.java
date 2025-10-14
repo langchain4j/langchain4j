@@ -29,7 +29,7 @@ public class A2AAgentIT {
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
         UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
-                .inputNames("topic")
+                .inputKeys("topic")
                 .outputKey("story")
                 .build();
 

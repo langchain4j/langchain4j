@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public record HumanInTheLoop(
-        String inputName,
+        String inputKey,
         String outputKey,
         String description,
         Consumer<?> requestWriter,
@@ -22,7 +22,7 @@ public record HumanInTheLoop(
 
     public static class HumanInTheLoopBuilder {
 
-        private String inputName = "request";
+        private String inputKey = "request";
         private String outputKey = "response";
         private String description = "An agent that asks the user for missing information";
         private boolean async = false;
@@ -39,8 +39,8 @@ public record HumanInTheLoop(
             return this;
         }
 
-        public HumanInTheLoopBuilder inputName(String inputName) {
-            this.inputName = inputName;
+        public HumanInTheLoopBuilder inputKey(String inputKey) {
+            this.inputKey = inputKey;
             return this;
         }
 
@@ -60,7 +60,7 @@ public record HumanInTheLoop(
         }
 
         public HumanInTheLoop build() {
-            return new HumanInTheLoop(inputName, outputKey, description, requestWriter, async, responseReader);
+            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader);
         }
     }
 }
