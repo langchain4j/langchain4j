@@ -90,7 +90,7 @@ public class DeclarativeAgentIT {
     void declarative_streaming_agent_tests() throws Exception {
         CreativeWriterForStreaming creativeWriter = AgenticServices.agentBuilder(CreativeWriterForStreaming.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         final TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
