@@ -124,6 +124,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private void validateMethods() {
+        if (!context.aiServiceClass.isInterface()) {
+            throw illegalConfiguration(
+                    "The type implemented by the AI Service must be an interface, found '%s'", context.aiServiceClass.getName());
+        }
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (isStatic(method.getModifiers())) {
@@ -138,10 +142,6 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
 
             Class<?> returnType = method.getReturnType();
-            if (returnType == void.class) {
-                throw illegalConfiguration(
-                        "'%s' is not a supported return type of an AI Service method", returnType.getName());
-            }
             if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
