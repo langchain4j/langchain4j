@@ -49,7 +49,7 @@
         <module>langchain4j-voyage-ai</module>
         <module>langchain4j-watsonx</module>
 
-        <!-- embedding stores -->
+        <!-- embedding / chat memory stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-azure-cosmos-nosql</module>
