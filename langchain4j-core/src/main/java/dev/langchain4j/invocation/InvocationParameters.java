@@ -108,10 +108,6 @@ public class InvocationParameters {
         return new InvocationParameters(map);
     }
 
-    public void setAsCurrent() {
-        setCurrent(this);
-    }
-
     public static void setCurrent(InvocationParameters invocationParameters) {
         currentInvocationParameters.set(invocationParameters);
     }
