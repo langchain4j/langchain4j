@@ -120,7 +120,7 @@ public class InvocationParameters {
         return currentInvocationParameters.get();
     }
 
-    public static void resetCurrentParameters() {
+    public static void removeCurrent() {
         currentInvocationParameters.remove();
     }
 }
