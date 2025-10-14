@@ -1355,4 +1355,83 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
     }
+
+    interface VoidAssistant {
+
+        void chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_allow_void_return(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        record ToolResult(LocalDate localDate) {}
+
+        class Tools {
+
+            @Tool
+            ToolResult currentDate() {
+                return new ToolResult(now);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        VoidAssistant assistant = AiServices.builder(VoidAssistant.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        assistant.chat(userMessage);
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
+
+    interface ResultOfVoidAssistant {
+
+        Result<Void> chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_allow_result_of_void_return(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        record ToolResult(LocalDate localDate) {}
+
+        class Tools {
+
+            @Tool
+            ToolResult currentDate() {
+                return new ToolResult(now);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        ResultOfVoidAssistant assistant = AiServices.builder(ResultOfVoidAssistant.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        Result<Void> result = assistant.chat(userMessage);
+        assertThat(result.content()).isNull();
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo(new ToolResult(now));
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
 }
