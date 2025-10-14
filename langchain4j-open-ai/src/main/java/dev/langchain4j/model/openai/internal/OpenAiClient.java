@@ -13,10 +13,9 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Map;
+import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
 

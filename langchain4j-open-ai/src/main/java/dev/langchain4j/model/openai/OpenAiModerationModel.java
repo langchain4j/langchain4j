@@ -1,5 +1,13 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -14,20 +22,10 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI moderation model, such as text-moderation-latest.
@@ -70,12 +68,11 @@ public class OpenAiModerationModel implements ModerationModel {
 
     private Response<Moderation> moderateInternal(List<String> inputs) {
 
-        ModerationRequest request = ModerationRequest.builder()
-                .model(modelName)
-                .input(inputs)
-                .build();
+        ModerationRequest request =
+                ModerationRequest.builder().model(modelName).input(inputs).build();
 
-        ModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
+        ModerationResponse response =
+                withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
@@ -90,9 +87,8 @@ public class OpenAiModerationModel implements ModerationModel {
 
     @Override
     public Response<Moderation> moderate(List<ChatMessage> messages) {
-        List<String> inputs = messages.stream()
-                .map(OpenAiModerationModel::toText)
-                .toList();
+        List<String> inputs =
+                messages.stream().map(OpenAiModerationModel::toText).toList();
 
         return moderateInternal(inputs);
     }

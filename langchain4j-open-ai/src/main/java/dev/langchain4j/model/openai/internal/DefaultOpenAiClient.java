@@ -1,5 +1,10 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -15,14 +20,8 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
@@ -37,12 +36,15 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(builder.connectTimeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .connectTimeout(getOrDefault(
+                        getOrDefault(builder.connectTimeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -89,7 +91,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(CompletionRequest.builder().from(request).stream(false).build()))
+                .body(Json.toJson(
+                        CompletionRequest.builder().from(request).stream(false).build()))
                 .build();
 
         HttpRequest streamingHttpRequest = HttpRequest.builder()
@@ -98,7 +101,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(CompletionRequest.builder().from(request).stream(true).build()))
+                .body(Json.toJson(
+                        CompletionRequest.builder().from(request).stream(true).build()))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, CompletionResponse.class);
@@ -113,7 +117,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false).build()))
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
+                        .build()))
                 .build();
 
         HttpRequest streamingHttpRequest = HttpRequest.builder()
@@ -122,7 +127,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true).build()))
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
+                        .build()))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
