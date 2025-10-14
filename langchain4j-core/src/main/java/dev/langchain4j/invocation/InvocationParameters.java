@@ -116,7 +116,7 @@ public class InvocationParameters {
         currentInvocationParameters.set(invocationParameters);
     }
 
-    public static InvocationParameters getCurrentParameters() {
+    public static InvocationParameters current() {
         return currentInvocationParameters.get();
     }
 
