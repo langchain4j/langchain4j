@@ -53,7 +53,8 @@ public class OpenAiImageModel implements ImageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders);
+                .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams);
 
         this.client = cBuilder.build();
 
@@ -117,6 +118,7 @@ public class OpenAiImageModel implements ImageModel {
         private Boolean logResponses;
         private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
 
         public OpenAiImageModelBuilder() {
             // This is public so it can be extended
@@ -213,6 +215,11 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

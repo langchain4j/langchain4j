@@ -29,6 +29,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
+    private final Map<String, String> customQueryParams;
 
     public DefaultOpenAiClient(Builder builder) {
 
@@ -65,6 +66,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
             defaultHeaders.putAll(builder.customHeaders);
         }
         this.defaultHeaders = defaultHeaders;
+        this.customQueryParams = builder.customQueryParams;
     }
 
     public static Builder builder() {
@@ -84,6 +86,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(CompletionRequest.builder().from(request).stream(false).build()))
@@ -92,6 +95,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest streamingHttpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(CompletionRequest.builder().from(request).stream(true).build()))
@@ -106,6 +110,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false).build()))
@@ -114,6 +119,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest streamingHttpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true).build()))
@@ -128,6 +134,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "embeddings")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -142,6 +149,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "moderations")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -155,6 +163,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "images/generations")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))

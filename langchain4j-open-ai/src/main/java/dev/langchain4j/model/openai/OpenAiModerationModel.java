@@ -53,6 +53,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -132,6 +133,7 @@ public class OpenAiModerationModel implements ModerationModel {
         private Boolean logResponses;
         private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
 
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
@@ -203,6 +205,11 @@ public class OpenAiModerationModel implements ModerationModel {
 
         public OpenAiModerationModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

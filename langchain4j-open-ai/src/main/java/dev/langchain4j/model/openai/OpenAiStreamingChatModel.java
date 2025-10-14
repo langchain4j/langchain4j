@@ -77,6 +77,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -277,6 +278,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
         private List<ChatModelListener> listeners;
 
         public OpenAiStreamingChatModelBuilder() {
@@ -465,6 +467,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 
