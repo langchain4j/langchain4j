@@ -20,11 +20,11 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider);
 
-    SupervisorAgentService<T> name(String outputName);
+    SupervisorAgentService<T> name(String name);
 
-    SupervisorAgentService<T> description(String outputName);
+    SupervisorAgentService<T> description(String description);
 
-    SupervisorAgentService<T> outputName(String outputName);
+    SupervisorAgentService<T> outputKey(String outputKey);
 
     SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);
 

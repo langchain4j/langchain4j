@@ -17,9 +17,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface StoryCreatorWithConfigurableStyleEditor {
  *
- *         @SequenceAgent(outputName = "styledStory", subAgents = {
- *                 @SubAgent(type = CreativeWriter.class, outputName = "story"),
- *                 @SubAgent(type = AudienceEditor.class, outputName = "story"),
+ *         @SequenceAgent(outputKey = "styledStory", subAgents = {
+ *                 @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+ *                 @SubAgent(type = AudienceEditor.class, outputKey = "story"),
  *                 @SubAgent(type = StyleEditor.class)
  *         })
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
@@ -47,11 +47,11 @@ public @interface SequenceAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
 
     /**
      * Array of sub-agents that will be invoked in sequence.

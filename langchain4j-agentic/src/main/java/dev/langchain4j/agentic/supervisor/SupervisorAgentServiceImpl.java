@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,8 +177,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
             }
 
             Object result = result(agenticScope, request, lastResponse, done);
-            if (outputName != null) {
-                agenticScope.writeState(outputName, result);
+            if (outputKey != null) {
+                agenticScope.writeState(outputKey, result);
             }
             return result;
         }
@@ -209,7 +208,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
         }
 
         private String agentId() {
-            return outputName + "@Supervisor";
+            return outputKey + "@Supervisor";
         }
     }
 

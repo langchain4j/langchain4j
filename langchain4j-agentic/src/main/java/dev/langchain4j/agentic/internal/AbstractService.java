@@ -27,7 +27,7 @@ public abstract class AbstractService<T, S> {
 
     protected String name;
     protected String description;
-    protected String outputName;
+    protected String outputKey;
     protected Function<AgenticScope, Object> output = DEFAULT_OUTPUT_FUNCTION;
 
     protected Consumer<AgentRequest> beforeListener = request -> {};
@@ -62,8 +62,8 @@ public abstract class AbstractService<T, S> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputName())) {
-            this.outputName = agent.outputName();
+        if (!isNullOrBlank(agent.outputKey())) {
+            this.outputKey = agent.outputKey();
         }
     }
 
@@ -82,8 +82,8 @@ public abstract class AbstractService<T, S> {
         return (S) this;
     }
 
-    public S outputName(String outputName) {
-        this.outputName = outputName;
+    public S outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return (S) this;
     }
 

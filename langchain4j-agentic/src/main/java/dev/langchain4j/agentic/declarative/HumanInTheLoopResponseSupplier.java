@@ -15,7 +15,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface AudienceRetriever {
  *
- *         @HumanInTheLoop(description = "Generate a story based on the given topic", outputName = "audience", async = true)
+ *         @HumanInTheLoop(description = "Generate a story based on the given topic", outputKey = "audience", async = true)
  *         static void request(@V("topic") String topic) {
  *             request.set("Which audience for topic " + topic + "?");
  *         }

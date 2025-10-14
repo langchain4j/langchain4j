@@ -47,7 +47,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private String name;
     private String uniqueName;
     private String[] inputNames;
-    private String outputName;
+    private String outputKey;
     private boolean async;
 
     private Consumer<AgentRequest> beforeListener = request -> {};
@@ -95,7 +95,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "name" -> name;
                                 case "uniqueName" -> uniqueName;
                                 case "description" -> agentCard.description();
-                                case "outputName" -> outputName;
+                                case "outputKey" -> outputKey;
                                 case "async" -> async;
                                 case "beforeInvocation" -> {
                                     beforeListener.accept((AgentRequest) args[0]);
@@ -197,8 +197,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> outputName(String outputName) {
-        this.outputName = outputName;
+    public DefaultA2AClientBuilder<T> outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return this;
     }
 

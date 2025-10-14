@@ -62,7 +62,7 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "name" -> builder.name;
                 case "uniqueName" -> builder.uniqueName;
                 case "description" -> builder.description;
-                case "outputName" -> builder.outputName;
+                case "outputKey" -> builder.outputKey;
                 case "async" -> builder.async;
                 case "beforeInvocation" -> {
                     builder.beforeListener.accept((AgentRequest) args[0]);

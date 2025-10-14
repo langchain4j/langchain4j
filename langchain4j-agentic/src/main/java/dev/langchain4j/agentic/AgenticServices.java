@@ -341,7 +341,7 @@ public class AgenticServices {
         var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel, agentConfigurator));
 
-        buildAgentSpecs(agentServiceClass, agentMethod, sequenceAgent.name(), sequenceAgent.description(), sequenceAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, sequenceAgent.name(), sequenceAgent.description(), sequenceAgent.outputKey(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
@@ -355,7 +355,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(loopAgent.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(loopAgent.maxIterations());
 
-        buildAgentSpecs(agentServiceClass, agentMethod, loopAgent.name(), loopAgent.description(), loopAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, loopAgent.name(), loopAgent.description(), loopAgent.outputKey(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
@@ -375,7 +375,7 @@ public class AgenticServices {
         ConditionalAgent conditionalAgent = agentMethod.getAnnotation(ConditionalAgent.class);
         var builder = conditionalBuilder(agentServiceClass);
 
-        buildAgentSpecs(agentServiceClass, agentMethod, conditionalAgent.name(), conditionalAgent.description(), conditionalAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, conditionalAgent.name(), conditionalAgent.description(), conditionalAgent.outputKey(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
@@ -397,7 +397,7 @@ public class AgenticServices {
         var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel, agentConfigurator));
 
-        buildAgentSpecs(agentServiceClass, agentMethod, parallelAgent.name(), parallelAgent.description(), parallelAgent.outputName(), builder);
+        buildAgentSpecs(agentServiceClass, agentMethod, parallelAgent.name(), parallelAgent.description(), parallelAgent.outputKey(), builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
@@ -417,7 +417,7 @@ public class AgenticServices {
         return builder.build();
     }
 
-    private static <T> void buildAgentSpecs(Class<T> agentServiceClass, Method agentMethod, String name, String description, String outputName, WorkflowService<?, ?> builder) {
+    private static <T> void buildAgentSpecs(Class<T> agentServiceClass, Method agentMethod, String name, String description, String outputKey, WorkflowService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
             builder.name(name);
         } else {
@@ -426,8 +426,8 @@ public class AgenticServices {
         if (!isNullOrBlank(description)) {
             builder.description(description);
         }
-        if (!isNullOrBlank(outputName)) {
-            builder.outputName(outputName);
+        if (!isNullOrBlank(outputKey)) {
+            builder.outputKey(outputKey);
         }
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
@@ -451,8 +451,8 @@ public class AgenticServices {
         if (!isNullOrBlank(supervisorAgent.description())) {
             builder.description(supervisorAgent.description());
         }
-        if (!isNullOrBlank(supervisorAgent.outputName())) {
-            builder.outputName(supervisorAgent.outputName());
+        if (!isNullOrBlank(supervisorAgent.outputKey())) {
+            builder.outputKey(supervisorAgent.outputKey());
         }
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorRequest.class) &&
@@ -552,7 +552,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type()).outputName(subagent.outputName());
+        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type()).outputKey(subagent.outputKey());
         configureAgent(subagent.type(), chatModel, agentBuilder, agentConfigurator);
 
         if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
@@ -627,7 +627,7 @@ public class AgenticServices {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
                 .inputNames(Stream.of(a2aMethod.getParameters()).map(AgentInvoker::parameterName).toArray(String[]::new))
-                .outputName(a2aClient.outputName())
+                .outputKey(a2aClient.outputKey())
                 .async(a2aClient.async());
 
         getAnnotatedMethodOnClass(agentServiceClass, BeforeAgentInvocation.class)
@@ -655,7 +655,7 @@ public class AgenticServices {
 
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
                 .description(humanInTheLoop.description())
-                .outputName(humanInTheLoop.outputName())
+                .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
                 .inputName(parameterName(method.getParameters()[0]))
                 .requestWriter(arg -> invokeStatic(method, arg));

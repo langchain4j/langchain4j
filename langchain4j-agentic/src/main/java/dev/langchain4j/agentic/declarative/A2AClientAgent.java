@@ -44,11 +44,11 @@ public @interface A2AClientAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will be used to store the result of the agent's invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.

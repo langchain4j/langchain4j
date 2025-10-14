@@ -23,8 +23,8 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public String outputName() {
-        return agentSpecification.outputName();
+    public String outputKey() {
+        return agentSpecification.outputKey();
     }
 
     @Override

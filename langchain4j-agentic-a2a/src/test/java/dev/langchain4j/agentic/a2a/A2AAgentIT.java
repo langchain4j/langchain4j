@@ -31,17 +31,17 @@ public class A2AAgentIT {
     void a2a_agent_loop_tests() {
         UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
                 .inputNames("topic")
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
@@ -52,7 +52,7 @@ public class A2AAgentIT {
 
         StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
                 .subAgents(creativeWriter, styleReviewLoop)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
@@ -74,22 +74,22 @@ public class A2AAgentIT {
     @Disabled("Requires A2A server to be running")
     void a2a_agent_supervisor_tests() {
         A2ACreativeWriter creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         Agents.StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
-                .outputName("story")
+                .outputKey("story")
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -98,7 +98,7 @@ public class A2AAgentIT {
                 .chatModel(Models.plannerModel())
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         ResultWithAgenticScope<String> result = styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");

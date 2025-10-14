@@ -18,10 +18,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
- *                 outputName = "story", maxIterations = 5,
+ *                 outputKey = "story", maxIterations = 5,
  *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputName = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputName = "story")
+ *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
+ *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
  *             }
  *         )
  *         String write(@V("story") String story, @LoopCounter int iteration);

@@ -8,7 +8,7 @@ public interface AgentSpecification {
     String name();
     String uniqueName();
     String description();
-    String outputName();
+    String outputKey();
     boolean async();
 
     void beforeInvocation(AgentRequest request);

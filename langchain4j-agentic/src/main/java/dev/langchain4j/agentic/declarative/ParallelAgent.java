@@ -17,9 +17,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputName = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputName = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputName = "movies")
+ *         @ParallelAgent(outputKey = "plans", subAgents = {
+ *                 @SubAgent(type = FoodExpert.class, outputKey = "meals"),
+ *                 @SubAgent(type = MovieExpert.class, outputKey = "movies")
  *         })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *     }
@@ -46,11 +46,11 @@ public @interface ParallelAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
 
     /**
      * Array of sub-agents that will be invoked in parallel.

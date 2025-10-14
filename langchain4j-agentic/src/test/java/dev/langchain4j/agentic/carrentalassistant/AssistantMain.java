@@ -44,18 +44,18 @@ public class AssistantMain {
         CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(CustomerInfoExtractionService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("customerInfo")
+                .outputKey("customerInfo")
                 .build();
 
         TowingAgentService towingAgentService = AgenticServices.agentBuilder(TowingAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("towingResponse")
+                .outputKey("towingResponse")
                 .build();
 
         ResponseGeneratorService responseGeneratorService = AgenticServices.agentBuilder(ResponseGeneratorService.class)
                 .chatModel(baseModel())
-                .outputName("response")
+                .outputKey("response")
                 .build();
 
         return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
@@ -65,35 +65,35 @@ public class AssistantMain {
                     }
                 })
                 .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
-                .outputName("response")
+                .outputKey("response")
                 .build();
     }
 
     private static UntypedAgent emergencyService() {
         EmergencyExtractorService emergencyExtractor = AgenticServices.agentBuilder(EmergencyExtractorService.class)
                 .chatModel(baseModel())
-                .outputName("emergencies")
+                .outputKey("emergencies")
                 .build();
 
         EmergencyResponseService emergencyResponseService = AgenticServices.agentBuilder(EmergencyResponseService.class)
                 .chatModel(baseModel())
-                .outputName("emergencyResponse")
+                .outputKey("emergencyResponse")
                 .build();
 
         FireAgentService fireAgent = AgenticServices.agentBuilder(FireAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("fireResponse")
+                .outputKey("fireResponse")
                 .build();
         MedicalAgentService medicalAgent = AgenticServices.agentBuilder(MedicalAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("medicalResponse")
+                .outputKey("medicalResponse")
                 .build();
         PoliceAgentService policeAgent = AgenticServices.agentBuilder(PoliceAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("policeResponse")
+                .outputKey("policeResponse")
                 .build();
 
         UntypedAgent emergencyExperts = AgenticServices.conditionalBuilder()
@@ -110,7 +110,7 @@ public class AssistantMain {
 
         return AgenticServices.sequenceBuilder()
                 .subAgents(emergencyExtractor, emergencyExperts, emergencyResponseService)
-                .outputName("emergencyResponse")
+                .outputKey("emergencyResponse")
                 .build();
     }
 

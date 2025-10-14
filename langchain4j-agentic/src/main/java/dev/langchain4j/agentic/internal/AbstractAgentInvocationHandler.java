@@ -28,7 +28,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     protected final String name;
     protected final String uniqueName;
     protected final String description;
-    protected final String outputName;
+    protected final String outputKey;
 
     protected final Consumer<AgentRequest> beforeListener;
     protected final Consumer<AgentResponse> afterListener;
@@ -52,7 +52,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this.name = service.name;
         this.uniqueName = uniqueAgentName(this.name);
         this.description = service.description;
-        this.outputName = service.outputName;
+        this.outputKey = service.outputKey;
         this.beforeCall = service.beforeCall;
         this.errorHandler = service.errorHandler;
         this.beforeListener = service.beforeListener;
@@ -94,7 +94,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
                 case "name" -> name;
                 case "uniqueName" -> uniqueName;
                 case "description" -> description;
-                case "outputName" -> outputName;
+                case "outputKey" -> outputKey;
                 case "async" -> false;
                 case "beforeInvocation" -> {
                     beforeListener.accept((AgentRequest) args[0]);
@@ -136,7 +136,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             agenticScope.rootCallEnded(registry);
         }
 
-        Object output = outputName != null ? agenticScope.readState(outputName) : result;
+        Object output = outputKey != null ? agenticScope.readState(outputKey) : result;
         return method.getReturnType().equals(ResultWithAgenticScope.class) ?
                 new ResultWithAgenticScope<>(agenticScope, output) :
                 output;
@@ -180,12 +180,12 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     }
 
     protected Object result(DefaultAgenticScope agenticScope, Object result) {
-        if (outputName != null) {
+        if (outputKey != null) {
             if (result != null) {
-                agenticScope.writeState(outputName, result);
+                agenticScope.writeState(outputKey, result);
                 return result;
             } else {
-                return agenticScope.readState(outputName);
+                return agenticScope.readState(outputKey);
             }
         }
         return result;

@@ -40,7 +40,7 @@ public class AgentBuilder<T> {
     String name;
     String uniqueName;
     String description;
-    String outputName;
+    String outputKey;
     boolean async;
 
     Consumer<AgentRequest> beforeListener = request -> {};
@@ -89,8 +89,8 @@ public class AgentBuilder<T> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputName())) {
-            this.outputName = agent.outputName();
+        if (!isNullOrBlank(agent.outputKey())) {
+            this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
     }
@@ -281,8 +281,8 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> outputName(String outputName) {
-        this.outputName = outputName;
+    public AgentBuilder<T> outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return this;
     }
 

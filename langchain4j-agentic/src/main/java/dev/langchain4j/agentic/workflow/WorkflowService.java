@@ -20,11 +20,11 @@ public interface WorkflowService<T, W> {
 
     T beforeCall(Consumer<AgenticScope> beforeCall);
 
-    T name(String outputName);
+    T name(String name);
 
-    T description(String outputName);
+    T description(String description);
 
-    T outputName(String outputName);
+    T outputKey(String outputKey);
 
     T output(Function<AgenticScope, Object> output);
 

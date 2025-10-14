@@ -30,7 +30,7 @@ public class HoroscopeMain {
 
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the zodiac sign of the user")
-                .outputName("sign")
+                .outputKey("sign")
                 .requestWriter(request -> {
                     System.out.println(request);
                     System.out.print("> ");

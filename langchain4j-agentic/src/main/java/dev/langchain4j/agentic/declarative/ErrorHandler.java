@@ -18,10 +18,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface StoryCreatorWithErrorRecovery {
  *
- *         @SequenceAgent(outputName = "story", subAgents = {
- *                 @SubAgent(type = CreativeWriter.class, outputName = "story"),
- *                 @SubAgent(type = AudienceEditor.class, outputName = "story"),
- *                 @SubAgent(type = StyleEditor.class, outputName = "story")
+ *         @SequenceAgent(outputKey = "story", subAgents = {
+ *                 @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+ *                 @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+ *                 @SubAgent(type = StyleEditor.class, outputKey = "story")
  *         })
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *

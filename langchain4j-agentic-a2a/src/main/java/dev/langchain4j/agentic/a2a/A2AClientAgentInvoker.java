@@ -55,8 +55,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public String outputName() {
-        return a2AClientInstance.outputName();
+    public String outputKey() {
+        return a2AClientInstance.outputKey();
     }
 
     @Override

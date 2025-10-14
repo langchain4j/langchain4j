@@ -27,8 +27,8 @@ public record MethodAgentInvoker(Method method, AgentSpecification agentSpecific
     }
 
     @Override
-    public String outputName() {
-        return agentSpecification.outputName();
+    public String outputKey() {
+        return agentSpecification.outputKey();
     }
 
     @Override

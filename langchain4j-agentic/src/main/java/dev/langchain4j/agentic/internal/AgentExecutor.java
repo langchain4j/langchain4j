@@ -47,9 +47,9 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) {
                         }
                     }) :
                     agentInvoker.invoke(agenticScope, invokedAgent, args);
-            String outputName = agentInvoker.outputName();
-            if (outputName != null && !outputName.isBlank()) {
-                agenticScope.writeState(outputName, response);
+            String outputKey = agentInvoker.outputKey();
+            if (outputKey != null && !outputKey.isBlank()) {
+                agenticScope.writeState(outputKey, response);
             }
             agenticScope.registerAgentCall(agentInvoker, invokedAgent, args, response);
             return response;

@@ -15,10 +15,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface ExpertsAgent {
  *
- *         @ConditionalAgent(outputName = "response", subAgents = {
- *                 @SubAgent(type = MedicalExpert.class, outputName = "response"),
- *                 @SubAgent(type = TechnicalExpert.class, outputName = "response"),
- *                 @SubAgent(type = LegalExpert.class, outputName = "response")
+ *         @ConditionalAgent(outputKey = "response", subAgents = {
+ *                 @SubAgent(type = MedicalExpert.class, outputKey = "response"),
+ *                 @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
+ *                 @SubAgent(type = LegalExpert.class, outputKey = "response")
  *         })
  *         String askExpert(@V("request") String request);
  *

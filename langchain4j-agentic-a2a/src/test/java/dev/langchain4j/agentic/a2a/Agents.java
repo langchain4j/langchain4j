@@ -54,7 +54,7 @@ public class Agents {
 
     public interface DeclarativeA2ACreativeWriter {
 
-        @A2AClientAgent(a2aServerUrl = A2A_SERVER_URL, outputName = "story")
+        @A2AClientAgent(a2aServerUrl = A2A_SERVER_URL, outputKey = "story")
         String generateStory(@V("topic") String topic);
     }
 
@@ -62,10 +62,10 @@ public class Agents {
 
         @LoopAgent(
                 description = "Review and score the given story to ensure it aligns with the specified style",
-                outputName = "story", maxIterations = 5,
+                outputKey = "story", maxIterations = 5,
                 subAgents = {
-                        @SubAgent(type = StyleScorer.class, outputName = "score"),
-                        @SubAgent(type = StyleEditor.class, outputName = "story")
+                        @SubAgent(type = StyleScorer.class, outputKey = "score"),
+                        @SubAgent(type = StyleEditor.class, outputKey = "story")
                 }
         )
         String reviewAndScore(@V("story") String story);
@@ -78,9 +78,9 @@ public class Agents {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent(outputName = "story", subAgents = {
-                @SubAgent(type = DeclarativeA2ACreativeWriter.class, outputName = "story"),
-                @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
+        @SequenceAgent(outputKey = "story", subAgents = {
+                @SubAgent(type = DeclarativeA2ACreativeWriter.class, outputKey = "story"),
+                @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
         })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
