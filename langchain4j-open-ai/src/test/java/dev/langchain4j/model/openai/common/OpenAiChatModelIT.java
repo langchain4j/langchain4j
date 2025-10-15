@@ -22,6 +22,7 @@ import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -313,5 +314,37 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(mockHttpClient.request().headers())
                 .containsEntry("key1", List.of("value1"))
                 .containsEntry("key2", List.of("value2"));
+    }
+
+    @Test
+    void should_propagate_custom_query_parameters() {
+
+        // given
+        Map<String, String> customQueryParams = new LinkedHashMap<>();
+        customQueryParams.put("param1", "value1");
+        customQueryParams.put("param2", "value2");
+
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        ChatModel chatModel = defaultModelBuilder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .customQueryParams(customQueryParams)
+                .maxRetries(0) // it will fail, so no need to retry
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because MockHttpClient.execute() returns null
+        }
+
+        // then
+        assertThat(mockHttpClient.request().url())
+                .isEqualTo("https://api.openai.com/v1/chat/completions?param1=value1&param2=value2");
     }
 }
