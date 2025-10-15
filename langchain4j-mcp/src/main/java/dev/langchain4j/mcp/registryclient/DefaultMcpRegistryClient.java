@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DefaultMcpRegistryClient implements McpRegistryClient {
@@ -68,6 +69,9 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     private final String baseUrl;
     private final HttpClient httpClient;
     private final Supplier<Map<String, String>> headers;
+
+    // this is used to validate path parameters to prevent URL injection attacks
+    private static final Pattern ALLOWED_URL_CHARACTERS = Pattern.compile("[a-zA-Z0-9\\-_./]+");
 
     private DefaultMcpRegistryClient(
             String baseUrl,
@@ -111,6 +115,29 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     @Override
+    public McpGetServerResponse getSpecificServerVersion(String serverName, String version) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
+        Objects.requireNonNull(version, "version cannot be null");
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "/v0.1/servers/" + encode(serverName) + "/versions/" + encode(version))
+                .addHeaders(currentHeaders())
+                .build();
+        return sendAndProcessResponse(httpRequest, McpGetServerResponse.class);
+    }
+
+    @Override
+    public McpServerList getAllVersionsOfServer(String serverName) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "/v0.1/servers/" + encode(serverName) + "/versions")
+                .addHeaders(currentHeaders())
+                .build();
+        return sendAndProcessResponse(httpRequest, McpServerList.class);
+    }
+
+    @Override
     public McpRegistryHealth healthCheck() {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(HttpMethod.GET)
@@ -135,6 +162,16 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
         map.put("Content-Type", "application/json");
         map.put("Accept", "application/json, application/problem+json");
         return map;
+    }
+
+    private String encode(String parameter) {
+        if (parameter == null || parameter.isEmpty()) {
+            throw new IllegalArgumentException("Parameter must not be null or empty");
+        }
+        if (!ALLOWED_URL_CHARACTERS.matcher(parameter).matches()) {
+            throw new IllegalArgumentException("Parameter contains unsafe characters");
+        }
+        return URLEncoder.encode(parameter, StandardCharsets.UTF_8);
     }
 
     private String processServerListRequestPathParams(McpServerListRequest request) {
