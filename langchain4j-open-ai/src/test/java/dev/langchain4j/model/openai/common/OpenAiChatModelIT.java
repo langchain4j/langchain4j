@@ -328,6 +328,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         ChatModel chatModel = defaultModelBuilder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .baseUrl("https://localhost/v1")
                 .customQueryParams(customQueryParams)
                 .maxRetries(0) // it will fail, so no need to retry
                 .build();
@@ -345,6 +346,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // then
         assertThat(mockHttpClient.request().url())
-                .isEqualTo("https://api.openai.com/v1/chat/completions?param1=value1&param2=value2");
+                .isEqualTo("https://localhost/v1/chat/completions?param1=value1&param2=value2");
     }
 }
