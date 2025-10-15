@@ -134,7 +134,7 @@ that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
   - [Chat memory with ConversationalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
   - [Chat memory with ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 
-All supported embedding stores can be found [here](/integrations/chat-memory-stores/).
+All supported chat memory stores can be found [here](/integrations/chat-memory-stores/).
 
 
 ## Related Tutorials
