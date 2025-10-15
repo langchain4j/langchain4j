@@ -372,7 +372,6 @@ YugabyteDBEmbeddingStore smartStore = YugabyteDBEmbeddingStore.builder()
 
 ## Examples
 
-- [YugabyteDBEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBEmbeddingStoreExample.java) - Basic example with Testcontainers
-- [YugabyteDBEmbeddingStoreWithMetadataExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBEmbeddingStoreWithMetadataExample.java) - Metadata filtering with JSONB storage
-- [YugabyteDBWithPostgreSQLDriverExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBWithPostgreSQLDriverExample.java) - Using PostgreSQL JDBC driver
-- [YugabyteDBWithSmartDriverExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBWithSmartDriverExample.java) - Using YugabyteDB Smart Driver
+:::note
+Code examples demonstrating YugabyteDB integration will be added soon.
+:::
