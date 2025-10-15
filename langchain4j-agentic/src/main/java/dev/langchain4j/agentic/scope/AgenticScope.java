@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.service.BuiltInParameter;
+import dev.langchain4j.invocation.BuiltInParameter;
 import java.util.List;
 import java.util.Map;
 

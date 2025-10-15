@@ -1,4 +1,4 @@
-package dev.langchain4j.service;
+package dev.langchain4j.invocation;
 
 import dev.langchain4j.Internal;
 

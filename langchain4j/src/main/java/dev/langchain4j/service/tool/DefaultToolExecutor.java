@@ -7,7 +7,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.service.BuiltInParameter;
+import dev.langchain4j.invocation.BuiltInParameter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
