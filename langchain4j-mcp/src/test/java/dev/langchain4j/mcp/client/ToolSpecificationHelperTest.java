@@ -410,6 +410,10 @@ class ToolSpecificationHelperTest {
                 .isInstanceOf(JsonAnyOfSchema.class);
         JsonAnyOfSchema jsAny = (JsonAnyOfSchema)
                 toolSpecifications.get(0).parameters().properties().get("fieldSelections");
+        assertThat(jsAny.description())
+                .isEqualTo(
+                        "An list of options for the custom field definition, expressed as maps. "
+                                + "The keys should be the options, and the values should all be null. Only used for SingleSelect and MultiSelect custom field definitions.");
         assertThat(jsAny.anyOf()).hasSize(2);
         assertThat(jsAny.anyOf().get(0)).isInstanceOf(JsonObjectSchema.class);
         assertThat(jsAny.anyOf().get(1)).isInstanceOf(JsonNullSchema.class);
