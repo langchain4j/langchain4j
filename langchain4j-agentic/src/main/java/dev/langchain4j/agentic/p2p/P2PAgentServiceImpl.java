@@ -173,7 +173,7 @@ public class P2PAgentServiceImpl<T> extends AbstractService<T, P2PAgentServiceIm
                         if (terminating(agenticScope)) {
                             break;
                         }
-                        notifyStateChanged(agenticScope, agentExecutor.agentInvoker().outputName());
+                        notifyStateChanged(agenticScope, agentExecutor.agentInvoker().outputKey());
                     }
                 };
 

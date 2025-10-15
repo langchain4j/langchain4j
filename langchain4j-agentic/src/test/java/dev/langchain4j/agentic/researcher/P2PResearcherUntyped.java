@@ -13,33 +13,33 @@ public class P2PResearcherUntyped {
         LiteratureAgent literatureAgent = AgenticServices.agentBuilder(LiteratureAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("researchFindings")
+                .outputKey("researchFindings")
                 .build();
         HypothesisAgent hypothesisAgent = AgenticServices.agentBuilder(HypothesisAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .build();
         CriticAgent criticAgent = AgenticServices.agentBuilder(CriticAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("critique")
+                .outputKey("critique")
                 .build();
         ValidationAgent validationAgent = AgenticServices.agentBuilder(ValidationAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .build();
         ScorerAgent scorerAgent = AgenticServices.agentBuilder(ScorerAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         P2PAgent researcher = AgenticServices.p2pBuilder()
                 .chatModel(baseModel())
                 .subAgents(literatureAgent, hypothesisAgent, criticAgent, validationAgent, scorerAgent)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .exitCondition( agenticScope -> {
                     if (!agenticScope.hasState("score")) {
                         return false;

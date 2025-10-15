@@ -17,7 +17,7 @@ public interface P2PAgentService<T> {
 
     P2PAgentService<T> description(String outputName);
 
-    P2PAgentService<T> outputName(String outputName);
+    P2PAgentService<T> outputKey(String outputName);
 
     P2PAgentService<T> subAgents(Object... agents);
 

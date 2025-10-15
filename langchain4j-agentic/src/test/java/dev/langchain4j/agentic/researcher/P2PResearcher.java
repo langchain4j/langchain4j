@@ -12,27 +12,27 @@ public class P2PResearcher {
         LiteratureAgent literatureAgent = AgenticServices.agentBuilder(LiteratureAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("researchFindings")
+                .outputKey("researchFindings")
                 .build();
         HypothesisAgent hypothesisAgent = AgenticServices.agentBuilder(HypothesisAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .build();
         CriticAgent criticAgent = AgenticServices.agentBuilder(CriticAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("critique")
+                .outputKey("critique")
                 .build();
         ValidationAgent validationAgent = AgenticServices.agentBuilder(ValidationAgent.class)
                 .chatModel(baseModel())
                 .tools(arxivCrawler)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .build();
 
         ResearchAgent researcher = AgenticServices.p2pBuilder(ResearchAgent.class)
                 .subAgents(literatureAgent, hypothesisAgent, criticAgent, validationAgent)
-                .outputName("hypothesis")
+                .outputKey("hypothesis")
                 .maxAgentsInvocations(10)
                 .build();
 
