@@ -47,6 +47,7 @@ For easier integration, LangChain4j also includes integration with
 - Integration with [20+ LLM providers](/integrations/language-models)
 - Integration with [30+ embedding (vector) stores](/integrations/embedding-stores)
 - Integration with [20+ embedding models](/category/embedding-models)
+- Integration with [5+ chat memory stores](/category/chat-memory-stores) 
 - Integration with [5+ image generation models](/category/image-models)
 - Integration with [5+ scoring (re-ranking) models](/category/scoring-reranking-models)
 - Integration with one moderation model (OpenAI)
