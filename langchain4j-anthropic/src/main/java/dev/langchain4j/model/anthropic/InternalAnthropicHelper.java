@@ -14,9 +14,11 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Internal
 class InternalAnthropicHelper {
@@ -25,7 +27,7 @@ class InternalAnthropicHelper {
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
-        if (parameters.responseFormat() != null) {
+        if (Objects.equals(ResponseFormat.JSON, parameters.responseFormat())) {
             unsupportedFeatures.add("JSON response format");
         }
         if (parameters.frequencyPenalty() != null) {
