@@ -273,7 +273,10 @@ abstract class WatsonxChat {
         }
 
         public T thinking(boolean enabled) {
-            if (enabled) return thinking(Thinking.builder().build());
+            if (enabled) {
+                return thinking(Thinking.builder().build());
+            }
+            this.thinking = null;
             return (T) this;
         }
 

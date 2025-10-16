@@ -51,14 +51,16 @@ public class McpVariable {
 
     @Override
     public String toString() {
-        return "McpVariable{" +
-                "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
-                ", description='" + description + '\'' +
-                ", format='" + format + '\'' +
-                ", isRequired=" + isRequired +
-                ", isSecret=" + isSecret +
-                ", value='" + value + '\'' +
-                '}';
+        String maskedDefaultValue = isSecret ? "<redacted>" : defaultValue;
+        String maskedValue = isSecret ? "<redacted>" : value;
+
+        return "McpVariable{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", value='"
+                + maskedValue + '\'' + '}';
     }
 }
