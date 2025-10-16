@@ -23,7 +23,7 @@ jobs:
           echo "$modules"
 
           # how many groups (jobs) to split into
-          N=5  # adjust this based on desired parallelism
+          N=7  # adjust this based on desired parallelism
           count=$(echo "$modules" | wc -l)
           group_size=$(( (count + N - 1) / N ))
 
