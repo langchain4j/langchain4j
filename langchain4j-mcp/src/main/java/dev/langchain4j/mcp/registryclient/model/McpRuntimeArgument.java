@@ -82,9 +82,12 @@ public class McpRuntimeArgument {
 
     @Override
     public String toString() {
+        String maskedDefaultValue = isSecret ? "<REDACTED>" : defaultValue;
+        String maskedValue = isSecret ? "<REDACTED>" : value;
+        
         return "McpRuntimeArgument{" +
                 "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
+                ", defaultValue='" + maskedDefaultValue + '\'' +
                 ", description='" + description + '\'' +
                 ", format='" + format + '\'' +
                 ", isRepeated=" + isRepeated +
@@ -92,7 +95,7 @@ public class McpRuntimeArgument {
                 ", isSecret=" + isSecret +
                 ", name='" + name + '\'' +
                 ", type='" + type + '\'' +
-                ", value='" + value + '\'' +
+                ", value='" + maskedValue + '\'' +
                 ", valueHint='" + valueHint + '\'' +
                 ", variables=" + variables +
                 '}';

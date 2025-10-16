@@ -83,9 +83,12 @@ public class McpPackageArgument {
 
     @Override
     public String toString() {
+        String maskedDefaultValue = isSecret ? "<redacted>" : defaultValue;
+        String maskedValue = isSecret ? "<redacted>" : value;
+        
         return "McpPackageArgument{" +
                 "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
+                ", defaultValue='" + maskedDefaultValue + '\'' +
                 ", description='" + description + '\'' +
                 ", format='" + format + '\'' +
                 ", isRepeated=" + isRepeated +
@@ -93,7 +96,7 @@ public class McpPackageArgument {
                 ", isSecret=" + isSecret +
                 ", name='" + name + '\'' +
                 ", type='" + type + '\'' +
-                ", value='" + value + '\'' +
+                ", value='" + maskedValue + '\'' +
                 ", valueHint='" + valueHint + '\'' +
                 ", variables=" + variables +
                 '}';
