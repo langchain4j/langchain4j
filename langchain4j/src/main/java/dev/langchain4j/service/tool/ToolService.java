@@ -23,6 +23,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -54,7 +55,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -290,6 +292,16 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+            }
+
+            ToolChoice toolChoice = getOrDefault(
+                    parameters.toolChoice(),
+                    chatModel.defaultRequestParameters().toolChoice());
+            // This is necessary to prevent an infinite loop.
+            if (ToolChoice.REQUIRED.equals(toolChoice)) {
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.NONE)
+                        .build());
             }
 
             ChatRequest chatRequest = ChatRequest.builder()
