@@ -146,7 +146,7 @@ in glob: `glob:**.pdf`.
 
 3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
 This is necessary to quickly find relevant pieces of information when a user asks a question.
-We can use any of our 15+ [supported embedding stores](/integrations/embedding-stores),
+We can use any of our 30+ [supported embedding stores](/integrations/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
@@ -284,6 +284,10 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
+  which can parse files in markdown format
+- `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
+  which can parse files in yaml format
 
 Here is an example of how to load one or multiple `Document`s from the file system:
 ```java
