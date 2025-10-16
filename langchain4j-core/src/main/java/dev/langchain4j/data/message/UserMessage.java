@@ -40,7 +40,8 @@ public class UserMessage implements ChatMessage {
     private final Map<String, Object> attributes;
 
     /**
-     * @param builder
+     * Creates a {@link UserMessage} from a builder.
+     *
      * @since 1.8.0
      */
     public UserMessage(Builder builder) {
@@ -179,8 +180,6 @@ public class UserMessage implements ChatMessage {
     public <T> T attribute(String key, Class<T> type) {
         return (T) attributes.get(key);
     }
-
-    // TODO set attribute?
 
     @Override
     public ChatMessageType type() {
