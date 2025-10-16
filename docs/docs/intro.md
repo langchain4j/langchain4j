@@ -14,8 +14,8 @@ Here's how:
    LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Milvus)
    use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them.
    To experiment with different LLMs or embedding stores, you can easily switch between them without the need to rewrite your code.
-   LangChain4j currently supports [15+ popular LLM providers](/integrations/language-models/)
-   and [20+ embedding stores](/integrations/embedding-stores/).
+   LangChain4j currently supports [20+ popular LLM providers](/integrations/language-models/)
+   and [30+ embedding stores](/integrations/embedding-stores/).
 2. **Comprehensive Toolbox:**
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
@@ -44,11 +44,12 @@ For easier integration, LangChain4j also includes integration with
 
 
 ## LangChain4j Features
-- Integration with [15+ LLM providers](/integrations/language-models)
-- Integration with [20+ embedding (vector) stores](/integrations/embedding-stores)
-- Integration with [15+ embedding models](/category/embedding-models)
-- Integration with [5 image generation models](/category/image-models)
-- Integration with [2 scoring (re-ranking) models](/category/scoring-reranking-models)
+- Integration with [20+ LLM providers](/integrations/language-models)
+- Integration with [30+ embedding (vector) stores](/integrations/embedding-stores)
+- Integration with [20+ embedding models](/category/embedding-models)
+- Integration with [5+ chat memory stores](/category/chat-memory-stores) 
+- Integration with [5+ image generation models](/category/image-models)
+- Integration with [5+ scoring (re-ranking) models](/category/scoring-reranking-models)
 - Integration with one moderation model (OpenAI)
 - Support for texts and images as inputs (multimodality)
 - [AI Services](/tutorials/ai-services) (high-level LLM API)
