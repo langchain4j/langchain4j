@@ -8,10 +8,11 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -54,6 +55,18 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
                         "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"),
+                Arguments.of(
+                        UserMessage.builder()
+                                .addContent(TextContent.from("hello"))
+                                .attributes(new LinkedHashMap<>() {
+                                    {
+                                        put("name", "Klaus");
+                                        put("age", 42);
+                                        put("extra", List.of("one", "two"));
+                                    }
+                                })
+                                .build(),
+                        "{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"USER\"}"),
                 Arguments.of(
                         AiMessage.from("hello"),
                         "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"attributes\":{},\"type\":\"AI\"}"),
@@ -119,6 +132,19 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
+    }
+
+    @Test
+    void should_deserialize_UserMessage_without_attributes() {
+
+        UserMessage deserialized = (UserMessage) messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
+
+        assertThat(deserialized.name()).isNull();
+        assertThat(deserialized.contents()).containsExactly(TextContent.from("hello"));
+        assertThat(deserialized.attributes()).isEmpty();
+
+        deserialized.attributes().put("k", "v");
+        assertThat(deserialized.attributes()).containsExactly(Map.entry("k", "v"));
     }
 
     @Test
