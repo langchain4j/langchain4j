@@ -219,7 +219,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
-                        setupBuiltInParameters(invocationParameters, args, method.getParameters());
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
@@ -456,15 +455,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
 
                         return actualResponse;
-                    }
-
-                    private void setupBuiltInParameters(InvocationParameters invocationParameters, Object[] args, Parameter[] params) {
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (BuiltInParameter.class.isAssignableFrom(parameter.getType())) {
-                                invocationParameters.put(parameter.getType().getName(), args[i]);
-                            }
-                        }
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
