@@ -65,17 +65,16 @@ public class McpHeader {
     public String toString() {
         String maskedDefaultValue = isSecret ? "[REDACTED]" : defaultValue;
         String maskedValue = isSecret ? "[REDACTED]" : value;
-        
-        return "McpHeader{" +
-                "choices=" + choices +
-                ", defaultValue='" + maskedDefaultValue + '\'' +
-                ", description='" + description + '\'' +
-                ", format='" + format + '\'' +
-                ", isRequired=" + isRequired +
-                ", isSecret=" + isSecret +
-                ", name='" + name + '\'' +
-                ", value='" + maskedValue + '\'' +
-                ", variables=" + variables +
-                '}';
+
+        return "McpHeader{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", value='"
+                + maskedValue + '\'' + ", variables="
+                + variables + '}';
     }
 }

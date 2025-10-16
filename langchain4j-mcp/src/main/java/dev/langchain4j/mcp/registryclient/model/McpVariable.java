@@ -53,15 +53,14 @@ public class McpVariable {
     public String toString() {
         String maskedDefaultValue = isSecret ? "<redacted>" : defaultValue;
         String maskedValue = isSecret ? "<redacted>" : value;
-        
-        return "McpVariable{" +
-                "choices=" + choices +
-                ", defaultValue='" + maskedDefaultValue + '\'' +
-                ", description='" + description + '\'' +
-                ", format='" + format + '\'' +
-                ", isRequired=" + isRequired +
-                ", isSecret=" + isSecret +
-                ", value='" + maskedValue + '\'' +
-                '}';
+
+        return "McpVariable{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", value='"
+                + maskedValue + '\'' + '}';
     }
 }
