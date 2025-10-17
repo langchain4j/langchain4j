@@ -11,6 +11,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,14 @@ public class LoggingHttpClient implements HttpClient {
             }
 
             @Override
+            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event, handle);
+            }
+
+            @Override
             public void onError(Throwable throwable) {
                 delegateListener.onError(throwable);
             }
@@ -114,6 +123,14 @@ public class LoggingHttpClient implements HttpClient {
                     log.debug("{}", event);
                 }
                 delegateListener.onEvent(event);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event, handle);
             }
 
             @Override

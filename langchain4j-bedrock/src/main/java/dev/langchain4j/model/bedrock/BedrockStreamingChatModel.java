@@ -17,10 +17,13 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompletableFutureStreamingHandle;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -68,6 +71,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
+        AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
@@ -96,12 +100,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             ContentBlockDelta delta = event.delta();
                             currentContentType.set(delta.type());
                             if (currentContentType.get() == ContentBlockDelta.Type.TEXT) {
-                                onPartialResponse(handler, delta.text());
+                                onPartialResponse(handler, delta.text(), streamingHandle.get());
                             } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
                                 ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
                                 String thinking = reasoningContent.text();
                                 if (isNotNullOrEmpty(thinking)) {
-                                    onPartialThinking(handler, thinking);
+                                    onPartialThinking(handler, thinking); // TODO
                                 }
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
                                 String input = delta.toolUse().input();
@@ -137,13 +141,16 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         })
                         .build())
                 .build();
-        this.client
+
+        CompletableFuture<Void> future = this.client
                 .converseStream(converseStreamRequest, converseStreamResponseHandler)
                 .exceptionally(ex -> {
                     RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
                     withLoggingExceptions(() -> handler.onError(mappedError));
                     return null;
                 });
+
+        streamingHandle.set(new CompletableFutureStreamingHandle(future));
     }
 
     @Override

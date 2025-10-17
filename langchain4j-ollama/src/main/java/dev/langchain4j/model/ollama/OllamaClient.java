@@ -35,6 +35,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
@@ -158,6 +159,22 @@ class OllamaClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                StreamingHandle streamingHandle = new StreamingHandle() {
+                    @Override
+                    public void cancel() {
+                        throw new RuntimeException("Cancellation is not implemented"); // TODO
+                    }
+
+                    @Override
+                    public boolean isCancelled() {
+                        return false;
+                    }
+                };
+                onEvent(event, streamingHandle);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
@@ -169,7 +186,7 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    onPartialResponse(handler, content);
+                    onPartialResponse(handler, content, handle);
                 }
 
                 String thinking = message.getThinking();

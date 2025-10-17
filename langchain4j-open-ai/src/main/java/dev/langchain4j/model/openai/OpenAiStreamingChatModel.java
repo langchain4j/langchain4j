@@ -36,6 +36,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
@@ -147,7 +148,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -165,9 +166,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private void handle(
-            ChatCompletionResponse partialResponse,
+            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
             ToolCallBuilder toolCallBuilder,
             StreamingChatResponseHandler handler) {
+        ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
             return;
         }
@@ -189,12 +191,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            onPartialThinking(handler, reasoningContent);
+            onPartialThinking(handler, reasoningContent); // TODO
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();

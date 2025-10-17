@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,9 +53,16 @@ public interface StreamingChatModel {
             }
 
             @Override
+            public void onPartialResponse(String partialResponse, StreamingHandle handle) {
+                handler.onPartialResponse(partialResponse, handle);
+            }
+
+            @Override
             public void onPartialThinking(PartialThinking partialThinking) {
                 handler.onPartialThinking(partialThinking);
             }
+
+            // TODO
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
