@@ -49,6 +49,7 @@ class OpenAiStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
+                .maxTokens(maxTokens)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
