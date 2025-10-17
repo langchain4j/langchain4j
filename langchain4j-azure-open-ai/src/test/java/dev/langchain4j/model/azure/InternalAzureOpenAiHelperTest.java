@@ -208,7 +208,8 @@ class InternalAzureOpenAiHelperTest {
     @Test
     void toOpenAiMessages_shouldConvertBase64ImageToDataUri() {
         // Given
-        String base64Data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        String base64Data =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
         String mimeType = "image/png";
         ImageContent imageContent = ImageContent.from(base64Data, mimeType);
         UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
