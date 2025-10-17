@@ -19,6 +19,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -146,8 +147,10 @@ public class OpenAiChatModel implements ChatModel {
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
 
+        RequestContext requestContext = chatRequest.context();
+
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
-                () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+                () -> client.chatCompletion(openAiRequest, requestContext).executeRaw(), maxRetries);
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 

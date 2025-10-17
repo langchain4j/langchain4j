@@ -10,6 +10,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -83,98 +84,98 @@ public class DefaultOpenAiClient extends OpenAiClient {
     }
 
     @Override
-    public SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request) {
+    public SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request, RequestContext context) {
 
-        HttpRequest httpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "completions")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(
-                        CompletionRequest.builder().from(request).stream(false).build()))
-                .build();
+        HttpRequest httpRequest = buildJsonPostHttpRequest(
+                "completions",
+                context,
+                CompletionRequest.builder().from(request).stream(false).build()
+        );
 
-        HttpRequest streamingHttpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "completions")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(
-                        CompletionRequest.builder().from(request).stream(true).build()))
-                .build();
+        HttpRequest streamingHttpRequest = buildJsonPostHttpRequest(
+                "completions",
+                context,
+                CompletionRequest.builder().from(request).stream(true).build()
+        );
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, CompletionResponse.class);
     }
 
     @Override
-    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request) {
+    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request, RequestContext context) {
 
-        HttpRequest httpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "chat/completions")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
-                        .build()))
-                .build();
+        HttpRequest httpRequest = buildJsonPostHttpRequest(
+                "chat/completions",
+                context,
+                ChatCompletionRequest.builder().from(request).stream(false).build()
+        );
 
-        HttpRequest streamingHttpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "chat/completions")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
-                        .build()))
-                .build();
+        HttpRequest streamingHttpRequest = buildJsonPostHttpRequest(
+                "chat/completions",
+                context,
+                ChatCompletionRequest.builder().from(request).stream(true).build()
+        );
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
     }
 
     @Override
-    public SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request) {
+    public SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request, RequestContext context) {
 
-        HttpRequest httpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "embeddings")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(request))
-                .build();
+        HttpRequest httpRequest = buildJsonPostHttpRequest(
+                "embeddings",
+                context,
+                request
+        );
 
         return new RequestExecutor<>(httpClient, httpRequest, EmbeddingResponse.class);
     }
 
     @Override
-    public SyncOrAsync<ModerationResponse> moderation(ModerationRequest request) {
+    public SyncOrAsync<ModerationResponse> moderation(ModerationRequest request, RequestContext context) {
 
-        HttpRequest httpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "moderations")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(request))
-                .build();
+        HttpRequest httpRequest = buildJsonPostHttpRequest(
+                "moderations",
+                context,
+                request
+        );
 
         return new RequestExecutor<>(httpClient, httpRequest, ModerationResponse.class);
     }
 
     @Override
-    public SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request) {
-        HttpRequest httpRequest = HttpRequest.builder()
-                .method(POST)
-                .url(baseUrl, "images/generations")
-                .addQueryParams(customQueryParams)
-                .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
-                .body(Json.toJson(request))
-                .build();
+    public SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request, RequestContext context) {
+
+        HttpRequest httpRequest = buildJsonPostHttpRequest(
+                "images/generations",
+                context,
+                request
+        );
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
+    }
+
+    protected HttpRequest buildJsonPostHttpRequest(String endpoint, RequestContext context, Object body) {
+        HttpRequest.Builder requestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, endpoint)
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders);
+
+        if (body != null) {
+            requestBuilder.body(Json.toJson(body));
+        }
+
+        if (context != null) {
+            if (context.extraHeaders() != null) {
+                requestBuilder.addHeaders(context.extraHeaders());
+            }
+            if (context.extraQueryParams() != null) {
+                requestBuilder.addQueryParams(context.extraQueryParams());
+            }
+        }
+
+        return requestBuilder.build();
     }
 }
