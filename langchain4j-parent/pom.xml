@@ -83,7 +83,7 @@
         <testcontainers.version>1.21.3</testcontainers.version>
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.1</wiremock.version>
-        <opennlp-tools.version>2.5.4</opennlp-tools.version>
+        <opennlp-tools.version>2.5.6</opennlp-tools.version>
     </properties>
 
     <dependencyManagement>
