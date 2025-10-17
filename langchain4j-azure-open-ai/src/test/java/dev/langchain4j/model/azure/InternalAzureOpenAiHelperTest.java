@@ -222,8 +222,17 @@ class InternalAzureOpenAiHelperTest {
         assertThat(openAiMessages).hasSize(1);
         assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
         ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
-        // The content should be a list of content items (text + image)
+
+        // Verify the content is not null
         assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the expected data URI format in its string representation
+        // The Azure SDK serializes the content to BinaryData, so we check the JSON representation
+        String contentJson = requestMessage.getContent().toString();
+        String expectedDataUri = "data:" + mimeType + ";base64," + base64Data;
+
+        // The JSON should contain the image URL in data URI format
+        assertThat(contentJson).contains(expectedDataUri).contains("image_url").contains("url");
     }
 
     @Test
@@ -241,7 +250,19 @@ class InternalAzureOpenAiHelperTest {
         assertThat(openAiMessages).hasSize(1);
         assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
         ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
-        // The content should be a list of content items (text + image)
+
+        // Verify the content is not null
         assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the HTTP URL as-is (not converted to data URI)
+        String contentJson = requestMessage.getContent().toString();
+
+        // The JSON should contain the image URL as provided (HTTP URL, not data URI)
+        assertThat(contentJson)
+                .contains(imageUrl)
+                .contains("image_url")
+                .contains("url")
+                .doesNotContain("data:image")
+                .doesNotContain("base64");
     }
 }
