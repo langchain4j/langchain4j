@@ -110,6 +110,12 @@ const config = {
                         position: 'left'
                     },
                     {
+                        href: 'https://github.com/langchain4j/langchain4j',
+                        position: 'right',
+                        className: 'header-github-link',
+                        'aria-label': 'GitHub repository',
+                    },
+                    {
                         type: 'docsVersionDropdown',
                         position: 'right',
                         dropdownActiveClassDisabled: true
