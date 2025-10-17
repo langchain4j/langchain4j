@@ -70,6 +70,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
+        return true; // Azure OpenAI now supports base64-encoded images via data URIs
     }
 }

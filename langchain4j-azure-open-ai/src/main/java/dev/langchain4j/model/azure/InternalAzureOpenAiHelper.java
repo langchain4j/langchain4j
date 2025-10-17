@@ -256,12 +256,8 @@ class InternalAzureOpenAiHelper {
                                 String text = ((TextContent) content).text();
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent imageContent) {
-                                if (imageContent.image().url() == null) {
-                                    throw new UnsupportedFeatureException("Image URL is not present. "
-                                            + "Base64 encoded images are not supported at the moment.");
-                                }
-                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
-                                        imageContent.image().url().toString());
+                                String imageUrlString = toImageUrl(imageContent.image());
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageUrlString);
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -286,6 +282,13 @@ class InternalAzureOpenAiHelper {
         }
 
         return null;
+    }
+
+    private static String toImageUrl(Image image) {
+        if (image.url() != null) {
+            return image.url().toString();
+        }
+        return String.format("data:%s;base64,%s", image.mimeType(), image.base64Data());
     }
 
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
