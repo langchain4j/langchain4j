@@ -110,20 +110,10 @@ const config = {
                         position: 'left'
                     },
                     {
-                        href: 'https://github.com/langchain4j/langchain4j',
-                        label: 'GitHub',
+                        type: 'docsVersionDropdown',
                         position: 'right',
-                    },
-                    {
-                        href: 'https://twitter.com/langchain4j',
-                        label: 'Twitter',
-                        position: 'right',
-                    },
-                    {
-                        href: 'https://discord.com/invite/JzTFvyjG6R',
-                        label: 'Discord',
-                        position: 'right',
-                    },
+                        dropdownActiveClassDisabled: true
+                    }
                 ],
             },
             footer: {
