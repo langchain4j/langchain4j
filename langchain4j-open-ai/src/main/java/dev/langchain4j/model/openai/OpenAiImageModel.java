@@ -9,6 +9,7 @@ import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
@@ -74,7 +75,7 @@ public class OpenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         GenerateImagesRequest request = requestBuilder(prompt).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request, RequestContext.EMPTY), maxRetries)
                 .execute();
 
         return Response.from(fromImageData(response.data().get(0)));
@@ -84,7 +85,7 @@ public class OpenAiImageModel implements ImageModel {
     public Response<List<Image>> generate(String prompt, int n) {
         GenerateImagesRequest request = requestBuilder(prompt).n(n).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request, RequestContext.EMPTY), maxRetries)
                 .execute();
 
         return Response.from(

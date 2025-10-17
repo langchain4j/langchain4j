@@ -7,6 +7,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.context.RequestContext;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,8 +15,11 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
     private final ChatRequestParameters parameters;
+    private final RequestContext context;
 
     protected ChatRequest(Builder builder) {
+        this.context = Objects.requireNonNullElse(builder.context, RequestContext.EMPTY);
+
         this.messages = copy(ensureNotEmpty(builder.messages, "messages"));
 
         DefaultChatRequestParameters.Builder<?> parametersBuilder = ChatRequestParameters.builder();
@@ -76,6 +80,10 @@ public class ChatRequest {
         return messages;
     }
 
+    public RequestContext context() {
+        return context;
+    }
+
     public ChatRequestParameters parameters() {
         return parameters;
     }
@@ -129,17 +137,17 @@ public class ChatRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
-        return Objects.equals(this.messages, that.messages) && Objects.equals(this.parameters, that.parameters);
+        return Objects.equals(this.messages, that.messages) && Objects.equals(this.parameters, that.parameters) && Objects.equals(this.context, that.context);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, parameters);
+        return Objects.hash(messages, parameters, context);
     }
 
     @Override
     public String toString() {
-        return "ChatRequest {" + " messages = " + messages + ", parameters = " + parameters + " }";
+        return "ChatRequest {" + " messages = " + messages + ", parameters = " + parameters + ", context = " + context + " }";
     }
 
     /**
@@ -155,6 +163,7 @@ public class ChatRequest {
 
     public static class Builder {
 
+        private RequestContext context;
         private List<ChatMessage> messages;
         private ChatRequestParameters parameters;
 
@@ -170,11 +179,13 @@ public class ChatRequest {
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
 
-        public Builder() {}
+        public Builder() {
+        }
 
         public Builder(ChatRequest chatRequest) {
             this.messages = chatRequest.messages;
             this.parameters = chatRequest.parameters;
+            this.context = chatRequest.context;
         }
 
         public Builder messages(List<ChatMessage> messages) {

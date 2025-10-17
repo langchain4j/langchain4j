@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
@@ -72,7 +73,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 ModerationRequest.builder().model(modelName).input(inputs).build();
 
         ModerationResponse response =
-                withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
+                withRetryMappingExceptions(() -> client.moderation(request, RequestContext.EMPTY).execute(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {

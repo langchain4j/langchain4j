@@ -23,6 +23,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -141,10 +142,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
 
+        RequestContext requestContext = chatRequest.context();
+
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
-        client.chatCompletion(openAiRequest)
+        client.chatCompletion(openAiRequest, requestContext)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
                     handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);

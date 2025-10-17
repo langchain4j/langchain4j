@@ -10,6 +10,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
@@ -68,7 +69,7 @@ public class OpenAiLanguageModel implements LanguageModel {
                 .build();
 
         CompletionResponse response =
-                withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
+                withRetryMappingExceptions(() -> client.completion(request, RequestContext.EMPTY).execute(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(
