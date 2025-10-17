@@ -10,13 +10,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -24,9 +17,23 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Contains all the common tests that every {@link StreamingChatModel} must successfully pass.
@@ -36,6 +43,43 @@ import org.junit.jupiter.api.TestInstance;
 public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModelIT<StreamingChatModel> {
 
     public abstract StreamingChatModel createModelWith(ChatModelListener listener);
+
+    // TODO test those that do not support
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsStreamingCancellation")
+    void should_cancel_streaming(StreamingChatModel model) {
+
+        // given
+        int cancelAfterPartialResponsesCalledTimes = 10;
+        AtomicInteger counter = new AtomicInteger();
+        Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
+            if (counter.incrementAndGet() >= cancelAfterPartialResponsesCalledTimes) {
+                streamingHandle.cancel();
+            }
+        };
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story about animals"))
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata responseAndStreamingMetadata =
+                chat(model, chatRequest, streamingHandleConsumer, 5, false);
+
+        // then
+        assertThat(responseAndStreamingMetadata.chatResponse()).isNull();
+
+        StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
+        assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(cancelAfterPartialResponsesCalledTimes);
+        assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
+        // TODO verify all other callbacks
+    }
+
+    protected boolean supportsStreamingCancellation() {
+        return true;
+    }
 
     @Test
     void should_propagate_user_exceptions_thrown_from_onPartialResponse() throws Exception {
@@ -200,6 +244,14 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     @Override
     protected ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel, ChatRequest chatRequest) {
+        return chat(chatModel, chatRequest, ignored -> {}, 120, true);
+    }
+
+    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                  ChatRequest chatRequest,
+                                                  Consumer<StreamingHandle> streamingHandleConsumer,
+                                                  int timeoutSeconds,
+                                                  boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
@@ -219,10 +271,22 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
+            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
+                streamingHandleConsumer.accept(streamingHandle);
+                concatenatedPartialResponsesBuilder.append(partialResponse); // TODO separate builder?
+                timesOnPartialResponseWasCalled.incrementAndGet(); // TODO separate counter?
+                threads.add(Thread.currentThread());
+            }
+
+            // TODO onPartialThinking
+
+            @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
                 partialToolCalls.add(partialToolCall);
                 threads.add(Thread.currentThread());
             }
+
+            // TODO
 
             @Override
             public void onCompleteToolCall(CompleteToolCall completeToolCall) {
@@ -230,6 +294,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 threads.add(Thread.currentThread());
             }
 
+            // TODO
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 timesOnCompleteResponseWasCalled.incrementAndGet();
@@ -247,20 +312,25 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingChatResponseHandler spyHandler = spy(handler);
         chatModel.chat(chatRequest, spyHandler);
 
+        ChatResponse chatResponse = null;
         try {
-            ChatResponse chatResponse = futureChatResponse.get(120, SECONDS);
-            String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
-            StreamingMetadata metadata = new StreamingMetadata(
-                    concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
-                    timesOnPartialResponseWasCalled.get(),
-                    new ArrayList<>(partialToolCalls),
-                    new ArrayList<>(completeToolCalls),
-                    timesOnCompleteResponseWasCalled.get(),
-                    threads,
-                    spyHandler);
-            return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
+            chatResponse = futureChatResponse.get(timeoutSeconds, SECONDS);
+        } catch (TimeoutException e) {
+            if (failOnTimeout) {
+                throw new RuntimeException(e);
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
+        StreamingMetadata metadata = new StreamingMetadata(
+                concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
+                timesOnPartialResponseWasCalled.get(),
+                new ArrayList<>(partialToolCalls),
+                new ArrayList<>(completeToolCalls),
+                timesOnCompleteResponseWasCalled.get(),
+                threads,
+                spyHandler);
+        return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
     }
 }

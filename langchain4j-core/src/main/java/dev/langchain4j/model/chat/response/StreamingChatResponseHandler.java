@@ -18,7 +18,23 @@ public interface StreamingChatResponseHandler {
      *
      * @param partialResponse A partial textual response, usually a single token.
      */
-    void onPartialResponse(String partialResponse);
+    void onPartialResponse(String partialResponse); // TODO which one should be called in different scenarios?
+
+    /**
+     * TODO
+     * Invoked each time the model generates a partial textual response, usually a single token.
+     * <p>
+     * Please note that some LLM providers do not stream individual tokens, but send responses in batches.
+     * In such cases, this callback may receive multiple tokens at once.
+     *
+     * @param partialResponse A partial textual response, usually a single token.
+     * @param streamingHandle TODO
+     * @since 1.8.0
+     */
+    @Experimental
+    default void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) { // TODO accept single object? e.g. PartialResponseContext
+        onPartialResponse(partialResponse); // TODO?
+    }
 
     /**
      * Invoked each time the model generates a partial thinking/reasoning text, usually a single token.
@@ -62,7 +78,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialToolCall(PartialToolCall partialToolCall) {}
+    default void onPartialToolCall(PartialToolCall partialToolCall) {} // TODO cancellation here and other methods
 
     /**
      * Invoked when the model has finished streaming a single tool call.

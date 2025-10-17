@@ -1,5 +1,7 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.model.chat.response.StreamingHandle;
+
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -12,18 +14,33 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
+        StreamingHandle handle = new StreamingHandle() {
+            @Override
+            public void cancel() {
+                throw new RuntimeException("Cancellation is not implemented"); // TODO
+            }
 
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+        };
+        parse(httpResponseBody, listener, handle);
+    }
+
+    @Override
+    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle handle) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();
 
             String line;
-            while ((line = reader.readLine()) != null) {
+            while (!handle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
                         ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                        ignoringExceptions(() -> listener.onEvent(sse));
+                        ignoringExceptions(() -> listener.onEvent(sse, handle));
                         event = null;
                         data.setLength(0);
                     }
@@ -43,7 +60,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
             if (!data.isEmpty()) {
                 ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                ignoringExceptions(() -> listener.onEvent(sse));
+                ignoringExceptions(() -> listener.onEvent(sse, handle));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));

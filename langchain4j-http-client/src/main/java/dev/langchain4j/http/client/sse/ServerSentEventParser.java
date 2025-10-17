@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.io.InputStream;
 
 /**
@@ -23,4 +24,16 @@ public interface ServerSentEventParser {
      * @param listener         the listener to receive parsed events or error notifications
      */
     void parse(InputStream httpResponseBody, ServerSentEventListener listener);
+
+    /**
+     * TODO
+     * TODO implement this method if you want to be able to cancel streaming
+     * @param httpResponseBody
+     * @param listener
+     * @param handle
+     * @since 1.8.0
+     */
+    default void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle handle) { // TODO accept single object
+        parse(httpResponseBody, listener); // TODO?
+    }
 }

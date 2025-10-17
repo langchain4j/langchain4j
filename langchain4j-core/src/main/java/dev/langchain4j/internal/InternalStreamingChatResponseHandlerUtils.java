@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,20 @@ public class InternalStreamingChatResponseHandlerUtils {
 
         try {
             handler.onPartialResponse(partialResponse);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void onPartialResponse(StreamingChatResponseHandler handler,
+                                         String partialResponse,
+                                         StreamingHandle handle) {
+        if (isNullOrEmpty(partialResponse)) {
+            return;
+        }
+
+        try {
+            handler.onPartialResponse(partialResponse, handle);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

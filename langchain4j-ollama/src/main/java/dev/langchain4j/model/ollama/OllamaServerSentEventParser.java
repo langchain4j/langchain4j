@@ -3,14 +3,15 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 
 /**
  * Ollama does not follow SSE standard for streaming, it uses newline delimited JSON format.
@@ -27,11 +28,27 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
+        StreamingHandle handle = new StreamingHandle() {
+            @Override
+            public void cancel() {
+                throw new RuntimeException("Cancellation is not implemented"); // TODO
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+        };
+        parse(httpResponseBody, listener, handle);
+    }
+
+    @Override
+    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streaming) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
             String line;
-            while ((line = reader.readLine()) != null) {
+            while (!streaming.isCancelled() && (line = reader.readLine()) != null) {
                 ServerSentEvent sse = new ServerSentEvent(null, line);
-                ignoringExceptions(() -> listener.onEvent(sse));
+                ignoringExceptions(() -> listener.onEvent(sse, streaming));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));
