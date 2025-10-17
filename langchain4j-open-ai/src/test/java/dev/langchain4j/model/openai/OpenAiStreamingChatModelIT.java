@@ -30,8 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,11 +45,11 @@ class OpenAiStreamingChatModelIT {
         int maxTokens = 1;
 
         OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
-//                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-//                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
-//                .temperature(0.0)
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -61,20 +59,8 @@ class OpenAiStreamingChatModelIT {
         // when
         model.chat("Tell me a long story", new StreamingChatResponseHandler() {
 
-            AtomicInteger atomicInteger = new AtomicInteger();
-
             @Override
-            public void onPartialResponse(String partialResponse) {
-                System.out.println(1);
-            }
-
-            @Override
-            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
-                if (atomicInteger.incrementAndGet() > 500) {
-                    streamingHandle.cancel();
-                }
-                onPartialResponse(partialResponse);
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
