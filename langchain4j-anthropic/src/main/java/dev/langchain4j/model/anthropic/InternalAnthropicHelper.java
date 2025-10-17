@@ -5,6 +5,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -14,11 +15,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Internal
 class InternalAnthropicHelper {
@@ -27,7 +26,7 @@ class InternalAnthropicHelper {
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
-        if (Objects.equals(ResponseFormat.JSON, parameters.responseFormat())) {
+        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON) {
             unsupportedFeatures.add("JSON response format");
         }
         if (parameters.frequencyPenalty() != null) {
