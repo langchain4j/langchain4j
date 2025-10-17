@@ -51,6 +51,8 @@ public class InvocationParameters {
 
     private final ConcurrentHashMap<String, Object> map;
 
+    private static final ThreadLocal<InvocationParameters> currentInvocationParameters = new ThreadLocal<>();
+
     public InvocationParameters() {
         this.map = new ConcurrentHashMap<>();
     }
@@ -104,5 +106,17 @@ public class InvocationParameters {
 
     public static InvocationParameters from(Map<String, Object> map) {
         return new InvocationParameters(map);
+    }
+
+    public static void setCurrent(InvocationParameters invocationParameters) {
+        currentInvocationParameters.set(invocationParameters);
+    }
+
+    public static InvocationParameters current() {
+        return currentInvocationParameters.get();
+    }
+
+    public static void removeCurrent() {
+        currentInvocationParameters.remove();
     }
 }

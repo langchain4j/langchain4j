@@ -20,6 +20,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
@@ -96,6 +97,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             "There can be at most one parameter of type %s", InvocationParameters.class.getName());
                 }
                 invocationParametersExist = true;
+                continue;
+            }
+
+            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
 
@@ -453,18 +458,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
-                        if (args == null) {
-                            return Optional.empty();
-                        }
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
+                        if (args != null) {
+                            for (int i = 0; i < params.length; i++) {
+                                Parameter parameter = params[i];
+                                if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                                    InvocationParameters invocationParameters = (InvocationParameters) args[i];
+                                    ensureNotNull(invocationParameters, "InvocationParameters");
+                                    return Optional.of(invocationParameters);
+                                }
                             }
                         }
-                        return Optional.empty();
+                        return Optional.ofNullable(InvocationParameters.current());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

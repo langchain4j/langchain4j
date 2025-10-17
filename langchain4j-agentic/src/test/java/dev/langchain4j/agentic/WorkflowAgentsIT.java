@@ -674,15 +674,15 @@ public class WorkflowAgentsIT {
 
     static class NotificationTool {
 
-        private final AtomicBoolean done;
+        private final String agentName;
 
-        NotificationTool(final AtomicBoolean done) {
-            this.done = done;
+        NotificationTool(String agentName) {
+            this.agentName = agentName;
         }
 
         @Tool("notify that you are done")
-        void done() {
-            done.set(true);
+        void done(AgenticScope agenticScope) {
+            agenticScope.writeState(agentName, "done");
         }
     }
 
@@ -696,8 +696,8 @@ public class WorkflowAgentsIT {
             For each meal, just give the name of the meal.
             Provide a list with the 3 items and nothing else.
 
-            When you are done and immediately before returning also call the provided tool,
-            to notify that you have completed your task.
+            When you are done and immediately before returning also call, once and only once,
+            the provided tool, to notify that you have completed your task.
             """)
         @Agent
         List<String> findMeal(@V("mood") String mood);
@@ -721,19 +721,16 @@ public class WorkflowAgentsIT {
 
     @Test
     void async_untyped_agents_tests() {
-        AtomicBoolean foodDone = new AtomicBoolean(false);
-        AtomicBoolean moviesDone = new AtomicBoolean(false);
-
         FoodExpertWithNotification foodExpert = AgenticServices.agentBuilder(FoodExpertWithNotification.class)
                 .chatModel(baseModel())
-                .tools(new NotificationTool(foodDone))
+                .tools(new NotificationTool("foodAgent"))
                 .async(true)
                 .outputKey("meals")
                 .build();
 
         MovieExpertWithNotification movieExpert = AgenticServices.agentBuilder(MovieExpertWithNotification.class)
                 .chatModel(baseModel())
-                .tools(new NotificationTool(moviesDone))
+                .tools(new NotificationTool("moviesAgent"))
                 .async(true)
                 .outputKey("movies")
                 .build();
@@ -742,9 +739,9 @@ public class WorkflowAgentsIT {
                 .subAgents(foodExpert, movieExpert)
                 .build();
 
-        eveningPlannerAgent.invoke(Map.of("mood", "romantic"));
-        assertThat(foodDone).isTrue();
-        assertThat(moviesDone).isTrue();
+        ResultWithAgenticScope<String> result = eveningPlannerAgent.invokeWithAgenticScope(Map.of("mood", "romantic"));
+        assertThat(result.agenticScope().readState("foodAgent", "")).isEqualTo("done");
+        assertThat(result.agenticScope().readState("moviesAgent", "")).isEqualTo("done");
     }
 
     public interface CreativeWriterDeclarative {

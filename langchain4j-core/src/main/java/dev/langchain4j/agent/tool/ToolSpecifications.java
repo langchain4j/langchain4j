@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
@@ -108,6 +109,7 @@ public class ToolSpecifications {
         for (Parameter parameter : parameters) {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)
                     || InvocationParameters.class.isAssignableFrom(parameter.getType())
+                    || LangChain4jManaged.class.isAssignableFrom(parameter.getType())
                     || parameter.getType() == InvocationContext.class) {
                 continue;
             }
