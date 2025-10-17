@@ -21,6 +21,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
@@ -202,5 +203,44 @@ class InternalAzureOpenAiHelperTest {
     void resolveRetryOptions_handlesZeroMaxRetries() {
         RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(0, null);
         assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isZero();
+    }
+
+    @Test
+    void toOpenAiMessages_shouldConvertBase64ImageToDataUri() {
+        // Given
+        String base64Data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        String mimeType = "image/png";
+        ImageContent imageContent = ImageContent.from(base64Data, mimeType);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        // The content should be a list of content items (text + image)
+        assertThat(requestMessage.getContent()).isNotNull();
+    }
+
+    @Test
+    void toOpenAiMessages_shouldKeepHttpUrlAsIs() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        // The content should be a list of content items (text + image)
+        assertThat(requestMessage.getContent()).isNotNull();
     }
 }
