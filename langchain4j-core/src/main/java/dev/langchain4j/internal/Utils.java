@@ -446,6 +446,21 @@ public class Utils {
         return unmodifiableMap(map);
     }
 
+    /**
+     * Returns a mutable copy of the provided map.
+     * Returns an empty map if the provided map is <code>null</code>.
+     *
+     * @param map The map to copy.
+     * @return The copy of the provided map or an empty map.
+     */
+    public static <K, V> Map<K, V> mutableCopy(Map<K, V> map) {
+        if (map == null) {
+            return new HashMap<>();
+        }
+
+        return new HashMap<>(map);
+    }
+
     public static Map<String, String> toStringValueMap(Map<String, Object> map) {
         if (map == null) {
             return null;

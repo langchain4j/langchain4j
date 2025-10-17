@@ -2,14 +2,13 @@ package dev.langchain4j.rag.content.injector;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
@@ -78,17 +77,18 @@ public class DefaultContentInjector implements ContentInjector {
 
     @Override
     public ChatMessage inject(List<Content> contents, ChatMessage chatMessage) {
-
         if (contents.isEmpty()) {
             return chatMessage;
         }
 
         Prompt prompt = createPrompt(chatMessage, contents);
-        if (chatMessage instanceof UserMessage message && isNotNullOrBlank(message.name())) {
-            return prompt.toUserMessage(message.name());
+        if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.toBuilder()
+                    .contents(List.of(TextContent.from(prompt.text())))
+                    .build();
+        } else {
+            return prompt.toUserMessage();
         }
-
-        return prompt.toUserMessage();
     }
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {

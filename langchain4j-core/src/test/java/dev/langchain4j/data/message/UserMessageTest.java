@@ -16,7 +16,7 @@ class UserMessageTest implements WithAssertions {
         assertThat(m.singleText()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
-        assertThat(m).hasToString("UserMessage { name = \"name\" contents = [TextContent { text = \"text\" }] }");
+        assertThat(m).hasToString("UserMessage { name = \"name\", contents = [TextContent { text = \"text\" }], attributes = {} }");
     }
 
     @Test
