@@ -1,11 +1,14 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.lang.reflect.InvocationHandler;
@@ -16,9 +19,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
-
-public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgentService<T>> implements ParallelAgentService<T> {
+public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgentService<T>>
+        implements ParallelAgentService<T> {
 
     private Executor executor;
 
@@ -28,10 +30,17 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
 
     @Override
     public T build() {
+        checkSubAgents();
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new ParallelInvocationHandler());
+    }
+
+    private void checkSubAgents() {
+        if (hasStreamingAgent(this.agentExecutors())) {
+            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
+        }
     }
 
     private class ParallelInvocationHandler extends AbstractAgentInvocationHandler {
@@ -58,7 +67,8 @@ public class ParallelAgentServiceImpl<T> extends AbstractService<T, ParallelAgen
         private void parallelExecution(DefaultAgenticScope agenticScope) {
             Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
             var tasks = agentExecutors().stream()
-                    .map(agentExecutor -> CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope), exec))
+                    .map(agentExecutor ->
+                            CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope), exec))
                     .toList();
             try {
                 for (Future<?> future : tasks) {

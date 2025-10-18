@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.supervisor;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
@@ -57,6 +58,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
     }
 
     public T build() {
+        checkSubAgents();
+
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
             this.responseAgent =
                     AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
@@ -69,6 +72,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractService<T, Supervisor
             });
         }
         return build(null);
+    }
+
+    private void checkSubAgents() {
+        if (hasStreamingAgent(this.agents.values())) {
+            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
+        }
     }
 
     T build(DefaultAgenticScope agenticScope) {

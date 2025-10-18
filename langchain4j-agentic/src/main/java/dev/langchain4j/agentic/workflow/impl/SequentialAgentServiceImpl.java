@@ -1,19 +1,21 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.isOnlyLastStreamingAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
-
-public class SequentialAgentServiceImpl<T> extends AbstractService<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
+public class SequentialAgentServiceImpl<T> extends AbstractService<T, SequentialAgentService<T>>
+        implements SequentialAgentService<T> {
 
     private SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
@@ -21,10 +23,17 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
 
     @Override
     public T build() {
+        checkSubAgents();
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new SequentialInvocationHandler());
+    }
+
+    private void checkSubAgents() {
+        if (!isOnlyLastStreamingAgent(this.agentExecutors())) {
+            throw new IllegalArgumentException("Only the last sub-agent can return TokenStream.");
+        }
     }
 
     private class SequentialInvocationHandler extends AbstractAgentInvocationHandler {

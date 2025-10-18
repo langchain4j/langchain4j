@@ -1,13 +1,17 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -16,10 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
-
-public class ConditionalAgentServiceImpl<T> extends AbstractService<T, ConditionalAgentService<T>> implements ConditionalAgentService<T> {
+public class ConditionalAgentServiceImpl<T> extends AbstractService<T, ConditionalAgentService<T>>
+        implements ConditionalAgentService<T> {
 
     private record ConditionalAgent(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {}
 
@@ -31,10 +33,20 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
 
     @Override
     public T build() {
+        checkSubAgents();
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new ConditionialInvocationHandler());
+    }
+
+    private void checkSubAgents() {
+        for (ConditionalAgent conditionalAgent : this.conditionalAgents) {
+            if (hasStreamingAgent(conditionalAgent.agentExecutors)) {
+                throw new IllegalArgumentException(
+                        "Agent cannot be used as a sub-agent because it returns TokenStream.");
+            }
+        }
     }
 
     private class ConditionialInvocationHandler extends AbstractAgentInvocationHandler {
@@ -89,7 +101,8 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
+    public ConditionalAgentServiceImpl<T> subAgents(
+            Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
         conditionalAgents.add(new ConditionalAgent(condition, agentExecutors));
         return this;
     }

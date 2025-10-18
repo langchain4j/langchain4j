@@ -9,10 +9,12 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -195,5 +197,23 @@ public class AgentUtil {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;
+    }
+
+    public static boolean hasStreamingAgent(Collection<AgentExecutor> agentExecutors) {
+        for (final AgentExecutor executor : agentExecutors) {
+            if (isStreamingAgent(executor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isOnlyLastStreamingAgent(List<AgentExecutor> agentExecutors) {
+        final List<AgentExecutor> executors = agentExecutors.subList(0, agentExecutors.size() - 1);
+        return !hasStreamingAgent(executors) && isStreamingAgent(agentExecutors.get(agentExecutors.size() - 1));
+    }
+
+    public static boolean isStreamingAgent(AgentExecutor agentExecutor) {
+        return agentExecutor.agentInvoker().method().getReturnType().equals(TokenStream.class);
     }
 }

@@ -122,6 +122,19 @@ public class Agents {
         String technical(@V("request") String request);
     }
 
+    public interface TechnicalExpertForStreaming {
+
+        @UserMessage(
+                """
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A technical expert")
+        @Agent("A technical expert")
+        TokenStream technical(@V("request") String request);
+    }
+
     public interface TechnicalExpertWithMemory {
 
         @UserMessage(
@@ -148,19 +161,6 @@ public class Agents {
         String generateStory(@V("topic") String topic);
     }
 
-    public interface CreativeWriterForStreaming {
-
-        @UserMessage(
-                """
-                You are a creative writer.
-                Generate a draft of a story long no more than 3 sentence around the given topic.
-                Return only the story and nothing else.
-                The topic is {{topic}}.
-                """)
-        @Agent("Generate a story based on the given topic")
-        TokenStream generateStory(@V("topic") String topic);
-    }
-
     public interface AudienceEditor {
 
         @UserMessage(
@@ -185,6 +185,45 @@ public class Agents {
                 """)
         @Agent("Edit a story to better fit a given style")
         String editStory(@V("story") String story, @V("style") String style);
+    }
+
+    public interface CreativeWriterForStreaming {
+
+        @UserMessage(
+                """
+                You are a creative writer.
+                Generate a draft of a story long no more than 3 sentence around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        @Agent("Generate a story based on the given topic")
+        TokenStream generateStory(@V("topic") String topic);
+    }
+
+    public interface AudienceEditorForStreaming {
+
+        @UserMessage(
+                """
+            You are a professional editor.
+            Analyze and rewrite the following story to better align with the target audience of {{audience}}.
+            Return only the story and nothing else.
+            The story is "{{story}}".
+            """)
+        @Agent("Edit a story to better fit a given audience")
+        TokenStream editStory(@V("story") String story, @V("audience") String audience);
+    }
+
+    public interface StyleEditorForStreaming {
+
+        @UserMessage(
+                """
+                You are a professional editor.
+                Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
+                Return only the story and nothing else.
+                The story is "{{story}}".
+                """)
+        @Agent("Edit a story to better fit a given style")
+        TokenStream editStory(@V("story") String story, @V("style") String style);
     }
 
     public interface StyleScorer {
