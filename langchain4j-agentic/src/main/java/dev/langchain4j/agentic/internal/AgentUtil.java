@@ -208,6 +208,15 @@ public class AgentUtil {
         return false;
     }
 
+    public static boolean isAllStreamingAgent(Collection<AgentExecutor> agentExecutors) {
+        for (final AgentExecutor executor : agentExecutors) {
+            if (!isStreamingAgent(executor)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static boolean isOnlyLastStreamingAgent(List<AgentExecutor> agentExecutors) {
         final List<AgentExecutor> executors = agentExecutors.subList(0, agentExecutors.size() - 1);
         return !hasStreamingAgent(executors) && isStreamingAgent(agentExecutors.get(agentExecutors.size() - 1));

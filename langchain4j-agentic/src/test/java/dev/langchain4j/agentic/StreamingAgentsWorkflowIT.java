@@ -10,9 +10,12 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.AudienceEditorForStreaming;
+import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.LegalExpertForStreaming;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
+import dev.langchain4j.agentic.Agents.MedicalExpertForStreaming;
 import dev.langchain4j.agentic.Agents.StyleEditorForStreaming;
 import dev.langchain4j.agentic.Agents.TechnicalExpertForStreaming;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -28,7 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
-public class StreamingAgentWorkflowIT {
+public class StreamingAgentsWorkflowIT {
 
     @Test
     void streaming_agent_only_in_last_sequence_workflow() throws Exception {
@@ -39,7 +42,6 @@ public class StreamingAgentWorkflowIT {
 
         AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
-                .outputKey("story")
                 .outputKey("story")
                 .build();
 
@@ -153,7 +155,11 @@ public class StreamingAgentWorkflowIT {
                 .build();
 
         final LoopAgentService<UntypedAgent> loopAgentService = AgenticServices.loopBuilder();
-        loopAgentService.subAgents(creativeWriter, audienceEditor, styleEditor).outputKey("story");
+        loopAgentService
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .outputKey("story");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loopAgentService.build())
@@ -161,31 +167,107 @@ public class StreamingAgentWorkflowIT {
     }
 
     @Test
-    void streaming_agent_in_conditional_workflow() throws Exception {
-        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+    void all_streaming_agent_in_conditional_workflow() throws Exception {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(baseModel())
-                .outputKey("story")
+                .outputKey("category")
                 .build();
 
-        AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
-                .chatModel(baseModel())
-                .outputKey("story")
-                .outputKey("story")
-                .build();
-
-        StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
+        MedicalExpertForStreaming medicalExpert = AgenticServices.agentBuilder(MedicalExpertForStreaming.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("story")
+                .outputKey("response")
+                .build();
+        LegalExpertForStreaming legalExpert = AgenticServices.agentBuilder(LegalExpertForStreaming.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build();
+        TechnicalExpertForStreaming technicalExpert = AgenticServices.agentBuilder(TechnicalExpertForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("response")
+                .build();
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+        final UntypedAgent untypedAgent = AgenticServices.sequenceBuilder()
+                .subAgents(routerAgent, expertsAgent)
+                .outputKey("response")
+                .build();
+
+        Map<String, Object> input = Map.of("request", "I broke my leg what should I do");
+
+        TokenStream tokenStream = (TokenStream) untypedAgent.invoke(input);
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        tokenStream
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResponse.complete(response);
+                })
+                .onError(futureAnswer::completeExceptionally)
+                .start();
+
+        String story = futureAnswer.get(60, SECONDS);
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        assertThat(story).isNotBlank();
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void part_streaming_agent_in_conditional_workflow() throws Exception {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build();
+        LegalExpertForStreaming legalExpert = AgenticServices.agentBuilder(Agents.LegalExpertForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("response")
+                .build();
+        TechnicalExpertForStreaming technicalExpert = AgenticServices.agentBuilder(TechnicalExpertForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("response")
                 .build();
 
         final ConditionalAgentService<UntypedAgent> conditionalAgentService = AgenticServices.conditionalBuilder();
         conditionalAgentService
-                .subAgents(creativeWriter, audienceEditor, styleEditor)
-                .outputKey("story");
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.TECHNICAL,
+                        technicalExpert);
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> conditionalAgentService.build())
-                .withMessage("Agent cannot be used as a sub-agent because it returns TokenStream.");
+                .withMessage(
+                        "Part of the sub-agents return TokenStream, it needs all agents have the same return type.");
     }
 
     @Test

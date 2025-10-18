@@ -70,6 +70,19 @@ public class Agents {
         String medical(@V("request") String request);
     }
 
+    public interface MedicalExpertForStreaming {
+
+        @UserMessage(
+                """
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A medical expert")
+        @Agent("A medical expert")
+        TokenStream medical(@V("request") String request);
+    }
+
     public interface MedicalExpertWithMemory {
 
         @UserMessage(
@@ -94,6 +107,19 @@ public class Agents {
         @Tool("A legal expert")
         @Agent("A legal expert")
         String legal(@V("request") String request);
+    }
+
+    public interface LegalExpertForStreaming {
+
+        @UserMessage(
+                """
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{request}}.
+            """)
+        @Tool("A legal expert")
+        @Agent("A legal expert")
+        TokenStream legal(@V("request") String request);
     }
 
     public interface LegalExpertWithMemory {

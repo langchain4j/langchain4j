@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.isOnlyLastStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
@@ -31,7 +32,7 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
     }
 
     private void checkSubAgents() {
-        if (!isOnlyLastStreamingAgent(this.agentExecutors())) {
+        if (hasStreamingAgent(this.agentExecutors()) && !isOnlyLastStreamingAgent(this.agentExecutors())) {
             throw new IllegalArgumentException("Only the last sub-agent can return TokenStream.");
         }
     }

@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.isAllStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -41,11 +42,13 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     }
 
     private void checkSubAgents() {
-        for (ConditionalAgent conditionalAgent : this.conditionalAgents) {
-            if (hasStreamingAgent(conditionalAgent.agentExecutors)) {
-                throw new IllegalArgumentException(
-                        "Agent cannot be used as a sub-agent because it returns TokenStream.");
-            }
+        List<AgentExecutor> list = new ArrayList<>();
+        for (final ConditionalAgent conditionalAgent : this.conditionalAgents) {
+            list.addAll(conditionalAgent.agentExecutors);
+        }
+        if (hasStreamingAgent(list) && !isAllStreamingAgent(list)) {
+            throw new IllegalArgumentException(
+                    "Part of the sub-agents return TokenStream, it needs all agents have the same return type.");
         }
     }
 
