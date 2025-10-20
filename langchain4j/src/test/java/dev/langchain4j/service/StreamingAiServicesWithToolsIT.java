@@ -272,7 +272,8 @@ class StreamingAiServicesWithToolsIT {
                 executor, handler.beforeToolExecutionThreads);
         log.info("should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) onToolExecutedThreads: {}",
                 executor, handler.onToolExecutedThreads);
-        assertThat(handler.allThreads).hasSize(3); // 1 for handler, 2 for tools
+        assertThat(handler.allThreads).hasSizeBetween(3, 4); // 1-2 for handler, 2 for tools
+        // default JDK HttpClient executor can allocate different threads for the first and second streaming response
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
