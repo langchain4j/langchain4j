@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
@@ -33,7 +34,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
         super(builder);
-        this.maximumRetries = builder.maxRetries;
+        this.maximumRetries = getOrDefault(builder.maxRetries, 2);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
