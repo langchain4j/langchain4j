@@ -55,6 +55,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -458,17 +459,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                        InvocationParameters currentParams = InvocationParameters.current();
                         if (args != null) {
                             for (int i = 0; i < params.length; i++) {
                                 Parameter parameter = params[i];
                                 if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                                     InvocationParameters invocationParameters = (InvocationParameters) args[i];
                                     ensureNotNull(invocationParameters, "InvocationParameters");
-                                    return Optional.of(invocationParameters);
+                                    if (currentParams == null) {
+                                        return Optional.of(invocationParameters);
+                                    } else {
+                                        HashMap<String, Object> newParamsMap = new HashMap<>(currentParams.asMap());
+                                        newParamsMap.putAll(invocationParameters.asMap());
+                                        return Optional.of(new InvocationParameters(newParamsMap));
+                                    }
                                 }
                             }
                         }
-                        return Optional.ofNullable(InvocationParameters.current());
+                        return Optional.ofNullable(currentParams);
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
