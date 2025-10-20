@@ -6,7 +6,9 @@ import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
@@ -18,10 +20,12 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
@@ -162,6 +166,51 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         Throwable error = futureError.get(5, SECONDS);
 
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.ollama.OllamaChatModelIT#notSupportedContentTypesProvider")
+    void should_throw_when_not_supported_content_types_used(List<ContentType> contentTypes) {
+
+        // given
+
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .build();
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+        StreamingChatResponseHandler handler = new ErrorHandler(futureError);
+        final UserMessage userMessage = OllamaChatModelIT.createUserMessageBasedOnContentTypes(contentTypes);
+
+        // when-then
+
+        assertThrows(dev.langchain4j.exception.UnsupportedFeatureException.class, () -> model.chat(List.of(userMessage), handler));
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.ollama.OllamaChatModelIT#supportedContentTypesProvider")
+    void should_not_throw_when_supported_content_types_used(List<ContentType> contentTypes) throws Exception {
+
+        // given
+
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .timeout(Duration.ofMillis(10))
+                .build();
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+        StreamingChatResponseHandler handler = new ErrorHandler(futureError);
+        final UserMessage userMessage = OllamaChatModelIT.createUserMessageBasedOnContentTypes(contentTypes);
+
+        // when
+
+        model.chat(List.of(userMessage), handler);
+
+        // then
+        // check that chat() times out, ergo, did not throw the UnsupportedFeatureException
+
+        Throwable error = futureError.get(5, SECONDS);
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
