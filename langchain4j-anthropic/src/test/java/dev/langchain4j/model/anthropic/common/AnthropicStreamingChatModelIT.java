@@ -98,7 +98,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
                 // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
@@ -106,7 +106,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.id().equals(id)
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
-        ));
+        ), any());
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
@@ -120,7 +120,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.id().equals(id2)
                         && toolCall.name().equals("getTime")
                         && !toolCall.partialArguments().isBlank()
-        ));
+        ), any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 }

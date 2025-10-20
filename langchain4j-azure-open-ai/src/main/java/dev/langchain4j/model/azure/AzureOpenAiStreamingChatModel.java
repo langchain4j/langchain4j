@@ -287,7 +287,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.getContent();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content); // TODO
         }
 
         List<ChatCompletionsToolCall> toolCalls = delta.getToolCalls();

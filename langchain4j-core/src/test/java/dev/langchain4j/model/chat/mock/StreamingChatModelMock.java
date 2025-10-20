@@ -56,7 +56,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
             try {
                 executor.execute(() -> {
-                    toTokens(aiMessage).forEach(token -> onPartialResponse(handler, token));
+                    toTokens(aiMessage).forEach(token -> onPartialResponse(handler, token)); // TODO
 
                     for (int i = 0; i < aiMessage.toolExecutionRequests().size(); i++) {
                         ToolExecutionRequest toolExecutionRequest =

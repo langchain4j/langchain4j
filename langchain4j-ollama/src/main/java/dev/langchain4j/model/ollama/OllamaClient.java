@@ -176,7 +176,7 @@ class OllamaClient {
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
+            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
@@ -188,12 +188,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    onPartialResponse(handler, content, handle);
+                    onPartialResponse(handler, content, streamingHandle);
                 }
 
                 String thinking = message.getThinking();
                 if (returnThinking && !isNullOrEmpty(thinking)) {
-                    onPartialThinking(handler, thinking);
+                    onPartialThinking(handler, thinking, streamingHandle);
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();

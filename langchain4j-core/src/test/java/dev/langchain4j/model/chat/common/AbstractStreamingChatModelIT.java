@@ -26,11 +26,13 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -74,7 +76,33 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
         assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(cancelAfterPartialResponsesCalledTimes);
         assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
-        // TODO verify all other callbacks
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @DisabledIf("supportsStreamingCancellation")
+    void should_fail_to_cancel_streaming(StreamingChatModel model) {
+
+        // given
+        Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
+            streamingHandle.cancel();
+        };
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story about animals"))
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata responseAndStreamingMetadata =
+                chat(model, chatRequest, streamingHandleConsumer, 5, false);
+
+        // then
+        assertThat(responseAndStreamingMetadata.chatResponse()).isNull();
+
+        StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
+        assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(1);
+        assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
+        // TODO errors
     }
 
     protected boolean supportsStreamingCancellation() {
@@ -258,6 +286,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         Queue<PartialToolCall> partialToolCalls = new ConcurrentLinkedQueue<>();
         Queue<CompleteToolCall> completeToolCalls = new ConcurrentLinkedQueue<>();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
+        AtomicInteger timesOnPartialThinkingWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
@@ -273,12 +302,22 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             @Override
             public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
                 streamingHandleConsumer.accept(streamingHandle);
-                concatenatedPartialResponsesBuilder.append(partialResponse); // TODO separate builder?
-                timesOnPartialResponseWasCalled.incrementAndGet(); // TODO separate counter?
+                concatenatedPartialResponsesBuilder.append(partialResponse);
+                timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
 
-            // TODO onPartialThinking
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                timesOnPartialThinkingWasCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) {
+                timesOnPartialThinkingWasCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
@@ -286,7 +325,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 threads.add(Thread.currentThread());
             }
 
-            // TODO
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) {
+                partialToolCalls.add(partialToolCall);
+                threads.add(Thread.currentThread());
+            }
 
             @Override
             public void onCompleteToolCall(CompleteToolCall completeToolCall) {
@@ -294,7 +337,6 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 threads.add(Thread.currentThread());
             }
 
-            // TODO
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 timesOnCompleteResponseWasCalled.incrementAndGet();
@@ -326,6 +368,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingMetadata metadata = new StreamingMetadata(
                 concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                 timesOnPartialResponseWasCalled.get(),
+                timesOnPartialThinkingWasCalled.get(),
                 new ArrayList<>(partialToolCalls),
                 new ArrayList<>(completeToolCalls),
                 timesOnCompleteResponseWasCalled.get(),

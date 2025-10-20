@@ -455,7 +455,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
                         String text = textAndFunctions.text();
                         if (isNotNullOrEmpty(text)) {
-                            onPartialResponse(handler, text);
+                            onPartialResponse(handler, text); // TODO
                         }
 
                         for (FunctionCall functionCall : textAndFunctions.functionCalls()) {

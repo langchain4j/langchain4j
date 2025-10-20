@@ -196,7 +196,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            onPartialThinking(handler, reasoningContent); // TODO
+            onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -222,7 +222,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                             .name(name)
                             .partialArguments(partialArguments)
                             .build();
-                    onPartialToolCall(handler, partialToolRequest);
+                    onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
                 }
             }
         }
@@ -429,7 +429,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
          * <p>
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback. TODO
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code reasoning_content} field from the API response
          * and return it inside the {@link AiMessage}.

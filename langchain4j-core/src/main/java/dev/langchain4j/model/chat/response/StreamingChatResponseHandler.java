@@ -17,6 +17,7 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialResponse A partial textual response, usually a single token.
+     * @see #onPartialResponse(String, StreamingHandle)
      */
     void onPartialResponse(String partialResponse); // TODO which one should be called in different scenarios?
 
@@ -43,10 +44,28 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialThinking A partial thinking text, usually a single token.
+     * @see #onPartialThinking(PartialThinking, StreamingHandle)
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinking(PartialThinking partialThinking) {}
+    default void onPartialThinking(PartialThinking partialThinking) {
+    }
+
+    /**
+     * TODO
+     * Invoked each time the model generates a partial thinking/reasoning text, usually a single token.
+     * <p>
+     * Please note that some LLM providers do not stream individual tokens, but send thinking tokens in batches.
+     * In such cases, this callback may receive multiple tokens at once.
+     *
+     * @param partialThinking A partial thinking text, usually a single token.
+     * @param streamingHandle TODO
+     * @since 1.8.0
+     */
+    @Experimental
+    default void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) { // TODO
+        onPartialThinking(partialThinking); // TODO?
+    }
 
     /**
      * This callback is invoked each time the model generates a partial tool call,
@@ -75,10 +94,47 @@ public interface StreamingChatResponseHandler {
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
+     * @see #onPartialToolCall(PartialToolCall, StreamingHandle)
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialToolCall(PartialToolCall partialToolCall) {} // TODO cancellation here and other methods
+    default void onPartialToolCall(PartialToolCall partialToolCall) {}
+
+    /**
+     * TODO
+     * This callback is invoked each time the model generates a partial tool call,
+     * which contains a single token of the tool's arguments.
+     * It is typically invoked multiple times for a single tool call
+     * until {@link #onCompleteToolCall(CompleteToolCall)} is eventually invoked,
+     * indicating that the streaming for that tool call is finished.
+     * <p>
+     * Here's an example of what streaming a single tool call might look like:
+     * <pre>
+     * 1. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "{\"")
+     * 2. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "city")
+     * 3. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = ""\":\"")
+     * 4. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "Mun")
+     * 5. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "ich")
+     * 6. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "\"}")
+     * 7. onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"Munich\"}")
+     * </pre>
+     * <p>
+     * If the model decides to call multiple tools, the index will increment, allowing you to correlate.
+     * <p>
+     * Please note that not all LLM providers stream tool calls token by token.
+     * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
+     * In those cases, this callback won't be invoked - only {@link #onCompleteToolCall(CompleteToolCall)}
+     * will be called.
+     *
+     * @param partialToolCall A partial tool call that contains
+     *                        the index, tool ID, tool name and partial arguments.
+     * @param streamingHandle TODO
+     * @since 1.8.0
+     */
+    @Experimental
+    default void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) { // TODO
+        onPartialToolCall(partialToolCall); // TODO?
+    }
 
     /**
      * Invoked when the model has finished streaming a single tool call.

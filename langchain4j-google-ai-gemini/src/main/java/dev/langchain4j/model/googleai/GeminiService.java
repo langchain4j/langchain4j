@@ -126,13 +126,13 @@ class GeminiService {
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text);
+                    onPartialResponse(handler, text); // TODO
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought);
+                        onPartialThinking(handler, thought); // TODO
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought); // for backward compatibility
+                        onPartialResponse(handler, thought); // for backward compatibility  // TODO
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {

@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -23,9 +25,25 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     }
 
     @Override
+    public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
+        responseBuilder.append(partialResponse);
+    }
+
+    @Override
     public void onPartialThinking(PartialThinking partialThinking) {
         thinkingBuilder.append(partialThinking.text());
     }
+
+    @Override
+    public void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) {
+        thinkingBuilder.append(partialThinking.text());
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {}
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) {}
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {

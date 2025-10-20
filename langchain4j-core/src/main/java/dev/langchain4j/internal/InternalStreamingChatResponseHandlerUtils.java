@@ -66,9 +66,33 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    public static void onPartialThinking(StreamingChatResponseHandler handler,
+                                         String partialThinking,
+                                         StreamingHandle streamingHandle) {
+        if (isNullOrEmpty(partialThinking)) {
+            return;
+        }
+
+        try {
+            handler.onPartialThinking(new PartialThinking(partialThinking), streamingHandle);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
     public static void onPartialToolCall(StreamingChatResponseHandler handler, PartialToolCall partialToolCall) {
         try {
             handler.onPartialToolCall(partialToolCall);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void onPartialToolCall(StreamingChatResponseHandler handler,
+                                         PartialToolCall partialToolCall,
+                                         StreamingHandle streamingHandle) {
+        try {
+            handler.onPartialToolCall(partialToolCall, streamingHandle);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

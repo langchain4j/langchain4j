@@ -53,8 +53,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialResponse(String partialResponse, StreamingHandle handle) {
-                handler.onPartialResponse(partialResponse, handle);
+            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
+                handler.onPartialResponse(partialResponse, streamingHandle);
             }
 
             @Override
@@ -62,11 +62,19 @@ public interface StreamingChatModel {
                 handler.onPartialThinking(partialThinking);
             }
 
-            // TODO
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) {
+                handler.onPartialThinking(partialThinking, streamingHandle);
+            }
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
                 handler.onPartialToolCall(partialToolCall);
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) {
+                handler.onPartialToolCall(partialToolCall, streamingHandle);
             }
 
             @Override
