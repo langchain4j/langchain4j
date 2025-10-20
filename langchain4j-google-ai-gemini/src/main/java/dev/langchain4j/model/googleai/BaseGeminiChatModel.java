@@ -23,18 +23,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
-
     protected final GeminiService geminiService;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
-    protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
     protected final Boolean returnThinking;
     protected final boolean sendThinking;
@@ -62,7 +59,6 @@ class BaseGeminiChatModel {
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
-        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.thinkingConfig = builder.thinkingConfig;
         this.returnThinking = builder.returnThinking;
         this.sendThinking = getOrDefault(builder.sendThinking, false);
@@ -213,7 +209,6 @@ class BaseGeminiChatModel {
         protected Boolean logRequests;
         protected Boolean logResponses;
         protected Logger logger;
-        protected Integer maxRetries;
         protected Boolean responseLogprobs;
         protected Boolean enableEnhancedCivicAnswers;
         protected List<GeminiSafetySetting> safetySettings;
@@ -283,11 +278,6 @@ class BaseGeminiChatModel {
             return builder();
         }
 
-        public B maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
-            return builder();
-        }
-
         /**
          * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
          * @return {@code this}.
@@ -322,7 +312,7 @@ class BaseGeminiChatModel {
         public B safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
                     .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue()))
-                    .collect(Collectors.toList());
+                    .toList();
             return builder();
         }
 
