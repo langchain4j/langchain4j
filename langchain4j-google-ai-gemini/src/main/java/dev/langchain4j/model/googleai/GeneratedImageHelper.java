@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.GENERATED_IMAGES_KEY;
+import static dev.langchain4j.model.googleai.internal.PartsAndContentsMapper.GENERATED_IMAGES_KEY;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;

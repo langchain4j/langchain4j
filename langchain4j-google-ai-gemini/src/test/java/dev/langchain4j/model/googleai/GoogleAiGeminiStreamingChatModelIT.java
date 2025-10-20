@@ -32,6 +32,8 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.internal.FinishReasonMapper;
+import dev.langchain4j.model.googleai.internal.GeminiFinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.time.Duration;
@@ -246,9 +248,11 @@ class GoogleAiGeminiStreamingChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())

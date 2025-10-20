@@ -2,13 +2,12 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class GeminiThinkingConfig {
     @JsonProperty("includeThoughts")
     private Boolean includeThoughts;
+
     @JsonProperty("thinkingBudget")
     private Integer thinkingBudget;
 

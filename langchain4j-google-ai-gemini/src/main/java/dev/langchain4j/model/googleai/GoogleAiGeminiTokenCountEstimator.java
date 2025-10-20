@@ -3,7 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.internal.PartsAndContentsMapper.fromMessageToGContent;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -13,10 +13,17 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
-import org.slf4j.Logger;
+import dev.langchain4j.model.googleai.internal.FunctionMapper;
+import dev.langchain4j.model.googleai.internal.GeminiContent;
+import dev.langchain4j.model.googleai.internal.GeminiCountTokensRequest;
+import dev.langchain4j.model.googleai.internal.GeminiCountTokensResponse;
+import dev.langchain4j.model.googleai.internal.GeminiGenerateContentRequest;
+import dev.langchain4j.model.googleai.internal.GeminiPart;
+import dev.langchain4j.model.googleai.internal.GeminiService;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
+import org.slf4j.Logger;
 
 public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 

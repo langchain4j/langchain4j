@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.googleai.internal.PartsAndContentsMapper;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

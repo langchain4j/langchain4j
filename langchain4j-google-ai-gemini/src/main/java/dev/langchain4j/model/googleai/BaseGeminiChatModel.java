@@ -4,9 +4,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
-import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+import static dev.langchain4j.model.googleai.internal.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.internal.PartsAndContentsMapper.fromMessageToGContent;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -18,6 +17,14 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.googleai.internal.GeminiContent;
+import dev.langchain4j.model.googleai.internal.GeminiGenerateContentRequest;
+import dev.langchain4j.model.googleai.internal.GeminiGenerationConfig;
+import dev.langchain4j.model.googleai.internal.GeminiRole;
+import dev.langchain4j.model.googleai.internal.GeminiSchema;
+import dev.langchain4j.model.googleai.internal.GeminiService;
+import dev.langchain4j.model.googleai.internal.GeminiToolConfig;
+import dev.langchain4j.model.googleai.internal.SchemaMapper;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -99,7 +106,7 @@ class BaseGeminiChatModel {
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
         if (responseFormat != null && responseFormat.jsonSchema() != null) {
-            schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+            schema = SchemaMapper.fromJsonSchemaToGSchema(responseFormat.jsonSchema());
         }
 
         return GeminiGenerateContentRequest.builder()

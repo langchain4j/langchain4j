@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.googleai.internal.GeminiGenerateContentRequest;
+import dev.langchain4j.model.googleai.internal.Json;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 

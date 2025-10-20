@@ -8,13 +8,20 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.googleai.internal.GeminiContent;
+import dev.langchain4j.model.googleai.internal.GeminiPart;
+import dev.langchain4j.model.googleai.internal.GeminiService;
+import dev.langchain4j.model.googleai.internal.GoogleAiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.internal.GoogleAiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.internal.GoogleAiEmbeddingRequest;
+import dev.langchain4j.model.googleai.internal.GoogleAiEmbeddingResponse;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
