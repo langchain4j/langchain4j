@@ -45,82 +45,51 @@ class BaseGeminiChatModel {
 
     protected final ChatRequestParameters defaultRequestParameters;
 
-    protected BaseGeminiChatModel(
-            HttpClientBuilder httpClientBuilder,
-            String apiKey,
-            String baseUrl,
-            String modelName,
-            Double temperature,
-            Integer topK,
-            Integer seed,
-            Double topP,
-            Double frequencyPenalty,
-            Double presencePenalty,
-            Integer maxOutputTokens,
-            Integer logprobs,
-            Duration timeout,
-            ResponseFormat responseFormat,
-            List<String> stopSequences,
-            GeminiFunctionCallingConfig functionCallingConfig,
-            Boolean allowCodeExecution,
-            Boolean includeCodeExecutionOutput,
-            Boolean logRequestsAndResponses,
-            Boolean logRequests,
-            Boolean logResponses,
-            Logger logger,
-            Boolean responseLogprobs,
-            Boolean enableEnhancedCivicAnswers,
-            List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners,
-            Integer maxRetries,
-            GeminiThinkingConfig thinkingConfig,
-            Boolean returnThinking,
-            Boolean sendThinking,
-            ChatRequestParameters defaultRequestParameters) {
-        ensureNotBlank(apiKey, "apiKey");
+    protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder) {
+        ensureNotBlank(builder.apiKey, "apiKey");
         this.geminiService = new GeminiService(
-                httpClientBuilder,
-                apiKey,
-                baseUrl,
-                getOrDefault(logRequestsAndResponses, false),
-                getOrDefault(logRequests, false),
-                getOrDefault(logResponses, false),
-                logger,
-                timeout);
+                builder.httpClientBuilder,
+                builder.apiKey,
+                builder.baseUrl,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger,
+                builder.timeout);
 
-        this.functionCallingConfig = functionCallingConfig;
-        this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
-        this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
-        this.safetySettings = copyIfNotNull(safetySettings);
-        this.listeners = copy(listeners);
-        this.maxRetries = getOrDefault(maxRetries, 2);
-        this.thinkingConfig = thinkingConfig;
-        this.returnThinking = returnThinking;
-        this.sendThinking = getOrDefault(sendThinking, false);
-        this.seed = seed;
-        this.responseLogprobs = getOrDefault(responseLogprobs, false);
-        this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
-        this.logprobs = logprobs;
+        this.functionCallingConfig = builder.functionCallingConfig;
+        this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
+        this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
+        this.safetySettings = copyIfNotNull(builder.safetySettings);
+        this.listeners = copy(builder.listeners);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.thinkingConfig = builder.thinkingConfig;
+        this.returnThinking = builder.returnThinking;
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.seed = builder.seed;
+        this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
+        this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
+        this.logprobs = builder.logprobs;
 
         ChatRequestParameters parameters;
-        if (defaultRequestParameters != null) {
-            parameters = defaultRequestParameters;
+        if (builder.defaultRequestParameters != null) {
+            parameters = builder.defaultRequestParameters;
         } else {
             parameters = DefaultChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = ChatRequestParameters.builder()
-                .modelName(getOrDefault(modelName, parameters.modelName()))
-                .temperature(getOrDefault(temperature, parameters.temperature()))
-                .topP(getOrDefault(topP, parameters.topP()))
-                .topK(getOrDefault(topK, parameters.topK()))
-                .frequencyPenalty(getOrDefault(frequencyPenalty, parameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(presencePenalty, parameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(maxOutputTokens, parameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(stopSequences, parameters.stopSequences()))
+                .modelName(getOrDefault(builder.modelName, parameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, parameters.temperature()))
+                .topP(getOrDefault(builder.topP, parameters.topP()))
+                .topK(getOrDefault(builder.topK, parameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, parameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stopSequences, parameters.stopSequences()))
                 .toolSpecifications(parameters.toolSpecifications())
                 .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
-                .responseFormat(getOrDefault(responseFormat, parameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
                 .build();
     }
 
@@ -244,6 +213,7 @@ class BaseGeminiChatModel {
         protected Boolean logRequests;
         protected Boolean logResponses;
         protected Logger logger;
+        protected Integer maxRetries;
         protected Boolean responseLogprobs;
         protected Boolean enableEnhancedCivicAnswers;
         protected List<GeminiSafetySetting> safetySettings;
@@ -310,6 +280,11 @@ class BaseGeminiChatModel {
 
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return builder();
+        }
+
+        public B maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return builder();
         }
 

@@ -31,38 +31,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     private final Set<Capability> supportedCapabilities;
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
-        super(
-                builder.httpClientBuilder,
-                builder.apiKey,
-                builder.baseUrl,
-                builder.modelName,
-                builder.temperature,
-                builder.topK,
-                builder.seed,
-                builder.topP,
-                builder.frequencyPenalty,
-                builder.presencePenalty,
-                builder.maxOutputTokens,
-                builder.logprobs,
-                builder.timeout,
-                builder.responseFormat,
-                builder.stopSequences,
-                builder.functionCallingConfig,
-                builder.allowCodeExecution,
-                builder.includeCodeExecutionOutput,
-                builder.logRequestsAndResponses,
-                builder.logRequests,
-                builder.logResponses,
-                builder.logger,
-                builder.responseLogprobs,
-                builder.enableEnhancedCivicAnswers,
-                builder.safetySettings,
-                builder.listeners,
-                builder.maxRetries,
-                builder.thinkingConfig,
-                builder.returnThinking,
-                builder.sendThinking,
-                builder.defaultRequestParameters);
+        super(builder);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 

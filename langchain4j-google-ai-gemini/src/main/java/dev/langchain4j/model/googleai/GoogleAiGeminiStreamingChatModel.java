@@ -13,38 +13,7 @@ import java.util.List;
 public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implements StreamingChatModel {
 
     public GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder builder) {
-        super(
-                builder.httpClientBuilder,
-                builder.apiKey,
-                builder.baseUrl,
-                builder.modelName,
-                builder.temperature,
-                builder.topK,
-                builder.seed,
-                builder.topP,
-                builder.frequencyPenalty,
-                builder.presencePenalty,
-                builder.maxOutputTokens,
-                builder.logprobs,
-                builder.timeout,
-                builder.responseFormat,
-                builder.stopSequences,
-                builder.functionCallingConfig,
-                builder.allowCodeExecution,
-                builder.includeCodeExecutionOutput,
-                builder.logRequestsAndResponses,
-                builder.logRequests,
-                builder.logResponses,
-                builder.logger,
-                builder.responseLogprobs,
-                builder.enableEnhancedCivicAnswers,
-                builder.safetySettings,
-                builder.listeners,
-                null,
-                builder.thinkingConfig,
-                builder.returnThinking,
-                builder.sendThinking,
-                builder.defaultRequestParameters);
+        super(builder);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
