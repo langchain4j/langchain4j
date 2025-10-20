@@ -9,9 +9,6 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsTo
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -25,6 +22,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
 
@@ -142,12 +142,12 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         return GOOGLE_AI_GEMINI;
     }
 
-    public static final class GoogleAiGeminiChatModelBuilder extends GoogleAiGeminiChatModelBaseBuilder<GoogleAiGeminiChatModelBuilder> {
+    public static final class GoogleAiGeminiChatModelBuilder
+            extends GoogleAiGeminiChatModelBaseBuilder<GoogleAiGeminiChatModelBuilder> {
         private Integer maxRetries;
         private Set<Capability> supportedCapabilities;
 
-        private GoogleAiGeminiChatModelBuilder() {
-        }
+        private GoogleAiGeminiChatModelBuilder() {}
 
         public GoogleAiGeminiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;

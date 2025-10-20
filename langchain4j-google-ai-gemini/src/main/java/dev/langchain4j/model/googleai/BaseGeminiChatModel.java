@@ -217,7 +217,6 @@ class BaseGeminiChatModel {
         };
     }
 
-
     /**
      * Base builder class containing shared properties and methods for Google AI Gemini chat models.
      */
@@ -322,7 +321,6 @@ class BaseGeminiChatModel {
             this.logger = logger;
             return builder();
         }
-
 
         /**
          * Tool configuration for any Tool specified in the request.
