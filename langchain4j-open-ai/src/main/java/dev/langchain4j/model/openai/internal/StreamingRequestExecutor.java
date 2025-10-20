@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -111,7 +112,8 @@ class StreamingRequestExecutor<Response> {
                 StreamingHandle streamingHandle = new StreamingHandle() {
                     @Override
                     public void cancel() {
-                        throw new RuntimeException("Cancellation is not implemented"); // TODO
+                        throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
+                                "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
                     }
 
                     @Override

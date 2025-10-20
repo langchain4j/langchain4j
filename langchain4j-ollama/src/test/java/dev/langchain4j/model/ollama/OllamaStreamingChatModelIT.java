@@ -10,18 +10,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -38,42 +35,30 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         int numPredict = 1; // max output tokens
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
-//                .httpClientBuilder(new SpringRestClientBuilder()) // TODO
-                .httpClientBuilder(new JdkHttpClientBuilder()) // TODO
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName("qwen2.5:7b")
+                .modelName(MODEL_NAME)
+                .numPredict(numPredict)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("Tell me a long story about a dog, 100 000 words minimum. Afterwards tell me a similarly long story about a cat");
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler() {
-
-            AtomicInteger atomicInteger = new AtomicInteger();
-
-            @Override
-            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
-                if (atomicInteger.incrementAndGet() > 500) {
-                    streamingHandle.cancel();
-                }
-                onPartialResponse(partialResponse);
-            }
-        };
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(singletonList(userMessage), handler);
         ChatResponse response = handler.get();
-//        String answer = response.aiMessage().text();
-//
-//        // then
-//        assertThat(answer).doesNotContain("Berlin");
-//        assertThat(response.aiMessage().text()).isEqualTo(answer);
-//
-//        ChatResponseMetadata metadata = response.metadata();
-//        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
-//        assertThat(metadata.finishReason()).isEqualTo(FinishReason.LENGTH);
-//        assertThat(metadata.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
+        String answer = response.aiMessage().text();
+
+        // then
+        assertThat(answer).doesNotContain("Berlin");
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
+
+        ChatResponseMetadata metadata = response.metadata();
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.LENGTH);
+        assertThat(metadata.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
     @Test
