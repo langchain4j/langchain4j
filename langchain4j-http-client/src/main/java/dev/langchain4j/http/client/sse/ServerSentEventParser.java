@@ -30,10 +30,10 @@ public interface ServerSentEventParser {
      * TODO implement this method if you want to be able to cancel streaming
      * @param httpResponseBody
      * @param listener
-     * @param handle
+     * @param streamingHandle
      * @since 1.8.0
      */
-    default void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle handle) { // TODO accept single object
+    default void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streamingHandle) { // TODO accept single object
         parse(httpResponseBody, listener); // TODO?
     }
 }

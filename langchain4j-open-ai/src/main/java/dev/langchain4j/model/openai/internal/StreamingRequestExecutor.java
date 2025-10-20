@@ -8,6 +8,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 class StreamingRequestExecutor<Response> {
@@ -100,7 +101,7 @@ class StreamingRequestExecutor<Response> {
         ServerSentEventListener listener = new ServerSentEventListener() {
 
             SuccessfulHttpResponse response;
-            StreamingHandle streamingHandle;
+            AtomicReference<StreamingHandle> streamingHandle;
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
@@ -125,8 +126,8 @@ class StreamingRequestExecutor<Response> {
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
-                streamingHandle = handle;
+            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
+                this.streamingHandle.set(streamingHandle);
 
                 if ("[DONE]".equals(event.data())) {
                     return;
@@ -142,7 +143,7 @@ class StreamingRequestExecutor<Response> {
                                 .parsedResponse(parsedResponse)
                                 .rawHttpResponse(response)
                                 .rawServerSentEvent(event)
-                                .streamingHandle(handle)
+                                .streamingHandle(streamingHandle)
                                 .build();
                         partialResponseHandler.accept(parsedAndRawResponse); // do not handle exception, fail-fast
                     }
@@ -153,7 +154,8 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onClose() {
-                if (!streamingHandle.isCancelled()) {
+                StreamingHandle streamingHandle = this.streamingHandle.get();
+                if (streamingHandle == null || !streamingHandle.isCancelled()) {
                     streamingCompletionCallback.run();
                 }
             }

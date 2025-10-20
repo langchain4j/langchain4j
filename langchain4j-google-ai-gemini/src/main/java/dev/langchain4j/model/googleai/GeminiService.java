@@ -12,6 +12,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
@@ -27,6 +28,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -120,19 +123,38 @@ class GeminiService {
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
             AtomicInteger toolIndex = new AtomicInteger(0);
+            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                StreamingHandle streamingHandle = new StreamingHandle() {
+                    @Override
+                    public void cancel() {
+                        throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
+                                "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
+                    }
+
+                    @Override
+                    public boolean isCancelled() {
+                        return false;
+                    }
+                };
+                onEvent(event, streamingHandle);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
+                this.streamingHandle.set(streamingHandle);
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text); // TODO
+                    onPartialResponse(handler, text, streamingHandle);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought); // TODO
+                        onPartialThinking(handler, thought, streamingHandle);
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought); // for backward compatibility  // TODO
+                        onPartialResponse(handler, thought, streamingHandle); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
@@ -144,8 +166,11 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                ChatResponse completeResponse = responseBuilder.build();
-                onCompleteResponse(handler, completeResponse);
+                StreamingHandle streamingHandle = this.streamingHandle.get();
+                if (streamingHandle == null || !streamingHandle.isCancelled()) {
+                    ChatResponse completeResponse = responseBuilder.build();
+                    onCompleteResponse(handler, completeResponse);
+                }
             }
 
             @Override

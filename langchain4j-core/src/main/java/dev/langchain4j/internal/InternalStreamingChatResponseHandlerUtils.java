@@ -42,13 +42,13 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     public static void onPartialResponse(StreamingChatResponseHandler handler,
                                          String partialResponse,
-                                         StreamingHandle handle) {
+                                         StreamingHandle streamingHandle) {
         if (isNullOrEmpty(partialResponse)) {
             return;
         }
 
         try {
-            handler.onPartialResponse(partialResponse, handle);
+            handler.onPartialResponse(partialResponse, streamingHandle);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

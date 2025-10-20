@@ -81,11 +81,11 @@ public class LoggingHttpClient implements HttpClient {
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
+            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
                 if (logResponses) {
                     log.debug("{}", event);
                 }
-                delegateListener.onEvent(event, handle);
+                delegateListener.onEvent(event, streamingHandle);
             }
 
             @Override
@@ -126,11 +126,11 @@ public class LoggingHttpClient implements HttpClient {
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle handle) {
+            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
                 if (logResponses) {
                     log.debug("{}", event);
                 }
-                delegateListener.onEvent(event, handle);
+                delegateListener.onEvent(event, streamingHandle);
             }
 
             @Override

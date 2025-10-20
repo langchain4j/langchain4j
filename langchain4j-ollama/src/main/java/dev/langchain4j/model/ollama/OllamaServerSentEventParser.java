@@ -29,7 +29,7 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        StreamingHandle handle = new StreamingHandle() {
+        StreamingHandle streamingHandle = new StreamingHandle() {
             @Override
             public void cancel() {
                 throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
@@ -41,16 +41,16 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
                 return false;
             }
         };
-        parse(httpResponseBody, listener, handle);
+        parse(httpResponseBody, listener, streamingHandle);
     }
 
     @Override
-    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streaming) {
+    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streamingHandle) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
             String line;
-            while (!streaming.isCancelled() && (line = reader.readLine()) != null) {
+            while (!streamingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 ServerSentEvent sse = new ServerSentEvent(null, line);
-                ignoringExceptions(() -> listener.onEvent(sse, streaming));
+                ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));

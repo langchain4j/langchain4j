@@ -80,8 +80,8 @@ public class JdkHttpClient implements HttpClient {
                     ignoringExceptions(() -> listener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
-                        StreamingHandle handle = new DefaultStreamingHandle(inputStream);
-                        parser.parse(inputStream, listener, handle);
+                        StreamingHandle streamingHandle = new DefaultStreamingHandle(inputStream);
+                        parser.parse(inputStream, listener, streamingHandle);
                         ignoringExceptions(listener::onClose);
                     } catch (IOException e) {
                         throw new RuntimeException(e);

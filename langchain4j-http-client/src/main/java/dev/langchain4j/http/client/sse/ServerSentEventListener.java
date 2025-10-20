@@ -9,7 +9,7 @@ public interface ServerSentEventListener {
 
     void onEvent(ServerSentEvent event);
 
-    default void onEvent(ServerSentEvent event, StreamingHandle handle) { // TODO use other (more low-level) type? accept single object?
+    default void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) { // TODO use other (more low-level) type? accept single object?
         onEvent(event); // TODO?
     }
 

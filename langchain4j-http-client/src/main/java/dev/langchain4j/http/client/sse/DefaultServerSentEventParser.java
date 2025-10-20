@@ -15,7 +15,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        StreamingHandle handle = new StreamingHandle() {
+        StreamingHandle streamingHandle = new StreamingHandle() {
             @Override
             public void cancel() {
                 throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
@@ -27,22 +27,22 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 return false;
             }
         };
-        parse(httpResponseBody, listener, handle);
+        parse(httpResponseBody, listener, streamingHandle);
     }
 
     @Override
-    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle handle) {
+    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streamingHandle) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();
 
             String line;
-            while (!handle.isCancelled() && (line = reader.readLine()) != null) {
+            while (!streamingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
                         ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                        ignoringExceptions(() -> listener.onEvent(sse, handle));
+                        ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
                         event = null;
                         data.setLength(0);
                     }
@@ -62,7 +62,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
             if (!data.isEmpty()) {
                 ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                ignoringExceptions(() -> listener.onEvent(sse, handle));
+                ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));
