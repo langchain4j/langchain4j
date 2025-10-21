@@ -7,6 +7,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.LangChain4jManaged;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -186,6 +187,11 @@ public class DefaultToolExecutor implements ToolExecutor {
 
             if (parameter.getType() == InvocationContext.class) {
                 arguments[i] = context;
+                continue;
+            }
+
+            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
+                arguments[i] = context.managedParameters().get(parameter.getType());
                 continue;
             }
 

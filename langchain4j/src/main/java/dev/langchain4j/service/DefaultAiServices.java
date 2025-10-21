@@ -21,6 +21,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
@@ -55,6 +56,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -97,6 +99,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             "There can be at most one parameter of type %s", InvocationParameters.class.getName());
                 }
                 invocationParametersExist = true;
+                continue;
+            }
+
+            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
 
@@ -223,6 +229,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .invocationParameters(invocationParameters)
+                                .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
                                 .build();
                         try {
