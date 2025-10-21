@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 
@@ -50,6 +51,14 @@ public interface InvocationContext {
     InvocationParameters invocationParameters();
 
     /**
+     * LangChain4j managed parameters
+     * @since 1.8.0
+     */
+    default Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters() {
+        return Map.of();
+    }
+
+    /**
      * Retrieves the point in time when the invocation occurred.
      */
     Instant timestamp();
@@ -81,6 +90,7 @@ public interface InvocationContext {
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private Object chatMemoryId;
         private InvocationParameters invocationParameters;
+        private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
 
         protected Builder() {}
@@ -92,6 +102,7 @@ public interface InvocationContext {
             methodArguments(invocationContext.methodArguments());
             chatMemoryId(invocationContext.chatMemoryId());
             invocationParameters(invocationContext.invocationParameters());
+            managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
         }
 
@@ -160,6 +171,14 @@ public interface InvocationContext {
         }
 
         /**
+         * Sets the LC4j managed parameters for the builder.
+         */
+        public Builder managedParameters(Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
+            this.managedParameters = managedParameters;
+            return this;
+        }
+
+        /**
          * Sets the timestamp for the builder.
          */
         public Builder timestamp(Instant timestamp) {
@@ -205,6 +224,10 @@ public interface InvocationContext {
 
         public InvocationParameters invocationParameters() {
             return invocationParameters;
+        }
+
+        public Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters() {
+            return managedParameters;
         }
 
         public Instant timestamp() {
