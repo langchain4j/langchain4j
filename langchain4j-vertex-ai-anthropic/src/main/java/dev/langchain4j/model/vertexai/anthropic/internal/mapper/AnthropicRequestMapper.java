@@ -227,6 +227,7 @@ public class AnthropicRequestMapper {
         return switch (toolChoice) {
             case AUTO -> AnthropicToolChoice.auto();
             case REQUIRED -> AnthropicToolChoice.any();
+            case NONE -> null;
         };
     }
 

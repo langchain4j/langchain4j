@@ -30,7 +30,8 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        var vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
+        VertexAiAnthropicStreamingChatModel.VertexAiAnthropicStreamingChatModelBuilder
+                vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .logRequests(true)
