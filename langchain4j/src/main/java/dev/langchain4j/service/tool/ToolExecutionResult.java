@@ -3,6 +3,11 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents the result of a tool execution.
@@ -11,14 +16,36 @@ import java.util.Objects;
  */
 public class ToolExecutionResult {
 
+    private static final Logger log = LoggerFactory.getLogger(ToolExecutionResult.class);
+    
+    // Performance monitoring counters
+    private static final AtomicLong creationCount = new AtomicLong(0);
+    private static final AtomicLong accessCount = new AtomicLong(0);
+
     private final boolean isError;
     private final Object result;
-    private final String resultText;
+    private final Supplier<String> resultTextSupplier;
+    private final long creationTimestamp;
 
     public ToolExecutionResult(Builder builder) {
         this.isError = builder.isError;
         this.result = builder.result;
-        this.resultText = ensureNotNull(builder.resultText, "resultText");
+        this.resultTextSupplier = ensureNotNull(builder.resultTextSupplier, "resultTextSupplier");
+        this.creationTimestamp = System.nanoTime();
+        
+        // Track creation for performance monitoring
+        long currentCreationCount = creationCount.incrementAndGet();
+        if (log.isDebugEnabled()) {
+            log.debug("ToolExecutionResult created - Total creations: {}", currentCreationCount);
+        }
+        
+        // Log creation vs access ratio periodically
+        if (currentCreationCount % 100 == 0) {
+            long currentAccessCount = accessCount.get();
+            double accessRatio = currentAccessCount > 0 ? (double) currentAccessCount / currentCreationCount : 0.0;
+            log.info("Lazy evaluation metrics - Creations: {}, Accesses: {}, Access ratio: {:.2f}", 
+                    currentCreationCount, currentAccessCount, accessRatio);
+        }
     }
 
     /**
@@ -45,7 +72,43 @@ public class ToolExecutionResult {
      * @see #result()
      */
     public String resultText() {
-        return resultText;
+        long startTime = System.nanoTime();
+        
+        try {
+            String result = resultTextSupplier.get();
+            
+            // Track access for performance monitoring
+            long currentAccessCount = accessCount.incrementAndGet();
+            long executionTime = System.nanoTime() - startTime;
+            long timeSinceCreation = startTime - creationTimestamp;
+            
+            if (log.isDebugEnabled()) {
+                log.debug("ToolExecutionResult accessed - Total accesses: {}, Execution time: {} ns, Time since creation: {} ns", 
+                        currentAccessCount, executionTime, timeSinceCreation);
+            }
+            
+            // Log performance metrics for slow computations
+            if (executionTime > 1_000_000) { // > 1ms
+                log.warn("Slow lazy computation detected - Execution time: {} ns ({} ms)", 
+                        executionTime, executionTime / 1_000_000);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            long executionTime = System.nanoTime() - startTime;
+            log.error("Error during lazy computation - Execution time: {} ns", executionTime, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Indicates whether the tool execution result text has been computed.
+     * Since caching is removed, this always returns true.
+     *
+     * @return true
+     */
+    public boolean isResultComputed() {
+        return true;
     }
 
     @Override
@@ -55,12 +118,12 @@ public class ToolExecutionResult {
         ToolExecutionResult that = (ToolExecutionResult) object;
         return isError == that.isError
                 && Objects.equals(result, that.result)
-                && Objects.equals(resultText, that.resultText);
+                && Objects.equals(resultText(), that.resultText());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isError, result, resultText);
+        return Objects.hash(isError, result, resultText());
     }
 
     @Override
@@ -68,7 +131,7 @@ public class ToolExecutionResult {
         return "ToolExecutionResult{" +
                 "isError=" + isError +
                 ", result=" + result +
-                ", resultText='" + resultText + '\'' +
+                ", resultText='" + resultText() + '\'' +
                 '}';
     }
 
@@ -80,7 +143,7 @@ public class ToolExecutionResult {
 
         private boolean isError;
         private Object result;
-        private String resultText;
+        private Supplier<String> resultTextSupplier;
 
         public Builder isError(boolean isError) {
             this.isError = isError;
@@ -93,7 +156,12 @@ public class ToolExecutionResult {
         }
 
         public Builder resultText(String resultText) {
-            this.resultText = resultText;
+            this.resultTextSupplier = () -> resultText;
+            return this;
+        }
+
+        public Builder resultTextSupplier(Supplier<String> resultTextSupplier) {
+            this.resultTextSupplier = resultTextSupplier;
             return this;
         }
 

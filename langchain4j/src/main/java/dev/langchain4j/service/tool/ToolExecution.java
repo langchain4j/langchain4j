@@ -55,6 +55,16 @@ public class ToolExecution {
         return result.isError();
     }
 
+    /**
+     * Indicates whether the tool execution result has been computed.
+     * For lazy evaluation, this returns true only after the result has been accessed.
+     *
+     * @return true if the result has been computed, false otherwise
+     */
+    public boolean hasResult() {
+        return result.isResultComputed();
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;

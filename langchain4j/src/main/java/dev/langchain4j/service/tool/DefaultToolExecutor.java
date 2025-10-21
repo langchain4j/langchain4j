@@ -149,10 +149,20 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
-        String resultText = toText(result);
+        
+        // Create a lazy supplier for the result text computation
         return ToolExecutionResult.builder()
                 .result(result)
-                .resultText(resultText)
+                .resultTextSupplier(() -> {
+                    Class<?> returnType = methodToInvoke.getReturnType();
+                    if (returnType == void.class) {
+                        return "Success";
+                    } else if (returnType == String.class) {
+                        return (String) result;
+                    } else {
+                        return Json.toJson(result);
+                    }
+                })
                 .build();
     }
 
