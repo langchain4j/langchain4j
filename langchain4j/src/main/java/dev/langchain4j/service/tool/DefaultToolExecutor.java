@@ -191,7 +191,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
 
             if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
-                arguments[i] = context.invocationParameters().get(parameter.getType().getName());
+                arguments[i] = context.managedParameters().get(parameter.getType());
                 continue;
             }
 

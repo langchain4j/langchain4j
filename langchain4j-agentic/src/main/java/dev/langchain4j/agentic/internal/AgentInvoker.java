@@ -7,8 +7,7 @@ import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.V;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +34,10 @@ public interface AgentInvoker extends AgentSpecification {
         } catch (Exception e) {
             LOG.error("Before agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
         }
-        InvocationParameters.setCurrent(new InvocationParameters(Map.of(AgenticScope.class.getName(), agenticScope)));
+        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
         Object result = internalInvoke(agent, args);
         try {
-            InvocationParameters.removeCurrent();
+            LangChain4jManaged.removeCurrent();
             afterInvocation(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
         } catch (Exception e) {
             LOG.error("After agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);

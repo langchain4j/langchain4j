@@ -228,6 +228,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .invocationParameters(invocationParameters)
+                                .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
                                 .build();
                         try {
@@ -459,24 +460,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
-                        InvocationParameters currentParams = InvocationParameters.current();
-                        if (args != null) {
-                            for (int i = 0; i < params.length; i++) {
-                                Parameter parameter = params[i];
-                                if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                    InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                    ensureNotNull(invocationParameters, "InvocationParameters");
-                                    if (currentParams == null) {
-                                        return Optional.of(invocationParameters);
-                                    } else {
-                                        HashMap<String, Object> newParamsMap = new HashMap<>(currentParams.asMap());
-                                        newParamsMap.putAll(invocationParameters.asMap());
-                                        return Optional.of(new InvocationParameters(newParamsMap));
-                                    }
-                                }
+                        if (args == null) {
+                            return Optional.empty();
+                        }
+                        for (int i = 0; i < params.length; i++) {
+                            Parameter parameter = params[i];
+                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
+                                ensureNotNull(invocationParameters, "InvocationParameters");
+                                return Optional.of(invocationParameters);
                             }
                         }
-                        return Optional.ofNullable(currentParams);
+                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

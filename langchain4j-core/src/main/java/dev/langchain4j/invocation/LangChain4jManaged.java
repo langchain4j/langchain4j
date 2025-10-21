@@ -1,5 +1,6 @@
 package dev.langchain4j.invocation;
 
+import java.util.Map;
 import dev.langchain4j.Internal;
 
 /**
@@ -12,4 +13,18 @@ import dev.langchain4j.Internal;
  */
 @Internal
 public interface LangChain4jManaged {
+
+    ThreadLocal<Map<Class<? extends LangChain4jManaged>, LangChain4jManaged>> CURRENT = new ThreadLocal<>();
+
+    static void setCurrent(Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> current) {
+        CURRENT.set(current);
+    }
+
+    static Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> current() {
+        return CURRENT.get();
+    }
+
+    static void removeCurrent() {
+        CURRENT.remove();
+    }
 }
