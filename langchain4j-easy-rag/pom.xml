@@ -13,6 +13,10 @@
 
     <name>LangChain4j :: Easy RAG</name>
 
+    <properties>
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>

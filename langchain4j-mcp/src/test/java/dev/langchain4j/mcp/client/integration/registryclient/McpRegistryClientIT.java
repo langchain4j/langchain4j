@@ -66,9 +66,20 @@ public class McpRegistryClientIT {
     }
 
     @Test
-    public void testGetServer() {
-        McpGetServerResponse server = client.getServerDetails("io.github.bytedance/mcp-server-filesystem");
-        verifyMetadataOfServer(server);
+    public void testGetAllVersionsOfServer() {
+        McpServerList server = client.getAllVersionsOfServer("io.github.bytedance/mcp-server-filesystem");
+        assertThat(server.getServers()).hasSizeGreaterThan(0);
+        for (McpGetServerResponse s : server.getServers()) {
+            verifyMetadataOfServer(s);
+        }
+    }
+
+    @Test
+    public void testGetSpecificServerVersion() {
+        McpGetServerResponse response =
+                client.getSpecificServerVersion("io.github.bytedance/mcp-server-filesystem", "latest");
+        assertThat(response.getServer().getVersion()).isNotBlank();
+        verifyMetadataOfServer(response);
     }
 
     @Test

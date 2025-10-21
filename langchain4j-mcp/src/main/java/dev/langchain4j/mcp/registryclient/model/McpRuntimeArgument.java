@@ -82,19 +82,21 @@ public class McpRuntimeArgument {
 
     @Override
     public String toString() {
-        return "McpRuntimeArgument{" +
-                "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
-                ", description='" + description + '\'' +
-                ", format='" + format + '\'' +
-                ", isRepeated=" + isRepeated +
-                ", isRequired=" + isRequired +
-                ", isSecret=" + isSecret +
-                ", name='" + name + '\'' +
-                ", type='" + type + '\'' +
-                ", value='" + value + '\'' +
-                ", valueHint='" + valueHint + '\'' +
-                ", variables=" + variables +
-                '}';
+        String maskedDefaultValue = isSecret ? "<REDACTED>" : defaultValue;
+        String maskedValue = isSecret ? "<REDACTED>" : value;
+
+        return "McpRuntimeArgument{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRepeated="
+                + isRepeated + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", type='"
+                + type + '\'' + ", value='"
+                + maskedValue + '\'' + ", valueHint='"
+                + valueHint + '\'' + ", variables="
+                + variables + '}';
     }
 }

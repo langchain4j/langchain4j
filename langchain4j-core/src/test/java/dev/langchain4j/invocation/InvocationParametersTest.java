@@ -127,4 +127,24 @@ class InvocationParametersTest {
         assertThatThrownBy(() -> InvocationParameters.from((Map<String, Object>) null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void testPutNullKey() {
+        InvocationParameters invocationParameters = new InvocationParameters();
+
+        assertThatThrownBy(() -> invocationParameters.put(null, "value")).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void testFromKeyValueWithNullKey() {
+        assertThatThrownBy(() -> InvocationParameters.from(null, "value")).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void testGetWithNullKey() {
+        InvocationParameters invocationParameters = new InvocationParameters();
+        invocationParameters.put("key", "value");
+
+        assertThatThrownBy(() -> invocationParameters.get(null)).isInstanceOf(NullPointerException.class);
+    }
 }

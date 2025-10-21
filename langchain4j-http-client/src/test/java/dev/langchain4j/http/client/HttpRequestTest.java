@@ -4,6 +4,7 @@ import static dev.langchain4j.http.client.HttpMethod.GET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class HttpRequestTest {
 
@@ -263,5 +266,203 @@ class HttpRequestTest {
                         .url("http://example.com")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_add_single_query_parameter() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        builder.addQueryParam("key", "value");
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?key=value");
+    }
+
+    @Test
+    void should_add_multiple_query_parameters() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        builder.addQueryParam("key1", "value1").addQueryParam("key2", "value2");
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?key1=value1&key2=value2");
+    }
+
+    @Test
+    void should_add_query_parameters_from_map() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+        Map<String, String> queryParams = new LinkedHashMap<>();
+        queryParams.put("key1", "value1");
+        queryParams.put("key2", "value2");
+
+        // when
+        builder.addQueryParams(queryParams);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?key1=value1&key2=value2");
+    }
+
+    @Test
+    void should_url_encode_query_parameters() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        builder.addQueryParam("search", "hello world").addQueryParam("special", "a+b=c&d");
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?search=hello+world&special=a%2Bb%3Dc%26d");
+    }
+
+    @Test
+    void should_append_query_parameters_to_url_with_existing_query_string() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api?existing=param");
+
+        // when
+        builder.addQueryParam("new", "value");
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?existing=param&new=value");
+    }
+
+    @Test
+    void should_handle_null_query_params_map_with_add() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        HttpRequest.Builder result = builder.addQueryParams(null);
+
+        // then
+        assertThat(result).isSameAs(builder);
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+    }
+
+    @Test
+    void should_handle_empty_query_params_map_with_add() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        HttpRequest.Builder result = builder.addQueryParams(Map.of());
+
+        // then
+        assertThat(result).isSameAs(builder);
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = " ")
+    void should_throw_exception_when_query_param_name_is_null_or_blank(String name) {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com");
+
+        // when/then
+        assertThatThrownBy(() -> builder.addQueryParam(name, "value"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("name cannot be null or blank");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = " ")
+    void should_throw_exception_when_query_param_value_is_null_or_blank(String value) {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com");
+
+        // when/then
+        assertThatThrownBy(() -> builder.addQueryParam("key", value))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("value cannot be null or blank");
+    }
+
+    @Test
+    void should_combine_query_parameters_from_both_methods() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+        Map<String, String> additionalParams = new LinkedHashMap<>();
+        additionalParams.put("map1", "value2");
+        additionalParams.put("map2", "value3");
+
+        // when
+        builder.addQueryParam("single", "value1").addQueryParams(additionalParams);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?single=value1&map1=value2&map2=value3");
+    }
+
+    @Test
+    void should_overwrite_query_parameters_when_added_multiple_times() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+        Map<String, String> overwriteParams = new LinkedHashMap<>();
+        overwriteParams.put("key", "value2");
+
+        // when
+        builder.addQueryParam("key", "value1").addQueryParams(overwriteParams);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?key=value2");
+    }
+
+    @Test
+    void should_not_fail_when_adding_to_immutable_query_params() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        builder.queryParams(Map.of("key1", "value1")).addQueryParam("key2", "value2");
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?key1=value1&key2=value2");
+    }
+
+    @Test
+    void should_replace_all_query_parameters_with_queryParams() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+        Map<String, String> newParams = new LinkedHashMap<>();
+        newParams.put("new1", "newValue1");
+        newParams.put("new2", "newValue2");
+
+        // when
+        builder.addQueryParam("old1", "oldValue1")
+                .addQueryParam("old2", "oldValue2")
+                .queryParams(newParams);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api?new1=newValue1&new2=newValue2");
+    }
+
+    @Test
+    void should_handle_null_query_params_map_with_replace() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+
+        // when
+        builder.addQueryParam("key", "value").queryParams(null);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+    }
+
+    @Test
+    void should_handle_empty_query_params_map_with_replace() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com/api");
+        Map<String, String> emptyParams = new LinkedHashMap<>();
+
+        // when
+        builder.addQueryParam("key", "value").queryParams(emptyParams);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
     }
 }

@@ -63,16 +63,18 @@ public class McpHeader {
 
     @Override
     public String toString() {
-        return "McpHeader{" +
-                "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
-                ", description='" + description + '\'' +
-                ", format='" + format + '\'' +
-                ", isRequired=" + isRequired +
-                ", isSecret=" + isSecret +
-                ", name='" + name + '\'' +
-                ", value='" + value + '\'' +
-                ", variables=" + variables +
-                '}';
+        String maskedDefaultValue = isSecret ? "[REDACTED]" : defaultValue;
+        String maskedValue = isSecret ? "[REDACTED]" : value;
+
+        return "McpHeader{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", value='"
+                + maskedValue + '\'' + ", variables="
+                + variables + '}';
     }
 }

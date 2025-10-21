@@ -38,7 +38,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
-                new ConditionialInvocationHandler());
+                new ConditionalInvocationHandler());
     }
 
     private void checkSubAgents() {
@@ -52,13 +52,13 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
         }
     }
 
-    private class ConditionialInvocationHandler extends AbstractAgentInvocationHandler {
+    private class ConditionalInvocationHandler extends AbstractAgentInvocationHandler {
 
-        private ConditionialInvocationHandler() {
+        private ConditionalInvocationHandler() {
             super(ConditionalAgentServiceImpl.this);
         }
 
-        private ConditionialInvocationHandler(DefaultAgenticScope agenticScope) {
+        private ConditionalInvocationHandler(DefaultAgenticScope agenticScope) {
             super(ConditionalAgentServiceImpl.this, agenticScope);
         }
 
@@ -76,7 +76,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
 
         @Override
         protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
-            return new ConditionialInvocationHandler(agenticScope);
+            return new ConditionalInvocationHandler(agenticScope);
         }
     }
 
