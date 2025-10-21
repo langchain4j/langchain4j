@@ -25,6 +25,7 @@ public abstract class AbstractService<T, S> {
 
     protected Consumer<AgenticScope> beforeCall = DEFAULT_INIT_FUNCTION;
 
+    protected boolean streaming;
     protected String name;
     protected String description;
     protected String outputKey;

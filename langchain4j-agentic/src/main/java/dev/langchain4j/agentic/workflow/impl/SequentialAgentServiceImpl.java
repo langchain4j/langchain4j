@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.getLastAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.isOnlyLastStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
@@ -7,6 +8,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
+import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
@@ -32,9 +34,27 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
     }
 
     private void checkSubAgents() {
-        if (hasStreamingAgent(this.agentExecutors()) && !isOnlyLastStreamingAgent(this.agentExecutors())) {
-            throw new IllegalArgumentException("Only the last sub-agent can return TokenStream.");
+        if (hasStreamingAgent(this.agentExecutors())) {
+            if (isOnlyLastStreamingAgent(this.agentExecutors())) {
+                final AgentExecutor lastAgent = getLastAgent(this.agentExecutors());
+                // The outputKey of the last agent in a sequential workflow is the same outputKey of the workflow
+                // itself.
+                if (hasSameOutputWithWorkflow(lastAgent)) {
+                    // Consider the workflow is a streaming. for processing they are subagent themselves or more
+                    // complex workflow.
+                    this.streaming = true;
+                } else {
+                    throw new IllegalArgumentException(
+                            "The last sub-agent and the workflow should have the same outputKey.");
+                }
+            } else {
+                throw new IllegalArgumentException("Only the last sub-agent can return TokenStream.");
+            }
         }
+    }
+
+    private boolean hasSameOutputWithWorkflow(AgentExecutor agent) {
+        return this.outputKey.equals(agent.agentInvoker().outputKey());
     }
 
     private class SequentialInvocationHandler extends AbstractAgentInvocationHandler {

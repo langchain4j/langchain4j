@@ -17,6 +17,12 @@ public class Agents {
         String ask(@V("request") String request);
     }
 
+    public interface ExpertRouterAgentForStreaming {
+
+        @Agent
+        TokenStream ask(@V("request") String request);
+    }
+
     public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
         @Agent

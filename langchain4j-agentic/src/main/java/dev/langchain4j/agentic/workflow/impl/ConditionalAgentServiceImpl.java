@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.agentic.internal.AgentUtil.allHaveSameOutput;
+import static dev.langchain4j.agentic.internal.AgentUtil.getLastAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.isAllStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
@@ -35,6 +37,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
     @Override
     public T build() {
         checkSubAgents();
+
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
@@ -46,10 +49,34 @@ public class ConditionalAgentServiceImpl<T> extends AbstractService<T, Condition
         for (final ConditionalAgent conditionalAgent : this.conditionalAgents) {
             list.addAll(conditionalAgent.agentExecutors);
         }
-        if (hasStreamingAgent(list) && !isAllStreamingAgent(list)) {
-            throw new IllegalArgumentException(
-                    "Part of the sub-agents return TokenStream, it needs all agents have the same return type.");
+
+        if (hasStreamingAgent(list)) {
+            if (isAllStreamingAgent(list)) {
+                // All agents in a conditional workflow have the same outputKey.
+                if (allHaveSameOutput(list)) {
+                    final AgentExecutor lastAgent = getLastAgent(list);
+                    // The outputKey is also the output of the conditional workflow itself.
+                    if (hasSameOutputWithWorkflow(lastAgent)) {
+                        // Consider the workflow is a streaming. for processing they are themselves subagent or a more
+                        // complex workflow.
+                        this.streaming = true;
+                    } else {
+                        throw new IllegalArgumentException(
+                                "The agents and the workflow should have the same outputKey.");
+                    }
+                } else {
+                    throw new IllegalArgumentException(
+                            "It needs all agents in the conditional workflow have the same outputKey.");
+                }
+            } else {
+                throw new IllegalArgumentException(
+                        "Part of the sub-agents return TokenStream, it needs all agents have the same return type.");
+            }
         }
+    }
+
+    private boolean hasSameOutputWithWorkflow(AgentExecutor agent) {
+        return this.outputKey.equals(agent.agentInvoker().outputKey());
     }
 
     private class ConditionalInvocationHandler extends AbstractAgentInvocationHandler {

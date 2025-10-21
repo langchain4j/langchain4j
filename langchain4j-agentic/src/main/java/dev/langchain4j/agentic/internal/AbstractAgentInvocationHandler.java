@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.addWorkflowStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -57,6 +58,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this.beforeListener = service.beforeListener;
         this.afterListener = service.afterListener;
         this.agenticScope = agenticScope;
+
+        if (service.streaming) {
+            addWorkflowStreamingAgent(uniqueName);
+        }
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
