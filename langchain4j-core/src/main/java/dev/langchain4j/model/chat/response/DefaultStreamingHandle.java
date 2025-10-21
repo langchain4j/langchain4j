@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat.response;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 public class DefaultStreamingHandle implements StreamingHandle {
@@ -16,10 +15,10 @@ public class DefaultStreamingHandle implements StreamingHandle {
 
     @Override
     public void cancel() {
-        isCancelled = true; // TODO?
+        isCancelled = true;
         try {
             inputStream.close();
-        } catch (IOException ignored) { // TODO?
+        } catch (Exception ignored) {
         }
     }
 

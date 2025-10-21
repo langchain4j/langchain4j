@@ -4,9 +4,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.concurrent.CompletableFuture;
 
-public class CompletableFutureStreamingHandle implements StreamingHandle { // TODO name
+public class CompletableFutureStreamingHandle implements StreamingHandle { // TODO name, remove?
 
     private final CompletableFuture<Void> completableFuture;
+    private volatile boolean isCancelled;
 
     public CompletableFutureStreamingHandle(CompletableFuture<Void> completableFuture) {
         this.completableFuture = ensureNotNull(completableFuture, "completableFuture");
@@ -14,11 +15,15 @@ public class CompletableFutureStreamingHandle implements StreamingHandle { // TO
 
     @Override
     public void cancel() {
-        completableFuture.cancel(true); // TODO does not work
+        isCancelled = true;
+        try {
+            completableFuture.cancel(true); // TODO does not work?
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
     public boolean isCancelled() {
-        return completableFuture.isCancelled(); // TODO
+        return isCancelled;
     }
 }

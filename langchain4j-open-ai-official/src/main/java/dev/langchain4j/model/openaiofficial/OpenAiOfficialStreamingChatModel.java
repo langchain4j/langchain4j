@@ -163,7 +163,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 @Override
                 public void cancel() {
                     isCancelled = true;
-                    asyncStreamResponse.close();
+                    try {
+                        asyncStreamResponse.close();
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 @Override

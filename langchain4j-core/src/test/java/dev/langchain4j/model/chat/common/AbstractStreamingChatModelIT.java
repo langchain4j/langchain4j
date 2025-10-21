@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -54,9 +55,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
     void should_cancel_streaming(StreamingChatModel model) {
 
         // given
-        int cancelAfterPartialResponsesCalledTimes = 10;
+        int cancelAfterPartialResponsesCalledTimes = 5;
         AtomicInteger counter = new AtomicInteger();
+        AtomicReference<StreamingHandle> streamingHandleReference = new AtomicReference<>();
         Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
+            streamingHandleReference.set(streamingHandle);
             if (counter.incrementAndGet() >= cancelAfterPartialResponsesCalledTimes) {
                 streamingHandle.cancel();
             }
@@ -76,6 +79,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
         assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(cancelAfterPartialResponsesCalledTimes);
         assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
+
+        StreamingHandle streamingHandle = streamingHandleReference.get();
+        assertThat(streamingHandle.isCancelled()).isTrue();
+        streamingHandle.cancel(); // test idempotency
+        assertThat(streamingHandle.isCancelled()).isTrue();
     }
 
     @ParameterizedTest

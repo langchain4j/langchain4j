@@ -21,7 +21,6 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 import static java.lang.Boolean.TRUE;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -34,6 +33,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -160,19 +160,7 @@ class OllamaClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                StreamingHandle streamingHandle = new StreamingHandle() {
-                    @Override
-                    public void cancel() {
-                        throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
-                                "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
-                    }
-
-                    @Override
-                    public boolean isCancelled() {
-                        return false;
-                    }
-                };
-                onEvent(event, streamingHandle);
+                onEvent(event, new CancellationUnsupportedStreamingHandle());
             }
 
             @Override

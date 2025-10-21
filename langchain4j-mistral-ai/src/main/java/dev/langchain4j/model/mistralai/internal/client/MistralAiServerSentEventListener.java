@@ -1,6 +1,8 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -8,6 +10,7 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -17,6 +20,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
@@ -50,6 +54,11 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
     @Override
     public void onEvent(ServerSentEvent event) {
+        onEvent(event, new CancellationUnsupportedStreamingHandle());
+    }
+
+    @Override
+    public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
         String data = event.data();
         if ("[DONE]".equals(data)) {
             AiMessage responseContent = toResponse.apply(contentBuilder.toString(), toolExecutionRequests);
@@ -62,11 +71,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                             .id(id)
                             .build())
                     .build();
-            try {
-                handler.onCompleteResponse(response);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e));
-            }
+            onCompleteResponse(handler, response);
         } else {
             MistralAiChatCompletionResponse chatCompletionResponse =
                     fromJson(data, MistralAiChatCompletionResponse.class);
@@ -79,11 +84,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             String chunk = choice.getDelta().getContent();
             if (isNotNullOrEmpty(chunk)) {
                 contentBuilder.append(chunk);
-                try {
-                    handler.onPartialResponse(chunk);
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                }
+                onPartialResponse(handler, chunk, streamingHandle);
             }
 
             List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.Utils.copy;
@@ -41,6 +42,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.gemini.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import java.io.Closeable;
@@ -447,15 +449,34 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
 
+        StreamingHandle streamingHandle = new StreamingHandle() {
+
+            private volatile boolean isCancelled;
+
+            @Override
+            public void cancel() {
+                isCancelled = true;
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return isCancelled;
+            }
+        };
+
         executor.execute(() -> {
             try {
                 finalModel.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
+
                     if (partialResponse.getCandidatesCount() > 0) {
                         StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
 
                         String text = textAndFunctions.text();
                         if (isNotNullOrEmpty(text)) {
-                            onPartialResponse(handler, text); // TODO
+                            onPartialResponse(handler, text, streamingHandle);
                         }
 
                         for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
@@ -467,6 +488,10 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                     }
                 });
 
+                if (streamingHandle.isCancelled()) {
+                    return;
+                }
+
                 Response<AiMessage> fullResponse = responseBuilder.build();
 
                 ChatResponse chatResponse = ChatResponse.builder()
@@ -477,7 +502,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                                 .build())
                         .build();
 
-                handler.onCompleteResponse(chatResponse);
+                onCompleteResponse(handler, chatResponse);
 
                 ChatResponse listenerResponse = ChatResponse.builder()
                         .aiMessage(fullResponse.content())

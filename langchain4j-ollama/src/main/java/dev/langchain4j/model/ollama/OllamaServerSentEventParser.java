@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import dev.langchain4j.Internal;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
 /**
@@ -29,19 +29,7 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        StreamingHandle streamingHandle = new StreamingHandle() {
-            @Override
-            public void cancel() {
-                throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
-                        "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return false;
-            }
-        };
-        parse(httpResponseBody, listener, streamingHandle);
+        parse(httpResponseBody, listener, new CancellationUnsupportedStreamingHandle());
     }
 
     @Override

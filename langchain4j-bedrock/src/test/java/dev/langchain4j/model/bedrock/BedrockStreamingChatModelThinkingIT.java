@@ -230,7 +230,6 @@ class BedrockStreamingChatModelThinkingIT {
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
@@ -279,7 +278,6 @@ class BedrockStreamingChatModelThinkingIT {
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
-        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());

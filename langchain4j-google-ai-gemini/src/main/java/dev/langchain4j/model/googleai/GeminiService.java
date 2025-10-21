@@ -12,7 +12,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
@@ -127,19 +127,7 @@ class GeminiService {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                StreamingHandle streamingHandle = new StreamingHandle() {
-                    @Override
-                    public void cancel() {
-                        throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
-                                "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
-                    }
-
-                    @Override
-                    public boolean isCancelled() {
-                        return false;
-                    }
-                };
-                onEvent(event, streamingHandle);
+                onEvent(event, new CancellationUnsupportedStreamingHandle());
             }
 
             @Override

@@ -1,6 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
@@ -15,19 +15,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        StreamingHandle streamingHandle = new StreamingHandle() {
-            @Override
-            public void cancel() {
-                throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
-                        "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return false;
-            }
-        };
-        parse(httpResponseBody, listener, streamingHandle);
+        parse(httpResponseBody, listener, new CancellationUnsupportedStreamingHandle());
     }
 
     @Override

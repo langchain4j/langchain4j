@@ -5,8 +5,13 @@ package dev.langchain4j.model.chat.response;
  */
 public interface StreamingHandle { // TODO name, location
 
-    // TODO name
-    void cancel(); // TODO return/throw exception?
+    /**
+     * Attempts to cancel the streaming. Idempotent. TODO
+     */
+    void cancel();
 
-    boolean isCancelled(); // TODO name
+    /**
+     * Returns {@code true} if streaming was cancelled by calling {@link #cancel()}.
+     */
+    boolean isCancelled();
 }

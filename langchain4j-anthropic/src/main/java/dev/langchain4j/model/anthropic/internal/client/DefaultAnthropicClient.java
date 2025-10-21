@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -143,19 +143,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                StreamingHandle streamingHandle = new StreamingHandle() {
-                    @Override
-                    public void cancel() {
-                        throw new UnsupportedFeatureException("Streaming cancellation is not supported, " +
-                                "please call onEvent(ServerSentEvent, StreamingHandle) instead."); // TODO
-                    }
-
-                    @Override
-                    public boolean isCancelled() {
-                        return false;
-                    }
-                };
-                onEvent(event, streamingHandle);
+                onEvent(event, new CancellationUnsupportedStreamingHandle());
             }
 
             @Override
