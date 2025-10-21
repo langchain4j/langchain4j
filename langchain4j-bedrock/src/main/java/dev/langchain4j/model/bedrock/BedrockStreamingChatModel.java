@@ -20,7 +20,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.reactivestreams.Subscriber;
@@ -170,7 +169,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 }))
                 .build();
 
-        CompletableFuture<Void> future = this.client
+        this.client
                 .converseStream(converseStreamRequest, converseStreamResponseHandler)
                 .exceptionally(ex -> {
                     RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);

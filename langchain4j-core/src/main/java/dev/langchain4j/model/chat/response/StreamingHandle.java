@@ -1,12 +1,15 @@
 package dev.langchain4j.model.chat.response;
 
 /**
+ * Streaming handle that can be used to cancel the streaming.
+ * Used together with {@link StreamingChatResponseHandler}.
+ *
  * @since 1.8.0
  */
-public interface StreamingHandle { // TODO name, location
+public interface StreamingHandle {
 
     /**
-     * Attempts to cancel the streaming. Idempotent. TODO
+     * Cancels the streaming.
      */
     void cancel();
 

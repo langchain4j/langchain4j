@@ -90,6 +90,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
     @MethodSource("models")
     @DisabledIf("supportsStreamingCancellation")
     void should_fail_to_cancel_streaming(StreamingChatModel model) {
+        // TODO
 
         // given
         Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
