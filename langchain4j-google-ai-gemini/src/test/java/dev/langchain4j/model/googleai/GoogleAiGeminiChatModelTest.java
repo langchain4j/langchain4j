@@ -3,23 +3,30 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiChatModelTest {
-
     private static final String TEST_MODEL_NAME = "gemini-pro";
+
+    @Mock
+    GeminiService mockGeminiService;
 
     @Nested
     class ChatTest {
@@ -27,7 +34,6 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldSendChatRequest() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var expectedResponse = createGeminiResponse("Hello, how can I help you?");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
@@ -45,14 +51,12 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.aiMessage().text()).isEqualTo("Hello, how can I help you?");
-            verify(mockGeminiService, times(1))
-                    .generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
         }
 
         @Test
         void shouldReturnCorrectChatResponse() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var expectedResponse = createGeminiResponse("Test response");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
@@ -85,7 +89,6 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldSendCorrectRequestToGeminiService() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var expectedResponse = createGeminiResponse("Response");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
@@ -106,14 +109,12 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService, times(1))
-                    .generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
         }
 
         @Test
         void shouldHandleMultipleMessages() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var expectedResponse = createGeminiResponse("I understand your question");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
@@ -135,14 +136,12 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.aiMessage().text()).isEqualTo("I understand your question");
-            verify(mockGeminiService, times(1))
-                    .generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
         }
 
         @Test
         void shouldHandleEmptyResponse() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var expectedResponse = createGeminiResponse("");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
@@ -171,7 +170,6 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldIncludeTokenUsageInResponse() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var usageMetadata = GeminiUsageMetadata.builder()
                     .promptTokenCount(15)
                     .candidatesTokenCount(25)
@@ -215,7 +213,6 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldHandleDifferentFinishReasons() {
             // Given
-            var mockGeminiService = mock(GeminiService.class);
             var candidate = GeminiCandidate.builder()
                     .content(GeminiContent.builder()
                             .role("model")
@@ -246,6 +243,69 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
+        }
+    }
+
+    @Nested
+    class RequestVerificationTest {
+        @Captor
+        ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @Test
+        void shouldSendRequestWithAllParameters() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .temperature(0.7)
+                    .topK(40)
+                    .topP(0.95)
+                    .maxOutputTokens(1024)
+                    .presencePenalty(0.5)
+                    .frequencyPenalty(0.3)
+                    .seed(42)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Test message"))
+                    .parameters(ChatRequestParameters.builder()
+                            .temperature(0.8)
+                            .topK(50)
+                            .topP(0.9)
+                            .maxOutputTokens(2048)
+                            .presencePenalty(0.6)
+                            .frequencyPenalty(0.4)
+                            .stopSequences(List.of("STOP", "END"))
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var request = requestCaptor.getValue();
+            assertThat(request.getModel()).isEqualTo(TEST_MODEL_NAME);
+            assertThat(request.getContents()).isNotEmpty();
+            assertThat(request.getGenerationConfig())
+                    .isEqualTo(GeminiGenerationConfig.builder()
+                            .temperature(0.8)
+                            .responseMimeType("text/plain")
+                            .topK(50)
+                            .topP(0.9)
+                            .maxOutputTokens(2048)
+                            .presencePenalty(0.6)
+                            .frequencyPenalty(0.4)
+                            .stopSequences(List.of("STOP", "END"))
+                            .seed(42)
+                            .candidateCount(1)
+                            .responseLogprobs(false)
+                            .build());
         }
     }
 
