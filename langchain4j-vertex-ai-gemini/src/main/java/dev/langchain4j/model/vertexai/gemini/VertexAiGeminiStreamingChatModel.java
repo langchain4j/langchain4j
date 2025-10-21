@@ -448,21 +448,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
         final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
-
-        StreamingHandle streamingHandle = new StreamingHandle() {
-
-            private volatile boolean isCancelled;
-
-            @Override
-            public void cancel() {
-                isCancelled = true;
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return isCancelled;
-            }
-        };
+        StreamingHandle streamingHandle = new VertexAiGeminiStreamingHandle();
 
         executor.execute(() -> {
             try {

@@ -129,7 +129,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         @Override
                         public void onComplete(Optional<Throwable> error) {
                             if (streamingHandle.get().isCancelled()) {
-                                return; // TODO
+                                return;
                             }
 
                             if (error.isPresent()) {
@@ -156,24 +156,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         }
                     });
 
-            streamingHandle.set(new StreamingHandle() { // TODO
-
-                private volatile boolean isCancelled;
-
-                @Override
-                public void cancel() {
-                    isCancelled = true;
-                    try {
-                        asyncStreamResponse.close();
-                    } catch (Exception ignored) {
-                    }
-                }
-
-                @Override
-                public boolean isCancelled() {
-                    return isCancelled;
-                }
-            });
+            streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
             handler.onError(e);
         }

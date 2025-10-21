@@ -272,24 +272,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     onCompleteResponse(handler, chatResponse);
                 });
 
-        streamingHandle.set(new StreamingHandle() {
-
-            private volatile boolean isCancelled;
-
-            @Override
-            public void cancel() {
-                isCancelled = true;
-                try {
-                    disposable.dispose();
-                } catch (Exception ignored) {
-                }
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return isCancelled;
-            }
-        });
+        streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
     }
 
     private static void handle(ChatCompletions chatCompletions,
