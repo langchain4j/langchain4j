@@ -12,7 +12,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -24,6 +23,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,7 +31,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
-
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
@@ -52,14 +51,19 @@ class GeminiService {
             final Duration timeout) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
-        final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+        final var builder =
+                firstNotNull("httpBuilder", httpClientBuilder, HttpClientBuilderLoader.loadHttpClientBuilder());
         HttpClient httpClient = builder.connectTimeout(
                         firstNotNull("connectTimeout", timeout, builder.connectTimeout(), DEFAULT_CONNECT_TIMEOUT))
                 .readTimeout(firstNotNull("readTimeout", timeout, builder.readTimeout(), DEFAULT_READ_TIMEOUT))
                 .build();
 
         if (logRequestsAndResponses || logResponses || logRequests) {
-            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
+            this.httpClient = new LoggingHttpClient(
+                    httpClient,
+                    logRequestsAndResponses || logRequests,
+                    logRequestsAndResponses || logResponses,
+                    logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -118,16 +122,13 @@ class GeminiService {
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
-
-            AtomicInteger toolIndex = new AtomicInteger(0);
+            final AtomicInteger toolIndex = new AtomicInteger(0);
 
             @Override
             public void onEvent(ServerSentEvent event) {
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
-                textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text);
-                });
+                textAndTools.maybeText().ifPresent(text -> onPartialResponse(handler, text));
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
                         onPartialThinking(handler, thought);
