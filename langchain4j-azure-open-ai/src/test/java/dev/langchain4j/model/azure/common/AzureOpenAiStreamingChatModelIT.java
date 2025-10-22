@@ -60,6 +60,20 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return "gpt-4o-2024-11-20"; // requires a deployment with this name
     }
 
+    @Disabled("TODO fix: RateLimit Status code 429")
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
+    }
+
+    @Disabled("TODO fix: RateLimit Status code 429")
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
+    }
+
     @Override
     @Disabled
     @ParameterizedTest
@@ -74,11 +88,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @MethodSource("modelsSupportingImageInputs")
     protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {
         // TODO fix
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return true; // Azure OpenAI now supports base64-encoded images via data URIs
     }
 
     @Override
