@@ -62,4 +62,9 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
         conditionalAgents.add(new ConditionalAgent(condition, List.of(agentExecutor)));
         return this;
     }
+
+    @Override
+    public String serviceType() {
+        return "Conditional";
+    }
 }

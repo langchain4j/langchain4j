@@ -134,7 +134,17 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                 }
                 default ->
                     throw new UnsupportedOperationException(
-                            "Unknown method on AgentInstance class : " + method.getName());
+                            "Unknown method on AgentSpecification class : " + method.getName());
+            };
+        }
+
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "toString" -> service.serviceType() + "<" + agentServiceClass.getSimpleName() + ">";
+                case "hashCode" -> System.identityHashCode(this);
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on Object class : " + method.getName());
             };
         }
 

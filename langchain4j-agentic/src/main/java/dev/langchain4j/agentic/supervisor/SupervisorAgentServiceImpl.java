@@ -91,4 +91,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         this.maxAgentsInvocations = maxAgentsInvocations;
         return this;
     }
+
+    @Override
+    public String serviceType() {
+        return "Supervisor";
+    }
 }

@@ -14,4 +14,9 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
     public static <T> PlannerBasedService<T> builder(Class<T> agentServiceClass) {
         return new PlannerBasedServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
+
+    @Override
+    public String serviceType() {
+        return "Planner";
+    }
 }

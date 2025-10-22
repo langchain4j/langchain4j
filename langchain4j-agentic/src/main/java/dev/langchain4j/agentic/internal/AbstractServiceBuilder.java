@@ -11,8 +11,6 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.workflow.impl.ParallelAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -152,4 +150,6 @@ public abstract class AbstractServiceBuilder<T, S> {
     public T build(InvocationHandler invocationHandler) {
         return buildAgent(agentServiceClass, invocationHandler);
     }
+
+    public abstract String serviceType();
 }

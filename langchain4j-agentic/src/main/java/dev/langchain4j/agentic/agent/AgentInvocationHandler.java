@@ -89,6 +89,16 @@ public class AgentInvocationHandler implements InvocationHandler {
             };
         }
 
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
+                case "hashCode" -> System.identityHashCode(agent);
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on Object class : " + method.getName());
+            };
+        }
+
         return method.invoke(agent, args);
     }
 }

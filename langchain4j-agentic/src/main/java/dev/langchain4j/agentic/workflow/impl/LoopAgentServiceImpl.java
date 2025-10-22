@@ -56,4 +56,9 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
         this.testExitAtLoopEnd = testExitAtLoopEnd;
         return this;
     }
+
+    @Override
+    public String serviceType() {
+        return "Loop";
+    }
 }

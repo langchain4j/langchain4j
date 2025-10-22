@@ -25,4 +25,9 @@ public class ParallelAgentServiceImpl<T> extends AbstractServiceBuilder<T, Paral
     public static <T> ParallelAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
         return new ParallelAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
+
+    @Override
+    public String serviceType() {
+        return "Parallel";
+    }
 }

@@ -25,4 +25,9 @@ public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, Seq
     public static <T> SequentialAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
         return new SequentialAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
     }
+
+    @Override
+    public String serviceType() {
+        return "Sequential";
+    }
 }
