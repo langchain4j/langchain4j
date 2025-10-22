@@ -27,8 +27,11 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.junit.jupiter.api.Test;
@@ -309,8 +312,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
-                streamingHandleConsumer.accept(streamingHandle);
+            public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+                streamingHandleConsumer.accept(context.streamingHandle());
                 concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
@@ -323,7 +326,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) {
+            public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
                 timesOnPartialThinkingWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
@@ -335,7 +338,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) {
+            public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
                 partialToolCalls.add(partialToolCall);
                 threads.add(Thread.currentThread());
             }

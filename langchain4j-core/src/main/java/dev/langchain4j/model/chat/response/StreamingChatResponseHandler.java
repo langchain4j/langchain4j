@@ -17,9 +17,9 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialResponse A partial textual response, usually a single token.
-     * @see #onPartialResponse(String, StreamingHandle)
+     * @see #onPartialResponse(String, PartialResponseContext)
      */
-    void onPartialResponse(String partialResponse); // TODO which one should be called in different scenarios?
+    default void onPartialResponse(String partialResponse) {}
 
     /**
      * TODO
@@ -29,12 +29,12 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialResponse A partial textual response, usually a single token.
-     * @param streamingHandle TODO
+     * @param context         TODO
      * @since 1.8.0
      */
     @Experimental
-    default void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) { // TODO accept single object? e.g. PartialResponseContext
-        onPartialResponse(partialResponse); // TODO?
+    default void onPartialResponse(String partialResponse, PartialResponseContext context) {
+        onPartialResponse(partialResponse);
     }
 
     /**
@@ -44,12 +44,11 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialThinking A partial thinking text, usually a single token.
-     * @see #onPartialThinking(PartialThinking, StreamingHandle)
+     * @see #onPartialThinking(PartialThinking, PartialThinkingContext)
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinking(PartialThinking partialThinking) {
-    }
+    default void onPartialThinking(PartialThinking partialThinking) {}
 
     /**
      * TODO
@@ -59,12 +58,12 @@ public interface StreamingChatResponseHandler {
      * In such cases, this callback may receive multiple tokens at once.
      *
      * @param partialThinking A partial thinking text, usually a single token.
-     * @param streamingHandle TODO
+     * @param context         TODO
      * @since 1.8.0
      */
     @Experimental
-    default void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) { // TODO
-        onPartialThinking(partialThinking); // TODO?
+    default void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+        onPartialThinking(partialThinking);
     }
 
     /**
@@ -94,7 +93,7 @@ public interface StreamingChatResponseHandler {
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
-     * @see #onPartialToolCall(PartialToolCall, StreamingHandle)
+     * @see #onPartialToolCall(PartialToolCall, PartialToolCallContext)
      * @since 1.2.0
      */
     @Experimental
@@ -128,12 +127,12 @@ public interface StreamingChatResponseHandler {
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
-     * @param streamingHandle TODO
+     * @param context         TODO
      * @since 1.8.0
      */
     @Experimental
-    default void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) { // TODO
-        onPartialToolCall(partialToolCall); // TODO?
+    default void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+        onPartialToolCall(partialToolCall);
     }
 
     /**

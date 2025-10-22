@@ -13,10 +13,12 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,8 +55,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialResponse(String partialResponse, StreamingHandle streamingHandle) {
-                handler.onPartialResponse(partialResponse, streamingHandle);
+            public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+                handler.onPartialResponse(partialResponse, context);
             }
 
             @Override
@@ -63,8 +65,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialThinking(PartialThinking partialThinking, StreamingHandle streamingHandle) {
-                handler.onPartialThinking(partialThinking, streamingHandle);
+            public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+                handler.onPartialThinking(partialThinking, context);
             }
 
             @Override
@@ -73,8 +75,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialToolCall(PartialToolCall partialToolCall, StreamingHandle streamingHandle) {
-                handler.onPartialToolCall(partialToolCall, streamingHandle);
+            public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+                handler.onPartialToolCall(partialToolCall, context);
             }
 
             @Override
