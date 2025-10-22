@@ -206,6 +206,7 @@ public class ToolService {
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
+                .lazyEvaluationConfig(lazyEvaluationConfig)
                 .build();
         ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
         if (toolProviderResult != null) {

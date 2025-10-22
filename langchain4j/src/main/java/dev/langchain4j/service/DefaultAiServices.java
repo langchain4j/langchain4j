@@ -12,6 +12,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -184,6 +185,13 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
         validate();
+        
+        // Pass lazy evaluation configuration from AiServiceContext to ToolService
+        // Use default configuration if none is specified
+        LazyEvaluationConfig configToUse = context.lazyEvaluationConfig != null 
+            ? context.lazyEvaluationConfig 
+            : LazyEvaluationConfig.defaultConfig();
+        context.toolService.lazyEvaluationConfig(configToUse);
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),

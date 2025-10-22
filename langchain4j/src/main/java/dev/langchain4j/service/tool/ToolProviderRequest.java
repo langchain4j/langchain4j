@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -10,6 +11,7 @@ public class ToolProviderRequest {
 
     private final InvocationContext invocationContext;
     private final UserMessage userMessage;
+    private final LazyEvaluationConfig lazyEvaluationConfig;
 
     /**
      * @since 1.6.0
@@ -17,6 +19,7 @@ public class ToolProviderRequest {
     public ToolProviderRequest(Builder builder) {
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
         this.userMessage = ensureNotNull(builder.userMessage, "userMessage");
+        this.lazyEvaluationConfig = builder.lazyEvaluationConfig;
     }
 
     public ToolProviderRequest(Object chatMemoryId, UserMessage userMessage) {
@@ -24,6 +27,7 @@ public class ToolProviderRequest {
                 .chatMemoryId(chatMemoryId)
                 .build();
         this.userMessage = ensureNotNull(userMessage, "userMessage");
+        this.lazyEvaluationConfig = null;
     }
 
     /**
@@ -48,6 +52,13 @@ public class ToolProviderRequest {
         return invocationContext.chatMemoryId();
     }
 
+    /**
+     * @since 1.6.0
+     */
+    public LazyEvaluationConfig lazyEvaluationConfig() {
+        return lazyEvaluationConfig;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -56,6 +67,7 @@ public class ToolProviderRequest {
 
         private InvocationContext invocationContext;
         private UserMessage userMessage;
+        private LazyEvaluationConfig lazyEvaluationConfig;
 
         public Builder invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
@@ -64,6 +76,11 @@ public class ToolProviderRequest {
 
         public Builder userMessage(UserMessage userMessage) {
             this.userMessage = userMessage;
+            return this;
+        }
+
+        public Builder lazyEvaluationConfig(LazyEvaluationConfig lazyEvaluationConfig) {
+            this.lazyEvaluationConfig = lazyEvaluationConfig;
             return this;
         }
 
