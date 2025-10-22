@@ -53,11 +53,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -320,8 +320,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
     }
 
-    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
-                                            GenerationConfig generationConfig) {
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
@@ -340,9 +339,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
     }
 
-    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
-                                            GenerationConfig generationConfig,
-                                            Executor executor) {
+    public VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel, GenerationConfig generationConfig, Executor executor) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
@@ -362,11 +360,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     }
 
     private static ExecutorService createDefaultExecutor() {
-        return new ThreadPoolExecutor(
-            0, Integer.MAX_VALUE,
-            1, SECONDS,
-            new SynchronousQueue<>()
-        );
+        return new ThreadPoolExecutor(0, Integer.MAX_VALUE, 1, SECONDS, new SynchronousQueue<>());
     }
 
     @Override
@@ -452,27 +446,31 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         executor.execute(() -> {
             try {
-                finalModel.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
-                    if (streamingHandle.isCancelled()) {
-                        return;
-                    }
+                finalModel.generateContentStream(instructionAndContent.contents).stream()
+                        .forEach(partialResponse -> {
+                            if (streamingHandle.isCancelled()) {
+                                return;
+                            }
 
-                    if (partialResponse.getCandidatesCount() > 0) {
-                        StreamingChatResponseBuilder.TextAndFunctions textAndFunctions = responseBuilder.append(partialResponse);
+                            if (partialResponse.getCandidatesCount() > 0) {
+                                StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
+                                        responseBuilder.append(partialResponse);
 
-                        String text = textAndFunctions.text();
-                        if (isNotNullOrEmpty(text)) {
-                            onPartialResponse(handler, text, streamingHandle);
-                        }
+                                String text = textAndFunctions.text();
+                                if (isNotNullOrEmpty(text)) {
+                                    onPartialResponse(handler, text, streamingHandle);
+                                }
 
-                        for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
-                            ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
-                            CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), toolExecutionRequest);
-                            onCompleteToolCall(handler, completeToolCall);
-                            toolIndex.incrementAndGet();
-                        }
-                    }
-                });
+                                for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
+                                    final int index = toolIndex.get();
+                                    ToolExecutionRequest toolExecutionRequest = fromFunctionCall(index, functionCall);
+                                    CompleteToolCall completeToolCall =
+                                            new CompleteToolCall(index, toolExecutionRequest);
+                                    onCompleteToolCall(handler, completeToolCall);
+                                    toolIndex.incrementAndGet();
+                                }
+                            }
+                        });
 
                 if (streamingHandle.isCancelled()) {
                     return;
