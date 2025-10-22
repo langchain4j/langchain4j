@@ -6,6 +6,9 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
+import dev.langchain4j.agent.tool.LazyEvaluationMode;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -21,6 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -588,5 +593,274 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(toolExecutionResult.isError()).isTrue();
         assertThat(toolExecutionResult.result()).isNull();
         assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
+    }
+
+    @Nested
+    @DisplayName("Lazy Evaluation Tests")
+    class LazyEvaluationTests {
+
+        private static class LazyTestTool {
+            @Tool
+            public String regularTool() {
+                return "regular result";
+            }
+
+            @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+            public String immediateTool() {
+                return "immediate result";
+            }
+
+            @Tool(name = "expensiveCalculation")
+            public String expensiveTool() {
+                return "expensive result";
+            }
+        }
+
+        @Test
+        @DisplayName("Should use lazy evaluation when mode is ENABLED")
+        void shouldUseLazyEvaluationWhenEnabled() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.ENABLED)
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isFalse(); // Should be lazy
+            assertThat(result.resultText()).isEqualTo("regular result"); // Should compute on access
+            assertThat(result.isResultTextComputed()).isTrue(); // Should be computed now
+        }
+
+        @Test
+        @DisplayName("Should use eager evaluation when mode is DISABLED")
+        void shouldUseEagerEvaluationWhenDisabled() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.DISABLED)
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isTrue(); // Should be eager
+            assertThat(result.resultText()).isEqualTo("regular result");
+        }
+
+        @Test
+        @DisplayName("Should use lazy evaluation for expensive tools in AUTO mode")
+        void shouldUseLazyEvaluationForExpensiveToolsInAutoMode() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.AUTO)
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("expensiveTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("expensiveTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("expensiveCalculation")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isFalse(); // Should be lazy due to name pattern
+            assertThat(result.resultText()).isEqualTo("expensive result");
+            assertThat(result.isResultTextComputed()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should use eager evaluation for simple tools in AUTO mode")
+        void shouldUseEagerEvaluationForSimpleToolsInAutoMode() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.AUTO)
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isTrue(); // Should be eager for simple tools
+            assertThat(result.resultText()).isEqualTo("regular result");
+        }
+
+        @Test
+        @DisplayName("Should respect explicit lazy tool override")
+        void shouldRespectExplicitLazyToolOverride() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.DISABLED)
+                    .addLazyTool("regularTool")
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isFalse(); // Should be lazy due to explicit override
+            assertThat(result.resultText()).isEqualTo("regular result");
+            assertThat(result.isResultTextComputed()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should respect explicit eager tool override")
+        void shouldRespectExplicitEagerToolOverride() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.ENABLED)
+                    .addEagerTool("regularTool")
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("regularTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isTrue(); // Should be eager due to explicit override
+            assertThat(result.resultText()).isEqualTo("regular result");
+        }
+
+        @Test
+        @DisplayName("Should use default config when none provided")
+        void shouldUseDefaultConfigWhenNoneProvided() throws NoSuchMethodException {
+            // Given
+            DefaultToolExecutor executor = new DefaultToolExecutor(
+                    new LazyTestTool(),
+                    LazyTestTool.class.getDeclaredMethod("regularTool")
+            );
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("regularTool")
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isTrue(); // Default is DISABLED (eager)
+            assertThat(result.resultText()).isEqualTo("regular result");
+        }
+
+        @Test
+        @DisplayName("Should extract tool name from Tool annotation")
+        void shouldExtractToolNameFromAnnotation() throws NoSuchMethodException {
+            // Given
+            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+                    .mode(LazyEvaluationMode.AUTO)
+                    .build();
+
+            DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                    .object(new LazyTestTool())
+                    .originalMethod(LazyTestTool.class.getDeclaredMethod("expensiveTool"))
+                    .methodToInvoke(LazyTestTool.class.getDeclaredMethod("expensiveTool"))
+                    .lazyEvaluationConfig(config)
+                    .build();
+
+            ToolExecutionRequest request = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("someOtherName") // Different from annotation name
+                    .arguments("{}")
+                    .build();
+
+            // When
+            ToolExecutionResult result = executor.executeWithContext(request, null);
+
+            // Then - Should use annotation name "expensiveCalculation" for evaluation decision
+            assertThat(result).isNotNull();
+            assertThat(result.isError()).isFalse();
+            assertThat(result.isResultTextComputed()).isFalse(); // Should be lazy due to annotation name pattern
+            assertThat(result.resultText()).isEqualTo("expensive result");
+        }
     }
 }

@@ -105,7 +105,6 @@ public final class LazyEvaluationConfig {
      *   <li>If the tool is explicitly in the lazy tools set, return true</li>
      *   <li>Apply the mode-specific logic</li>
      * </ol>
-     * </p>
      * 
      * @param toolName the name of the tool to check (must not be null)
      * @return true if the tool should use lazy evaluation, false otherwise
