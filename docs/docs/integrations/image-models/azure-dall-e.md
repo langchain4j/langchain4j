@@ -27,7 +27,7 @@ that can be used for various image processing tasks.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.3.0</version>
+    <version>1.7.1</version>
 </dependency>
 ```
 
@@ -36,7 +36,7 @@ that can be used for various image processing tasks.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.7.1-beta14</version>
 </dependency>
 ```
 

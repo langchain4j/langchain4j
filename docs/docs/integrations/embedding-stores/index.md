@@ -21,6 +21,7 @@ sidebar_position: 0
 | [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                          | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                | ✅                            | ✅                     |
+| [Mariadb](/integrations/embedding-stores/mariadb)                                       | ✅                | ✅                          | ✅                   |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
@@ -34,3 +35,4 @@ sidebar_position: 0
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
 | [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅               |                            | ✅                  |
+| [YugabyteDB](/integrations/embedding-stores/yugabytedb)                               | ✅                | ✅                          | ✅                   |

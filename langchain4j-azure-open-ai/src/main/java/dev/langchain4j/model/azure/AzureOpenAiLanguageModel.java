@@ -13,6 +13,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -73,6 +74,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -85,6 +87,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -97,6 +100,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -138,8 +142,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                 .setFrequencyPenalty(frequencyPenalty)
                 .setBestOf(bestOf);
 
-        Completions completions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                client.getCompletions(deploymentName, options));
+        Completions completions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.getCompletions(deploymentName, options));
 
         return Response.from(
                 completions.getChoices().get(0).getText(),
@@ -177,6 +181,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
         private Integer bestOf;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -323,6 +328,11 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

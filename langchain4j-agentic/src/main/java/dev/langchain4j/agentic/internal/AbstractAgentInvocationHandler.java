@@ -1,15 +1,19 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.MemoryId;
-
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -20,7 +24,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public abstract class AbstractAgentInvocationHandler implements InvocationHandler {
-    protected final String outputName;
+    protected final String name;
+    protected final String uniqueName;
+    protected final String description;
+    protected final String outputKey;
+
+    protected final Consumer<AgentRequest> beforeListener;
+    protected final Consumer<AgentResponse> afterListener;
 
     private final Class<?> agentServiceClass;
 
@@ -36,11 +46,16 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         this(workflowService, null);
     }
 
-    protected AbstractAgentInvocationHandler(AbstractService<?, ?> workflowService, DefaultAgenticScope agenticScope) {
-        this.agentServiceClass = workflowService.agentServiceClass;
-        this.outputName = workflowService.outputName;
-        this.beforeCall = workflowService.beforeCall;
-        this.errorHandler = workflowService.errorHandler;
+    protected AbstractAgentInvocationHandler(AbstractService<?, ?> service, DefaultAgenticScope agenticScope) {
+        this.agentServiceClass = service.agentServiceClass;
+        this.name = service.name;
+        this.uniqueName = uniqueAgentName(this.name);
+        this.description = service.description;
+        this.outputKey = service.outputKey;
+        this.beforeCall = service.beforeCall;
+        this.errorHandler = service.errorHandler;
+        this.beforeListener = service.beforeListener;
+        this.afterListener = service.afterListener;
         this.agenticScope = agenticScope;
     }
 
@@ -58,8 +73,9 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             return switch (method.getName()) {
                 case "withAgenticScope" -> withAgenticScope((DefaultAgenticScope) args[0]);
                 case "registry" -> registry;
-                default -> throw new UnsupportedOperationException(
-                        "Unknown method on AgenticScopeOwner class : " + method.getName());
+                default ->
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AgenticScopeOwner class : " + method.getName());
             };
         }
 
@@ -68,18 +84,34 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
                 case "getAgenticScope" -> registry.get(args[0]);
                 case "evictAgenticScope" -> registry.evict(args[0]);
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AgenticScopeAccess class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AgenticScopeAccess class : " + method.getName());
             };
         }
 
         if (method.getDeclaringClass() == AgentSpecification.class) {
             return switch (method.getName()) {
-                case "outputName" -> outputName;
+                case "name" -> name;
+                case "uniqueName" -> uniqueName;
+                case "description" -> description;
+                case "outputKey" -> outputKey;
+                case "async" -> false;
+                case "beforeInvocation" -> {
+                    beforeListener.accept((AgentRequest) args[0]);
+                    yield null;
+                }
+                case "afterInvocation" -> {
+                    afterListener.accept((AgentResponse) args[0]);
+                    yield null;
+                }
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AgentInstance class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AgentInstance class : " + method.getName());
             };
+        }
+
+        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
+            return accessChatMemory(method.getName(), args[0]);
         }
 
         return executeAgentMethod(currentAgenticScope(registry, method, args), registry, method, args);
@@ -92,7 +124,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         return agenticScopeRegistry.get();
     }
 
-    private Object executeAgentMethod(DefaultAgenticScope agenticScope, AgenticScopeRegistry registry, Method method, Object[] args) {
+    private Object executeAgentMethod(
+            DefaultAgenticScope agenticScope, AgenticScopeRegistry registry, Method method, Object[] args) {
         writeAgenticScope(agenticScope, method, args);
         beforeCall.accept(agenticScope);
 
@@ -104,10 +137,10 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             agenticScope.rootCallEnded(registry);
         }
 
-        Object output = outputName != null ? agenticScope.readState(outputName) : result;
-        return method.getReturnType().equals(ResultWithAgenticScope.class) ?
-                new ResultWithAgenticScope<>(agenticScope, output) :
-                output;
+        Object output = outputKey != null ? agenticScope.readState(outputKey) : result;
+        return method.getReturnType().equals(ResultWithAgenticScope.class)
+                ? new ResultWithAgenticScope<>(agenticScope, output)
+                : output;
     }
 
     private boolean isRootCall() {
@@ -122,7 +155,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
             for (int i = 0; i < parameters.length; i++) {
                 int index = i;
                 AgentInvoker.optionalParameterName(parameters[i])
-                        .ifPresent(argName -> agenticScope.writeState(argName, args[index]) );
+                        .ifPresent(argName -> agenticScope.writeState(argName, args[index]));
             }
         }
     }
@@ -133,7 +166,8 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
         }
 
         Object memoryId = memoryId(method, args);
-        DefaultAgenticScope newAgenticScope = memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralAgenticScope();
+        DefaultAgenticScope newAgenticScope =
+                memoryId != null ? registry.getOrCreate(memoryId) : registry.createEphemeralAgenticScope();
         return newAgenticScope.withErrorHandler(errorHandler);
     }
 
@@ -148,15 +182,19 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     }
 
     protected Object result(DefaultAgenticScope agenticScope, Object result) {
-        if (outputName != null) {
+        if (outputKey != null) {
             if (result != null) {
-                agenticScope.writeState(outputName, result);
+                agenticScope.writeState(outputKey, result);
                 return result;
             } else {
-                return agenticScope.readState(outputName);
+                return agenticScope.readState(outputKey);
             }
         }
         return result;
+    }
+
+    protected Object accessChatMemory(String methodName, Object memoryId) {
+        throw new UnsupportedOperationException();
     }
 
     protected abstract Object doAgentAction(DefaultAgenticScope agenticScope);

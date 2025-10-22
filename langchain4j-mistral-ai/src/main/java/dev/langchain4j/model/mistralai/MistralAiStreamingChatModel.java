@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFactory;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +51,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
 
         this.safePrompt = builder.safePrompt;
@@ -137,6 +139,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
         private ChatRequestParameters defaultRequestParameters;
@@ -252,6 +255,15 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
          */
         public MistralAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

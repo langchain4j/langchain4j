@@ -52,7 +52,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
