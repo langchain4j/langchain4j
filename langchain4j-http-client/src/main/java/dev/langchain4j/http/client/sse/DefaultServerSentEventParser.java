@@ -12,21 +12,10 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
-                .inputStream(httpResponseBody)
-                .listener(listener)
-                .parsingHandle(new CancellationUnsupportedHandle())
-                .build();
-        parse(parseRequest);
-    }
-
-    @Override
-    public void parse(ServerSentEventParseRequest parseRequest) {
-        ServerSentEventListener listener = parseRequest.listener();
-        ServerSentEventParsingHandle parsingHandle = parseRequest.parsingHandle();
+        ServerSentEventParsingHandle parsingHandle = new DefaultServerSentEventParsingHandle(httpResponseBody);
         ServerSentEventContext context = new ServerSentEventContext(parsingHandle);
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(parseRequest.inputStream(), UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();

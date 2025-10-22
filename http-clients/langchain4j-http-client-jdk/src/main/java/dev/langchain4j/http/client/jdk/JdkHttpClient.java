@@ -6,9 +6,7 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParseRequest;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.DefaultServerSentEventParsingHandle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -80,12 +78,7 @@ public class JdkHttpClient implements HttpClient {
                     ignoringExceptions(() -> listener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
-                        ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
-                                .inputStream(inputStream)
-                                .listener(listener)
-                                .parsingHandle(new DefaultServerSentEventParsingHandle(inputStream))
-                                .build();
-                        parser.parse(parseRequest);
+                        parser.parse(inputStream, listener);
                         ignoringExceptions(listener::onClose);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
