@@ -160,5 +160,4 @@ class ParsingUtilsTest {
         assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "String"))
                 .isInstanceOf(OutputParsingException.class);
     }
-
 }
