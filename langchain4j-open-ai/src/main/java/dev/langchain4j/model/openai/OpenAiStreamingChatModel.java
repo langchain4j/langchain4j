@@ -32,11 +32,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
@@ -194,14 +191,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            PartialResponseContext context = new PartialResponseContext(parsedAndRawResponse.streamingHandle());
-            onPartialResponse(handler, content, context);
+            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            PartialThinkingContext context = new PartialThinkingContext(parsedAndRawResponse.streamingHandle());
-            onPartialThinking(handler, reasoningContent, context);
+            onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -227,8 +222,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                             .name(name)
                             .partialArguments(partialArguments)
                             .build();
-                    PartialToolCallContext context = new PartialToolCallContext(parsedAndRawResponse.streamingHandle());
-                    onPartialToolCall(handler, partialToolRequest, context);
+                    onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
                 }
             }
         }

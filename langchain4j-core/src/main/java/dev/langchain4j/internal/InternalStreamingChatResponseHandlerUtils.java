@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,13 +45,13 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     public static void onPartialResponse(StreamingChatResponseHandler handler,
                                          String partialResponse,
-                                         PartialResponseContext context) {
+                                         StreamingHandle streamingHandle) {
         if (isNullOrEmpty(partialResponse)) {
             return;
         }
 
         try {
-            handler.onPartialResponse(partialResponse, context);
+            handler.onPartialResponse(partialResponse, new PartialResponseContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
@@ -70,13 +71,13 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     public static void onPartialThinking(StreamingChatResponseHandler handler,
                                          String partialThinking,
-                                         PartialThinkingContext context) {
+                                         StreamingHandle streamingHandle) {
         if (isNullOrEmpty(partialThinking)) {
             return;
         }
 
         try {
-            handler.onPartialThinking(new PartialThinking(partialThinking), context);
+            handler.onPartialThinking(new PartialThinking(partialThinking), new PartialThinkingContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
@@ -92,9 +93,9 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     public static void onPartialToolCall(StreamingChatResponseHandler handler,
                                          PartialToolCall partialToolCall,
-                                         PartialToolCallContext context) {
+                                         StreamingHandle streamingHandle) {
         try {
-            handler.onPartialToolCall(partialToolCall, context);
+            handler.onPartialToolCall(partialToolCall, new PartialToolCallContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
