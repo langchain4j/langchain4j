@@ -6,7 +6,7 @@ package dev.langchain4j.model.chat.response;
  *
  * @since 1.8.0
  */
-public interface StreamingHandle {
+public interface StreamingHandle { // TODO split into http/model layers?
 
     /**
      * Cancels the streaming.
