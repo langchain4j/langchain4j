@@ -9,7 +9,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParseRequest;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -29,16 +31,25 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        parse(httpResponseBody, listener, new CancellationUnsupportedStreamingHandle());
+        ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
+                .inputStream(httpResponseBody)
+                .listener(listener)
+                .streamingHandle(new CancellationUnsupportedStreamingHandle())
+                .build();
+        parse(parseRequest);
     }
 
     @Override
-    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streamingHandle) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
+    public void parse(ServerSentEventParseRequest parseRequest) {
+        ServerSentEventListener listener = parseRequest.listener();
+        StreamingHandle streamingHandle = parseRequest.streamingHandle();
+        ServerSentEventContext context = new ServerSentEventContext(streamingHandle);
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(parseRequest.inputStream(), UTF_8))) {
             String line;
             while (!streamingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 ServerSentEvent sse = new ServerSentEvent(null, line);
-                ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
+                ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));

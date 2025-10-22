@@ -1,8 +1,5 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
-import dev.langchain4j.model.chat.response.StreamingHandle;
-
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -10,17 +7,28 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
-        parse(httpResponseBody, listener, new CancellationUnsupportedStreamingHandle());
+        ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
+                .inputStream(httpResponseBody)
+                .listener(listener)
+                .streamingHandle(new CancellationUnsupportedStreamingHandle())
+                .build();
+        parse(parseRequest);
     }
 
     @Override
-    public void parse(InputStream httpResponseBody, ServerSentEventListener listener, StreamingHandle streamingHandle) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
+    public void parse(ServerSentEventParseRequest parseRequest) {
+        ServerSentEventListener listener = parseRequest.listener();
+        StreamingHandle streamingHandle = parseRequest.streamingHandle();
+        ServerSentEventContext context = new ServerSentEventContext(streamingHandle);
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(parseRequest.inputStream(), UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();
@@ -30,7 +38,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
                         ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                        ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
+                        ignoringExceptions(() -> listener.onEvent(sse, context));
                         event = null;
                         data.setLength(0);
                     }
@@ -50,7 +58,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
             if (!data.isEmpty()) {
                 ServerSentEvent sse = new ServerSentEvent(event, data.toString());
-                ignoringExceptions(() -> listener.onEvent(sse, streamingHandle));
+                ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));

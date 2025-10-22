@@ -12,6 +12,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -127,22 +128,22 @@ class GeminiService {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new CancellationUnsupportedStreamingHandle());
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
-                this.streamingHandle.set(streamingHandle);
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                this.streamingHandle.set(context.streamingHandle());
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text, streamingHandle);
+                    onPartialResponse(handler, text, context.streamingHandle());
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought, streamingHandle);
+                        onPartialThinking(handler, thought, context.streamingHandle());
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought, streamingHandle); // for backward compatibility
+                        onPartialResponse(handler, thought, context.streamingHandle()); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {

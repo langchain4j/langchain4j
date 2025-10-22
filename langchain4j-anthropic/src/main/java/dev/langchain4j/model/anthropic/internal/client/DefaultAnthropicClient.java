@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -143,21 +144,21 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new CancellationUnsupportedStreamingHandle());
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
                 AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
 
                 if ("message_start".equals(event.event())) {
                     handleMessageStart(data);
                 } else if ("content_block_start".equals(event.event())) {
-                    handleContentBlockStart(data, streamingHandle);
+                    handleContentBlockStart(data, context.streamingHandle());
                 } else if ("content_block_delta".equals(event.event())) {
-                    handleContentBlockDelta(data, streamingHandle);
+                    handleContentBlockDelta(data, context.streamingHandle());
                 } else if ("content_block_stop".equals(event.event())) {
-                    handleContentBlockStop(streamingHandle);
+                    handleContentBlockStop(context.streamingHandle());
                 } else if ("message_delta".equals(event.event())) {
                     handleMessageDelta(data);
                 } else if ("message_stop".equals(event.event())) {

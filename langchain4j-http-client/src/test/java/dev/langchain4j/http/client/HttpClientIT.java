@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -198,6 +199,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    threads.add(Thread.currentThread());
+                    events.add(event);
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     threads.add(Thread.currentThread());
                     completableFuture.completeExceptionally(throwable);
@@ -231,7 +238,7 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);
@@ -290,6 +297,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    threads.add(Thread.currentThread());
+                    events.add(event);
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     threads.add(Thread.currentThread());
                     completableFuture.completeExceptionally(throwable);
@@ -323,7 +336,7 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);
@@ -453,6 +466,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
@@ -477,7 +496,7 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);
@@ -533,6 +552,14 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+
+                    throw new RuntimeException("Unexpected exception in onEvent()");
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
@@ -557,7 +584,7 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, times(events.size())).onEvent(any());
+            inOrder.verify(spyListener, times(events.size())).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);

@@ -1,19 +1,23 @@
 package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 
 public interface ServerSentEventListener {
 
-    default void onOpen(SuccessfulHttpResponse response) {}
+    default void onOpen(SuccessfulHttpResponse response) {
+    }
 
     void onEvent(ServerSentEvent event);
 
-    default void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) { // TODO use other (more low-level) type? accept single object?
-        onEvent(event); // TODO?
+    /**
+     * @since 1.8.0
+     */
+    default void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+        onEvent(event);
     }
 
     void onError(Throwable throwable);
 
-    default void onClose() {}
+    default void onClose() {
+    }
 }

@@ -28,6 +28,7 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
@@ -36,7 +37,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
@@ -160,11 +160,11 @@ class OllamaClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new CancellationUnsupportedStreamingHandle());
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
             }
 
             @Override
-            public void onEvent(ServerSentEvent event, StreamingHandle streamingHandle) {
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
@@ -176,12 +176,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    onPartialResponse(handler, content, streamingHandle);
+                    onPartialResponse(handler, content, context.streamingHandle());
                 }
 
                 String thinking = message.getThinking();
                 if (returnThinking && !isNullOrEmpty(thinking)) {
-                    onPartialThinking(handler, thinking, streamingHandle);
+                    onPartialThinking(handler, thinking, context.streamingHandle());
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();
