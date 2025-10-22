@@ -6,12 +6,29 @@ import java.io.InputStream;
  * Parses server-sent events (SSE) from an {@link InputStream},
  * constructs {@link ServerSentEvent} objects,
  * and delivers them to the provided {@link ServerSentEventListener}.
- * <p>
- * This interface is currently experimental and subject to change.
  */
 public interface ServerSentEventParser {
 
     /**
+     * Parses an input stream containing server-sent events and notifies the listener of parsed events.
+     * This method blocks until the input stream is exhausted or an error occurs.
+     * <p>
+     * For each complete event found in the stream,
+     * {@link ServerSentEventListener#onEvent(ServerSentEvent, ServerSentEventContext)} is called.
+     * If any parsing or processing error occurs, {@link ServerSentEventListener#onError(Throwable)}
+     * is called and parsing may terminate.
+     *
+     * @param parseRequest The request to parse server-sent events
+     * @since 1.8.0
+     */
+    default void parse(ServerSentEventParseRequest parseRequest) {
+        parse(parseRequest.inputStream(), parseRequest.listener());
+    }
+
+    /**
+     * NOTE: This is an outdated method. If you want to use stream cancellation feature,
+     * implement and use {@link #parse(ServerSentEventParseRequest)} instead.
+     * <br>
      * Parses an input stream containing server-sent events and notifies the listener of parsed events.
      * This method blocks until the input stream is exhausted or an error occurs.
      * <p>
@@ -21,17 +38,7 @@ public interface ServerSentEventParser {
      *
      * @param httpResponseBody the input stream containing SSE data to parse
      * @param listener         the listener to receive parsed events or error notifications
+     * @see #parse(ServerSentEventParseRequest)
      */
-    void parse(InputStream httpResponseBody, ServerSentEventListener listener);
-
-    /**
-     * TODO
-     * TODO implement this method if you want to be able to cancel streaming
-     *
-     * @param parseRequest TODO
-     * @since 1.8.0
-     */
-    default void parse(ServerSentEventParseRequest parseRequest) {
-        parse(parseRequest.inputStream(), parseRequest.listener());
-    }
+    default void parse(InputStream httpResponseBody, ServerSentEventListener listener) {}
 }

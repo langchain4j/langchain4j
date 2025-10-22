@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -11,7 +12,7 @@ import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -54,7 +55,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
     @Override
     public void onEvent(ServerSentEvent event) {
-        onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
+        onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
     }
 
     @Override
@@ -84,7 +85,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             String chunk = choice.getDelta().getContent();
             if (isNotNullOrEmpty(chunk)) {
                 contentBuilder.append(chunk);
-                onPartialResponse(handler, chunk, context.streamingHandle());
+                onPartialResponse(handler, chunk, toStreamingHandle(context.parsingHandle()));
             }
 
             List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();

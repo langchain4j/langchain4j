@@ -1,0 +1,19 @@
+package dev.langchain4j.http.client.sse;
+
+/**
+ * Handle that can be used to cancel the parsing of server-sent events.
+ *
+ * @since 1.8.0
+ */
+public interface ServerSentEventParsingHandle {
+
+    /**
+     * Cancels the parsing of server-sent events.
+     */
+    void cancel();
+
+    /**
+     * Returns {@code true} if parsing was cancelled by calling {@link #cancel()}.
+     */
+    boolean isCancelled();
+}

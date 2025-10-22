@@ -1,15 +1,18 @@
-package dev.langchain4j.model.chat.response;
+package dev.langchain4j.http.client.sse;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.io.InputStream;
 
-public class DefaultStreamingHandle implements StreamingHandle {
+/**
+ * @since 1.8.0
+ */
+public class DefaultServerSentEventParsingHandle implements ServerSentEventParsingHandle {
 
     private final InputStream inputStream;
     private volatile boolean isCancelled;
 
-    public DefaultStreamingHandle(InputStream inputStream) {
+    public DefaultServerSentEventParsingHandle(InputStream inputStream) {
         this.inputStream = ensureNotNull(inputStream, "inputStream");
     }
 

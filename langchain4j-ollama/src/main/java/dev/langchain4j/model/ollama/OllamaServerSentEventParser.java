@@ -13,8 +13,8 @@ import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParseRequest;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
-import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
+import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
 
 /**
  * Ollama does not follow SSE standard for streaming, it uses newline delimited JSON format.
@@ -34,7 +34,7 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
         ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
                 .inputStream(httpResponseBody)
                 .listener(listener)
-                .streamingHandle(new CancellationUnsupportedStreamingHandle())
+                .parsingHandle(new CancellationUnsupportedHandle())
                 .build();
         parse(parseRequest);
     }
@@ -42,12 +42,12 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
     @Override
     public void parse(ServerSentEventParseRequest parseRequest) {
         ServerSentEventListener listener = parseRequest.listener();
-        StreamingHandle streamingHandle = parseRequest.streamingHandle();
-        ServerSentEventContext context = new ServerSentEventContext(streamingHandle);
+        ServerSentEventParsingHandle parsingHandle = parseRequest.parsingHandle();
+        ServerSentEventContext context = new ServerSentEventContext(parsingHandle);
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(parseRequest.inputStream(), UTF_8))) {
             String line;
-            while (!streamingHandle.isCancelled() && (line = reader.readLine()) != null) {
+            while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 ServerSentEvent sse = new ServerSentEvent(null, line);
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }

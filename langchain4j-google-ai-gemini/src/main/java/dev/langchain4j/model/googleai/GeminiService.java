@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -13,7 +14,7 @@ import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
@@ -128,22 +129,22 @@ class GeminiService {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
             }
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                this.streamingHandle.set(context.streamingHandle());
+                this.streamingHandle.set(toStreamingHandle(context.parsingHandle()));
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text, context.streamingHandle());
+                    onPartialResponse(handler, text, toStreamingHandle(context.parsingHandle()));
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought, context.streamingHandle());
+                        onPartialThinking(handler, thought, toStreamingHandle(context.parsingHandle()));
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought, context.streamingHandle()); // for backward compatibility
+                        onPartialResponse(handler, thought, toStreamingHandle(context.parsingHandle())); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {

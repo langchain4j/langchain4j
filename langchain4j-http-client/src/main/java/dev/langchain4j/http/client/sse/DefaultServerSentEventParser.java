@@ -7,8 +7,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 
@@ -17,7 +15,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
         ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
                 .inputStream(httpResponseBody)
                 .listener(listener)
-                .streamingHandle(new CancellationUnsupportedStreamingHandle())
+                .parsingHandle(new CancellationUnsupportedHandle())
                 .build();
         parse(parseRequest);
     }
@@ -25,8 +23,8 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
     @Override
     public void parse(ServerSentEventParseRequest parseRequest) {
         ServerSentEventListener listener = parseRequest.listener();
-        StreamingHandle streamingHandle = parseRequest.streamingHandle();
-        ServerSentEventContext context = new ServerSentEventContext(streamingHandle);
+        ServerSentEventParsingHandle parsingHandle = parseRequest.parsingHandle();
+        ServerSentEventContext context = new ServerSentEventContext(parsingHandle);
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(parseRequest.inputStream(), UTF_8))) {
 
@@ -34,7 +32,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             StringBuilder data = new StringBuilder();
 
             String line;
-            while (!streamingHandle.isCancelled() && (line = reader.readLine()) != null) {
+            while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
                         ServerSentEvent sse = new ServerSentEvent(event, data.toString());

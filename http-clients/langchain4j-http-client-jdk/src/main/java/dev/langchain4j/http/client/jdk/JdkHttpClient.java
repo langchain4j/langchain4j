@@ -8,8 +8,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParseRequest;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.model.chat.response.DefaultStreamingHandle;
-import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParsingHandle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -84,7 +83,7 @@ public class JdkHttpClient implements HttpClient {
                         ServerSentEventParseRequest parseRequest = ServerSentEventParseRequest.builder()
                                 .inputStream(inputStream)
                                 .listener(listener)
-                                .streamingHandle(new DefaultStreamingHandle(inputStream))
+                                .parsingHandle(new DefaultServerSentEventParsingHandle(inputStream))
                                 .build();
                         parser.parse(parseRequest);
                         ignoringExceptions(listener::onClose);

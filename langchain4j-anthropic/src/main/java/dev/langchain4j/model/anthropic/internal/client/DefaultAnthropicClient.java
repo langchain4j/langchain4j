@@ -3,7 +3,7 @@ package dev.langchain4j.model.anthropic.internal.client;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -144,7 +145,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
             }
 
             @Override
@@ -154,11 +155,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 if ("message_start".equals(event.event())) {
                     handleMessageStart(data);
                 } else if ("content_block_start".equals(event.event())) {
-                    handleContentBlockStart(data, context.streamingHandle());
+                    handleContentBlockStart(data, toStreamingHandle(context.parsingHandle()));
                 } else if ("content_block_delta".equals(event.event())) {
-                    handleContentBlockDelta(data, context.streamingHandle());
+                    handleContentBlockDelta(data, toStreamingHandle(context.parsingHandle()));
                 } else if ("content_block_stop".equals(event.event())) {
-                    handleContentBlockStop(context.streamingHandle());
+                    handleContentBlockStop(toStreamingHandle(context.parsingHandle()));
                 } else if ("message_delta".equals(event.event())) {
                     handleMessageDelta(data);
                 } else if ("message_stop".equals(event.event())) {

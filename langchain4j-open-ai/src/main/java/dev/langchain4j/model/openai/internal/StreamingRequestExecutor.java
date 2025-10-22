@@ -6,11 +6,13 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.model.chat.response.CancellationUnsupportedStreamingHandle;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 
 class StreamingRequestExecutor<Response> {
 
@@ -111,12 +113,12 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onEvent(ServerSentEvent event) {
-                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedStreamingHandle()));
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
             }
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                this.streamingHandle.set(context.streamingHandle());
+                this.streamingHandle.set(toStreamingHandle(context.parsingHandle()));
 
                 if ("[DONE]".equals(event.data())) {
                     return;
@@ -132,7 +134,7 @@ class StreamingRequestExecutor<Response> {
                                 .parsedResponse(parsedResponse)
                                 .rawHttpResponse(response)
                                 .rawServerSentEvent(event)
-                                .streamingHandle(context.streamingHandle())
+                                .streamingHandle(toStreamingHandle(context.parsingHandle()))
                                 .build();
                         partialResponseHandler.accept(parsedAndRawResponse); // do not handle exception, fail-fast
                     }

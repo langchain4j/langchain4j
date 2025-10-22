@@ -3,7 +3,6 @@ package dev.langchain4j.http.client.sse;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.io.InputStream;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 
 /**
  * @since 1.8.0
@@ -12,12 +11,12 @@ public class ServerSentEventParseRequest {
 
     private final InputStream inputStream;
     private final ServerSentEventListener listener;
-    private final StreamingHandle streamingHandle;
+    private final ServerSentEventParsingHandle parsingHandle;
 
     public ServerSentEventParseRequest(Builder builder) {
         this.inputStream = ensureNotNull(builder.inputStream, "inputStream");
         this.listener = ensureNotNull(builder.listener, "listener");
-        this.streamingHandle = ensureNotNull(builder.streamingHandle, "streamingHandle");
+        this.parsingHandle = ensureNotNull(builder.parsingHandle, "parsingHandle");
     }
 
     public InputStream inputStream() {
@@ -28,8 +27,8 @@ public class ServerSentEventParseRequest {
         return listener;
     }
 
-    public StreamingHandle streamingHandle() {
-        return streamingHandle;
+    public ServerSentEventParsingHandle parsingHandle() {
+        return parsingHandle;
     }
 
     public static Builder builder() {
@@ -40,7 +39,7 @@ public class ServerSentEventParseRequest {
 
         private InputStream inputStream;
         private ServerSentEventListener listener;
-        private StreamingHandle streamingHandle;
+        private ServerSentEventParsingHandle parsingHandle;
 
         public Builder inputStream(InputStream inputStream) {
             this.inputStream = inputStream;
@@ -52,8 +51,8 @@ public class ServerSentEventParseRequest {
             return this;
         }
 
-        public Builder streamingHandle(StreamingHandle streamingHandle) {
-            this.streamingHandle = streamingHandle;
+        public Builder parsingHandle(ServerSentEventParsingHandle parsingHandle) {
+            this.parsingHandle = parsingHandle;
             return this;
         }
 
