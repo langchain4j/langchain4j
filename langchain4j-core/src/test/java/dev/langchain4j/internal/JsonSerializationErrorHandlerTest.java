@@ -1,16 +1,14 @@
 package dev.langchain4j.internal;
 
+import static org.assertj.core.api.Assertions.*;
+
 import dev.langchain4j.exception.LangChain4jException;
-import org.junit.jupiter.api.Test;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.function.Supplier;
-
-import static org.assertj.core.api.Assertions.*;
 
 /**
  * Comprehensive unit tests for JsonSerializationErrorHandler.
@@ -25,12 +23,13 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should handle supplier error with null fallback")
         void shouldHandleSupplierErrorWithNullFallback() {
             RuntimeException supplierException = new RuntimeException("Supplier failed");
-            
+
             String result = JsonSerializationErrorHandler.handleSupplierError(supplierException, null);
-            
-            assertThat(result).contains("LazyEvaluation Error")
-                             .contains("RuntimeException")
-                             .contains("Supplier failed");
+
+            assertThat(result)
+                    .contains("LazyEvaluation Error")
+                    .contains("RuntimeException")
+                    .contains("Supplier failed");
         }
 
         @Test
@@ -38,9 +37,9 @@ class JsonSerializationErrorHandlerTest {
         void shouldHandleSupplierErrorWithSuccessfulFallback() {
             RuntimeException supplierException = new RuntimeException("Primary supplier failed");
             Supplier<Object> fallbackSupplier = () -> "fallback value";
-            
+
             String result = JsonSerializationErrorHandler.handleSupplierError(supplierException, fallbackSupplier);
-            
+
             assertThat(result).isEqualTo("fallback value");
         }
 
@@ -51,12 +50,13 @@ class JsonSerializationErrorHandlerTest {
             Supplier<Object> fallbackSupplier = () -> {
                 throw new IllegalStateException("Fallback also failed");
             };
-            
+
             String result = JsonSerializationErrorHandler.handleSupplierError(supplierException, fallbackSupplier);
-            
-            assertThat(result).contains("LazyEvaluation Multiple Errors")
-                             .contains("Primary[RuntimeException: Primary failed]")
-                             .contains("Fallback[IllegalStateException: Fallback also failed]");
+
+            assertThat(result)
+                    .contains("LazyEvaluation Multiple Errors")
+                    .contains("Primary[RuntimeException: Primary failed]")
+                    .contains("Fallback[IllegalStateException: Fallback also failed]");
         }
 
         @Test
@@ -64,9 +64,9 @@ class JsonSerializationErrorHandlerTest {
         void shouldHandleSupplierErrorWithFallbackReturningNull() {
             RuntimeException supplierException = new RuntimeException("Primary failed");
             Supplier<Object> fallbackSupplier = () -> null;
-            
+
             String result = JsonSerializationErrorHandler.handleSupplierError(supplierException, fallbackSupplier);
-            
+
             assertThat(result).isEqualTo("null");
         }
     }
@@ -80,9 +80,9 @@ class JsonSerializationErrorHandlerTest {
         void shouldHandleJsonSerializationErrorWithSuccessfulToString() {
             RuntimeException jsonException = new RuntimeException("JSON serialization failed");
             Object originalValue = "test value";
-            
+
             String result = JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, originalValue);
-            
+
             assertThat(result).isEqualTo("test value");
         }
 
@@ -90,9 +90,9 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should handle JSON serialization error with null value")
         void shouldHandleJsonSerializationErrorWithNullValue() {
             RuntimeException jsonException = new RuntimeException("JSON serialization failed");
-            
+
             String result = JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, null);
-            
+
             assertThat(result).isEqualTo("null");
         }
 
@@ -106,12 +106,14 @@ class JsonSerializationErrorHandlerTest {
                     throw new RuntimeException("toString also failed");
                 }
             };
-            
-            String result = JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, problematicObject);
-            
-            assertThat(result).contains("LazyEvaluation Error")
-                             .contains("RuntimeException")
-                             .contains("toString also failed");
+
+            String result =
+                    JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, problematicObject);
+
+            assertThat(result)
+                    .contains("LazyEvaluation Error")
+                    .contains("RuntimeException")
+                    .contains("toString also failed");
         }
     }
 
@@ -123,7 +125,7 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should handle toString fallback with null value")
         void shouldHandleToStringFallbackWithNull() {
             String result = JsonSerializationErrorHandler.handleToStringFallback(null);
-            
+
             assertThat(result).isEqualTo("null");
         }
 
@@ -131,9 +133,9 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should handle toString fallback with successful toString")
         void shouldHandleToStringFallbackWithSuccessfulToString() {
             Object value = "test value";
-            
+
             String result = JsonSerializationErrorHandler.handleToStringFallback(value);
-            
+
             assertThat(result).isEqualTo("test value");
         }
 
@@ -146,12 +148,13 @@ class JsonSerializationErrorHandlerTest {
                     throw new RuntimeException("toString failed");
                 }
             };
-            
+
             String result = JsonSerializationErrorHandler.handleToStringFallback(problematicObject);
-            
-            assertThat(result).contains("LazyEvaluation Error")
-                             .contains("RuntimeException")
-                             .contains("toString failed");
+
+            assertThat(result)
+                    .contains("LazyEvaluation Error")
+                    .contains("RuntimeException")
+                    .contains("toString failed");
         }
     }
 
@@ -163,9 +166,9 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should create error message for single exception")
         void shouldCreateErrorMessageForSingleException() {
             RuntimeException exception = new RuntimeException("Test error message");
-            
+
             String result = JsonSerializationErrorHandler.createErrorMessage(exception);
-            
+
             assertThat(result).isEqualTo("LazyEvaluation Error: RuntimeException - Test error message");
         }
 
@@ -173,9 +176,9 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should create error message for exception with null message")
         void shouldCreateErrorMessageForExceptionWithNullMessage() {
             RuntimeException exception = new RuntimeException((String) null);
-            
+
             String result = JsonSerializationErrorHandler.createErrorMessage(exception);
-            
+
             assertThat(result).isEqualTo("LazyEvaluation Error: RuntimeException - Unknown error");
         }
 
@@ -184,10 +187,12 @@ class JsonSerializationErrorHandlerTest {
         void shouldCreateErrorMessageForMultipleExceptions() {
             RuntimeException primaryException = new RuntimeException("Primary error");
             IllegalStateException fallbackException = new IllegalStateException("Fallback error");
-            
+
             String result = JsonSerializationErrorHandler.createErrorMessage(primaryException, fallbackException);
-            
-            assertThat(result).isEqualTo("LazyEvaluation Multiple Errors: Primary[RuntimeException: Primary error], Fallback[IllegalStateException: Fallback error]");
+
+            assertThat(result)
+                    .isEqualTo(
+                            "LazyEvaluation Multiple Errors: Primary[RuntimeException: Primary error], Fallback[IllegalStateException: Fallback error]");
         }
 
         @Test
@@ -195,10 +200,12 @@ class JsonSerializationErrorHandlerTest {
         void shouldCreateErrorMessageForMultipleExceptionsWithNullMessages() {
             RuntimeException primaryException = new RuntimeException((String) null);
             IllegalStateException fallbackException = new IllegalStateException((String) null);
-            
+
             String result = JsonSerializationErrorHandler.createErrorMessage(primaryException, fallbackException);
-            
-            assertThat(result).isEqualTo("LazyEvaluation Multiple Errors: Primary[RuntimeException: Unknown error], Fallback[IllegalStateException: Unknown error]");
+
+            assertThat(result)
+                    .isEqualTo(
+                            "LazyEvaluation Multiple Errors: Primary[RuntimeException: Unknown error], Fallback[IllegalStateException: Unknown error]");
         }
     }
 
@@ -211,22 +218,20 @@ class JsonSerializationErrorHandlerTest {
         void shouldCreateCriticalErrorWithMessageAndCause() {
             String message = "Critical error occurred";
             RuntimeException cause = new RuntimeException("Root cause");
-            
+
             LangChain4jException result = JsonSerializationErrorHandler.createCriticalError(message, cause);
-            
-            assertThat(result).hasMessage(message)
-                             .hasCause(cause);
+
+            assertThat(result).hasMessage(message).hasCause(cause);
         }
 
         @Test
         @DisplayName("Should create critical error with null cause")
         void shouldCreateCriticalErrorWithNullCause() {
             String message = "Critical error occurred";
-            
+
             LangChain4jException result = JsonSerializationErrorHandler.createCriticalError(message, null);
-            
-            assertThat(result).hasMessage(message)
-                             .hasNoCause();
+
+            assertThat(result).hasMessage(message).hasNoCause();
         }
     }
 
@@ -238,7 +243,7 @@ class JsonSerializationErrorHandlerTest {
         @DisplayName("Should validate non-null supplier successfully")
         void shouldValidateNonNullSupplierSuccessfully() {
             Supplier<Object> supplier = () -> "test";
-            
+
             assertThatCode(() -> JsonSerializationErrorHandler.validateSupplier(supplier, "testSupplier"))
                     .doesNotThrowAnyException();
         }

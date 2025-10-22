@@ -3,8 +3,8 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.LazyEvaluationConfig;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 
 public class ToolProviderRequest {
@@ -23,9 +23,8 @@ public class ToolProviderRequest {
     }
 
     public ToolProviderRequest(Object chatMemoryId, UserMessage userMessage) {
-        this.invocationContext = InvocationContext.builder()
-                .chatMemoryId(chatMemoryId)
-                .build();
+        this.invocationContext =
+                InvocationContext.builder().chatMemoryId(chatMemoryId).build();
         this.userMessage = ensureNotNull(userMessage, "userMessage");
         this.lazyEvaluationConfig = null;
     }

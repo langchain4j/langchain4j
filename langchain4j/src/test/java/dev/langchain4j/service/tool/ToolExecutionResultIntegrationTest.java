@@ -1,14 +1,13 @@
 package dev.langchain4j.service.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import org.junit.jupiter.api.Test;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class ToolExecutionResultIntegrationTest {
 
@@ -21,10 +20,8 @@ class ToolExecutionResultIntegrationTest {
         void shouldWorkWithExistingDefaultToolExecutor() throws NoSuchMethodException {
             // Given
             TestTools tools = new TestTools();
-            DefaultToolExecutor executor = new DefaultToolExecutor(
-                    tools, 
-                    TestTools.class.getDeclaredMethod("noArgTool")
-            );
+            DefaultToolExecutor executor =
+                    new DefaultToolExecutor(tools, TestTools.class.getDeclaredMethod("noArgTool"));
 
             ToolExecutionRequest request = ToolExecutionRequest.builder()
                     .name("noArgTool")
@@ -47,10 +44,8 @@ class ToolExecutionResultIntegrationTest {
         void shouldHandleComplexObjectSerialization() throws NoSuchMethodException {
             // Given
             TestTools tools = new TestTools();
-            DefaultToolExecutor executor = new DefaultToolExecutor(
-                    tools, 
-                    TestTools.class.getDeclaredMethod("complexObjectTool")
-            );
+            DefaultToolExecutor executor =
+                    new DefaultToolExecutor(tools, TestTools.class.getDeclaredMethod("complexObjectTool"));
 
             ToolExecutionRequest request = ToolExecutionRequest.builder()
                     .name("complexObjectTool")
@@ -64,11 +59,11 @@ class ToolExecutionResultIntegrationTest {
             assertThat(result).isNotNull();
             assertThat(result.isError()).isFalse();
             assertThat(result.result()).isInstanceOf(ComplexObject.class);
-            
+
             ComplexObject complexResult = (ComplexObject) result.result();
             assertThat(complexResult.getName()).isEqualTo("John");
             assertThat(complexResult.getId()).isEqualTo(42);
-            
+
             String resultText = result.resultText();
             assertThat(resultText).contains("John");
             assertThat(resultText).contains("42");
@@ -79,10 +74,8 @@ class ToolExecutionResultIntegrationTest {
         void shouldHandleVoidReturnType() throws NoSuchMethodException {
             // Given
             TestTools tools = new TestTools();
-            DefaultToolExecutor executor = new DefaultToolExecutor(
-                    tools, 
-                    TestTools.class.getDeclaredMethod("voidTool")
-            );
+            DefaultToolExecutor executor =
+                    new DefaultToolExecutor(tools, TestTools.class.getDeclaredMethod("voidTool"));
 
             ToolExecutionRequest request = ToolExecutionRequest.builder()
                     .name("voidTool")
@@ -104,10 +97,8 @@ class ToolExecutionResultIntegrationTest {
         void shouldHandleToolExecutionErrors() throws NoSuchMethodException {
             // Given
             TestTools tools = new TestTools();
-            DefaultToolExecutor executor = new DefaultToolExecutor(
-                    tools, 
-                    TestTools.class.getDeclaredMethod("errorTool")
-            );
+            DefaultToolExecutor executor =
+                    new DefaultToolExecutor(tools, TestTools.class.getDeclaredMethod("errorTool"));
 
             ToolExecutionRequest request = ToolExecutionRequest.builder()
                     .name("errorTool")

@@ -1,16 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.agent.tool.LazyEvaluationMode;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import org.junit.jupiter.api.Test;
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-
-import java.lang.reflect.Method;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class ToolServiceTest {
 
@@ -32,10 +31,10 @@ class ToolServiceTest {
             LazyEvaluationConfig config = LazyEvaluationConfig.builder()
                     .mode(LazyEvaluationMode.ENABLED)
                     .build();
-            
+
             ToolService toolService = new ToolService();
             toolService.lazyEvaluationConfig(config);
-            
+
             TestTool testTool = new TestTool();
             Method testMethod = TestTool.class.getDeclaredMethod("testMethod");
 
@@ -72,10 +71,10 @@ class ToolServiceTest {
             LazyEvaluationConfig serviceConfig = LazyEvaluationConfig.builder()
                     .mode(LazyEvaluationMode.DISABLED)
                     .build();
-            
+
             ToolService toolService = new ToolService();
             toolService.lazyEvaluationConfig(serviceConfig);
-            
+
             TestTool testTool = new TestTool();
             Method testMethod = TestTool.class.getDeclaredMethod("testMethod");
 
@@ -95,14 +94,14 @@ class ToolServiceTest {
             LazyEvaluationConfig serviceConfig = LazyEvaluationConfig.builder()
                     .mode(LazyEvaluationMode.DISABLED)
                     .build();
-            
+
             LazyEvaluationConfig methodConfig = LazyEvaluationConfig.builder()
                     .mode(LazyEvaluationMode.ENABLED)
                     .build();
-            
+
             ToolService toolService = new ToolService();
             toolService.lazyEvaluationConfig(serviceConfig);
-            
+
             TestTool testTool = new TestTool();
             Method testMethod = TestTool.class.getDeclaredMethod("testMethod");
 
@@ -132,10 +131,9 @@ class ToolServiceTest {
         @DisplayName("Should return set config when config is explicitly set")
         void shouldReturnSetConfigWhenConfigIsExplicitlySet() {
             // Given
-            LazyEvaluationConfig expectedConfig = LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.AUTO)
-                    .build();
-            
+            LazyEvaluationConfig expectedConfig =
+                    LazyEvaluationConfig.builder().mode(LazyEvaluationMode.AUTO).build();
+
             ToolService toolService = new ToolService();
             toolService.lazyEvaluationConfig(expectedConfig);
 
@@ -172,13 +170,13 @@ class ToolServiceTest {
             // Then
             assertThat(executor).isInstanceOf(DefaultToolExecutor.class);
             assertThat(executor).isNotNull();
-            
+
             // Verify it can execute tools
             ToolExecutionRequest request = ToolExecutionRequest.builder()
                     .name("testMethod")
                     .arguments("{}")
                     .build();
-            
+
             String result = executor.execute(request, "DEFAULT");
             assertThat(result).isEqualTo("test result");
         }
@@ -190,15 +188,16 @@ class ToolServiceTest {
             LazyEvaluationConfig config = LazyEvaluationConfig.builder()
                     .mode(LazyEvaluationMode.ENABLED)
                     .build();
-            
+
             ToolService toolService = new ToolService();
             toolService.lazyEvaluationConfig(config);
-            
+
             TestTool testTool = new TestTool();
             Method testMethod = TestTool.class.getDeclaredMethod("testMethod");
 
             // When - this simulates what processToolMethod does internally
-            ToolExecutor executor = toolService.createToolExecutor(testTool, testMethod, toolService.lazyEvaluationConfig());
+            ToolExecutor executor =
+                    toolService.createToolExecutor(testTool, testMethod, toolService.lazyEvaluationConfig());
 
             // Then
             assertThat(executor).isInstanceOf(DefaultToolExecutor.class);

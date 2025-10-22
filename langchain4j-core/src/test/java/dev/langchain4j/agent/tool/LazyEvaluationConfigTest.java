@@ -1,13 +1,13 @@
 package dev.langchain4j.agent.tool;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.*;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.*;
 
 class LazyEvaluationConfigTest {
 
@@ -136,9 +136,9 @@ class LazyEvaluationConfigTest {
         @DisplayName("Should reject tools in both lazy and eager sets")
         void shouldRejectToolsInBothLazyAndEagerSets() {
             assertThatThrownBy(() -> LazyEvaluationConfig.builder()
-                    .addLazyTool("conflictTool")
-                    .addEagerTool("conflictTool")
-                    .build())
+                            .addLazyTool("conflictTool")
+                            .addEagerTool("conflictTool")
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("both lazy and eager")
                     .hasMessageContaining("conflictTool");
@@ -148,9 +148,9 @@ class LazyEvaluationConfigTest {
         @DisplayName("Should reject lazy tools in IMMEDIATE_ONLY mode")
         void shouldRejectLazyToolsInImmediateOnlyMode() {
             assertThatThrownBy(() -> LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.IMMEDIATE_ONLY)
-                    .addLazyTool("someTool")
-                    .build())
+                            .mode(LazyEvaluationMode.IMMEDIATE_ONLY)
+                            .addLazyTool("someTool")
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("IMMEDIATE_ONLY mode cannot have explicit lazy tools");
         }
@@ -214,10 +214,10 @@ class LazyEvaluationConfigTest {
             // This test verifies that validation prevents conflicting tool assignments
             // The validation should occur during build(), not after
             assertThatThrownBy(() -> LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.ENABLED)
-                    .addLazyTool("conflictTool")
-                    .addEagerTool("conflictTool")
-                    .build())
+                            .mode(LazyEvaluationMode.ENABLED)
+                            .addLazyTool("conflictTool")
+                            .addEagerTool("conflictTool")
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("both lazy and eager")
                     .hasMessageContaining("conflictTool");
@@ -227,9 +227,8 @@ class LazyEvaluationConfigTest {
         @EnumSource(LazyEvaluationMode.class)
         @DisplayName("Should handle all modes for unknown tools")
         void shouldHandleAllModesForUnknownTools(LazyEvaluationMode mode) {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .mode(mode)
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().mode(mode).build();
 
             boolean result = config.shouldUseLazyEvaluation("unknownTool");
 
@@ -245,35 +244,29 @@ class LazyEvaluationConfigTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {
-                "expensiveCalculation",
-                "slowProcess",
-                "heavyComputation",
-                "complexAnalysis",
-                "dataAnalysis",
-                "performCalculation"
-        })
+        @ValueSource(
+                strings = {
+                    "expensiveCalculation",
+                    "slowProcess",
+                    "heavyComputation",
+                    "complexAnalysis",
+                    "dataAnalysis",
+                    "performCalculation"
+                })
         @DisplayName("Should use lazy evaluation for expensive-sounding tools in AUTO mode")
         void shouldUseLazyEvaluationForExpensiveToolsInAutoMode(String toolName) {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.AUTO)
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().mode(LazyEvaluationMode.AUTO).build();
 
             assertThat(config.shouldUseLazyEvaluation(toolName)).isTrue();
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {
-                "simpleTool",
-                "quickCheck",
-                "basicValidation",
-                "fastLookup"
-        })
+        @ValueSource(strings = {"simpleTool", "quickCheck", "basicValidation", "fastLookup"})
         @DisplayName("Should not use lazy evaluation for simple tools in AUTO mode")
         void shouldNotUseLazyEvaluationForSimpleToolsInAutoMode(String toolName) {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.AUTO)
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().mode(LazyEvaluationMode.AUTO).build();
 
             assertThat(config.shouldUseLazyEvaluation(toolName)).isFalse();
         }
@@ -319,9 +312,8 @@ class LazyEvaluationConfigTest {
         @Test
         @DisplayName("AUTO mode should use heuristics")
         void autoModeShouldUseHeuristics() {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .mode(LazyEvaluationMode.AUTO)
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().mode(LazyEvaluationMode.AUTO).build();
 
             // Test heuristic patterns
             assertThat(config.shouldUseLazyEvaluation("expensiveOperation")).isTrue();
@@ -367,20 +359,17 @@ class LazyEvaluationConfigTest {
         @Test
         @DisplayName("lazyTools should return unmodifiable set")
         void lazyToolsShouldReturnUnmodifiableSet() {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .addLazyTool("tool1")
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().addLazyTool("tool1").build();
 
-            assertThatThrownBy(() -> config.lazyTools().add("tool2"))
-                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThatThrownBy(() -> config.lazyTools().add("tool2")).isInstanceOf(UnsupportedOperationException.class);
         }
 
         @Test
         @DisplayName("eagerTools should return unmodifiable set")
         void eagerToolsShouldReturnUnmodifiableSet() {
-            LazyEvaluationConfig config = LazyEvaluationConfig.builder()
-                    .addEagerTool("tool1")
-                    .build();
+            LazyEvaluationConfig config =
+                    LazyEvaluationConfig.builder().addEagerTool("tool1").build();
 
             assertThatThrownBy(() -> config.eagerTools().add("tool2"))
                     .isInstanceOf(UnsupportedOperationException.class);
@@ -429,13 +418,11 @@ class LazyEvaluationConfigTest {
         @Test
         @DisplayName("Should not be equal when lazy tools differ")
         void shouldNotBeEqualWhenLazyToolsDiffer() {
-            LazyEvaluationConfig config1 = LazyEvaluationConfig.builder()
-                    .addLazyTool("tool1")
-                    .build();
+            LazyEvaluationConfig config1 =
+                    LazyEvaluationConfig.builder().addLazyTool("tool1").build();
 
-            LazyEvaluationConfig config2 = LazyEvaluationConfig.builder()
-                    .addLazyTool("tool2")
-                    .build();
+            LazyEvaluationConfig config2 =
+                    LazyEvaluationConfig.builder().addLazyTool("tool2").build();
 
             assertThat(config1).isNotEqualTo(config2);
         }

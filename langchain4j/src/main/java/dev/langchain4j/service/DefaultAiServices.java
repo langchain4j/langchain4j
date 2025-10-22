@@ -22,9 +22,9 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -57,7 +57,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -185,12 +184,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
         validate();
-        
+
         // Pass lazy evaluation configuration from AiServiceContext to ToolService
         // Use default configuration if none is specified
-        LazyEvaluationConfig configToUse = context.lazyEvaluationConfig != null 
-            ? context.lazyEvaluationConfig 
-            : LazyEvaluationConfig.defaultConfig();
+        LazyEvaluationConfig configToUse = context.lazyEvaluationConfig != null
+                ? context.lazyEvaluationConfig
+                : LazyEvaluationConfig.defaultConfig();
         context.toolService.lazyEvaluationConfig(configToUse);
 
         Object proxyInstance = Proxy.newProxyInstance(

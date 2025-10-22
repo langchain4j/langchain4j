@@ -1,11 +1,10 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.internal.Json;
+import static dev.langchain4j.internal.Utils.quoted;
 
+import dev.langchain4j.internal.Json;
 import java.util.Objects;
 import java.util.function.Supplier;
-
-import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents the result of a tool execution.
@@ -28,10 +27,14 @@ public class ToolExecutionResult {
         this.lazyResultText = null;
         this.useLazyEvaluation = false;
     }
-    
+
     // New constructor for lazy evaluation
-    public ToolExecutionResult(boolean isError, Object result, String resultText, 
-                             Supplier<Object> lazyResultText, boolean useLazyEvaluation) {
+    public ToolExecutionResult(
+            boolean isError,
+            Object result,
+            String resultText,
+            Supplier<Object> lazyResultText,
+            boolean useLazyEvaluation) {
         this.isError = isError;
         this.result = result;
         this.resultText = resultText;
@@ -53,10 +56,10 @@ public class ToolExecutionResult {
         }
         return resultText;
     }
-    
+
     /**
      * Checks if the result text has been computed when using lazy evaluation.
-     * 
+     *
      * @return true if lazy result text has been computed, false otherwise.
      *         Always returns true when not using lazy evaluation.
      */
@@ -66,7 +69,7 @@ public class ToolExecutionResult {
         }
         return isLazyResultComputed;
     }
-    
+
     private String getLazyResultText() {
         if (!isLazyResultComputed) {
             synchronized (lazyLock) {
@@ -84,22 +87,22 @@ public class ToolExecutionResult {
         }
         return cachedLazyResult;
     }
-    
+
     private String computeJsonString(Object value) {
         // Handle void return type
         if (value == null) {
             return "Success";
         }
-        
+
         // Handle String return type without JSON processing
         if (value instanceof String) {
             return (String) value;
         }
-        
+
         // Use existing Json.toJson() utility for other types
         return Json.toJson(value);
     }
-    
+
     private String handleSerializationError(Exception e) {
         // Attempt fallback to toString()
         if (lazyResultText != null) {
@@ -119,9 +122,9 @@ public class ToolExecutionResult {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ToolExecutionResult that = (ToolExecutionResult) o;
-        return isError == that.isError &&
-                Objects.equals(result, that.result) &&
-                Objects.equals(resultText(), that.resultText());
+        return isError == that.isError
+                && Objects.equals(result, that.result)
+                && Objects.equals(resultText(), that.resultText());
     }
 
     @Override
@@ -131,11 +134,10 @@ public class ToolExecutionResult {
 
     @Override
     public String toString() {
-        return "ToolExecutionResult {" +
-                " isError = " + isError +
-                ", result = " + quoted(result) +
-                ", resultText = " + quoted(resultText()) +
-                " }";
+        return "ToolExecutionResult {" + " isError = "
+                + isError + ", result = "
+                + quoted(result) + ", resultText = "
+                + quoted(resultText()) + " }";
     }
 
     public static Builder builder() {
@@ -164,12 +166,12 @@ public class ToolExecutionResult {
             this.resultText = resultText;
             return this;
         }
-        
+
         /**
          * Enables lazy evaluation with the provided result text supplier.
          * When lazy evaluation is enabled, the result text will be computed on-demand
          * using the supplier and cached for subsequent access.
-         * 
+         *
          * @param lazyResultText the supplier that provides the result text value
          * @return this builder
          */
@@ -178,10 +180,10 @@ public class ToolExecutionResult {
             this.useLazyEvaluation = true;
             return this;
         }
-        
+
         /**
          * Explicitly controls whether to use lazy evaluation.
-         * 
+         *
          * @param useLazyEvaluation true to enable lazy evaluation, false to disable
          * @return this builder
          */

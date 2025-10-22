@@ -8,7 +8,7 @@ package dev.langchain4j.agent.tool;
  * </p>
  */
 public enum LazyEvaluationMode {
-    
+
     /**
      * Lazy evaluation is completely disabled.
      * <p>
@@ -17,7 +17,7 @@ public enum LazyEvaluationMode {
      * </p>
      */
     DISABLED,
-    
+
     /**
      * Only immediate evaluation is allowed.
      * <p>
@@ -27,7 +27,7 @@ public enum LazyEvaluationMode {
      * </p>
      */
     IMMEDIATE_ONLY,
-    
+
     /**
      * Lazy evaluation is fully enabled.
      * <p>
@@ -37,7 +37,7 @@ public enum LazyEvaluationMode {
      * </p>
      */
     ENABLED,
-    
+
     /**
      * Automatic mode that intelligently decides when to use lazy evaluation.
      * <p>

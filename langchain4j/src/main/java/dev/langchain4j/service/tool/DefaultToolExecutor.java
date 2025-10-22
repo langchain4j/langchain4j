@@ -1,5 +1,10 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
 import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -11,7 +16,6 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -22,11 +26,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -133,9 +132,8 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
-        InvocationContext invocationContext = InvocationContext.builder()
-                .chatMemoryId(memoryId)
-                .build();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
 
         ToolExecutionResult result = executeWithContext(request, invocationContext);
 
@@ -144,7 +142,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     /**
      * Extracts the tool name from the request or method annotations.
-     * 
+     *
      * @return the tool name
      */
     private String extractToolName() {
@@ -152,14 +150,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (toolAnnotation != null && !toolAnnotation.name().isEmpty()) {
             return toolAnnotation.name();
         }
-        
+
         // Default to method name
         return originalMethod.getName();
     }
 
     /**
      * Determines if the current tool is an IMMEDIATE tool based on its annotation.
-     * 
+     *
      * @return true if the tool has IMMEDIATE return behavior, false otherwise
      */
     private boolean isImmediateTool() {
@@ -182,10 +180,10 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
-        
+
         String toolName = extractToolName();
         boolean isImmediate = isImmediateTool();
-        
+
         if (lazyEvaluationConfig.shouldUseLazyEvaluation(toolName)) {
             return ToolExecutionResult.builder()
                     .result(result)
@@ -392,7 +390,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     /**
      * Returns the lazy evaluation configuration for this tool executor.
-     * 
+     *
      * @return the lazy evaluation configuration
      */
     public LazyEvaluationConfig lazyEvaluationConfig() {

@@ -1,23 +1,22 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.function.Supplier;
 
 /**
  * A utility class that provides JSON serialization on demand.
  * This class defers the expensive JSON serialization operation until the result is actually needed,
  * computing the JSON string fresh on each access.
- * 
+ *
  * <p>Special handling is provided for:</p>
  * <ul>
  *   <li>Void return types - returns "Success" message</li>
  *   <li>String return types - returns the string directly without JSON processing</li>
  *   <li>Error conditions - falls back to toString() method with comprehensive error handling</li>
  * </ul>
- * 
+ *
  * <p>Enhanced error handling includes:</p>
  * <ul>
  *   <li>Supplier execution failures with proper logging and fallback strategies</li>
@@ -28,12 +27,12 @@ import java.util.function.Supplier;
  */
 @Internal
 public class LazyJsonString {
-    
+
     private static final Logger log = LoggerFactory.getLogger(LazyJsonString.class);
-    
+
     private final Supplier<Object> valueSupplier;
     private volatile Exception lastError;
-    
+
     /**
      * Creates a new LazyJsonString with the given value supplier.
      *
@@ -78,11 +77,11 @@ public class LazyJsonString {
             return JsonSerializationErrorHandler.handleSupplierError(supplierException, null);
         }
     }
-    
+
     /**
      * Computes the JSON string representation of the given value.
      * Handles special cases for void and String types.
-     * 
+     *
      * @param value the value to convert to JSON
      * @return the JSON string representation
      */
@@ -91,26 +90,28 @@ public class LazyJsonString {
         if (value == null) {
             return "Success";
         }
-        
+
         // Handle String return type without JSON processing
         if (value instanceof String) {
             return (String) value;
         }
-        
+
         // Use existing Json.toJson() utility for other types with error handling
         try {
             return Json.toJson(value);
         } catch (Exception jsonException) {
-            log.warn("JSON serialization failed for object of type {}: {}", 
-                    value.getClass().getSimpleName(), jsonException.getMessage());
+            log.warn(
+                    "JSON serialization failed for object of type {}: {}",
+                    value.getClass().getSimpleName(),
+                    jsonException.getMessage());
             lastError = jsonException;
             return JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, value);
         }
     }
-    
+
     /**
      * Serializes the given value to JSON with comprehensive error handling.
-     * 
+     *
      * @param value the value to serialize
      * @return JSON string representation or fallback string
      */
@@ -119,19 +120,23 @@ public class LazyJsonString {
             log.debug("Value is null, returning 'null'");
             return "null";
         }
-        
+
         if (value instanceof String) {
             log.debug("Value is already a String, returning directly");
             return (String) value;
         }
-        
+
         try {
-            log.debug("Attempting JSON serialization for object of type: {}", value.getClass().getSimpleName());
+            log.debug(
+                    "Attempting JSON serialization for object of type: {}",
+                    value.getClass().getSimpleName());
             String result = Json.toJson(value);
             return result;
         } catch (Exception jsonException) {
-            log.warn("JSON serialization failed for object of type {}: {}", 
-                    value.getClass().getSimpleName(), jsonException.getMessage());
+            log.warn(
+                    "JSON serialization failed for object of type {}: {}",
+                    value.getClass().getSimpleName(),
+                    jsonException.getMessage());
             lastError = jsonException;
             return JsonSerializationErrorHandler.handleJsonSerializationError(jsonException, value);
         }
@@ -139,7 +144,7 @@ public class LazyJsonString {
 
     /**
      * Gets the last error that occurred during evaluation, if any.
-     * 
+     *
      * @return the last exception that occurred, or null if no error
      */
     public Exception getLastError() {
@@ -148,17 +153,17 @@ public class LazyJsonString {
 
     /**
      * Checks if an error occurred during the last evaluation attempt.
-     * 
+     *
      * @return true if an error occurred, false otherwise
      */
     public boolean hasError() {
         return lastError != null;
     }
-    
+
     /**
      * Returns the string representation of this LazyJsonString.
      * Always returns a placeholder indicating on-demand evaluation.
-     * 
+     *
      * @return string representation
      */
     @Override
@@ -169,7 +174,7 @@ public class LazyJsonString {
     /**
      * Checks equality based on the computed JSON string value.
      * Two LazyJsonString instances are equal if their computed values are equal.
-     * 
+     *
      * @param obj the object to compare with
      * @return true if equal, false otherwise
      */
@@ -186,10 +191,10 @@ public class LazyJsonString {
         String otherValue = other.getValue();
         return thisValue != null ? thisValue.equals(otherValue) : otherValue == null;
     }
-    
+
     /**
      * Returns the hash code based on the computed JSON string value.
-     * 
+     *
      * @return hash code
      */
     @Override

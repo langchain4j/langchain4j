@@ -927,7 +927,7 @@ public abstract class AiServices<T> {
      *     .addLazyTool("expensiveCalculation")
      *     .enablePerformanceMonitoring(true)
      *     .build();
-     * 
+     *
      * AiServices.builder(MyService.class)
      *     .chatModel(chatModel)
      *     .lazyEvaluationConfig(config)
@@ -959,9 +959,8 @@ public abstract class AiServices<T> {
      * @return the current instance of {@link AiServices} with lazy evaluation enabled
      */
     public AiServices<T> enableLazyEvaluation() {
-        return lazyEvaluationConfig(LazyEvaluationConfig.builder()
-                .mode(LazyEvaluationMode.ENABLED)
-                .build());
+        return lazyEvaluationConfig(
+                LazyEvaluationConfig.builder().mode(LazyEvaluationMode.ENABLED).build());
     }
 
     /**
