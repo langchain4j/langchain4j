@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -239,6 +240,82 @@ public abstract class HttpClientIT {
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
             inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
+            inOrder.verify(spyListener, times(1)).onClose();
+            inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
+        }
+    }
+
+    @Test
+    void should_cancel_streaming_async() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            int cancelAfterNumberOfEvents = 5;
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "Tell me a story about kittens"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
+
+            // when
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                private AtomicInteger counter = new AtomicInteger();
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    counter.incrementAndGet();
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    if (counter.incrementAndGet() >= cancelAfterNumberOfEvents) {
+                        context.parsingHandle().cancel();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    completableFuture.completeExceptionally(throwable);
+                }
+
+                @Override
+                public void onClose() {
+                    completableFuture.complete(null);
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+
+            // then
+            completableFuture.get(30, TimeUnit.SECONDS);
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onOpen(any());
+            inOrder.verify(spyListener, times(cancelAfterNumberOfEvents)).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);
