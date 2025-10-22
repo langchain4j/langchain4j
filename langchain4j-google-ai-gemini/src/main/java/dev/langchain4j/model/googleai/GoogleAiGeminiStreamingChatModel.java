@@ -13,7 +13,11 @@ import java.util.List;
 public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implements StreamingChatModel {
 
     public GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder builder) {
-        super(builder);
+        this(builder, buildGeminiService(builder));
+    }
+
+    GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder builder, GeminiService geminiService) {
+        super(builder, geminiService);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {

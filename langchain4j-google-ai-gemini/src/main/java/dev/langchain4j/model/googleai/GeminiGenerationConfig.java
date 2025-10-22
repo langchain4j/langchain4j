@@ -2,75 +2,25 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-class GeminiGenerationConfig {
-
-    @JsonProperty("stopSequences")
-    private final List<String> stopSequences;
-
-    @JsonProperty("responseMimeType")
-    private final String responseMimeType;
-
-    @JsonProperty("responseSchema")
-    private final GeminiSchema responseSchema;
-
-    @JsonProperty("candidateCount")
-    private final Integer candidateCount;
-
-    @JsonProperty("maxOutputTokens")
-    private final Integer maxOutputTokens;
-
-    @JsonProperty("temperature")
-    private final Double temperature;
-
-    @JsonProperty("topK")
-    private final Integer topK;
-
-    @JsonProperty("seed")
-    private Integer seed;
-
-    @JsonProperty("topP")
-    private final Double topP;
-
-    @JsonProperty("presencePenalty")
-    private final Double presencePenalty;
-
-    @JsonProperty("frequencyPenalty")
-    private final Double frequencyPenalty;
-
-    @JsonProperty("thinkingConfig")
-    private final GeminiThinkingConfig thinkingConfig;
-
-    @JsonProperty("responseLogprobs")
-    private final Boolean responseLogprobs;
-
-    @JsonProperty("enableEnhancedCivicAnswers")
-    private final Boolean enableEnhancedCivicAnswers;
-
-    @JsonProperty("logprobs")
-    private final Integer logprobs;
-
-    GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
-        this.stopSequences = builder.stopSequences;
-        this.responseMimeType = builder.responseMimeType;
-        this.responseSchema = builder.responseSchema;
-        this.candidateCount = builder.candidateCount;
-        this.maxOutputTokens = builder.maxOutputTokens;
-        this.temperature = builder.temperature;
-        this.topK = builder.topK;
-        this.seed = builder.seed;
-        this.topP = builder.topP;
-        this.presencePenalty = builder.presencePenalty;
-        this.frequencyPenalty = builder.frequencyPenalty;
-        this.responseLogprobs = builder.responseLogprobs;
-        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
-        this.thinkingConfig = builder.thinkingConfig;
-        this.logprobs = builder.logprobs;
-    }
+record GeminiGenerationConfig(
+        @JsonProperty("stopSequences") List<String> stopSequences,
+        @JsonProperty("responseMimeType") String responseMimeType,
+        @JsonProperty("responseSchema") GeminiSchema responseSchema,
+        @JsonProperty("candidateCount") Integer candidateCount,
+        @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
+        @JsonProperty("temperature") Double temperature,
+        @JsonProperty("topK") Integer topK,
+        @JsonProperty("seed") Integer seed,
+        @JsonProperty("topP") Double topP,
+        @JsonProperty("presencePenalty") Double presencePenalty,
+        @JsonProperty("frequencyPenalty") Double frequencyPenalty,
+        @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
+        @JsonProperty("responseLogprobs") Boolean responseLogprobs,
+        @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
+        @JsonProperty("logprobs") Integer logprobs) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
@@ -172,7 +122,22 @@ class GeminiGenerationConfig {
         }
 
         GeminiGenerationConfig build() {
-            return new GeminiGenerationConfig(this);
+            return new GeminiGenerationConfig(
+                    stopSequences,
+                    responseMimeType,
+                    responseSchema,
+                    candidateCount,
+                    maxOutputTokens,
+                    temperature,
+                    topK,
+                    seed,
+                    topP,
+                    presencePenalty,
+                    frequencyPenalty,
+                    thinkingConfig,
+                    responseLogprobs,
+                    enableEnhancedCivicAnswers,
+                    logprobs);
         }
     }
 }
