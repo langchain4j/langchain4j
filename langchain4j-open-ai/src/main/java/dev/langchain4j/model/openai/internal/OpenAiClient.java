@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -19,15 +20,15 @@ import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
 
-    public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
+    public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request, RequestContext context);
 
-    public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
+    public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request, RequestContext context);
 
-    public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);
+    public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request, RequestContext context);
 
-    public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);
+    public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request, RequestContext context);
 
-    public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
+    public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request, RequestContext context);
 
     @SuppressWarnings("rawtypes")
     public static Builder builder() {

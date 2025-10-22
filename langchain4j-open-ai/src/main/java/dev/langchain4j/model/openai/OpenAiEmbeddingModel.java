@@ -12,6 +12,7 @@ import static java.time.Duration.ofSeconds;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
@@ -126,7 +127,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
 
         EmbeddingResponse response =
-                withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
+                withRetryMappingExceptions(() -> client.embedding(request, RequestContext.EMPTY).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
