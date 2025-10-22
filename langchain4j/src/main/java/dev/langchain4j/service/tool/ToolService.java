@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -66,6 +67,7 @@ public class ToolService {
     private int maxSequentialToolsInvocations = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
+    private LazyEvaluationConfig lazyEvaluationConfig;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
@@ -105,7 +107,7 @@ public class ToolService {
         }
         toolSpecifications.add(toolSpecification);
 
-        ToolExecutor toolExecutor = createToolExecutor(object, method);
+        ToolExecutor toolExecutor = createToolExecutor(object, method, lazyEvaluationConfig());
         toolExecutors.put(toolSpecification.name(), toolExecutor);
 
         if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
@@ -113,13 +115,18 @@ public class ToolService {
         }
     }
 
-    private static ToolExecutor createToolExecutor(Object object, Method method) {
+    public static ToolExecutor createToolExecutor(Object object, Method method) {
+        return createToolExecutor(object, method, LazyEvaluationConfig.defaultConfig());
+    }
+
+    public static ToolExecutor createToolExecutor(Object object, Method method, LazyEvaluationConfig lazyEvaluationConfig) {
         return DefaultToolExecutor.builder()
                 .object(object)
                 .originalMethod(method)
                 .methodToInvoke(method)
                 .wrapToolArgumentsExceptions(true)
                 .propagateToolExecutionExceptions(true)
+                .lazyEvaluationConfig(lazyEvaluationConfig)
                 .build();
     }
 
@@ -171,6 +178,20 @@ public class ToolService {
      */
     public ToolExecutionErrorHandler executionErrorHandler() {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public void lazyEvaluationConfig(LazyEvaluationConfig lazyEvaluationConfig) {
+        this.lazyEvaluationConfig = lazyEvaluationConfig;
+    }
+
+    /**
+     * @since 1.4.0
+     */
+    public LazyEvaluationConfig lazyEvaluationConfig() {
+        return getOrDefault(lazyEvaluationConfig, LazyEvaluationConfig.defaultConfig());
     }
 
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {

@@ -7,6 +7,8 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
+import dev.langchain4j.agent.tool.LazyEvaluationMode;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -909,6 +911,57 @@ public abstract class AiServices<T> {
     public <O extends OutputGuardrail> AiServices<T> outputGuardrails(O... guardrails) {
         context.guardrailServiceBuilder.outputGuardrails(guardrails);
         return this;
+    }
+
+    /**
+     * Configures lazy evaluation behavior for tool execution results.
+     * <p>
+     * This configuration controls when tool execution results are evaluated during AI service interactions.
+     * It supports different evaluation modes, explicit tool overrides, and performance monitoring capabilities.
+     * </p>
+     * <p>
+     * Example usage:
+     * <pre>{@code
+     * LazyEvaluationConfig config = LazyEvaluationConfig.builder()
+     *     .mode(LazyEvaluationMode.AUTO)
+     *     .addLazyTool("expensiveCalculation")
+     *     .enablePerformanceMonitoring(true)
+     *     .build();
+     * 
+     * AiServices.builder(MyService.class)
+     *     .chatModel(chatModel)
+     *     .lazyEvaluationConfig(config)
+     *     .build();
+     * }</pre>
+     *
+     * @param lazyEvaluationConfig the lazy evaluation configuration to be used; must not be null
+     * @return the current instance of {@link AiServices} with the specified lazy evaluation configuration
+     * @throws IllegalArgumentException if lazyEvaluationConfig is null
+     */
+    public AiServices<T> lazyEvaluationConfig(LazyEvaluationConfig lazyEvaluationConfig) {
+        context.lazyEvaluationConfig = ensureNotNull(lazyEvaluationConfig, "lazyEvaluationConfig");
+        return this;
+    }
+
+    /**
+     * Enables lazy evaluation for all tools with default configuration.
+     * <p>
+     * This is a convenience method equivalent to:
+     * <pre>{@code
+     * lazyEvaluationConfig(LazyEvaluationConfig.builder()
+     *     .mode(LazyEvaluationMode.ENABLED)
+     *     .build())
+     * }</pre>
+     * <p>
+     * When lazy evaluation is enabled, tool execution results are computed only when needed,
+     * which can improve performance for expensive operations that may not always be required.
+     *
+     * @return the current instance of {@link AiServices} with lazy evaluation enabled
+     */
+    public AiServices<T> enableLazyEvaluation() {
+        return lazyEvaluationConfig(LazyEvaluationConfig.builder()
+                .mode(LazyEvaluationMode.ENABLED)
+                .build());
     }
 
     /**

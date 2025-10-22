@@ -390,6 +390,15 @@ public class DefaultToolExecutor implements ToolExecutor {
         return doubleValue.equals(Math.floor(doubleValue));
     }
 
+    /**
+     * Returns the lazy evaluation configuration for this tool executor.
+     * 
+     * @return the lazy evaluation configuration
+     */
+    public LazyEvaluationConfig lazyEvaluationConfig() {
+        return lazyEvaluationConfig;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
