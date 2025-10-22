@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +36,7 @@ class LazyJsonStringTest {
         void shouldThrowExceptionWhenSupplierIsNull() {
             assertThatThrownBy(() -> new LazyJsonString(null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Value supplier cannot be null");
+                .hasMessage("Supplier parameter 'valueSupplier' cannot be null");
         }
     }
     
@@ -146,7 +147,7 @@ class LazyJsonStringTest {
             
             String result = lazyJsonString.getValue();
             
-            assertThat(result).startsWith("Error:");
+            assertThat(result).startsWith("LazyEvaluation Error:");
         }
         
         @Test
@@ -158,7 +159,79 @@ class LazyJsonStringTest {
             
             String result = lazyJsonString.getValue();
             
-            assertThat(result).startsWith("Error:");
+            assertThat(result).startsWith("LazyEvaluation Error:");
+        }
+        
+        @Test
+        void shouldTrackLastError() {
+            Supplier<Object> supplier = () -> {
+                throw new RuntimeException("Test error");
+            };
+            LazyJsonString lazyJsonString = new LazyJsonString(supplier);
+            
+            // Initially no error
+            assertThat(lazyJsonString.hasError()).isFalse();
+            assertThat(lazyJsonString.getLastError()).isNull();
+            
+            // After error occurs
+            lazyJsonString.getValue();
+            assertThat(lazyJsonString.hasError()).isTrue();
+            assertThat(lazyJsonString.getLastError()).isNotNull();
+            assertThat(lazyJsonString.getLastError().getMessage()).contains("Test error");
+        }
+        
+        @Test
+        void shouldClearErrorOnSuccessfulEvaluation() {
+            AtomicInteger callCount = new AtomicInteger(0);
+            Supplier<Object> supplier = () -> {
+                if (callCount.incrementAndGet() == 1) {
+                    throw new RuntimeException("First call fails");
+                }
+                return "success";
+            };
+            LazyJsonString lazyJsonString = new LazyJsonString(supplier);
+            
+            // First call fails
+            lazyJsonString.getValue();
+            assertThat(lazyJsonString.hasError()).isTrue();
+            
+            // Second call succeeds
+            String result = lazyJsonString.getValue();
+            assertThat(result).isEqualTo("success");
+            assertThat(lazyJsonString.hasError()).isFalse();
+            assertThat(lazyJsonString.getLastError()).isNull();
+        }
+        
+        @Test
+        void shouldHandleCircularReferenceGracefully() {
+            CircularReference obj = new CircularReference();
+            obj.self = obj;
+            
+            Supplier<Object> supplier = () -> obj;
+            LazyJsonString lazyJsonString = new LazyJsonString(supplier);
+            
+            String result = lazyJsonString.getValue();
+            
+            // Should fallback to toString() when JSON serialization fails
+            assertThat(result).contains("CircularReference");
+        }
+        
+        @Test
+        void shouldHandleNullToStringFallback() {
+            Object problematicObject = new Object() {
+                @Override
+                public String toString() {
+                    throw new RuntimeException("toString() also fails");
+                }
+            };
+            
+            Supplier<Object> supplier = () -> problematicObject;
+            LazyJsonString lazyJsonString = new LazyJsonString(supplier);
+            
+            String result = lazyJsonString.getValue();
+            
+            assertThat(result).startsWith("LazyEvaluation Error:");
+            assertThat(lazyJsonString.hasError()).isTrue();
         }
     }
     
@@ -230,7 +303,7 @@ class LazyJsonStringTest {
             assertThat(completed).isTrue();
             assertThat(results).hasSize(threadCount);
             // All results should be error messages
-            assertThat(results).allMatch(result -> result.startsWith("Error:"));
+            assertThat(results).allMatch(result -> result.startsWith("LazyEvaluation Error:"));
         }
     }
     
@@ -337,7 +410,7 @@ class LazyJsonStringTest {
         }
     }
     
-    // Test helper class
+    // Helper classes for testing
     private static class TestObject {
         private final String name;
         private final int age;
@@ -353,6 +426,15 @@ class LazyJsonStringTest {
         
         public int getAge() {
             return age;
+        }
+    }
+    
+    private static class CircularReference {
+        public CircularReference self;
+        
+        @Override
+        public String toString() {
+            return "CircularReference@" + Integer.toHexString(hashCode());
         }
     }
 }
