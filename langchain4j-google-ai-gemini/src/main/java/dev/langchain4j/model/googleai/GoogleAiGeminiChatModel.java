@@ -28,12 +28,15 @@ import java.util.List;
 import java.util.Set;
 
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
-
     private final Set<Capability> supportedCapabilities;
     private final Integer maximumRetries;
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
-        super(builder);
+        this(builder, buildGeminiService(builder));
+    }
+
+    GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder, GeminiService geminiService) {
+        super(builder, geminiService);
         this.maximumRetries = getOrDefault(builder.maxRetries, 2);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -49,7 +52,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
@@ -137,6 +139,10 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModel build() {
             return new GoogleAiGeminiChatModel(this);
+        }
+
+        GoogleAiGeminiChatModel build(GeminiService geminiService) {
+            return new GoogleAiGeminiChatModel(this, geminiService);
         }
     }
 }
