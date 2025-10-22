@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
@@ -28,6 +29,7 @@ import java.util.concurrent.Executors;
  */
 @Experimental
 public class StreamingChatModelMock implements StreamingChatModel {
+
     private final Queue<AiMessage> aiMessages;
     private final RuntimeException exception;
 
@@ -56,7 +58,29 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
             try {
                 executor.execute(() -> {
-                    toTokens(aiMessage).forEach(token -> onPartialResponse(handler, token)); // TODO
+
+                    StreamingHandle streamingHandle = new StreamingHandle() {
+
+                        private boolean isCancelled;
+
+                        @Override
+                        public void cancel() {
+                            isCancelled = true;
+                        }
+
+                        @Override
+                        public boolean isCancelled() {
+                            return isCancelled;
+                        }
+                    };
+
+                    for (String token : toTokens(aiMessage)) {
+                        if (streamingHandle.isCancelled()) {
+                            break;
+                        }
+
+                        onPartialResponse(handler, token, streamingHandle);
+                    }
 
                     for (int i = 0; i < aiMessage.toolExecutionRequests().size(); i++) {
                         ToolExecutionRequest toolExecutionRequest =

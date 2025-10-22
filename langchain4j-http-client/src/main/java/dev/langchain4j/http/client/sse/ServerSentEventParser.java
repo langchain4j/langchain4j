@@ -32,6 +32,6 @@ public interface ServerSentEventParser {
      * @since 1.8.0
      */
     default void parse(ServerSentEventParseRequest parseRequest) {
-        parse(parseRequest.inputStream(), parseRequest.listener()); // TODO?
+        parse(parseRequest.inputStream(), parseRequest.listener());
     }
 }
