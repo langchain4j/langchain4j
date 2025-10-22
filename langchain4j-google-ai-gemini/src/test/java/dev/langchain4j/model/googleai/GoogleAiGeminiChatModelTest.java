@@ -290,9 +290,8 @@ class GoogleAiGeminiChatModelTest {
             verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
 
             var request = requestCaptor.getValue();
-            assertThat(request.getModel()).isEqualTo(TEST_MODEL_NAME);
-            assertThat(request.getContents()).isNotEmpty();
-            assertThat(request.getGenerationConfig())
+            assertThat(request.contents()).isNotEmpty();
+            assertThat(request.generationConfig())
                     .isEqualTo(GeminiGenerationConfig.builder()
                             .temperature(0.8)
                             .responseMimeType("text/plain")

@@ -502,13 +502,17 @@ class GoogleAiGeminiChatModelIT {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
     @JsonSubTypes({@JsonSubTypes.Type(Circle.class), @JsonSubTypes.Type(Rectangle.class)})
-    interface Shape {}
+    interface Shape {
+    }
 
-    record Circle(double radius) implements Shape {}
+    record Circle(double radius) implements Shape {
+    }
 
-    record Rectangle(double width, double height) implements Shape {}
+    record Rectangle(double width, double height) implements Shape {
+    }
 
-    record Shapes(List<Shape> shapes) {}
+    record Shapes(List<Shape> shapes) {
+    }
 
     // TODO move to common tests
     @Test
@@ -543,10 +547,10 @@ class GoogleAiGeminiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 """
-                Extract information from the following text:
-                1. A circle with a radius of 5
-                2. A rectangle with a width of 10 and a height of 20
-                """);
+                        Extract information from the following text:
+                        1. A circle with a radius of 5
+                        2. A rectangle with a width of 10 and a height of 20
+                        """);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
