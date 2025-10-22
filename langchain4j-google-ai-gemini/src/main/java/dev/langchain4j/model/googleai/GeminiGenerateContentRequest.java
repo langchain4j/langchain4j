@@ -1,8 +1,8 @@
 package dev.langchain4j.model.googleai;
 
-import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
@@ -27,8 +27,7 @@ record GeminiGenerateContentRequest(
         private GeminiGenerationConfig generationConfig;
         private String cachedContent;
 
-        GeminiGenerateContentRequestBuilder() {
-        }
+        GeminiGenerateContentRequestBuilder() {}
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -73,8 +72,7 @@ record GeminiGenerateContentRequest(
                     this.safetySettings,
                     this.systemInstruction,
                     this.generationConfig,
-                    this.cachedContent
-            );
+                    this.cachedContent);
         }
     }
 }
