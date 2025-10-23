@@ -330,16 +330,18 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    InputStream inputStream = connection.getInputStream();
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    try (InputStream inputStream = connection.getInputStream();
+                            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, bytesRead);
+                        }
 
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
+                        return outputStream.toByteArray();
+                    } finally {
+                        connection.disconnect();
                     }
-
-                    return outputStream.toByteArray();
                 } else {
                     throw new RuntimeException("Error while reading: " + responseCode);
                 }
