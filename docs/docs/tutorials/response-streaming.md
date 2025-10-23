@@ -23,7 +23,7 @@ They accept an implementation of the `StreamingChatResponseHandler` interface as
 public interface StreamingChatResponseHandler {
 
     default void onPartialResponse(String partialResponse) {}
-    default void onPartialResponse(String partialResponse, PartialResponseContext context) {}
+    default void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {}
 
     default void onPartialThinking(PartialThinking partialThinking) {}
     default void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {}
@@ -41,7 +41,7 @@ public interface StreamingChatResponseHandler {
 
 By implementing `StreamingChatResponseHandler`, you can define actions for the following events:
 - When the next partial textual response is generated: either `onPartialResponse(String)`
-or `onPartialResponse(String, PartialResponseContext)` is invoked (you can implement either of these methods).
+or `onPartialResponse(PartialResponse, PartialResponseContext)` is invoked (you can implement either of these methods).
 Depending on the LLM provider, partial response text can consist of a single or more tokens.
 For instance, you can send the token directly to the UI as soon as it becomes available.
 - When the next partial thinking/reasoning text is generated: either `onPartialThinking(PartialThinking)`
@@ -120,7 +120,7 @@ model.chat("Tell me a joke", onPartialResponseAndError(System.out::print, Throwa
 ## Streaming Cancellation
 
 If you wish to cancel the streaming, you can do so from one of the following methods:
-- `onPartialResponse(String, PartialResponseContext)`
+- `onPartialResponse(PartialResponse, PartialResponseContext)`
 - `onPartialThinking(PartialThinking, PartialThinkingContext)`
 - `onPartialToolCall(PartialToolCall, PartialToolCallContext)`
 
@@ -129,7 +129,7 @@ The context object contains the `StreamingHandle`, which can be used to cancel t
 model.chat(userMessage, new StreamingChatResponseHandler() {
 
     @Override
-    public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
         process(partialResponse);
         if (shouldCancel()) {
             context.streamingHandle().cancel();

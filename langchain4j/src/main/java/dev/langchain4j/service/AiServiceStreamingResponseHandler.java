@@ -18,6 +18,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -63,7 +64,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Object methodKey;
 
     private final Consumer<String> partialResponseHandler;
-    private final BiConsumer<String, PartialResponseContext> partialResponseWithContextHandler;
+    private final BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
     private final Consumer<PartialThinking> partialThinkingHandler;
     private final BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
     private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
@@ -93,7 +94,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             AiServiceContext context,
             InvocationContext invocationContext,
             Consumer<String> partialResponseHandler,
-            BiConsumer<String, PartialResponseContext> partialResponseWithContextHandler,
+            BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler,
             Consumer<PartialThinking> partialThinkingHandler,
             BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
@@ -147,17 +148,17 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             partialResponseHandler.accept(partialResponse);
         } else if (partialResponseWithContextHandler != null) {
             PartialResponseContext context = new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
-            partialResponseWithContextHandler.accept(partialResponse, context);
+            partialResponseWithContextHandler.accept(new PartialResponse(partialResponse), context);
         }
     }
 
     @Override
-    public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
         // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
-            responseBuffer.add(partialResponse);
+            responseBuffer.add(partialResponse.text());
         } else if (partialResponseHandler != null) {
-            partialResponseHandler.accept(partialResponse);
+            partialResponseHandler.accept(partialResponse.text());
         } else if (partialResponseWithContextHandler != null) {
             partialResponseWithContextHandler.accept(partialResponse, context);
         }

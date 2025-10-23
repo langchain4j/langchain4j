@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -54,7 +55,7 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
 
         try {
-            handler.onPartialResponse(partialResponse, new PartialResponseContext(streamingHandle));
+            handler.onPartialResponse(new PartialResponse(partialResponse), new PartialResponseContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

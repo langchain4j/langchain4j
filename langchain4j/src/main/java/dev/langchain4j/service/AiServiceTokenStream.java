@@ -19,6 +19,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -48,7 +49,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;
-    private BiConsumer<String, PartialResponseContext> partialResponseWithContextHandler;
+    private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
     private BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
     private Consumer<List<Content>> contentsHandler;
@@ -99,7 +100,7 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onPartialResponseWithContext(BiConsumer<String, PartialResponseContext> handler) {
+    public TokenStream onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext> handler) {
         this.partialResponseWithContextHandler = handler;
         this.onPartialResponseWithContextInvoked++;
         return this;

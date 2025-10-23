@@ -75,8 +75,8 @@ public class StreamingChatResponseHandlerIT {
         StreamingChatResponseHandler handler = spy(new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse, PartialResponseContext context) {
-                responseBuilder.append(partialResponse);
+            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                responseBuilder.append(partialResponse.text());
             }
 
             @Override
@@ -115,12 +115,12 @@ public class StreamingChatResponseHandlerIT {
             @Override
             public void onPartialResponse(String partialResponse) {
                 throw new IllegalStateException("onPartialResponse(String) should never be called " +
-                        "if onPartialResponse(String, PartialResponseContext) is defined");
+                        "if onPartialResponse(PartialResponse, PartialResponseContext) is defined");
             }
 
             @Override
-            public void onPartialResponse(String partialResponse, PartialResponseContext context) {
-                responseBuilder.append(partialResponse);
+            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                responseBuilder.append(partialResponse.text());
             }
 
             @Override

@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -48,7 +49,7 @@ public interface TokenStream {
      * @since 1.8.0
      */
     @Experimental
-    default TokenStream onPartialResponseWithContext(BiConsumer<String, PartialResponseContext> handler) {
+    default TokenStream onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

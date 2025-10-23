@@ -27,6 +27,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -281,9 +282,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
                 streamingHandleConsumer.accept(context.streamingHandle());
-                concatenatedPartialResponsesBuilder.append(partialResponse);
+                concatenatedPartialResponsesBuilder.append(partialResponse.text());
                 timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }

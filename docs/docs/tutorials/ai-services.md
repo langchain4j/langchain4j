@@ -570,16 +570,16 @@ futureResponse.join(); // Blocks the main thread until the streaming process (ru
 ### Streaming Cancellation
 
 If you wish to cancel the streaming, you can do so from one of the following callbacks:
-- `onPartialResponseWithContext(BiConsumer<String, PartialResponseContext>)`
+- `onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext>)`
 - `onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext>)`
 
 For example:
 ```java
 tokenStream
-    .onPartialResponseWithContext((String partialResponse, PartialResponseContext ctx) -> {
+    .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
         process(partialResponse);
         if (shouldCancel()) {
-            ctx.streamingHandle().cancel();
+            context.streamingHandle().cancel();
         }
     })
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -27,9 +28,8 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     }
 
     @Override
-    public void onPartialResponse(String partialResponse, PartialResponseContext context) {
-        context.streamingHandle().cancel();
-        responseBuilder.append(partialResponse);
+    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+        responseBuilder.append(partialResponse.text());
     }
 
     @Override

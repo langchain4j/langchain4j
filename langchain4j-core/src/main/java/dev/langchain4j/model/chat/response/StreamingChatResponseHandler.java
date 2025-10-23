@@ -16,11 +16,11 @@ public interface StreamingChatResponseHandler {
      * Please note that some LLM providers do not stream individual tokens, but send responses in batches.
      * In such cases, this callback may receive multiple tokens at once.
      * <p>
-     * Either this or the {@link #onPartialResponse(String, PartialResponseContext)} method
+     * Either this or the {@link #onPartialResponse(PartialResponse, PartialResponseContext)} method
      * should be implemented if you want to consume tokens as soon as they become available.
      *
      * @param partialResponse A partial textual response, usually a single token.
-     * @see #onPartialResponse(String, PartialResponseContext)
+     * @see #onPartialResponse(PartialResponse, PartialResponseContext)
      */
     default void onPartialResponse(String partialResponse) {}
 
@@ -40,8 +40,8 @@ public interface StreamingChatResponseHandler {
      * @since 1.8.0
      */
     @Experimental
-    default void onPartialResponse(String partialResponse, PartialResponseContext context) {
-        onPartialResponse(partialResponse);
+    default void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+        onPartialResponse(partialResponse.text());
     }
 
     /**
