@@ -120,6 +120,9 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * <p>Batch processing offers a 50% cost reduction compared to real-time requests and has a
      * 24-hour turnaround SLO, making it ideal for large-scale, non-urgent tasks.</p>
      *
+     * <p><strong>Note:</strong> The inline API allows for a total request size of 20MB or under. Larger requests
+     * should use the File API</p>
+     *
      * @param displayName a user-defined name for the batch, used for identification
      * @param priority    optional priority for the batch; batches with higher priority values are
      *                    processed before those with lower values; negative values are allowed;
