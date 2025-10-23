@@ -142,6 +142,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final AtomicReference<String> responseModel = new AtomicReference<>();
 
             volatile String stopReason;
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -150,16 +151,20 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
+
                 AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
 
                 if ("message_start".equals(event.event())) {
                     handleMessageStart(data);
                 } else if ("content_block_start".equals(event.event())) {
-                    handleContentBlockStart(data, toStreamingHandle(context.parsingHandle()));
+                    handleContentBlockStart(data, streamingHandle);
                 } else if ("content_block_delta".equals(event.event())) {
-                    handleContentBlockDelta(data, toStreamingHandle(context.parsingHandle()));
+                    handleContentBlockDelta(data, streamingHandle);
                 } else if ("content_block_stop".equals(event.event())) {
-                    handleContentBlockStop(toStreamingHandle(context.parsingHandle()));
+                    handleContentBlockStop(streamingHandle);
                 } else if ("message_delta".equals(event.event())) {
                     handleMessageDelta(data);
                 } else if ("message_stop".equals(event.event())) {

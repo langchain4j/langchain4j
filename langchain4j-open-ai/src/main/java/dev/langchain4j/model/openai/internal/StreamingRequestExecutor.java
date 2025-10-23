@@ -9,7 +9,6 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
@@ -103,8 +102,8 @@ class StreamingRequestExecutor<Response> {
 
         ServerSentEventListener listener = new ServerSentEventListener() {
 
-            SuccessfulHttpResponse response;
-            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
+            volatile SuccessfulHttpResponse response;
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
@@ -118,7 +117,9 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                this.streamingHandle.set(toStreamingHandle(context.parsingHandle()));
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
 
                 if ("[DONE]".equals(event.data())) {
                     return;
@@ -134,7 +135,7 @@ class StreamingRequestExecutor<Response> {
                                 .parsedResponse(parsedResponse)
                                 .rawHttpResponse(response)
                                 .rawServerSentEvent(event)
-                                .streamingHandle(toStreamingHandle(context.parsingHandle()))
+                                .streamingHandle(streamingHandle)
                                 .build();
                         partialResponseHandler.accept(parsedAndRawResponse); // do not handle exception, fail-fast
                     }
@@ -145,7 +146,6 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onClose() {
-                StreamingHandle streamingHandle = this.streamingHandle.get();
                 if (streamingHandle == null || !streamingHandle.isCancelled()) {
                     streamingCompletionCallback.run();
                 }

@@ -38,6 +38,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
@@ -158,6 +159,7 @@ class OllamaClient {
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -166,6 +168,9 @@ class OllamaClient {
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
@@ -177,12 +182,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    onPartialResponse(handler, content, toStreamingHandle(context.parsingHandle()));
+                    onPartialResponse(handler, content, streamingHandle);
                 }
 
                 String thinking = message.getThinking();
                 if (returnThinking && !isNullOrEmpty(thinking)) {
-                    onPartialThinking(handler, thinking, toStreamingHandle(context.parsingHandle()));
+                    onPartialThinking(handler, thinking, streamingHandle);
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();

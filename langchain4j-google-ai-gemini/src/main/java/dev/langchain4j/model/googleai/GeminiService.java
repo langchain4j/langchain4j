@@ -125,7 +125,7 @@ class GeminiService {
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
             AtomicInteger toolIndex = new AtomicInteger(0);
-            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -134,17 +134,20 @@ class GeminiService {
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                this.streamingHandle.set(toStreamingHandle(context.parsingHandle()));
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
+
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text, toStreamingHandle(context.parsingHandle()));
+                    onPartialResponse(handler, text, streamingHandle);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought, toStreamingHandle(context.parsingHandle()));
+                        onPartialThinking(handler, thought, streamingHandle);
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought, toStreamingHandle(context.parsingHandle())); // for backward compatibility
+                        onPartialResponse(handler, thought, streamingHandle); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
@@ -156,7 +159,6 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                StreamingHandle streamingHandle = this.streamingHandle.get();
                 if (streamingHandle == null || !streamingHandle.isCancelled()) {
                     ChatResponse completeResponse = responseBuilder.build();
                     onCompleteResponse(handler, completeResponse);

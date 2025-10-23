@@ -83,7 +83,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
 
-                    Subscription subscription;
+                    volatile Subscription subscription;
 
                     @Override
                     public void onSubscribe(Subscription subscription) {
