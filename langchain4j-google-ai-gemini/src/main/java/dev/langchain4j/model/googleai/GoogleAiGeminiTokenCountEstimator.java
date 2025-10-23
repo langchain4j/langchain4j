@@ -13,10 +13,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
+import org.slf4j.Logger;
 
 public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
@@ -84,7 +84,6 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest();
         countTokensRequestWithDummyContent.setGenerateContentRequest(GeminiGenerateContentRequest.builder()
-                .model("models/" + this.modelName)
                 .contents(singletonList(dummyContent))
                 .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false))
                 .build());
