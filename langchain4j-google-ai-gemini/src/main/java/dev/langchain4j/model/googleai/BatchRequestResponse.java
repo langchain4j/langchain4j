@@ -52,10 +52,7 @@ final class BatchRequestResponse {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record BatchGenerateContentResponse(
-            String name,
-            Map<String, Object> metadata,
-            boolean done,
-            Response response) {
+            String name, Map<String, Object> metadata, boolean done, Response response) {
 
         /**
          * The batch output containing the inlined responses.
@@ -64,9 +61,7 @@ final class BatchRequestResponse {
          * @param inlinedResponses The wrapper object containing the list of inlined responses.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record Response(
-                @JsonProperty("@type") String type,
-                InlinedResponses inlinedResponses) {}
+        record Response(@JsonProperty("@type") String type, InlinedResponses inlinedResponses) {}
 
         /**
          * Wrapper for the list of inlined responses.
@@ -120,9 +115,6 @@ final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(
-                int code,
-                String message,
-                List<Map<String, Object>> details) {}
+        public record Status(int code, String message, List<Map<String, Object>> details) {}
     }
 }
