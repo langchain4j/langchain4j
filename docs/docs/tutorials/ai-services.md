@@ -587,6 +587,9 @@ tokenStream
     .start();
 ```
 
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
+Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
+
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
 For this, please import `langchain4j-reactor` module:
