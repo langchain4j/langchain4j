@@ -170,6 +170,11 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
+    protected boolean supportsStreamingCancellation() {
+        return false;
+    }
+
+    @Override
     protected List<StreamingChatModel> models() {
         return List.of(model);
     }

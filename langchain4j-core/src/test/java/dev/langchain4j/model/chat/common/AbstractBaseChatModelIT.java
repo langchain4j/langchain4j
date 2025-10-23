@@ -851,10 +851,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         if (supportsPartialToolStreaming(model)) {
-            io.verify(handler).onPartialToolCall(any());
+            io.verify(handler).onPartialToolCall(any(), any());
         }
         io.verify(handler).onCompleteToolCall(any());
     }
