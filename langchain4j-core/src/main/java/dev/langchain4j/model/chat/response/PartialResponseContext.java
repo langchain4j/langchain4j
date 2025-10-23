@@ -1,10 +1,13 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * @since 1.8.0
  */
+@Experimental
 public class PartialResponseContext {
 
     private final StreamingHandle streamingHandle;

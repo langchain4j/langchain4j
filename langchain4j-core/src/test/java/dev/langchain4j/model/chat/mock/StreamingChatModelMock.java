@@ -59,20 +59,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
             try {
                 executor.execute(() -> {
 
-                    StreamingHandle streamingHandle = new StreamingHandle() {
-
-                        private boolean isCancelled;
-
-                        @Override
-                        public void cancel() {
-                            isCancelled = true;
-                        }
-
-                        @Override
-                        public boolean isCancelled() {
-                            return isCancelled;
-                        }
-                    };
+                    StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
                     for (String token : toTokens(aiMessage)) {
                         if (streamingHandle.isCancelled()) {
@@ -112,6 +99,21 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
         // approximating: each char will become a token
         return aiMessage.text().chars().mapToObj(c -> String.valueOf((char) c)).toList();
+    }
+
+    private static class SimpleStreamingHandle implements StreamingHandle {
+
+        private boolean isCancelled;
+
+        @Override
+        public void cancel() {
+            isCancelled = true;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return isCancelled;
+        }
     }
 
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {

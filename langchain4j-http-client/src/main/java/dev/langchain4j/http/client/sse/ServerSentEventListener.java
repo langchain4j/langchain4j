@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 
 public interface ServerSentEventListener {
@@ -11,6 +12,7 @@ public interface ServerSentEventListener {
      *
      * @since 1.8.0
      */
+    @Experimental
     default void onEvent(ServerSentEvent event, ServerSentEventContext context) {
         onEvent(event);
     }
