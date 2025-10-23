@@ -185,7 +185,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         public Builder modelName(OpenAiChatModelName modelName) {
-            return super.modelName(modelName.toString());
+            return super.modelName(modelName == null ? null : modelName.toString());
         }
 
         public Builder maxCompletionTokens(Integer maxCompletionTokens) {
