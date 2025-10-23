@@ -2,17 +2,19 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiBatchChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
+    public static final String MODEL_NAME = "gemini-2.5-flash-lite";
 
     @Nested
     class CreateBatchInline {
@@ -30,8 +32,8 @@ class GoogleAiGeminiBatchChatModelIT {
             var displayName = "Test Batch - Valid Requests";
             var priority = 1L;
             var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of France?"),
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?")
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?")
             );
 
             // when
@@ -54,7 +56,7 @@ class GoogleAiGeminiBatchChatModelIT {
             var displayName = "Test Batch - Negative Priority";
             var priority = -5L;
             var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Portugal?")
+                    createChatRequest("What is the capital of Portugal?")
             );
 
             // when
@@ -67,9 +69,9 @@ class GoogleAiGeminiBatchChatModelIT {
         }
     }
 
-    private static ChatRequest createChatRequest(String modelName, String message) {
+    private static ChatRequest createChatRequest(String message) {
         return ChatRequest.builder()
-                .modelName(modelName)
+                .modelName(MODEL_NAME)
                 .messages(UserMessage.from(message))
                 .build();
     }

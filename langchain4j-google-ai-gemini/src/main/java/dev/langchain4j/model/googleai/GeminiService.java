@@ -74,7 +74,7 @@ class GeminiService {
     }
 
     Operation batchGenerateContent(String modelName, BatchGenerateContentRequest request) {
-        String url = String.format("%s/%s:batchGenerateContent", baseUrl, modelName);
+        String url = String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, Operation.class);
     }
 

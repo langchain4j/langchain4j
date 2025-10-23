@@ -34,12 +34,6 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         var inlineRequests = requests.stream()
                 // Merge the chat requests with the values set in the Builder.
                 .map(this::applyDefaultParameters)
-                // Prefix all model names with 'models/{modelName}'.
-                .map(request -> request.toBuilder()
-                        .parameters(ChatRequestParameters.builder()
-                                .modelName(ensureModelsPrefix(request.modelName()))
-                                        .build())
-                        .build())
                 // Create a Gemini specific content requests for each ChatRequest.
                 .map(this::createGenerateContentRequest)
                 // Wrap them in InlinedRequest, ready for batching.
@@ -88,7 +82,6 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
     private static String extractModelFromRequests(List<ChatRequest> requests) {
         var modelNames = requests.stream()
                 .map(ChatRequest::modelName)
-                .map(GoogleAiGeminiBatchChatModel::ensureModelsPrefix)
                 .collect(Collectors.toUnmodifiableSet());
         if (modelNames.size() != 1) {
             throw new IllegalArgumentException("Batch requests cannot contain ChatRequest objects with different " +
@@ -96,10 +89,6 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         }
 
         return modelNames.iterator().next();
-    }
-
-    public static String ensureModelsPrefix(String input) {
-        return (input == null || input.startsWith("models/")) ? input : "models/" + input;
     }
 
     /**
