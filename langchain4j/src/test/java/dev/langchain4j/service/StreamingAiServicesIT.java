@@ -12,6 +12,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationResult;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -39,6 +42,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -529,6 +533,108 @@ class StreamingAiServicesIT {
         inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialThinking(any());
         inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialResponse(any());
         inOrder.verify(tokenStreamHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(tokenStreamHandler);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_cancel_streaming_from_onPartialResponse_callback(StreamingChatModel model) throws Exception {
+
+        int partialResponsesBeforeCancellation = 5;
+        AtomicInteger partialResponsesCounter = new AtomicInteger();
+
+        StringBuilder partialResponsesBuilder = new StringBuilder();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        Assistant assistant = AiServices.create(Assistant.class, model);
+        assistant.chat("What is the capital of Germany?")
+                .onPartialResponseWithContext((partialResponse, context) -> {
+                    partialResponsesBuilder.append(partialResponse);
+                    if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
+                        context.streamingHandle().cancel();
+                    }
+                })
+                .onCompleteResponse(response -> {
+                    futureResponse.complete(response);
+                })
+                .onError(futureResponse::completeExceptionally)
+                .start();
+
+        ChatResponse response = null;
+        try {
+            response = futureResponse.get(5, SECONDS);
+        } catch (TimeoutException ignored) {
+        }
+
+        assertThat(response).isNull();
+        assertThat(partialResponsesBuilder.toString()).isNotEmpty();
+        assertThat(partialResponsesCounter).hasValue(partialResponsesBeforeCancellation);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
+    void should_cancel_streaming_from_onPartialThinking_callback() throws Exception {
+
+        // given
+        int partialThoughtsBeforeCancellation = 5;
+        AtomicInteger partialThoughtsCounter = new AtomicInteger();
+
+        StreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
+                .baseUrl("https://api.deepseek.com/v1")
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .modelName("deepseek-reasoner")
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Assistant assistant = AiServices.create(Assistant.class, streamingChatModel);
+
+        interface TokenStreamHandler {
+            void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context);
+
+            void onPartialResponse(String partialResponse);
+
+            void onError(Throwable error);
+
+            void onCompleteResponse(ChatResponse completeResponse);
+        }
+
+        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the capital of Germany?")
+                .onPartialThinkingWithContext((partialThinking, context) -> {
+                    tokenStreamHandler.onPartialThinking(partialThinking, context);
+                    if (partialThoughtsCounter.incrementAndGet() >= partialThoughtsBeforeCancellation) {
+                        context.streamingHandle().cancel();
+                    }
+                })
+                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
+                .onError(error -> {
+                    tokenStreamHandler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse chatResponse = null;
+        try {
+            chatResponse = futureResponse.get(5, SECONDS);
+        } catch (TimeoutException ignored) {
+
+        }
+
+        assertThat(chatResponse).isNull();
+
+        InOrder inOrder = inOrder(tokenStreamHandler);
+        inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation)).onPartialThinking(any(), any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(tokenStreamHandler);
     }

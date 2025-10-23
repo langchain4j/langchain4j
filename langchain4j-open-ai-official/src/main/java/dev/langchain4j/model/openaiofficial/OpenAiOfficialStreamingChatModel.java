@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
@@ -27,12 +28,14 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
         implements StreamingChatModel {
@@ -104,8 +107,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
             StringBuffer textBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-            asyncClient
+            AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
                     .chat()
                     .completions()
                     .createStreaming(chatCompletionCreateParams)
@@ -116,6 +120,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             manageChatCompletionChunks(
                                     completion,
                                     handler,
+                                    streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
                                     toolCallBuilder);
@@ -123,6 +128,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onComplete(Optional<Throwable> error) {
+                            if (streamingHandle.get().isCancelled()) {
+                                return;
+                            }
+
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {
@@ -146,6 +155,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
                         }
                     });
+
+            streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
             handler.onError(e);
         }
@@ -154,6 +165,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
     private void manageChatCompletionChunks(
             ChatCompletionChunk chatCompletionChunk,
             StreamingChatResponseHandler handler,
+            StreamingHandle streamingHandle,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
             ToolCallBuilder toolCallBuilder) {
@@ -176,8 +188,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         chatCompletionChunk.choices().forEach(choice -> {
             if (choice.delta().content().isPresent()
                     && !choice.delta().content().get().isEmpty()) {
-                text.append(choice.delta().content().get());
-                handler.onPartialResponse(choice.delta().content().get());
+                String partialResponse = choice.delta().content().get();
+                text.append(partialResponse);
+                onPartialResponse(handler, partialResponse, streamingHandle);
             }
             if (choice.delta().toolCalls().isPresent()) {
                 for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall : choice.delta().toolCalls().get()) {
@@ -202,7 +215,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     .name(name)
                                     .partialArguments(partialArguments)
                                     .build();
-                            onPartialToolCall(handler, partialToolRequest);
+                            onPartialToolCall(handler, partialToolRequest, streamingHandle);
                         }
                     }
                 }

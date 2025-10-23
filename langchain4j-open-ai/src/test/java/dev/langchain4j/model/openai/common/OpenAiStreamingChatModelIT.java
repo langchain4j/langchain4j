@@ -18,6 +18,7 @@ import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
@@ -111,7 +112,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.id().equals(id)
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
-        ));
+        ), any());
         io.verify(handler).onCompleteToolCall(argThat(toolCall ->
                 {
                     ToolExecutionRequest request = toolCall.toolExecutionRequest();
@@ -130,7 +131,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.id().equals(id1)
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
-        ));
+        ), any());
         io.verify(handler).onCompleteToolCall(argThat(toolCall ->
                 {
                     ToolExecutionRequest request = toolCall.toolExecutionRequest();
@@ -146,7 +147,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && toolCall.id().equals(id2)
                         && toolCall.name().equals("getTime")
                         && !toolCall.partialArguments().isBlank()
-        ));
+        ), any());
         io.verify(handler).onCompleteToolCall(argThat(toolCall ->
                 {
                     ToolExecutionRequest request = toolCall.toolExecutionRequest();

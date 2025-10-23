@@ -4,9 +4,14 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 
 import java.util.function.Consumer;
+
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 
 class StreamingRequestExecutor<Response> {
 
@@ -97,7 +102,8 @@ class StreamingRequestExecutor<Response> {
 
         ServerSentEventListener listener = new ServerSentEventListener() {
 
-            SuccessfulHttpResponse response;
+            volatile SuccessfulHttpResponse response;
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
@@ -106,6 +112,14 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
 
                 if ("[DONE]".equals(event.data())) {
                     return;
@@ -117,8 +131,13 @@ class StreamingRequestExecutor<Response> {
                     }
                     Response parsedResponse = Json.fromJson(event.data(), responseClass);
                     if (parsedResponse != null) {
-                        // do not handle exception, fail-fast
-                        partialResponseHandler.accept(new ParsedAndRawResponse<>(parsedResponse, response, event));
+                        ParsedAndRawResponse parsedAndRawResponse = ParsedAndRawResponse.builder()
+                                .parsedResponse(parsedResponse)
+                                .rawHttpResponse(response)
+                                .rawServerSentEvent(event)
+                                .streamingHandle(streamingHandle)
+                                .build();
+                        partialResponseHandler.accept(parsedAndRawResponse); // do not handle exception, fail-fast
                     }
                 } catch (Exception e) {
                     errorHandler.accept(e);
@@ -127,7 +146,9 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onClose() {
-                streamingCompletionCallback.run();
+                if (streamingHandle == null || !streamingHandle.isCancelled()) {
+                    streamingCompletionCallback.run();
+                }
             }
 
             @Override
