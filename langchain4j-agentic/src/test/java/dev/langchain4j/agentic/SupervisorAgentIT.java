@@ -15,22 +15,28 @@ import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -510,5 +516,173 @@ public class SupervisorAgentIT {
         ChatMessage lastMessage = messages.get(messages.size() - 1);
         assertThat(lastMessage).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) lastMessage).text()).contains("done");
+    }
+
+    public static class InMemoryChatMemoryProvider implements ChatMemory {
+
+        private final String conversationId;
+        private Map<String, List<ChatMessage>> messageStore;
+
+
+
+        public InMemoryChatMemoryProvider(final String conversationId, Map<String, List<ChatMessage>> messageStore) {
+            this.conversationId = conversationId;
+            this.messageStore = messageStore;
+        }
+
+        @Override
+        public Object id() {
+            return conversationId;
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            List<ChatMessage> messages = messageStore.computeIfAbsent(conversationId, k -> new ArrayList<>());
+            if (message instanceof dev.langchain4j.data.message.SystemMessage) {
+                if (!messages.isEmpty() && messages.get(0) instanceof dev.langchain4j.data.message.SystemMessage) {
+                    messages.set(0, message);
+                } else {
+                    messages.add(0, message);
+                }
+            } else {
+                messages.add(message);
+            }
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return new ArrayList<>(messageStore.getOrDefault(conversationId, List.of()));
+        }
+
+        @Override
+        public void clear() {
+            messageStore.remove(conversationId);
+        }
+    }
+
+
+    public interface GeneralAssistant extends ChatMemoryAccess {
+
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "SeriousAgent", description = "Use me for serious non-joking questions")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface JokesterAssistant extends ChatMemoryAccess {
+
+        @SystemMessage("You are a jokester. You are funny, yet helpful ai assistant")
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "JokesterAgent", description = "A fun assistant that specializes in telling jokes")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface Supervisor extends ChatMemoryAccess {
+
+        @Agent
+        String respond(@MemoryId String id, @V("request") String userMessage);
+    }
+
+    @Test
+    void subagent_unique_name_test() {
+        ChatModel openAiModel = OpenAiChatModel.builder()
+                .modelName("gpt-4.1-2025-04-14")
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
+
+        JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("jokester", messageMap))
+                .build();
+
+        GeneralAssistant generalAssistant = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("general", messageMap))
+                .build();
+
+        Supervisor supervisorAgent = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant, jokesterAssistant)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("supervisor", messageMap))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+
+        String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
+
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
+        JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("jokester", messageMap))
+                .build();
+
+        GeneralAssistant generalAssistant2 = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("general", messageMap))
+                .build();
+
+        Supervisor supervisorAgent2 = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant2, jokesterAssistant2)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("supervisor", messageMap))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+        String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
+
+        List<ChatMessage> supervisorMessages = supervisorAgent.getChatMemory("supervisor").messages();
+
+        // there will 2 variants of JokesterAgent, often JokesterAgent$1 and JokesterAgent$4 etc in the messages
+        System.out.println(supervisorMessages);
+
+    }
+
+    @Test
+    void supervisor_loop_test() {
+        ChatModel openAiModel = OpenAiChatModel.builder()
+                .modelName("gpt-4.1-mini-2025-04-14")
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
+
+        JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("jokester", messageMap))
+                .build();
+
+        GeneralAssistant generalAssistant = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("general", messageMap))
+                .build();
+
+        Supervisor supervisorAgent = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant, jokesterAssistant)
+                .chatModel(openAiModel)
+                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("supervisor", messageMap))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+
+        String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions.");
+
+        String lionJoke2 = supervisorAgent.respond("supervisor", "tell me another.");
+
+        List<ChatMessage> messages = supervisorAgent.getChatMemory("supervisor").messages();
+
+        // this often results in many loops and many more jokes generated internally than just 1. Often, not always happens.
+        List<ChatMessage> plannerMessagesWithTellMeAnother = messages.stream()
+                .filter(m -> m.toString().contains("tell me another")).toList();
+
+        System.out.println(plannerMessagesWithTellMeAnother);
+
+
     }
 }
