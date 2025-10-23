@@ -215,7 +215,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     .name(name)
                                     .partialArguments(partialArguments)
                                     .build();
-                            onPartialToolCall(handler, partialToolRequest);
+                            onPartialToolCall(handler, partialToolRequest, streamingHandle);
                         }
                     }
                 }

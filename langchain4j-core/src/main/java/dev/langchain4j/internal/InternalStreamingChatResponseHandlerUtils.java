@@ -32,6 +32,10 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @deprecated Use {@link #onPartialResponse(StreamingChatResponseHandler, String, StreamingHandle)} instead.
+     */
+    @Deprecated(forRemoval = true, since = "1.8.0")
     public static void onPartialResponse(StreamingChatResponseHandler handler, String partialResponse) {
         if (isNullOrEmpty(partialResponse)) {
             return;
@@ -61,6 +65,10 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @deprecated Use {@link #onPartialThinking(StreamingChatResponseHandler, String, StreamingHandle)} instead.
+     */
+    @Deprecated(forRemoval = true, since = "1.8.0")
     public static void onPartialThinking(StreamingChatResponseHandler handler, String partialThinking) {
         if (isNullOrEmpty(partialThinking)) {
             return;
@@ -90,6 +98,10 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @deprecated Use {@link #onPartialToolCall(StreamingChatResponseHandler, PartialToolCall, StreamingHandle)} instead.
+     */
+    @Deprecated(forRemoval = true, since = "1.8.0")
     public static void onPartialToolCall(StreamingChatResponseHandler handler, PartialToolCall partialToolCall) {
         try {
             handler.onPartialToolCall(partialToolCall);
