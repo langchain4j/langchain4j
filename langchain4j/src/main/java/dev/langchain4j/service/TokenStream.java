@@ -28,18 +28,19 @@ public interface TokenStream {
      *
      * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
-     * @see #onPartialResponse(BiConsumer)
+     * @see #onPartialResponseWithContext(BiConsumer)
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
      * TODO
-     * @param partialResponseHandler TODO
+     *
+     * @param handler TODO
      * @return token stream instance used to configure or start stream processing
      * @since 1.8.0
      */
     @Experimental
-    default TokenStream onPartialResponse(BiConsumer<String, PartialResponseContext> partialResponseHandler) {
+    default TokenStream onPartialResponseWithContext(BiConsumer<String, PartialResponseContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 
@@ -49,7 +50,7 @@ public interface TokenStream {
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
-     * @see #onPartialThinking(BiConsumer)
+     * @see #onPartialThinkingWithContext(BiConsumer)
      * @since 1.2.0
      */
     @Experimental
@@ -62,12 +63,12 @@ public interface TokenStream {
      * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
      * from a language model is available.
      *
-     * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
+     * @param handler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
      * @since 1.8.0
      */
     @Experimental
-    default TokenStream onPartialThinking(BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingHandler) {
+    default TokenStream onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

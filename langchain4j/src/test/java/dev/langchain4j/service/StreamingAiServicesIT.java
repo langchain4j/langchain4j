@@ -549,7 +549,7 @@ class StreamingAiServicesIT {
 
         Assistant assistant = AiServices.create(Assistant.class, model);
         assistant.chat("What is the capital of Germany?")
-                .onPartialResponse((partialResponse, context) -> {
+                .onPartialResponseWithContext((partialResponse, context) -> {
                     partialResponsesBuilder.append(partialResponse);
                     if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
                         context.streamingHandle().cancel();
@@ -606,7 +606,7 @@ class StreamingAiServicesIT {
 
         // when
         assistant.chat("What is the capital of Germany?")
-                .onPartialThinking((partialThinking, context) -> {
+                .onPartialThinkingWithContext((partialThinking, context) -> {
                     tokenStreamHandler.onPartialThinking(partialThinking, context);
                     if (partialThoughtsCounter.incrementAndGet() >= partialThoughtsBeforeCancellation) {
                         context.streamingHandle().cancel();
