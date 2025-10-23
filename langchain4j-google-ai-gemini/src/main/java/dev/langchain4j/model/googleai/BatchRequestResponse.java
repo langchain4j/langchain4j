@@ -52,10 +52,10 @@ final class BatchRequestResponse {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record BatchGenerateContentResponse(
-            @JsonProperty("name") String name,
-            @JsonProperty("metadata") Map<String, Object> metadata,
-            @JsonProperty("done") boolean done,
-            @JsonProperty("response") Response response) {
+            String name,
+            Map<String, Object> metadata,
+            boolean done,
+            Response response) {
 
         /**
          * The batch output containing the inlined responses.
@@ -66,7 +66,7 @@ final class BatchRequestResponse {
         @JsonIgnoreProperties(ignoreUnknown = true)
         record Response(
                 @JsonProperty("@type") String type,
-                @JsonProperty("inlinedResponses") InlinedResponses inlinedResponses) {}
+                InlinedResponses inlinedResponses) {}
 
         /**
          * Wrapper for the list of inlined responses.
@@ -74,7 +74,7 @@ final class BatchRequestResponse {
          * @param inlinedResponses The list of individual response wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponses(@JsonProperty("inlinedResponses") List<InlinedResponseWrapper> inlinedResponses) {}
+        record InlinedResponses(List<InlinedResponseWrapper> inlinedResponses) {}
 
         /**
          * Wrapper for an individual response.
@@ -82,7 +82,7 @@ final class BatchRequestResponse {
          * @param response The actual Gemini response.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponseWrapper(@JsonProperty("response") GeminiGenerateContentResponse response) {}
+        record InlinedResponseWrapper(GeminiGenerateContentResponse response) {}
     }
 
     /**
@@ -106,11 +106,11 @@ final class BatchRequestResponse {
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Operation(
-            @JsonProperty String name,
-            @JsonProperty Map<String, Object> metadata,
-            @JsonProperty boolean done,
-            @JsonProperty Status error,
-            @JsonProperty BatchGenerateContentResponse.Response response) {
+            String name,
+            Map<String, Object> metadata,
+            boolean done,
+            Status error,
+            BatchGenerateContentResponse.Response response) {
 
         /**
          * Represents the error status of an operation.
@@ -121,8 +121,8 @@ final class BatchRequestResponse {
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record Status(
-                @JsonProperty int code,
-                @JsonProperty String message,
-                @JsonProperty List<Map<String, Object>> details) {}
+                int code,
+                String message,
+                List<Map<String, Object>> details) {}
     }
 }

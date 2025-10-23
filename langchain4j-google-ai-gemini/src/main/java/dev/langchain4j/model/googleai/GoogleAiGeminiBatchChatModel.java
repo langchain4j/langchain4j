@@ -91,7 +91,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         private static void ensureOperationNameFormat(String operationName) {
             if (!operationName.startsWith("batches/")) {
                 throw new IllegalArgumentException(
-                        "Operation name must start with 'batches/'. This name is returned when creating "
+                        "Batch name must start with 'batches/'. This name is returned when creating "
                                 + "the batch with #createBatchInline.");
             }
         }

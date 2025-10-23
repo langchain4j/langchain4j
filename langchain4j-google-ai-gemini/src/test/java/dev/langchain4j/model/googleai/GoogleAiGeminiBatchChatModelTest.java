@@ -251,7 +251,7 @@ class GoogleAiGeminiBatchChatModelTest {
         void should_throw_when_invalid_batch_name() {
             assertThatThrownBy(() -> new BatchName("test-pending"))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Batch requests cannot contain ChatRequest objects with different models");
+                    .hasMessageContaining("Batch name must start with 'batches/'");
         }
 
         @Test
