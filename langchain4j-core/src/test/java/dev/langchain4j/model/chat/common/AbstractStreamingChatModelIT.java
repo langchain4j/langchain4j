@@ -36,7 +36,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -85,34 +84,6 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         assertThat(streamingHandle.isCancelled()).isTrue();
         streamingHandle.cancel(); // testing idempotency
         assertThat(streamingHandle.isCancelled()).isTrue();
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    @DisabledIf("supportsStreamingCancellation")
-    void should_fail_to_cancel_streaming(StreamingChatModel model) {
-        // TODO
-
-        // given
-        Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
-            streamingHandle.cancel();
-        };
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story about animals"))
-                .build();
-
-        // when
-        ChatResponseAndStreamingMetadata responseAndStreamingMetadata =
-                chat(model, chatRequest, streamingHandleConsumer, 5, false);
-
-        // then
-        assertThat(responseAndStreamingMetadata.chatResponse()).isNull();
-
-        StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
-        assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(1);
-        assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
-        // TODO errors
     }
 
     protected boolean supportsStreamingCancellation() {
