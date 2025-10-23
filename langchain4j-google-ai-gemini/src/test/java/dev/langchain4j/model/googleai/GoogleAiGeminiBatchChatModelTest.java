@@ -329,7 +329,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(
+                    .isEqualTo(new BatchError(batchName,
                             13, "batches/test-error failed without error", BATCH_STATE_CANCELLED, List.of()));
         }
 
@@ -346,7 +346,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(404, "Not Found", BatchJobState.BATCH_STATE_FAILED, List.of()));
+                    .isEqualTo(new BatchError(batchName, 404, "Not Found", BatchJobState.BATCH_STATE_FAILED, List.of()));
         }
 
         @Test
@@ -365,7 +365,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(400, "Bad Request", BATCH_STATE_FAILED, errorDetails));
+                    .isEqualTo(new BatchError(batchName, 400, "Bad Request", BATCH_STATE_FAILED, errorDetails));
         }
 
         @Test
@@ -441,9 +441,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class CancelBatchJob {
         @ParameterizedTest
         @CsvSource({
-            "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
-            "batches/test-already-cancelled, Batch is already in CANCELLED state",
-            "batches/non-existent, Batch not found"
+                "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
+                "batches/test-already-cancelled, Batch is already in CANCELLED state",
+                "batches/non-existent, Batch not found"
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchNameValue, String errorMessage) {
             // given
@@ -478,6 +478,38 @@ class GoogleAiGeminiBatchChatModelTest {
 
             // then
             verify(mockGeminiService).batchCancelBatch("batches/test-running-cancel");
+        }
+    }
+
+    @Nested
+    class DeleteBatchJob {
+        @ParameterizedTest
+        @CsvSource({
+                "batches/test-cannot-delete, Batch cannot be deleted due to server error",
+                "batches/non-existent, Batch not found",
+                "batches/invalid-name, Invalid batch name format"
+        })
+        void should_throw_exception_when_batch_deletion_fails(String batchNameValue, String errorMessage) {
+            // given
+            var batchName = new BatchName(batchNameValue);
+            when(mockGeminiService.batchDeleteBatch(batchName.value())).thenThrow(new RuntimeException(errorMessage));
+
+            // when & then
+            assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(errorMessage);
+        }
+
+        @Test
+        void should_delete_batch() {
+            // given
+            var batchName = new BatchName("batches/test-completed-delete");
+
+            // when
+            subject.deleteBatchJob(batchName);
+
+            // then
+            verify(mockGeminiService).batchDeleteBatch("batches/test-completed-delete");
         }
     }
 

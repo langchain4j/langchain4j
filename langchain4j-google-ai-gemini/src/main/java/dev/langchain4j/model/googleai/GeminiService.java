@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -13,6 +14,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -26,8 +34,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -81,14 +88,28 @@ class GeminiService {
         return sendRequest(url, apiKey, request, BatchRequestResponse.Operation.class);
     }
 
-    BatchRequestResponse.Operation batchRetrieveBatch(String operationName) {
-        String url = String.format("%s/%s", baseUrl, operationName);
+    BatchRequestResponse.Operation batchRetrieveBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
         return sendRequest(url, apiKey, null, BatchRequestResponse.Operation.class, GET);
     }
 
-    Void batchCancelBatch(String operationName) {
-        String url = String.format("%s/%s:cancel", baseUrl, operationName);
+    Void batchCancelBatch(String batchName) {
+        String url = String.format("%s/%s:cancel", baseUrl, batchName);
         return sendRequest(url, apiKey, null, Void.class);
+    }
+
+    Void batchDeleteBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    ListOperationsResponse batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/batches",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken)
+        );
+        return sendRequest(url, apiKey, null, ListOperationsResponse.class, GET);
     }
 
     GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
@@ -100,6 +121,7 @@ class GeminiService {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
     }
+
 
     GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
@@ -188,5 +210,17 @@ class GeminiService {
             builder.body(Json.toJson(body));
         }
         return builder.build();
+    }
+
+    private static String buildUrl(String baseUrl, StringPair... pairs) {
+        var queryParams = Stream.of(pairs)
+                .filter(pair -> pair.value != null)
+                .map(entry -> entry.key() + "=" + URLEncoder.encode(entry.value(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+
+        return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
+    }
+
+    private static record StringPair(String key, @Nullable String value) {
     }
 }

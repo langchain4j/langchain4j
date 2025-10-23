@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 final class BatchRequestResponse {
-    private BatchRequestResponse() {}
+    private BatchRequestResponse() {
+    }
 
     /**
      * Represents a batch request for generating content using the Gemini API.
@@ -25,21 +26,24 @@ final class BatchRequestResponse {
         record Batch(
                 @JsonProperty("display_name") String displayName,
                 @JsonProperty("input_config") InputConfig inputConfig,
-                long priority) {}
+                long priority) {
+        }
 
         /**
          * Configures the input to the batch request.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record InputConfig(Requests requests) {}
+        record InputConfig(Requests requests) {
+        }
 
         /**
          * Wrapper for the list of inlined requests.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record Requests(List<InlinedRequest> requests) {}
+        record Requests(List<InlinedRequest> requests) {
+        }
 
         /**
          * Individual request to be processed in the batch.
@@ -47,7 +51,8 @@ final class BatchRequestResponse {
          * @param request  Required. The {@link GeminiGenerateContentRequest} to be processed in the batch.
          * @param metadata Optional. The metadata to be associated with the request.
          */
-        record InlinedRequest(GeminiGenerateContentRequest request, Map<String, String> metadata) {}
+        record InlinedRequest(GeminiGenerateContentRequest request, Map<String, String> metadata) {
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -61,7 +66,8 @@ final class BatchRequestResponse {
          * @param inlinedResponses The wrapper object containing the list of inlined responses.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record Response(@JsonProperty("@type") String type, InlinedResponses inlinedResponses) {}
+        record Response(@JsonProperty("@type") String type, InlinedResponses inlinedResponses) {
+        }
 
         /**
          * Wrapper for the list of inlined responses.
@@ -69,7 +75,8 @@ final class BatchRequestResponse {
          * @param inlinedResponses The list of individual response wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponses(List<InlinedResponseWrapper> inlinedResponses) {}
+        record InlinedResponses(List<InlinedResponseWrapper> inlinedResponses) {
+        }
 
         /**
          * Wrapper for an individual response.
@@ -77,7 +84,8 @@ final class BatchRequestResponse {
          * @param response The actual Gemini response.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponseWrapper(GeminiGenerateContentResponse response) {}
+        record InlinedResponseWrapper(GeminiGenerateContentResponse response) {
+        }
     }
 
     /**
@@ -115,6 +123,13 @@ final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(int code, String message, List<Map<String, Object>> details) {}
+        public record Status(int code, String message, List<Map<String, Object>> details) {
+        }
+    }
+
+    public record ListOperationsResponse(
+            List<Operation> operations,
+            String nextPageToken
+    ) {
     }
 }

@@ -39,7 +39,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * This interface is sealed, allowing only specific implementations:
      * {@link BatchIncomplete}, {@link BatchSuccess}, and {@link BatchError}.
      */
-    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {}
+    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {
+    }
 
     /**
      * Represents a batch operation that is currently pending or in progress.
@@ -47,7 +48,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param state     the current state of the batch job
      */
-    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {}
+    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {
+    }
 
     /**
      * Represents a successful batch operation.
@@ -55,17 +57,30 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param responses a list of chat responses from the batch operation
      */
-    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {}
+    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {
+    }
 
     /**
      * Represents an error that occurred during a batch operation.
      *
-     * @param code    an error code representing the type of error
-     * @param message a descriptive message about the error
-     * @param details additional details about the error, if available
+     * @param batchName the name of the batch operation
+     * @param code      an error code representing the type of error
+     * @param message   a descriptive message about the error
+     * @param details   additional details about the error, if available
      */
-    public record BatchError(int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse {}
+    public record BatchError(BatchName batchName, int code, String message, BatchJobState state,
+                             List<Map<String, Object>> details)
+            implements BatchResponse {
+    }
+
+    /**
+     * Represents a List of Batches, returned from {@link GoogleAiGeminiBatchChatModel#listBatchJobs(String, Integer, String)}
+     *
+     * @param pageToken Token used to paginate to the next page.
+     * @param responses List of batch responses.
+     */
+    public record BatchList(String pageToken, List<BatchResponse> responses) {
+    }
 
     /**
      * Represents the name of a batch operation.
@@ -182,14 +197,33 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         geminiService.batchCancelBatch(name.value());
     }
 
+    /**
+     * Deletes a batch job from the system.
+     * <p>
+     * This removes the batch job but does not cancel it if still running.
+     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch.
+     *
+     * @param name the name of the batch job to delete
+     * @throws RuntimeException if the batch job cannot be deleted or does not exist
+     */
     public void deleteBatchJob(BatchName name) {
-        // TODO(issues/3916): Implement deletion of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
+        geminiService.batchDeleteBatch(name.value());
     }
 
-    public void listBatchJobs(BatchName name) {
-        // TODO(issues/3916): Implement listing of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
+    /**
+     * Lists batch jobs with optional pagination.
+     *
+     * @param pageSize  the maximum number of batch jobs to return; if null, uses server default
+     * @param pageToken token for retrieving a specific page from {@link BatchList#pageToken()};
+     *                  if null, returns the first page
+     * @return a {@link BatchList} containing batch responses and a token for the next page
+     * @throws RuntimeException if the server does not support this operation
+     */
+    public BatchList listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+        var response = geminiService.batchListBatches(pageSize, pageToken);
+        return new BatchList(
+                response.nextPageToken(),
+                response.operations().stream().map(this::processResponse).toList());
     }
 
     private ChatRequest applyDefaultParameters(ChatRequest chatRequest) {
@@ -214,6 +248,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
             if (operation.error() != null) {
                 var state = extractBatchState(operation.metadata());
                 return new BatchError(
+                        new BatchName(operation.name()),
                         operation.error().code(),
                         operation.error().message(),
                         state,
@@ -262,7 +297,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
 
     public static final class Builder extends GoogleAiGeminiChatModelBaseBuilder<Builder> {
 
-        private Builder() {}
+        private Builder() {
+        }
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
