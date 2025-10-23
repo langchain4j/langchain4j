@@ -1,17 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentRequest.*;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import org.jspecify.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentRequest.*;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The {@code GoogleAiGeminiBatchChatModel} class provides an interface for interacting with the Gemini Batch API,
@@ -39,10 +38,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
                 // Wrap them in InlinedRequest, ready for batching.
                 .map(request -> new InlinedRequest(request, Map.of()))
                 .toList();
-        var request = new BatchGenerateContentRequest(new Batch(
-                displayName,
-                new InputConfig(new Requests(inlineRequests)),
-                getOrDefault(priority, 0L)));
+        var request = new BatchGenerateContentRequest(
+                new Batch(displayName, new InputConfig(new Requests(inlineRequests)), getOrDefault(priority, 0L)));
 
         return geminiService.batchGenerateContent(modelName, request);
     }
@@ -80,12 +77,10 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
     }
 
     private static String extractModelFromRequests(List<ChatRequest> requests) {
-        var modelNames = requests.stream()
-                .map(ChatRequest::modelName)
-                .collect(Collectors.toUnmodifiableSet());
+        var modelNames = requests.stream().map(ChatRequest::modelName).collect(Collectors.toUnmodifiableSet());
         if (modelNames.size() != 1) {
-            throw new IllegalArgumentException("Batch requests cannot contain ChatRequest objects with different " +
-                    "models; all requests must use the same model.");
+            throw new IllegalArgumentException("Batch requests cannot contain ChatRequest objects with different "
+                    + "models; all requests must use the same model.");
         }
 
         return modelNames.iterator().next();
@@ -110,8 +105,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
 
     public static final class Builder extends GoogleAiGeminiChatModelBaseBuilder<Builder> {
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
@@ -135,24 +129,21 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         record Batch(
                 @JsonProperty("display_name") String displayName,
                 @JsonProperty("input_config") InputConfig inputConfig,
-                long priority) {
-        }
+                long priority) {}
 
         /**
          * Configures the input to the batch request.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record InputConfig(Requests requests) {
-        }
+        record InputConfig(Requests requests) {}
 
         /**
          * Wrapper for the list of inlined requests.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record Requests(List<InlinedRequest> requests) {
-        }
+        record Requests(List<InlinedRequest> requests) {}
 
         /**
          * Individual request to be processed in the batch.
@@ -160,13 +151,10 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
          * @param request  Required. The {@link GeminiGenerateContentRequest} to be processed in the batch.
          * @param metadata Optional. The metadata to be associated with the request.
          */
-        record InlinedRequest(GeminiGenerateContentRequest request,
-                              Map<String, String> metadata) {
-        }
+        record InlinedRequest(GeminiGenerateContentRequest request, Map<String, String> metadata) {}
     }
 
-    public record BatchGenerateContentResponse() {
-    }
+    public record BatchGenerateContentResponse() {}
 
     /**
      * Represents a long-running operation that is the result of a network API call.
@@ -193,8 +181,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
             @JsonProperty Map<String, Object> metadata,
             @JsonProperty boolean done,
             @JsonProperty Status error,
-            @JsonProperty Map<String, Object> response
-    ) {
+            @JsonProperty Map<String, Object> response) {
 
         /**
          * Represents the error status of an operation.
@@ -207,8 +194,6 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         public record Status(
                 @JsonProperty int code,
                 @JsonProperty String message,
-                @JsonProperty List<Map<String, Object>> details
-        ) {
-        }
+                @JsonProperty List<Map<String, Object>> details) {}
     }
 }

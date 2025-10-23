@@ -1,11 +1,10 @@
 package dev.langchain4j.model.googleai;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -33,8 +32,7 @@ class GoogleAiGeminiBatchChatModelIT {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest("What is the capital of France?"),
-                    createChatRequest("What is the capital of Germany?")
-            );
+                    createChatRequest("What is the capital of Germany?"));
 
             // when
             var operation = subject.createBatchInline(displayName, priority, requests);
@@ -55,9 +53,7 @@ class GoogleAiGeminiBatchChatModelIT {
 
             var displayName = "Test Batch - Negative Priority";
             var priority = -5L;
-            var requests = List.of(
-                    createChatRequest("What is the capital of Portugal?")
-            );
+            var requests = List.of(createChatRequest("What is the capital of Portugal?"));
 
             // when
             var operation = subject.createBatchInline(displayName, priority, requests);

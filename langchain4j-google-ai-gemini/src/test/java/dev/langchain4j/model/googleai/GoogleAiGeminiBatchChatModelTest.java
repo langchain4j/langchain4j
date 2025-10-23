@@ -7,11 +7,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentRequest;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.Operation;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GoogleAiGeminiBatchChatModelTest {
     @Mock
     private GeminiService mockGeminiService;
+
     @Captor
     private ArgumentCaptor<BatchGenerateContentRequest> batchRequestCaptor;
 
@@ -45,8 +46,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest("gemini-2.5-flash-lite", "What is the capital of France?"),
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?")
-            );
+                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?"));
 
             var expectedOperation = new Operation("operations/test-123", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -57,24 +57,20 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isEqualTo(expectedOperation);
 
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-flash-lite"),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
             assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
-            assertThat(capturedRequest.batch().inputConfig().requests().requests()).hasSize(2);
+            assertThat(capturedRequest.batch().inputConfig().requests().requests())
+                    .hasSize(2);
         }
 
         @Test
         void should_create_batch_with_null_priority_defaulting_to_zero() {
             // given
             var displayName = "Test Batch";
-            var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Italy?")
-            );
+            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is the capital of Italy?"));
 
             var expectedOperation = new Operation("operations/test-456", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -85,10 +81,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isEqualTo(expectedOperation);
 
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-flash-lite"),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
@@ -100,9 +93,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Single Request Batch";
             var priority = 5L;
-            var requests = List.of(
-                    createChatRequest("gemini-2.5-pro", "Explain quantum computing")
-            );
+            var requests = List.of(createChatRequest("gemini-2.5-pro", "Explain quantum computing"));
 
             var expectedOperation = new Operation("operations/test-789", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -113,13 +104,11 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isEqualTo(expectedOperation);
 
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-pro"),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-pro"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
-            assertThat(capturedRequest.batch().inputConfig().requests().requests()).hasSize(1);
+            assertThat(capturedRequest.batch().inputConfig().requests().requests())
+                    .hasSize(1);
         }
 
         @Test
@@ -129,8 +118,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest("gemini-2.5-flash", "Question 1"),
-                    createChatRequest("gemini-2.5-pro", "Question 2")
-            );
+                    createChatRequest("gemini-2.5-pro", "Question 2"));
 
             // when & then
             assertThatThrownBy(() -> subject.createBatchInline(displayName, priority, requests))
@@ -143,9 +131,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Low Priority Batch";
             var priority = -10L;
-            var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "What is AI?")
-            );
+            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is AI?"));
 
             var expectedOperation = new Operation("operations/test-negative", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -156,10 +142,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isNotNull();
 
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-flash-lite"),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().priority()).isEqualTo(-10L);
@@ -173,8 +156,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(
                     createChatRequest("gemini-2.5-pro", "Question 1"),
                     createChatRequest("gemini-2.5-pro", "Question 2"),
-                    createChatRequest("gemini-2.5-pro", "Question 3")
-            );
+                    createChatRequest("gemini-2.5-pro", "Question 3"));
 
             var expectedOperation = new Operation("operations/test-model", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -183,10 +165,7 @@ class GoogleAiGeminiBatchChatModelTest {
             subject.createBatchInline(displayName, priority, requests);
 
             // then
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-pro"),
-                    any()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-pro"), any());
         }
 
         @Test
@@ -194,9 +173,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Metadata Test";
             var priority = 1L;
-            var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "Test message")
-            );
+            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "Test message"));
 
             var expectedOperation = new Operation("operations/test-metadata", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -205,13 +182,11 @@ class GoogleAiGeminiBatchChatModelTest {
             subject.createBatchInline(displayName, priority, requests);
 
             // then
-            verify(mockGeminiService).batchGenerateContent(
-                    any(),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(any(), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
-            var inlinedRequests = capturedRequest.batch().inputConfig().requests().requests();
+            var inlinedRequests =
+                    capturedRequest.batch().inputConfig().requests().requests();
             assertThat(inlinedRequests).hasSize(1);
             assertThat(inlinedRequests.get(0).metadata()).isEmpty();
         }
@@ -226,8 +201,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-flash-lite", "Question 2"),
                     createChatRequest("gemini-2.5-flash-lite", "Question 3"),
                     createChatRequest("gemini-2.5-flash-lite", "Question 4"),
-                    createChatRequest("gemini-2.5-flash-lite", "Question 5")
-            );
+                    createChatRequest("gemini-2.5-flash-lite", "Question 5"));
 
             var expectedOperation = new Operation("operations/test-multiple", null, false, null, null);
             when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
@@ -238,13 +212,11 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isNotNull();
 
-            verify(mockGeminiService).batchGenerateContent(
-                    eq("gemini-2.5-flash-lite"),
-                    batchRequestCaptor.capture()
-            );
+            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
-            assertThat(capturedRequest.batch().inputConfig().requests().requests()).hasSize(5);
+            assertThat(capturedRequest.batch().inputConfig().requests().requests())
+                    .hasSize(5);
         }
     }
 
