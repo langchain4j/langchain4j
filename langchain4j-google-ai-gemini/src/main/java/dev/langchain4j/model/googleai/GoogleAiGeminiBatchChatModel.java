@@ -1,22 +1,28 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentRequest.*;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentRequest.Batch;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentRequest.InputConfig;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentRequest.Requests;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentResponse.Response;
+import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The {@code GoogleAiGeminiBatchChatModel} class provides an interface for interacting with the Gemini Batch API,
- * an asynchronous service designed for processing large volumes of requests at a reduced cost (50% of standard).
- * It is ideal for non-urgent, large-scale tasks like data pre-processing or evaluations, with a Service Level
- * Objective (SLO) of 24-hour turnaround, though completion is often much quicker.
+ * Provides an interface for interacting with the Gemini Batch API, an asynchronous service designed for processing
+ * large volumes of requests at a reduced cost (50% of standard). It is ideal for non-urgent, large-scale tasks like
+ * data pre-processing or evaluations, with a Service Level Objective (SLO) of 24-hour turnaround, though
+ * completion is often much quicker.
  */
 @Experimental
 public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
@@ -28,7 +34,103 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         super(builder, geminiService);
     }
 
-    public Operation createBatchInline(String displayName, @Nullable Long priority, List<ChatRequest> requests) {
+    /**
+     * Represents the response of a batch operation.
+     * This interface is sealed, allowing only specific implementations:
+     * {@link BatchIncomplete}, {@link BatchSuccess}, and {@link BatchError}.
+     */
+    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {
+    }
+
+    /**
+     * Represents a batch operation that is currently pending or in progress.
+     *
+     * @param batchName the name of the batch operation
+     * @param state     the current state of the batch job
+     */
+    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {
+    }
+
+    /**
+     * Represents a successful batch operation.
+     *
+     * @param batchName the name of the batch operation
+     * @param responses a list of chat responses from the batch operation
+     */
+    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {
+    }
+
+    /**
+     * Represents an error that occurred during a batch operation.
+     *
+     * @param code    an error code representing the type of error
+     * @param message a descriptive message about the error
+     * @param details additional details about the error, if available
+     */
+    public record BatchError(int code, String message, BatchJobState state, List<Map<String, Object>> details)
+            implements BatchResponse {
+    }
+
+    /**
+     * Represents the name of a batch operation.
+     * The name must adhere to a specific format, starting with "batches/".
+     *
+     * @param value the name of the batch operation
+     */
+    public record BatchName(String value) {
+        public BatchName {
+            ensureOperationNameFormat(value);
+        }
+
+        /**
+         * Ensures that the operation name starts with "batches/".
+         *
+         * @param operationName the name of the operation to validate
+         * @throws IllegalArgumentException if the operation name does not start with "batches/"
+         */
+        private static void ensureOperationNameFormat(String operationName) {
+            if (!operationName.startsWith("batches/")) {
+                throw new IllegalArgumentException(
+                        "Operation name must start with 'batches/'. This name is returned when creating "
+                                + "the batch with #createBatchInline.");
+            }
+        }
+    }
+
+    /**
+     * Represents the possible states of a batch job.
+     */
+    public enum BatchJobState {
+        BATCH_STATE_PENDING,
+        BATCH_STATE_RUNNING,
+        BATCH_STATE_SUCCEEDED,
+        BATCH_STATE_FAILED,
+        BATCH_STATE_CANCELLED,
+        BATCH_STATE_EXPIRED,
+        UNSPECIFIED
+    }
+
+    /**
+     * Creates and enqueues a batch of content generation requests for asynchronous processing.
+     *
+     * <p> This method submits multiple chat requests as a single batch operation to the Gemini API.
+     * All requests in the batch must use the same model. The batch will be processed asynchronously,
+     * and the initial response will typically be in a {@link BatchIncomplete} state.</p>
+     *
+     * <p>Batch processing offers a 50% cost reduction compared to real-time requests and has a
+     * 24-hour turnaround SLO, making it ideal for large-scale, non-urgent tasks.</p>
+     *
+     * @param displayName a user-defined name for the batch, used for identification
+     * @param priority    optional priority for the batch; batches with higher priority values are
+     *                    processed before those with lower values; negative values are allowed;
+     *                    defaults to 0 if null
+     * @param requests    a list of chat requests to be processed in the batch; all requests must
+     *                    use the same model
+     * @return a {@link BatchResponse} representing the initial state of the batch operation,
+     * typically {@link BatchIncomplete}
+     * @throws IllegalArgumentException if the requests contain different models
+     */
+    public BatchResponse createBatchInline(String displayName, @Nullable Long priority, List<ChatRequest> requests) {
         var modelName = extractModelFromRequests(requests);
         var inlineRequests = requests.stream()
                 // Merge the chat requests with the values set in the Builder.
@@ -41,32 +143,54 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         var request = new BatchGenerateContentRequest(
                 new Batch(displayName, new InputConfig(new Requests(inlineRequests)), getOrDefault(priority, 0L)));
 
-        return geminiService.batchGenerateContent(modelName, request);
-    }
-
-    public BatchJobState getBatchJobStatus(String operationName) {
-        // Implementation for getting job status
-        return BatchJobState.JOB_STATE_PENDING;
-    }
-
-    public Object retrieveBatchResults(String operationName) {
-        // Implementation for retrieving batch job results
-        // This might return a List<GenerateContentResponse> or a String representing a file URI
-        return null;
-    }
-
-    public void cancelBatchJob(String operationName) {
-        // Implementation for cancelling a batch job
+        return processResponse(geminiService.batchGenerateContent(modelName, request));
     }
 
     /**
-     * Deletes an existing batch job - when a job is deleted, it stops processing new requests and is permanently
-     * removed from the list of batch jobs.
+     * Retrieves the current state and results of a batch operation.
      *
-     * @param operationName The unique operation name (ID) of the batch job to delete.
+     * <p>This method polls the Gemini API to get the latest state of a previously created batch.
+     * The response can be:
+     * <ul>
+     *   <li>{@link BatchIncomplete} - if the batch is still pending or running</li>
+     *   <li>{@link BatchSuccess} - if the batch completed successfully, containing all responses</li>
+     *   <li>{@link BatchError} - if the batch failed, containing error details</li>
+     * </ul>
+     * <p>
+     * Clients should poll this method at intervals to check the operation status until completion.</p>
+     *
+     * @param name the name of the batch operation to retrieve, obtained from the initial
+     *             {@link #createBatchInline} call
+     * @return a {@link BatchResponse} representing the current state of the batch operation
      */
-    public void deleteBatchJob(String operationName) {
-        // Implementation for deleting a batch job
+    public BatchResponse retrieveBatchResults(BatchName name) {
+        var operation = geminiService.batchRetrieveBatch(name.value());
+        return processResponse(operation);
+    }
+
+    /**
+     * Cancels a batch operation that is currently pending or running.
+     *
+     * <p>This method attempts to cancel a batch job. Cancellation is only possible for batches
+     * that are in {@link BatchJobState#BATCH_STATE_PENDING} or {@link BatchJobState#BATCH_STATE_RUNNING}
+     * state. Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
+     *
+     * @param name the name of the batch operation to cancel
+     * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled (e.g., already completed,
+     *                                                 already cancelled, or does not exist)
+     */
+    public void cancelBatchJob(BatchName name) {
+        geminiService.batchCancelBatch(name.value());
+    }
+
+    public void deleteBatchJob(BatchName name) {
+        // TODO(issues/3916): Implement deletion of batch jobs.
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public void listBatchJobs(BatchName name) {
+        // TODO(issues/3916): Implement listing of batch jobs.
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     private ChatRequest applyDefaultParameters(ChatRequest chatRequest) {
@@ -86,17 +210,51 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         return modelNames.iterator().next();
     }
 
-    /**
-     * Represents the possible states of a batch job.
-     */
-    public enum BatchJobState {
-        JOB_STATE_PENDING,
-        JOB_STATE_RUNNING,
-        JOB_STATE_SUCCEEDED,
-        JOB_STATE_FAILED,
-        JOB_STATE_CANCELLED,
-        JOB_STATE_EXPIRED,
-        UNSPECIFIED
+    private BatchResponse processResponse(Operation operation) {
+        if (operation.done()) {
+            if (operation.error() != null) {
+                var state = extractBatchState(operation.metadata());
+                return new BatchError(
+                        operation.error().code(),
+                        operation.error().message(),
+                        state,
+                        operation.error().details());
+            } else {
+                List<ChatResponse> responses = extractResponses(operation.response());
+                return new BatchSuccess(new BatchName(operation.name()), responses);
+            }
+        } else {
+            var state = extractBatchState(operation.metadata());
+            return new BatchIncomplete(new BatchName(operation.name()), state);
+        }
+    }
+
+    private List<ChatResponse> extractResponses(Response response) {
+        if (response == null || response.inlinedResponses() == null) {
+            return List.of();
+        }
+
+        return response.inlinedResponses().inlinedResponses().stream()
+                .map(BatchGenerateContentResponse.InlinedResponseWrapper::response)
+                .map(this::processResponse)
+                .toList();
+    }
+
+    private BatchJobState extractBatchState(Map<String, Object> metadata) {
+        if (metadata == null) {
+            return BatchJobState.UNSPECIFIED;
+        }
+
+        var stateObj = metadata.get("state");
+        if (stateObj == null) {
+            return BatchJobState.UNSPECIFIED;
+        }
+
+        try {
+            return BatchJobState.valueOf(stateObj.toString());
+        } catch (IllegalArgumentException e) {
+            return BatchJobState.UNSPECIFIED;
+        }
     }
 
     static Builder builder() {
@@ -105,95 +263,11 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
 
     public static final class Builder extends GoogleAiGeminiChatModelBaseBuilder<Builder> {
 
-        private Builder() {}
+        private Builder() {
+        }
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
         }
-    }
-
-    /**
-     * Represents a batch request for generating content using the Gemini API.
-     * A batch allows processing multiple {@link GeminiGenerateContentRequest} objects asynchronously.
-     */
-    record BatchGenerateContentRequest(Batch batch) {
-
-        /**
-         * The batch configuration containing display name, input config, and priority.
-         *
-         * @param displayName Required. The user-defined name of this batch.
-         * @param inputConfig Configuration for the input to the batch request.
-         * @param priority    Optional. The priority of the batch. Batches with a higher priority value will be processed before
-         *                    batches with a lower priority value. Negative values are allowed. Default is 0.
-         */
-        record Batch(
-                @JsonProperty("display_name") String displayName,
-                @JsonProperty("input_config") InputConfig inputConfig,
-                long priority) {}
-
-        /**
-         * Configures the input to the batch request.
-         *
-         * @param requests The list of inlined requests to be processed in the batch.
-         */
-        record InputConfig(Requests requests) {}
-
-        /**
-         * Wrapper for the list of inlined requests.
-         *
-         * @param requests The list of inlined requests to be processed in the batch.
-         */
-        record Requests(List<InlinedRequest> requests) {}
-
-        /**
-         * Individual request to be processed in the batch.
-         *
-         * @param request  Required. The {@link GeminiGenerateContentRequest} to be processed in the batch.
-         * @param metadata Optional. The metadata to be associated with the request.
-         */
-        record InlinedRequest(GeminiGenerateContentRequest request, Map<String, String> metadata) {}
-    }
-
-    public record BatchGenerateContentResponse() {}
-
-    /**
-     * Represents a long-running operation that is the result of a network API call.
-     *
-     * @param name     The server-assigned name, which is only unique within the same service that originally returns it.
-     *                 If you use the default HTTP mapping, the name should be a resource name ending with {@code operations/{unique_id}}.
-     * @param metadata Service-specific metadata associated with the operation. It typically contains progress information
-     *                 and common metadata such as create time. Some services might not provide such metadata.
-     *                 An object containing fields of an arbitrary type. An additional field {@code "@type"} contains a URI
-     *                 identifying the type.
-     * @param done     If the value is {@code false}, it means the operation is still in progress. If {@code true}, the operation
-     *                 is completed, and either {@code error} or {@code response} is available.
-     * @param error    The error result of the operation in case of failure or cancellation. Only present when {@code done} is
-     *                 {@code true} and the operation failed.
-     * @param response The normal, successful response of the operation. If the original method returns no data on success,
-     *                 such as Delete, the response is {@code google.protobuf.Empty}. If the original method is standard
-     *                 Get/Create/Update, the response should be the resource. For other methods, the response should have
-     *                 the type {@code XxxResponse}, where {@code Xxx} is the original method name. Only present when
-     *                 {@code done} is {@code true} and the operation succeeded.
-     */
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Operation(
-            @JsonProperty String name,
-            @JsonProperty Map<String, Object> metadata,
-            @JsonProperty boolean done,
-            @JsonProperty Status error,
-            @JsonProperty Map<String, Object> response) {
-
-        /**
-         * Represents the error status of an operation.
-         *
-         * @param code    The status code.
-         * @param message A developer-facing error message.
-         * @param details A list of messages that carry the error details.
-         */
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(
-                @JsonProperty int code,
-                @JsonProperty String message,
-                @JsonProperty List<Map<String, Object>> details) {}
     }
 }
