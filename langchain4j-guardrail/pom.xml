@@ -10,7 +10,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-guardrail</artifactId>
+    <artifactId>langchain4j-guardrails</artifactId>
     <version>1.8.0-SNAPSHOT</version>
     <name>LangChain4j :: Guardrails</name>
     <description>Input and output out-of-the-box guardrails</description>
