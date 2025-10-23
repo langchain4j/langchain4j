@@ -27,6 +27,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentRequest;
+import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchGenerateContentResponse;
+import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.Operation;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -68,6 +71,11 @@ class GeminiService {
     GeminiGenerateContentResponse generateContent(String modelName, GeminiGenerateContentRequest request) {
         String url = String.format("%s/models/%s:generateContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
+    }
+
+    Operation batchGenerateContent(String modelName, BatchGenerateContentRequest request) {
+        String url = String.format("%s/%s:batchGenerateContent", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, Operation.class);
     }
 
     GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
