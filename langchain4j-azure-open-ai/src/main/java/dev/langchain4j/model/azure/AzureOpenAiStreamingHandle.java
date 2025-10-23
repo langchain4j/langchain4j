@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import reactor.core.Disposable;
 
+/**
+ * @since 1.8.0
+ */
 class AzureOpenAiStreamingHandle implements StreamingHandle {
 
     private final Disposable disposable;

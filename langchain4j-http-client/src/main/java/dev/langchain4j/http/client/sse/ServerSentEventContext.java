@@ -3,7 +3,7 @@ package dev.langchain4j.http.client.sse;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * @since 1.8.0 // TODO check all new classes and methods
+ * @since 1.8.0
  */
 public class ServerSentEventContext {
 

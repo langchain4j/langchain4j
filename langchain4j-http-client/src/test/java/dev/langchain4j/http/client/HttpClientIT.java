@@ -252,7 +252,7 @@ public abstract class HttpClientIT {
         for (HttpClient client : clients()) {
 
             // given
-            int cancelAfterNumberOfEvents = 5;
+            int eventsBeforeCancellation = 5;
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -292,7 +292,7 @@ public abstract class HttpClientIT {
 
                 @Override
                 public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    if (counter.incrementAndGet() >= cancelAfterNumberOfEvents) {
+                    if (counter.incrementAndGet() >= eventsBeforeCancellation) {
                         context.parsingHandle().cancel();
                     }
                 }
@@ -315,7 +315,7 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, times(cancelAfterNumberOfEvents)).onEvent(any(), any());
+            inOrder.verify(spyListener, times(eventsBeforeCancellation)).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(spyListener);

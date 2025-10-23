@@ -43,6 +43,9 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @since 1.8.0
+     */
     public static void onPartialResponse(StreamingChatResponseHandler handler,
                                          String partialResponse,
                                          StreamingHandle streamingHandle) {
@@ -69,6 +72,9 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @since 1.8.0
+     */
     public static void onPartialThinking(StreamingChatResponseHandler handler,
                                          String partialThinking,
                                          StreamingHandle streamingHandle) {
@@ -91,6 +97,9 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
+    /**
+     * @since 1.8.0
+     */
     public static void onPartialToolCall(StreamingChatResponseHandler handler,
                                          PartialToolCall partialToolCall,
                                          StreamingHandle streamingHandle) {

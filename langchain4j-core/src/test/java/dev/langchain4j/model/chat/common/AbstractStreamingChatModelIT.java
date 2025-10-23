@@ -50,20 +50,18 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     public abstract StreamingChatModel createModelWith(ChatModelListener listener);
 
-    // TODO test those that do not support
-
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStreamingCancellation")
     void should_cancel_streaming(StreamingChatModel model) {
 
         // given
-        int cancelAfterPartialResponsesCalledTimes = 5;
-        AtomicInteger counter = new AtomicInteger();
+        int partialResponsesBeforeCancellation = 5;
+        AtomicInteger partialResponsesCounter = new AtomicInteger();
         AtomicReference<StreamingHandle> streamingHandleReference = new AtomicReference<>();
         Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
             streamingHandleReference.set(streamingHandle);
-            if (counter.incrementAndGet() >= cancelAfterPartialResponsesCalledTimes) {
+            if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
                 streamingHandle.cancel();
             }
         };
@@ -80,12 +78,12 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         assertThat(responseAndStreamingMetadata.chatResponse()).isNull();
 
         StreamingMetadata streamingMetadata = responseAndStreamingMetadata.streamingMetadata();
-        assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(cancelAfterPartialResponsesCalledTimes);
+        assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isEqualTo(partialResponsesBeforeCancellation);
         assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(0);
 
         StreamingHandle streamingHandle = streamingHandleReference.get();
         assertThat(streamingHandle.isCancelled()).isTrue();
-        streamingHandle.cancel(); // test idempotency
+        streamingHandle.cancel(); // testing idempotency
         assertThat(streamingHandle.isCancelled()).isTrue();
     }
 

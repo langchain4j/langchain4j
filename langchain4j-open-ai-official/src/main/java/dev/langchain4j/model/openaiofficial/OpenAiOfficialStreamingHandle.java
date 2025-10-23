@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.openai.core.http.AsyncStreamResponse;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 
+/**
+ * @since 1.8.0
+ */
 class OpenAiOfficialStreamingHandle implements StreamingHandle {
 
     private final AsyncStreamResponse<?> asyncStreamResponse;

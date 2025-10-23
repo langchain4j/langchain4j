@@ -43,7 +43,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 }
             }
 
-            if (!data.isEmpty()) {
+            if (!parsingHandle.isCancelled() && !data.isEmpty()) {
                 ServerSentEvent sse = new ServerSentEvent(event, data.toString());
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }

@@ -76,7 +76,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
                     for (String token : toTokens(aiMessage)) {
                         if (streamingHandle.isCancelled()) {
-                            break;
+                            return;
                         }
 
                         onPartialResponse(handler, token, streamingHandle);

@@ -13,6 +13,9 @@ public class ParsedAndRawResponse<R> {
     private final ServerSentEvent rawServerSentEvent;
     private final StreamingHandle streamingHandle;
 
+    /**
+     * @since 1.8.0
+     */
     protected ParsedAndRawResponse(Builder<R> builder) {
         this.parsedResponse = builder.parsedResponse;
         this.rawHttpResponse = builder.rawHttpResponse;
@@ -55,14 +58,23 @@ public class ParsedAndRawResponse<R> {
         return rawServerSentEvent;
     }
 
+    /**
+     * @since 1.8.0
+     */
     public StreamingHandle streamingHandle() {
         return streamingHandle;
     }
 
+    /**
+     * @since 1.8.0
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * @since 1.8.0
+     */
     public static class Builder<R> {
 
         private R parsedResponse;
