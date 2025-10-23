@@ -107,7 +107,6 @@ class BaseGeminiChatModel {
         }
 
         return GeminiGenerateContentRequest.builder()
-                .model(chatRequest.modelName())
                 .contents(geminiContentList)
                 .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
                 .generationConfig(GeminiGenerationConfig.builder()
