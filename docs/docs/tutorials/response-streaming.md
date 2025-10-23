@@ -22,11 +22,14 @@ They accept an implementation of the `StreamingChatResponseHandler` interface as
 ```java
 public interface StreamingChatResponseHandler {
 
-    void onPartialResponse(String partialResponse);
+    default void onPartialResponse(String partialResponse) {}
+    default void onPartialResponse(String partialResponse, PartialResponseContext context) {}
 
     default void onPartialThinking(PartialThinking partialThinking) {}
+    default void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {}
 
     default void onPartialToolCall(PartialToolCall partialToolCall) {}
+    default void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
@@ -37,12 +40,15 @@ public interface StreamingChatResponseHandler {
 ```
 
 By implementing `StreamingChatResponseHandler`, you can define actions for the following events:
-- When the next partial textual response is generated: `onPartialResponse(String)` is invoked.
+- When the next partial textual response is generated: either `onPartialResponse(String)`
+or `onPartialResponse(String, PartialResponseContext)` is invoked (you can implement either of these methods).
 Depending on the LLM provider, partial response text can consist of a single or more tokens.
 For instance, you can send the token directly to the UI as soon as it becomes available.
-- When the next partial thinking/reasoning text is generated: `onPartialThinking(PartialThinking)` is invoked.
+- When the next partial thinking/reasoning text is generated: either `onPartialThinking(PartialThinking)`
+or `onPartialThinking(PartialThinking, PartialThinkingContext)` is invoked (you can implement either of these methods).
 Depending on the LLM provider, partial thinking text can consist of a single or more tokens.
-- When the next [partial tool call](/tutorials/tools#using-streamingchatmodel) is generated: `onPartialToolCall(PartialToolCall)` is invoked.
+- When the next [partial tool call](/tutorials/tools#using-streamingchatmodel) is generated: either `onPartialToolCall(PartialToolCall)`
+or `onPartialToolCall(PartialToolCall, PartialToolCallContext)` is invoked (you can implement either of these methods).
 - When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
@@ -110,3 +116,37 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 
 model.chat("Tell me a joke", onPartialResponseAndError(System.out::print, Throwable::printStackTrace));
 ```
+
+## Streaming Cancellation
+
+If you wish to cancel the streaming, you can do so from one of the following methods:
+- `onPartialResponse(String, PartialResponseContext)`
+- `onPartialThinking(PartialThinking, PartialThinkingContext)`
+- `onPartialToolCall(PartialToolCall, PartialToolCallContext)`
+
+The context object contains the `StreamingHandle`, which can be used to cancel the streaming:
+```java
+model.chat(userMessage, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+        process(partialResponse);
+        if (shouldCancel()) {
+            context.streamingHandle().cancel();
+        }
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
+Once `StreamingHandle.cancel()` has been called, `StreamingChatResponseHandler` will not receive any further callbacks.

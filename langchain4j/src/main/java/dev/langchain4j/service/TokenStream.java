@@ -25,6 +25,9 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked every time a new partial textual response (usually a single token)
      * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialResponseWithContext(BiConsumer)} callback can be used
+     * if you want to consume tokens as soon as they become available.
      *
      * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
@@ -33,10 +36,15 @@ public interface TokenStream {
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
-     * TODO
+     * The provided consumer will be invoked every time a new partial textual response (usually a single token)
+     * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialResponse(Consumer)} callback can be used
+     * if you want to consume tokens as soon as they become available.
      *
-     * @param handler TODO
+     * @param handler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialResponse(Consumer)
      * @since 1.8.0
      */
     @Experimental
@@ -47,6 +55,9 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
      * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialThinkingWithContext(BiConsumer)} callback can be used
+     * if you want to consume thinking tokens as soon as they become available.
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
@@ -59,12 +70,15 @@ public interface TokenStream {
     }
 
     /**
-     * TODO
      * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
      * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialThinking(Consumer)} callback can be used
+     * if you want to consume thinking tokens as soon as they become available.
      *
      * @param handler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialThinking(Consumer)
      * @since 1.8.0
      */
     @Experimental

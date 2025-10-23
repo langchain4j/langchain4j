@@ -28,6 +28,7 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     @Override
     public void onPartialResponse(String partialResponse, PartialResponseContext context) {
+        context.streamingHandle().cancel();
         responseBuilder.append(partialResponse);
     }
 

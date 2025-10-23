@@ -15,6 +15,9 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Please note that some LLM providers do not stream individual tokens, but send responses in batches.
      * In such cases, this callback may receive multiple tokens at once.
+     * <p>
+     * Either this or the {@link #onPartialResponse(String, PartialResponseContext)} method
+     * should be implemented if you want to consume tokens as soon as they become available.
      *
      * @param partialResponse A partial textual response, usually a single token.
      * @see #onPartialResponse(String, PartialResponseContext)
@@ -22,14 +25,18 @@ public interface StreamingChatResponseHandler {
     default void onPartialResponse(String partialResponse) {}
 
     /**
-     * TODO
      * Invoked each time the model generates a partial textual response, usually a single token.
      * <p>
      * Please note that some LLM providers do not stream individual tokens, but send responses in batches.
      * In such cases, this callback may receive multiple tokens at once.
+     * <p>
+     * Either this or the {@link #onPartialResponse(String)} method
+     * should be implemented if you want to consume tokens as soon as they become available.
      *
      * @param partialResponse A partial textual response, usually a single token.
-     * @param context         TODO
+     * @param context         A partial response context.
+     *                        Contains a {@link StreamingHandle} that can be used to cancel streaming.
+     * @see #onPartialResponse(String)
      * @since 1.8.0
      */
     @Experimental
@@ -42,6 +49,9 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Please note that some LLM providers do not stream individual tokens, but send thinking tokens in batches.
      * In such cases, this callback may receive multiple tokens at once.
+     * <p>
+     * Either this or the {@link #onPartialThinking(PartialThinking, PartialThinkingContext)} method
+     * should be implemented if you want to consume thinking tokens as soon as they become available.
      *
      * @param partialThinking A partial thinking text, usually a single token.
      * @see #onPartialThinking(PartialThinking, PartialThinkingContext)
@@ -51,14 +61,18 @@ public interface StreamingChatResponseHandler {
     default void onPartialThinking(PartialThinking partialThinking) {}
 
     /**
-     * TODO
      * Invoked each time the model generates a partial thinking/reasoning text, usually a single token.
      * <p>
      * Please note that some LLM providers do not stream individual tokens, but send thinking tokens in batches.
      * In such cases, this callback may receive multiple tokens at once.
+     * <p>
+     * Either this or the {@link #onPartialThinking(PartialThinking)} method
+     * should be implemented if you want to consume thinking tokens as soon as they become available.
      *
      * @param partialThinking A partial thinking text, usually a single token.
-     * @param context         TODO
+     * @param context         A partial thinking context.
+     *                        Contains a {@link StreamingHandle} that can be used to cancel streaming.
+     * @see #onPartialThinking(PartialThinking)
      * @since 1.8.0
      */
     @Experimental
@@ -90,6 +104,9 @@ public interface StreamingChatResponseHandler {
      * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
      * In those cases, this callback won't be invoked - only {@link #onCompleteToolCall(CompleteToolCall)}
      * will be called.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(PartialToolCall, PartialToolCallContext)} method
+     * should be implemented if you want to consume partial tool calls as soon as they become available.
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
@@ -100,7 +117,6 @@ public interface StreamingChatResponseHandler {
     default void onPartialToolCall(PartialToolCall partialToolCall) {}
 
     /**
-     * TODO
      * This callback is invoked each time the model generates a partial tool call,
      * which contains a single token of the tool's arguments.
      * It is typically invoked multiple times for a single tool call
@@ -124,10 +140,15 @@ public interface StreamingChatResponseHandler {
      * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
      * In those cases, this callback won't be invoked - only {@link #onCompleteToolCall(CompleteToolCall)}
      * will be called.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(PartialToolCall)} method
+     * should be implemented if you want to consume partial tool calls as soon as they become available.
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
-     * @param context         TODO
+     * @param context         A partial tool call context.
+     *                        Contains a {@link StreamingHandle} that can be used to cancel streaming.
+     * @see #onPartialToolCall(PartialToolCall)
      * @since 1.8.0
      */
     @Experimental
