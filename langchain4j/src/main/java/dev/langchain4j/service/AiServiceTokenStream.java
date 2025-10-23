@@ -14,7 +14,9 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -25,6 +27,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 @Internal
@@ -45,7 +48,9 @@ public class AiServiceTokenStream implements TokenStream {
     private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;
+    private BiConsumer<String, PartialResponseContext> partialResponseWithContextHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
+    private BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
@@ -92,8 +97,22 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onPartialResponse(BiConsumer<String, PartialResponseContext> partialResponseHandler) {
+        this.partialResponseWithContextHandler = partialResponseHandler;
+        this.onPartialResponseInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
         this.partialThinkingHandler = partialThinkingHandler;
+        this.onPartialThinkingInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onPartialThinking(BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingHandler) {
+        this.partialThinkingWithContextHandler = partialThinkingHandler;
         this.onPartialThinkingInvoked++;
         return this;
     }
@@ -168,7 +187,9 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 invocationContext,
                 partialResponseHandler,
+                partialResponseWithContextHandler,
                 partialThinkingHandler,
+                partialThinkingWithContextHandler,
                 beforeToolExecutionHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,

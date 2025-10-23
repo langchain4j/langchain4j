@@ -3,12 +3,15 @@ package dev.langchain4j.service;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -25,8 +28,20 @@ public interface TokenStream {
      *
      * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialResponse(BiConsumer)
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
+
+    /**
+     * TODO
+     * @param partialResponseHandler TODO
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.8.0
+     */
+    @Experimental
+    default TokenStream onPartialResponse(BiConsumer<String, PartialResponseContext> partialResponseHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 
     /**
      * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
@@ -34,10 +49,25 @@ public interface TokenStream {
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialThinking(BiConsumer)
      * @since 1.2.0
      */
     @Experimental
     default TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * TODO
+     * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
+     * from a language model is available.
+     *
+     * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.8.0
+     */
+    @Experimental
+    default TokenStream onPartialThinking(BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingHandler) {
         throw new UnsupportedOperationException("not implemented");
     }
 
