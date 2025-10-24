@@ -1,8 +1,5 @@
 name: "Documentation: update versions"
 
-permissions:
-  contents: write
-
 on:
   repository_dispatch:
     types: [ trigger-docs-update-version ]
