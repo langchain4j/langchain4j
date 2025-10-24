@@ -103,6 +103,9 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- guardrails -->
+        <module>langchain4j-guardrails</module>
+
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-agentic</module>
