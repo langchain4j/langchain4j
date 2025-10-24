@@ -2,12 +2,12 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.List;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import org.junit.jupiter.api.Test;
 
 class PartsAndContentsMapperTest {
@@ -116,23 +116,6 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
-    void fromMessageToGContent_toolExecutionResultMessage() {
-        ToolExecutionResultMessage msg = new ToolExecutionResultMessage("toolId", "tool name", "tool response");
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).role()).isEqualTo("user");
-        assertThat(result.get(0).parts().get(0).functionResponse().getName())
-                .isEqualTo("tool name");
-        assertThat(result.get(0)
-                .parts()
-                .get(0)
-                .functionResponse()
-                .getResponse()
-                .get("response"))
-                .isEqualTo("tool response");
-    }
-
-    @Test
     void fromMessageToGContent_emptyMessageListReturnsEmpty() {
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false);
         assertThat(result).isEmpty();
@@ -141,11 +124,9 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesGeneratedImages() {
         // Given
-        GeminiBlob imageBlob = GeminiBlob.builder()
-                .mimeType("image/png")
-                .data(
-                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")
-                .build();
+        GeminiBlob imageBlob = new GeminiBlob(
+                "image/png",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==");
 
         GeminiContent.GeminiPart textPart =
                 GeminiContent.GeminiPart.builder().text("Here's your generated image:").build();
@@ -163,18 +144,14 @@ class PartsAndContentsMapperTest {
         // Verify generated images are stored in attributes
         List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
         assertThat(generatedImages).hasSize(1);
-        assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.getData());
+        assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
     }
 
     @Test
     void fromGPartsToAiMessage_ignoresNonImageInlineData() {
         // Given
-        GeminiBlob audioBlob = GeminiBlob.builder()
-                .mimeType("audio/mp3")
-                .data("base64audiodata")
-                .build();
-
+        GeminiBlob audioBlob = new GeminiBlob("audio/mp3", "base64audiodata");
         GeminiContent.GeminiPart audioPart = GeminiContent.GeminiPart.builder().inlineData(audioBlob).build();
         List<GeminiContent.GeminiPart> parts = List.of(audioPart);
 

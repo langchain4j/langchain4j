@@ -1,12 +1,19 @@
 package dev.langchain4j.model.googleai;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiContent(List<GeminiPart> parts, String role) {
+    GeminiContent {
+        // Make sure the list is mutable.
+        parts = new ArrayList<>(parts);
+    }
+
     void addPart(GeminiPart part) {
-        this.parts.add(part);
+        parts.add(part);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -100,6 +107,57 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                         thought,
                         thoughtSignature
                 );
+            }
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiBlob(String mimeType, String data) {
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFunctionCall(String name, Map<String, Object> args) {
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFunctionResponse(String name, Map<String, String> response) {
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFileData(String mimeType, String fileUri) {
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
+            enum GeminiLanguage {
+                PYTHON,
+                LANGUAGE_UNSPECIFIED;
+
+                @Override
+                public String toString() {
+                    return name().toLowerCase();
+                }
+            }
+
+            GeminiExecutableCode {
+                if (programmingLanguage == null) {
+                    programmingLanguage = GeminiLanguage.PYTHON;
+                }
+            }
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiCodeExecutionResult(GeminiOutcome outcome, String output) {
+            //TODO how to deal with the non-OK outcomes?
+            enum GeminiOutcome {
+                OUTCOME_UNSPECIFIED,
+                OUTCOME_OK,
+                OUTCOME_FAILED,
+                OUTCOME_DEADLINE_EXCEEDED;
+
+                @Override
+                public String toString() {
+                    return this.name().toLowerCase();
+                }
             }
         }
     }

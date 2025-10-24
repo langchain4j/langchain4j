@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.output.structured.Description;
 import java.util.Arrays;
 import java.util.List;
@@ -67,7 +68,7 @@ class FunctionMapperTest {
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
@@ -113,8 +114,8 @@ class FunctionMapperTest {
         //        private final Address billingAddress;
 
         public Customer(String firstname, String lastname, Address shippingAddress
-                //                        Address billingAddress
-                ) {
+                        //                        Address billingAddress
+        ) {
             this.firstname = firstname;
             this.lastname = lastname;
             this.shippingAddress = shippingAddress;
@@ -174,7 +175,7 @@ class FunctionMapperTest {
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
@@ -241,7 +242,7 @@ class FunctionMapperTest {
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
         assertThat(gFnDecl.getName()).isEqualTo("toolName");

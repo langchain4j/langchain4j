@@ -31,6 +31,13 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiCodeExecutionResult;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiExecutableCode;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFileData;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
 
 final class PartsAndContentsMapper {
     private PartsAndContentsMapper() {
@@ -51,10 +58,7 @@ final class PartsAndContentsMapper {
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(GeminiBlob.builder()
-                                .mimeType(image.mimeType())
-                                .data(image.base64Data())
-                                .build())
+                        .inlineData(new GeminiBlob(image.mimeType(), image.base64Data()))
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
@@ -62,17 +66,14 @@ final class PartsAndContentsMapper {
                     byte[] imageBytes = readBytes(url.toString());
                     String base64Data = Base64.getEncoder().encodeToString(imageBytes);
                     return GeminiContent.GeminiPart.builder()
-                            .inlineData(GeminiBlob.builder()
-                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
-                                    .data(base64Data)
-                                    .build())
-                            .build();
+                            .inlineData(new GeminiBlob(
+                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
+                                    base64Data)).build();
                 } else {
                     return GeminiContent.GeminiPart.builder()
-                            .fileData(GeminiFileData.builder()
-                                    .fileUri(url.toString())
-                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
-                                    .build())
+                            .fileData(new GeminiFileData(
+                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
+                                    url.toString()))
                             .build();
                 }
             } else {
@@ -82,34 +83,22 @@ final class PartsAndContentsMapper {
             URI uri = audioContent.audio().url();
             if (uri != null) {
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(GeminiFileData.builder()
-                                .fileUri(uri.toString())
-                                .mimeType(mimeTypeDetector.probeContentType(uri))
-                                .build())
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(GeminiBlob.builder()
-                                .mimeType(audioContent.audio().mimeType())
-                                .data(audioContent.audio().base64Data())
-                                .build())
+                        .inlineData(new GeminiBlob(audioContent.audio().mimeType(), audioContent.audio().base64Data()))
                         .build();
             }
         } else if (content instanceof VideoContent videoContent) {
             URI uri = videoContent.video().url();
             if (uri != null) {
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(GeminiFileData.builder()
-                                .fileUri(uri.toString())
-                                .mimeType(mimeTypeDetector.probeContentType(uri))
-                                .build())
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(GeminiBlob.builder()
-                                .mimeType(videoContent.video().mimeType())
-                                .data(videoContent.video().base64Data())
-                                .build())
+                        .inlineData(new GeminiBlob(videoContent.video().mimeType(), videoContent.video().base64Data()))
                         .build();
             }
         } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -118,17 +107,11 @@ final class PartsAndContentsMapper {
             URI uri = pdfFile.url();
             if (uri != null) {
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(GeminiFileData.builder()
-                                .fileUri(uri.toString())
-                                .mimeType(mimeTypeDetector.probeContentType(uri))
-                                .build())
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(GeminiBlob.builder()
-                                .mimeType(pdfFile.mimeType())
-                                .data(pdfFile.base64Data())
-                                .build())
+                        .inlineData(new GeminiBlob(pdfFile.mimeType(), pdfFile.base64Data()))
                         .build();
             }
         } else {
@@ -152,17 +135,18 @@ final class PartsAndContentsMapper {
                 fullText.append("Code executed:\n")
                         .append("```python")
                         .append(
-                                executableCode.getProgrammingLanguage() != null
+                                executableCode.programmingLanguage() != null
                                         ? // TODO check below why programming language is null
-                                        executableCode.getProgrammingLanguage().toString()
+                                        // TODO: Is this correct? This would result in: ```pythonpythonCODE```
+                                        executableCode.programmingLanguage().toString()
                                         : "")
-                        .append(executableCode.getCode())
+                        .append(executableCode.code())
                         .append("```\n");
             }
 
             GeminiCodeExecutionResult codeExecutionResult = part.codeExecutionResult();
             if (codeExecutionResult != null && includeCodeExecutionOutput) {
-                GeminiOutcome outcome = codeExecutionResult.getOutcome();
+                GeminiOutcome outcome = codeExecutionResult.outcome();
 
                 if (outcome != GeminiOutcome.OUTCOME_OK) {
                     fullText.append("Code execution failed: **")
@@ -172,7 +156,7 @@ final class PartsAndContentsMapper {
                 } else {
                     fullText.append("Output:\n")
                             .append("```\n")
-                            .append(codeExecutionResult.getOutput())
+                            .append(codeExecutionResult.output())
                             .append("```\n");
                 }
             }
@@ -207,12 +191,12 @@ final class PartsAndContentsMapper {
 
             GeminiBlob inlineData = part.inlineData();
             if (inlineData != null
-                    && inlineData.getMimeType() != null
-                    && inlineData.getMimeType().startsWith("image/")
-                    && inlineData.getData() != null) {
+                    && inlineData.mimeType() != null
+                    && inlineData.mimeType().startsWith("image/")
+                    && inlineData.data() != null) {
                 Image generatedImage = Image.builder()
-                        .base64Data(inlineData.getData())
-                        .mimeType(inlineData.getMimeType())
+                        .base64Data(inlineData.data())
+                        .mimeType(inlineData.mimeType())
                         .build();
                 generatedImages.add(generatedImage);
             }
@@ -301,10 +285,7 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
-                                            .functionResponse(GeminiFunctionResponse.builder()
-                                                    .name(toolResultMessage.toolName())
-                                                    .response(Map.of("response", toolResultMessage.text()))
-                                                    .build())
+                                            .functionResponse(new GeminiFunctionResponse(toolResultMessage.toolName(), Map.of("response", toolResultMessage.text())))
                                             .build()),
                                     GeminiRole.USER.toString());
                         default:
@@ -322,10 +303,9 @@ final class PartsAndContentsMapper {
             ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);
             boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
             GeminiContent.GeminiPart geminiPart = GeminiContent.GeminiPart.builder()
-                    .functionCall(GeminiFunctionCall.builder()
-                            .name(toolExecutionRequest.name())
-                            .args(fromJson(toolExecutionRequest.arguments(), Map.class))
-                            .build())
+                    .functionCall(new GeminiFunctionCall(
+                            toolExecutionRequest.name(),
+                            fromJson(toolExecutionRequest.arguments(), Map.class)))
                     .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
                     .build();
             geminiParts.add(geminiPart);
