@@ -16,7 +16,7 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_handlesNullParts() {
 
         // Given
-        List<GeminiPart> parts = null;
+        List<GeminiContent.GeminiPart> parts = null;
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -32,7 +32,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesEmptyPartsList() {
         // Given
-        List<GeminiPart> parts = List.of();
+        List<GeminiContent.GeminiPart> parts = List.of();
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -48,8 +48,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesPartWithAllFieldsNull() {
         // Given
-        GeminiPart part = GeminiPart.builder().build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -65,8 +65,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesPartWithEmptyText() {
         // Given
-        GeminiPart part = GeminiPart.builder().text("").build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().text("").build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -83,8 +83,8 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_handlesNonNullParts() {
 
         // Given
-        GeminiPart part = GeminiPart.builder().text("Hello world").build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().text("Hello world").build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -102,8 +102,8 @@ class PartsAndContentsMapperTest {
         SystemMessage msg = new SystemMessage("system text");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("model");
-        assertThat(result.get(0).getParts().get(0).getText()).isEqualTo("system text");
+        assertThat(result.get(0).role()).isEqualTo("model");
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("system text");
     }
 
     @Test
@@ -111,8 +111,8 @@ class PartsAndContentsMapperTest {
         UserMessage msg = new UserMessage(List.of(new dev.langchain4j.data.message.TextContent("user text")));
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("user");
-        assertThat(result.get(0).getParts().get(0).getText()).isEqualTo("user text");
+        assertThat(result.get(0).role()).isEqualTo("user");
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("user text");
     }
 
     @Test
@@ -120,15 +120,15 @@ class PartsAndContentsMapperTest {
         ToolExecutionResultMessage msg = new ToolExecutionResultMessage("toolId", "tool name", "tool response");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("user");
-        assertThat(result.get(0).getParts().get(0).getFunctionResponse().getName())
+        assertThat(result.get(0).role()).isEqualTo("user");
+        assertThat(result.get(0).parts().get(0).functionResponse().getName())
                 .isEqualTo("tool name");
         assertThat(result.get(0)
-                        .getParts()
-                        .get(0)
-                        .getFunctionResponse()
-                        .getResponse()
-                        .get("response"))
+                .parts()
+                .get(0)
+                .functionResponse()
+                .getResponse()
+                .get("response"))
                 .isEqualTo("tool response");
     }
 
@@ -147,10 +147,10 @@ class PartsAndContentsMapperTest {
                         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")
                 .build();
 
-        GeminiPart textPart =
-                GeminiPart.builder().text("Here's your generated image:").build();
-        GeminiPart imagePart = GeminiPart.builder().inlineData(imageBlob).build();
-        List<GeminiPart> parts = List.of(textPart, imagePart);
+        GeminiContent.GeminiPart textPart =
+                GeminiContent.GeminiPart.builder().text("Here's your generated image:").build();
+        GeminiContent.GeminiPart imagePart = GeminiContent.GeminiPart.builder().inlineData(imageBlob).build();
+        List<GeminiContent.GeminiPart> parts = List.of(textPart, imagePart);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -175,8 +175,8 @@ class PartsAndContentsMapperTest {
                 .data("base64audiodata")
                 .build();
 
-        GeminiPart audioPart = GeminiPart.builder().inlineData(audioBlob).build();
-        List<GeminiPart> parts = List.of(audioPart);
+        GeminiContent.GeminiPart audioPart = GeminiContent.GeminiPart.builder().inlineData(audioBlob).build();
+        List<GeminiContent.GeminiPart> parts = List.of(audioPart);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);

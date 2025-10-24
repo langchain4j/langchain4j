@@ -32,6 +32,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.time.Duration;
@@ -338,7 +339,8 @@ class GoogleAiGeminiStreamingChatModelIT {
     void should_deserialize_to_POJO() throws Exception {
 
         // given
-        record Person(String name, int age) {}
+        record Person(String name, int age) {
+        }
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
