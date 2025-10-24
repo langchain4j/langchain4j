@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementF
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.GeminiFinishReason.*;
+import static dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason.SAFETY;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -141,8 +141,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(bytes));
 
         UserMessage userMessage = UserMessage.from(
-                AudioContent.from(base64Data, "audio/mp3"),
-                TextContent.from("Give a summary of the audio"));
+                AudioContent.from(base64Data, "audio/mp3"), TextContent.from("Give a summary of the audio"));
 
         // when
         ChatResponse response = gemini.chat(userMessage);
@@ -163,9 +162,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
         UserMessage userMessage = UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"),
-                TextContent.from("What do you see on this video?")
-        );
+                VideoContent.from(base64Data, "video/mp4"), TextContent.from("What do you see on this video?"));
 
         // when
         ChatResponse response = gemini.chat(userMessage);
@@ -270,9 +267,11 @@ class GoogleAiGeminiChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -543,10 +542,10 @@ class GoogleAiGeminiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 """
-                Extract information from the following text:
-                1. A circle with a radius of 5
-                2. A rectangle with a width of 10 and a height of 20
-                """);
+                        Extract information from the following text:
+                        1. A circle with a radius of 5
+                        2. A rectangle with a width of 10 and a height of 20
+                        """);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)

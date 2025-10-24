@@ -21,6 +21,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.HashSet;
@@ -61,10 +63,10 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     private ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
-        GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);
+        GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
-        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.getFinishReason());
+        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.finishReason());
         if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
             finishReason = TOOL_EXECUTION;
         }
@@ -72,27 +74,25 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        .id(geminiResponse.getResponseId())
-                        .modelName(geminiResponse.getModelVersion())
-                        .tokenUsage(createTokenUsage(geminiResponse.getUsageMetadata()))
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
                         .finishReason(finishReason)
                         .build())
                 .build();
     }
 
     private AiMessage createAiMessage(GeminiCandidate candidate) {
-        if (candidate == null || candidate.getContent() == null) {
+        if (candidate == null || candidate.content() == null) {
             return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
         }
 
-        return fromGPartsToAiMessage(candidate.getContent().getParts(), includeCodeExecutionOutput, returnThinking);
+        return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
     }
 
     private TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
         return new TokenUsage(
-                tokenCounts.getPromptTokenCount(),
-                tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount());
+                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
     }
 
     @Override

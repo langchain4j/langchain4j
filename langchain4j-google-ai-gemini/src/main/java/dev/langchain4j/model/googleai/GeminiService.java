@@ -13,9 +13,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -23,20 +20,21 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
-
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
@@ -64,7 +62,11 @@ class GeminiService {
                 .build();
 
         if (logRequestsAndResponses || logResponses || logRequests) {
-            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
+            this.httpClient = new LoggingHttpClient(
+                    httpClient,
+                    logRequestsAndResponses || logRequests,
+                    logRequestsAndResponses || logResponses,
+                    logger);
         } else {
             this.httpClient = httpClient;
         }

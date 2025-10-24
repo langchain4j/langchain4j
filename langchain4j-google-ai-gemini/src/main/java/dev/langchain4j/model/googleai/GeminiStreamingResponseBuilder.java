@@ -1,23 +1,24 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 /**
  * A builder class for constructing streaming responses from Gemini AI model.
@@ -59,26 +60,25 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        GeminiCandidate firstCandidate = partialResponse.getCandidates().get(0);
+        GeminiCandidate firstCandidate = partialResponse.candidates().get(0);
 
         updateId(partialResponse);
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
-        updateTokenUsage(partialResponse.getUsageMetadata());
+        updateTokenUsage(partialResponse.usageMetadata());
 
-        GeminiContent content = firstCandidate.getContent();
-        if (content == null || content.getParts() == null) {
+        GeminiContent content = firstCandidate.content();
+        if (content == null || content.parts() == null) {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        AiMessage message = fromGPartsToAiMessage(content.getParts(), includeCodeExecutionOutput, returnThinking);
+        AiMessage message = fromGPartsToAiMessage(content.parts(), includeCodeExecutionOutput, returnThinking);
         updateContentAndFunctionCalls(message);
 
         return new TextAndTools(
                 Optional.ofNullable(message.text()),
                 Optional.ofNullable(message.thinking()),
-                message.toolExecutionRequests()
-        );
+                message.toolExecutionRequests());
     }
 
     /**
@@ -88,49 +88,42 @@ class GeminiStreamingResponseBuilder {
      */
     ChatResponse build() {
         AiMessage aiMessage = createAiMessage();
-
-        FinishReason finishReason = this.finishReason.get();
-        if (aiMessage.hasToolExecutionRequests()) {
-            finishReason = TOOL_EXECUTION;
-        }
-
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
                         .id(id.get())
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
-                        .finishReason(finishReason)
+                        .finishReason(aiMessage.hasToolExecutionRequests() ? TOOL_EXECUTION : finishReason.get())
                         .build())
                 .build();
     }
 
     private void updateId(GeminiGenerateContentResponse response) {
-        if (!isNullOrBlank(response.getResponseId())) {
-            id.set(response.getResponseId());
+        if (!isNullOrBlank(response.responseId())) {
+            id.set(response.responseId());
         }
     }
 
     private void updateModelName(GeminiGenerateContentResponse response) {
-        if (!isNullOrBlank(response.getModelVersion())) {
-            modelName.set(response.getModelVersion());
+        if (!isNullOrBlank(response.modelVersion())) {
+            modelName.set(response.modelVersion());
         }
     }
 
     private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
         if (usageMetadata != null) {
             TokenUsage tokenUsage = new TokenUsage(
-                    usageMetadata.getPromptTokenCount(),
-                    usageMetadata.getCandidatesTokenCount(),
-                    usageMetadata.getTotalTokenCount()
-            );
+                    usageMetadata.promptTokenCount(),
+                    usageMetadata.candidatesTokenCount(),
+                    usageMetadata.totalTokenCount());
             this.tokenUsage.set(tokenUsage);
         }
     }
 
     private void updateFinishReason(GeminiCandidate candidate) {
-        if (candidate.getFinishReason() != null) {
-            this.finishReason.set(fromGFinishReasonToFinishReason(candidate.getFinishReason()));
+        if (candidate.finishReason() != null) {
+            this.finishReason.set(fromGFinishReasonToFinishReason(candidate.finishReason()));
         }
     }
 
