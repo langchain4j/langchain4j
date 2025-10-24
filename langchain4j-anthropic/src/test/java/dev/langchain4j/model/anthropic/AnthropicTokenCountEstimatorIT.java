@@ -66,7 +66,8 @@ class AnthropicTokenCountEstimatorIT {
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What's the tallest mountain in the world?");
-        AiMessage aiMessage = AiMessage.from("The tallest mountain in the world is Mount Everest, with a height of 8,848.86 meters (29,031.7 feet) above sea level.");
+        AiMessage aiMessage = AiMessage.from(
+                "The tallest mountain in the world is Mount Everest, with a height of 8,848.86 meters (29,031.7 feet) above sea level.");
         UserMessage userMessage2 = UserMessage.from("And what's the second tallest?");
 
         // when
@@ -92,7 +93,8 @@ class AnthropicTokenCountEstimatorIT {
         UserMessage userMessage2 = UserMessage.from("How many moons does Jupiter have?");
 
         // when
-        int count = tokenCountEstimator.estimateTokenCountInMessages(List.of(systemMessage, userMessage1, aiMessage, userMessage2));
+        int count = tokenCountEstimator.estimateTokenCountInMessages(
+                List.of(systemMessage, userMessage1, aiMessage, userMessage2));
 
         // then
         assertThat(count).isGreaterThan(0);
@@ -127,8 +129,7 @@ class AnthropicTokenCountEstimatorIT {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> tokenCountEstimator.estimateTokenCountInMessages(List.of(systemMessage))
-        );
+                () -> tokenCountEstimator.estimateTokenCountInMessages(List.of(systemMessage)));
 
         assertThat(ex).hasMessageContaining("at least one non-system message");
     }

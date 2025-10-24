@@ -5,9 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -19,6 +16,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicRole;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @since 1.4.0
@@ -75,8 +75,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
             }
         }
 
-        AnthropicCountTokensRequest.Builder requestBuilder = AnthropicCountTokensRequest.builder()
-                .model(this.modelName);
+        AnthropicCountTokensRequest.Builder requestBuilder =
+                AnthropicCountTokensRequest.builder().model(this.modelName);
 
         if (!systemMessages.isEmpty()) {
             requestBuilder.system(toAnthropicSystemPrompt(systemMessages, AnthropicCacheType.NO_CACHE));
@@ -85,12 +85,13 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
         if (!otherMessages.isEmpty()) {
             requestBuilder.messages(toAnthropicMessages(otherMessages));
         } else if (addDummyUserMessageIfNoUserMessages) {
-            requestBuilder.messages(List.of(new AnthropicMessage(AnthropicRole.USER, List.of(new AnthropicTextContent(dummyUserMessageText)))));
+            requestBuilder.messages(List.of(
+                    new AnthropicMessage(AnthropicRole.USER, List.of(new AnthropicTextContent(dummyUserMessageText)))));
         } else {
-            throw new IllegalArgumentException("Anthropic countTokens requires at least one non-system message. " +
-                    "Provided messages contained only system messages or were empty. To fix: add a UserMessage to " +
-                    "your conversation, or configure AnthropicTokenCountEstimator.builder().addDummyUserMessageIfNoUserMessages() " +
-                    "to auto-insert a minimal dummy user message for token estimation.");
+            throw new IllegalArgumentException("Anthropic countTokens requires at least one non-system message. "
+                    + "Provided messages contained only system messages or were empty. To fix: add a UserMessage to "
+                    + "your conversation, or configure AnthropicTokenCountEstimator.builder().addDummyUserMessageIfNoUserMessages() "
+                    + "to auto-insert a minimal dummy user message for token estimation.");
         }
 
         return client.countTokens(requestBuilder.build()).getInputTokens();
