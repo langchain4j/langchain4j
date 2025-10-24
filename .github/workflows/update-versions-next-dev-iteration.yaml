@@ -37,6 +37,12 @@ jobs:
           echo "Next stable version: ${{ env.NEXT_STABLE_VERSION }}"
           echo "Next beta version: ${{ env.NEXT_BETA_VERSION }}"
 
+      - name: Create and switch to new branch
+        run: |
+          BRANCH_NAME=update-versions-${{ env.NEXT_STABLE_VERSION }}
+          echo "branchName=$BRANCH_NAME" >> $GITHUB_ENV
+          git checkout -b "$BRANCH_NAME"
+
       - name: Extract current stable version property
         id: extract-current-stable
         run: |
@@ -84,7 +90,7 @@ jobs:
 
           git add .
           git commit -m "Update versions to ${{ env.NEXT_STABLE_VERSION }} and ${{ env.NEXT_BETA_VERSION }}"
-          git push origin main
+          git push origin "$branchName"
 
       - name: Trigger the same job in the langchain4j-embeddings repo
         uses: peter-evans/repository-dispatch@v4
