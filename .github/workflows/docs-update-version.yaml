@@ -34,6 +34,13 @@ jobs:
           echo "Found stable version in docs: $STABLE_CURRENT"
           echo "Found beta version in docs: $BETA_CURRENT"
 
+      - name: Create new branch
+        id: create-branch
+        run: |
+          BRANCH_NAME="update-docs-versions-${{ env.STABLE_VERSION }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
       - name: Replace versions in docs recursively
         run: |
           echo "Replacing all occurrences of stable and beta versions recursively under docs/docs/..."
@@ -67,7 +74,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/docs
           git commit -m "docu: update versions to ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
-          git push origin main
+          git push origin "${{ steps.create-branch.outputs.branch }}"
 
       - name: Trigger documentation build and deploy
         if: steps.git-check.outputs.changed == 'true'
