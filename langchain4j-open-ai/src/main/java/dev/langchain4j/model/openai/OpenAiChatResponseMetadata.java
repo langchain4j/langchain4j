@@ -1,13 +1,13 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
@@ -28,7 +28,21 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public OpenAiTokenUsage tokenUsage() {
-        return (OpenAiTokenUsage) super.tokenUsage();
+
+        TokenUsage base = super.tokenUsage();
+        if (base == null) {
+            return null;
+        }
+
+        if (base instanceof OpenAiTokenUsage openAiTokenUsage) {
+            return openAiTokenUsage;
+        }
+
+        return OpenAiTokenUsage.builder()
+                .inputTokenCount(base.inputTokenCount())
+                .outputTokenCount(base.outputTokenCount())
+                .totalTokenCount(base.totalTokenCount())
+                .build();
     }
 
     public Long created() {
@@ -77,28 +91,21 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     @Override
     public int hashCode() {
         return Objects.hash(
-                super.hashCode(),
-                created,
-                serviceTier,
-                systemFingerprint,
-                rawHttpResponse,
-                rawServerSentEvents
-        );
+                super.hashCode(), created, serviceTier, systemFingerprint, rawHttpResponse, rawServerSentEvents);
     }
 
     @Override
     public String toString() {
-        return "OpenAiChatResponseMetadata{" +
-                "id='" + id() + '\'' +
-                ", modelName='" + modelName() + '\'' +
-                ", tokenUsage=" + tokenUsage() +
-                ", finishReason=" + finishReason() +
-                ", created=" + created +
-                ", serviceTier='" + serviceTier + '\'' +
-                ", systemFingerprint='" + systemFingerprint + '\'' +
-                ", rawHttpResponse=" + rawHttpResponse +
-                ", rawServerSentEvents=" + rawServerSentEvents +
-                '}';
+        return "OpenAiChatResponseMetadata{" + "id='"
+                + id() + '\'' + ", modelName='"
+                + modelName() + '\'' + ", tokenUsage="
+                + tokenUsage() + ", finishReason="
+                + finishReason() + ", created="
+                + created + ", serviceTier='"
+                + serviceTier + '\'' + ", systemFingerprint='"
+                + systemFingerprint + '\'' + ", rawHttpResponse="
+                + rawHttpResponse + ", rawServerSentEvents="
+                + rawServerSentEvents + '}';
     }
 
     public static Builder builder() {
