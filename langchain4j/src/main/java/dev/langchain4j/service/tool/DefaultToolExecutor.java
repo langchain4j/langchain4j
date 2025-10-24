@@ -1,14 +1,21 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.invocation.InvocationParameters;
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
+import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -20,11 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
-
 public class DefaultToolExecutor implements ToolExecutor {
 
     private final Object object;
@@ -32,6 +34,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Method methodToInvoke;
     private final boolean wrapToolArgumentsExceptions;
     private final boolean propagateToolExecutionExceptions;
+    private final LazyEvaluationConfig lazyEvaluationConfig;
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
@@ -39,6 +42,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = getOrDefault(builder.wrapToolArgumentsExceptions, false);
         this.propagateToolExecutionExceptions = getOrDefault(builder.propagateToolExecutionExceptions, false);
+        this.lazyEvaluationConfig = getOrDefault(builder.lazyEvaluationConfig, LazyEvaluationConfig.defaultConfig());
     }
 
     public DefaultToolExecutor(Object object, Method method) {
@@ -47,6 +51,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.lazyEvaluationConfig = LazyEvaluationConfig.defaultConfig();
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -56,6 +61,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.lazyEvaluationConfig = LazyEvaluationConfig.defaultConfig();
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -87,6 +93,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.lazyEvaluationConfig = LazyEvaluationConfig.defaultConfig();
     }
 
     @Override
@@ -125,13 +132,37 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
-        InvocationContext invocationContext = InvocationContext.builder()
-                .chatMemoryId(memoryId)
-                .build();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
 
         ToolExecutionResult result = executeWithContext(request, invocationContext);
 
         return result.resultText();
+    }
+
+    /**
+     * Extracts the tool name from the request or method annotations.
+     *
+     * @return the tool name
+     */
+    private String extractToolName() {
+        Tool toolAnnotation = originalMethod.getAnnotation(Tool.class);
+        if (toolAnnotation != null && !toolAnnotation.name().isEmpty()) {
+            return toolAnnotation.name();
+        }
+
+        // Default to method name
+        return originalMethod.getName();
+    }
+
+    /**
+     * Determines if the current tool is an IMMEDIATE tool based on its annotation.
+     *
+     * @return true if the tool has IMMEDIATE return behavior, false otherwise
+     */
+    private boolean isImmediateTool() {
+        Tool toolAnnotation = originalMethod.getAnnotation(Tool.class);
+        return toolAnnotation != null && toolAnnotation.returnBehavior() == ReturnBehavior.IMMEDIATE;
     }
 
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
@@ -149,11 +180,24 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
-        String resultText = toText(result);
-        return ToolExecutionResult.builder()
-                .result(result)
-                .resultText(resultText)
-                .build();
+
+        String toolName = extractToolName();
+        boolean isImmediate = isImmediateTool();
+
+        if (lazyEvaluationConfig.shouldUseLazyEvaluation(toolName)) {
+            return ToolExecutionResult.builder()
+                    .result(result)
+                    .lazyResultText(() -> toText(result))
+                    .useLazyEvaluation(true)
+                    .build();
+        } else {
+            // Existing eager evaluation path
+            String resultText = toText(result);
+            return ToolExecutionResult.builder()
+                    .result(result)
+                    .resultText(resultText)
+                    .build();
+        }
     }
 
     private String toText(Object result) {
@@ -344,6 +388,15 @@ public class DefaultToolExecutor implements ToolExecutor {
         return doubleValue.equals(Math.floor(doubleValue));
     }
 
+    /**
+     * Returns the lazy evaluation configuration for this tool executor.
+     *
+     * @return the lazy evaluation configuration
+     */
+    public LazyEvaluationConfig lazyEvaluationConfig() {
+        return lazyEvaluationConfig;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -355,6 +408,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         private Method methodToInvoke;
         private Boolean wrapToolArgumentsExceptions;
         private Boolean propagateToolExecutionExceptions;
+        private LazyEvaluationConfig lazyEvaluationConfig;
 
         public Builder object(Object object) {
             this.object = object;
@@ -391,6 +445,17 @@ public class DefaultToolExecutor implements ToolExecutor {
          */
         public Builder propagateToolExecutionExceptions(Boolean propagateToolExecutionExceptions) {
             this.propagateToolExecutionExceptions = propagateToolExecutionExceptions;
+            return this;
+        }
+
+        /**
+         * Sets the lazy evaluation configuration for controlling when tool execution results
+         * are evaluated during AI service interactions.
+         * <p>
+         * The default value is {@link LazyEvaluationConfig#defaultConfig()}.
+         */
+        public Builder lazyEvaluationConfig(LazyEvaluationConfig lazyEvaluationConfig) {
+            this.lazyEvaluationConfig = lazyEvaluationConfig;
             return this;
         }
 

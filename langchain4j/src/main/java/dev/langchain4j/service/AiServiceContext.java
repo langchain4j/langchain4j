@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.LazyEvaluationConfig;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -45,6 +46,8 @@ public class AiServiceContext {
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
+
+    public LazyEvaluationConfig lazyEvaluationConfig = LazyEvaluationConfig.defaultConfig();
 
     protected AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
