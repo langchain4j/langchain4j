@@ -92,9 +92,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
         return new TokenUsage(
-                tokenCounts.promptTokenCount(),
-                tokenCounts.candidatesTokenCount(),
-                tokenCounts.totalTokenCount());
+                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
     }
 
     @Override
@@ -123,8 +121,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Integer maxRetries;
         private Set<Capability> supportedCapabilities;
 
-        private GoogleAiGeminiChatModelBuilder() {
-        }
+        private GoogleAiGeminiChatModelBuilder() {}
 
         public GoogleAiGeminiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;

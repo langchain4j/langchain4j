@@ -13,8 +13,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -31,6 +29,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -62,7 +62,11 @@ class GeminiService {
                 .build();
 
         if (logRequestsAndResponses || logResponses || logRequests) {
-            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
+            this.httpClient = new LoggingHttpClient(
+                    httpClient,
+                    logRequestsAndResponses || logRequests,
+                    logRequestsAndResponses || logResponses,
+                    logger);
         } else {
             this.httpClient = httpClient;
         }

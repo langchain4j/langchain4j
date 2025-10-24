@@ -9,12 +9,6 @@ import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionReque
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.util.stream.Collectors.joining;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -38,10 +32,15 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiExecutableC
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFileData;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 final class PartsAndContentsMapper {
-    private PartsAndContentsMapper() {
-    }
+    private PartsAndContentsMapper() {}
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
@@ -67,8 +66,8 @@ final class PartsAndContentsMapper {
                     String base64Data = Base64.getEncoder().encodeToString(imageBytes);
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(new GeminiBlob(
-                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
-                                    base64Data)).build();
+                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)), base64Data))
+                            .build();
                 } else {
                     return GeminiContent.GeminiPart.builder()
                             .fileData(new GeminiFileData(
@@ -87,7 +86,9 @@ final class PartsAndContentsMapper {
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(new GeminiBlob(audioContent.audio().mimeType(), audioContent.audio().base64Data()))
+                        .inlineData(new GeminiBlob(
+                                audioContent.audio().mimeType(),
+                                audioContent.audio().base64Data()))
                         .build();
             }
         } else if (content instanceof VideoContent videoContent) {
@@ -98,7 +99,9 @@ final class PartsAndContentsMapper {
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
-                        .inlineData(new GeminiBlob(videoContent.video().mimeType(), videoContent.video().base64Data()))
+                        .inlineData(new GeminiBlob(
+                                videoContent.video().mimeType(),
+                                videoContent.video().base64Data()))
                         .build();
             }
         } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -238,9 +241,11 @@ final class PartsAndContentsMapper {
                             }
 
                             if (isNotNullOrEmpty(systemMessage.text())) {
-                                return new GeminiContent(List.of(GeminiContent.GeminiPart.builder()
-                                        .text(systemMessage.text())
-                                        .build()), GeminiRole.MODEL.toString());
+                                return new GeminiContent(
+                                        List.of(GeminiContent.GeminiPart.builder()
+                                                .text(systemMessage.text())
+                                                .build()),
+                                        GeminiRole.MODEL.toString());
                             }
 
                             return null;
@@ -285,7 +290,9 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
-                                            .functionResponse(new GeminiFunctionResponse(toolResultMessage.toolName(), Map.of("response", toolResultMessage.text())))
+                                            .functionResponse(new GeminiFunctionResponse(
+                                                    toolResultMessage.toolName(),
+                                                    Map.of("response", toolResultMessage.text())))
                                             .build()),
                                     GeminiRole.USER.toString());
                         default:
@@ -304,8 +311,7 @@ final class PartsAndContentsMapper {
             boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
             GeminiContent.GeminiPart geminiPart = GeminiContent.GeminiPart.builder()
                     .functionCall(new GeminiFunctionCall(
-                            toolExecutionRequest.name(),
-                            fromJson(toolExecutionRequest.arguments(), Map.class)))
+                            toolExecutionRequest.name(), fromJson(toolExecutionRequest.arguments(), Map.class)))
                     .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
                     .build();
             geminiParts.add(geminiPart);

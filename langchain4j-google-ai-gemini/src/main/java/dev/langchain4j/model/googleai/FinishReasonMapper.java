@@ -11,6 +11,5 @@ class FinishReasonMapper {
             case MAX_TOKENS -> FinishReason.LENGTH;
             case MALFORMED_FUNCTION_CALL, FINISH_REASON_UNSPECIFIED, OTHER -> FinishReason.OTHER;
         };
-
     }
 }

@@ -78,7 +78,9 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         GeminiContent dummyContent = new GeminiContent(
                 // This string contains 2 tokens
-                singletonList(GeminiContent.GeminiPart.builder().text("Dummy content").build()), null);
+                singletonList(
+                        GeminiContent.GeminiPart.builder().text("Dummy content").build()),
+                null);
 
         GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest();
         countTokensRequestWithDummyContent.setGenerateContentRequest(GeminiGenerateContentRequest.builder()
@@ -113,8 +115,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         private Duration timeout;
         private Integer maxRetries;
 
-        Builder() {
-        }
+        Builder() {}
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;

@@ -141,8 +141,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(bytes));
 
         UserMessage userMessage = UserMessage.from(
-                AudioContent.from(base64Data, "audio/mp3"),
-                TextContent.from("Give a summary of the audio"));
+                AudioContent.from(base64Data, "audio/mp3"), TextContent.from("Give a summary of the audio"));
 
         // when
         ChatResponse response = gemini.chat(userMessage);
@@ -163,9 +162,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
         UserMessage userMessage = UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"),
-                TextContent.from("What do you see on this video?")
-        );
+                VideoContent.from(base64Data, "video/mp4"), TextContent.from("What do you see on this video?"));
 
         // when
         ChatResponse response = gemini.chat(userMessage);
@@ -270,9 +267,11 @@ class GoogleAiGeminiChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -502,17 +501,13 @@ class GoogleAiGeminiChatModelIT {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
     @JsonSubTypes({@JsonSubTypes.Type(Circle.class), @JsonSubTypes.Type(Rectangle.class)})
-    interface Shape {
-    }
+    interface Shape {}
 
-    record Circle(double radius) implements Shape {
-    }
+    record Circle(double radius) implements Shape {}
 
-    record Rectangle(double width, double height) implements Shape {
-    }
+    record Rectangle(double width, double height) implements Shape {}
 
-    record Shapes(List<Shape> shapes) {
-    }
+    record Shapes(List<Shape> shapes) {}
 
     // TODO move to common tests
     @Test

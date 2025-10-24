@@ -1,9 +1,9 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiContent(List<GeminiPart> parts, String role) {
@@ -47,8 +47,7 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             private Boolean thought;
             private String thoughtSignature;
 
-            private Builder() {
-            }
+            private Builder() {}
 
             Builder text(String text) {
                 this.text = text;
@@ -105,26 +104,21 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                         executableCode,
                         codeExecutionResult,
                         thought,
-                        thoughtSignature
-                );
+                        thoughtSignature);
             }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiBlob(String mimeType, String data) {
-        }
+        record GeminiBlob(String mimeType, String data) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFunctionCall(String name, Map<String, Object> args) {
-        }
+        record GeminiFunctionCall(String name, Map<String, Object> args) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFunctionResponse(String name, Map<String, String> response) {
-        }
+        record GeminiFunctionResponse(String name, Map<String, String> response) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFileData(String mimeType, String fileUri) {
-        }
+        record GeminiFileData(String mimeType, String fileUri) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
@@ -147,7 +141,7 @@ record GeminiContent(List<GeminiPart> parts, String role) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecutionResult(GeminiOutcome outcome, String output) {
-            //TODO how to deal with the non-OK outcomes?
+            // TODO how to deal with the non-OK outcomes?
             enum GeminiOutcome {
                 OUTCOME_UNSPECIFIED,
                 OUTCOME_OK,
@@ -162,4 +156,3 @@ record GeminiContent(List<GeminiPart> parts, String role) {
         }
     }
 }
-

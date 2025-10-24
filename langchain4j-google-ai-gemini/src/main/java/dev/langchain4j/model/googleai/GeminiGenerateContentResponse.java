@@ -1,14 +1,11 @@
 package dev.langchain4j.model.googleai;
 
-import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentResponse(
-        String responseId,
-        String modelVersion,
-        List<GeminiCandidate> candidates,
-        GeminiUsageMetadata usageMetadata) {
+        String responseId, String modelVersion, List<GeminiCandidate> candidates, GeminiUsageMetadata usageMetadata) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(GeminiContent content, GeminiFinishReason finishReason) {
@@ -28,10 +25,7 @@ record GeminiGenerateContentResponse(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiUsageMetadata(
-            Integer promptTokenCount,
-            Integer candidatesTokenCount,
-            Integer totalTokenCount) {
+    record GeminiUsageMetadata(Integer promptTokenCount, Integer candidatesTokenCount, Integer totalTokenCount) {
 
         public static Builder builder() {
             return new Builder();
@@ -42,8 +36,7 @@ record GeminiGenerateContentResponse(
             private Integer candidatesTokenCount;
             private Integer totalTokenCount;
 
-            private Builder() {
-            }
+            private Builder() {}
 
             Builder promptTokenCount(Integer promptTokenCount) {
                 this.promptTokenCount = promptTokenCount;
@@ -61,11 +54,7 @@ record GeminiGenerateContentResponse(
             }
 
             GeminiUsageMetadata build() {
-                return new GeminiUsageMetadata(
-                        promptTokenCount,
-                        candidatesTokenCount,
-                        totalTokenCount
-                );
+                return new GeminiUsageMetadata(promptTokenCount, candidatesTokenCount, totalTokenCount);
             }
         }
     }

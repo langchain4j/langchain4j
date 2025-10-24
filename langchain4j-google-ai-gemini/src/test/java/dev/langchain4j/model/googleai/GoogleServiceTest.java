@@ -3,10 +3,6 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -16,6 +12,10 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class GeminiServiceTest {
     @Test
     void shouldThrownWhenApiKeyIsMissing() {
         assertThatThrownBy(() ->
-                new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
+                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("apiKey cannot be null or blank");
     }
@@ -47,7 +47,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -70,7 +74,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -99,7 +107,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient, null, null);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -130,7 +142,10 @@ class GeminiServiceTest {
 
             GeminiCountTokensRequest request = new GeminiCountTokensRequest();
             request.setContents(List.of(new GeminiContent(
-                    List.of(GeminiContent.GeminiPart.builder().text("Count these tokens").build()), "user")));
+                    List.of(GeminiContent.GeminiPart.builder()
+                            .text("Count these tokens")
+                            .build()),
+                    "user")));
 
             // When
             GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
@@ -154,7 +169,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiCountTokensRequest request = new GeminiCountTokensRequest();
-            request.setContents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Test").build()), "user")));
+            request.setContents(List.of(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("Test").build()), "user")));
 
             // When
             subject.countTokens(TEST_MODEL_NAME, request);
@@ -188,7 +204,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Embed this").build()), null));
+            request.setContent(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder()
+                            .text("Embed this")
+                            .build()),
+                    null));
 
             // When
             GoogleAiEmbeddingResponse actualResponse = subject.embed(TEST_MODEL_NAME, request);
@@ -215,7 +235,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Test").build()), null));
+            request.setContent(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("Test").build()), null));
 
             // When
             subject.embed(TEST_MODEL_NAME, request);
@@ -251,10 +272,12 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request1 = createEmptyEmbeddingRequest();
-            request1.setContent(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("First").build()), null));
+            request1.setContent(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("First").build()), null));
 
             GoogleAiEmbeddingRequest request2 = createEmptyEmbeddingRequest();
-            request2.setContent(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Second").build()), null));
+            request2.setContent(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("Second").build()), null));
 
             GoogleAiBatchEmbeddingRequest batchRequest = new GoogleAiBatchEmbeddingRequest();
             batchRequest.setRequests(List.of(request1, request2));
@@ -310,7 +333,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -351,7 +378,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             CompletableFuture<Void> futureComplete = new CompletableFuture<>();
@@ -359,8 +390,7 @@ class GeminiServiceTest {
             // When
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
-                public void onPartialResponse(String partialResponse) {
-                }
+                public void onPartialResponse(String partialResponse) {}
 
                 @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
@@ -402,7 +432,11 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient, customTimeout);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Hi").build()), "user")))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -428,7 +462,9 @@ class GeminiServiceTest {
 
     private static GeminiGenerateContentResponse createGenerateContentResponse(String text) {
         var candidate = new GeminiCandidate(
-                new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"), null);
+                new GeminiContent(
+                        List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
+                null);
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
     }
 

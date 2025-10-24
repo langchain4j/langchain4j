@@ -247,9 +247,11 @@ class GoogleAiGeminiStreamingChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -339,8 +341,7 @@ class GoogleAiGeminiStreamingChatModelIT {
     void should_deserialize_to_POJO() throws Exception {
 
         // given
-        record Person(String name, int age) {
-        }
+        record Person(String name, int age) {}
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)

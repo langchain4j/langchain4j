@@ -2,12 +2,12 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PartsAndContentsMapperTest {
@@ -65,7 +65,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesPartWithEmptyText() {
         // Given
-        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().text("").build();
+        GeminiContent.GeminiPart part =
+                GeminiContent.GeminiPart.builder().text("").build();
         List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
@@ -83,7 +84,8 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_handlesNonNullParts() {
 
         // Given
-        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().text("Hello world").build();
+        GeminiContent.GeminiPart part =
+                GeminiContent.GeminiPart.builder().text("Hello world").build();
         List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
@@ -128,9 +130,11 @@ class PartsAndContentsMapperTest {
                 "image/png",
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==");
 
-        GeminiContent.GeminiPart textPart =
-                GeminiContent.GeminiPart.builder().text("Here's your generated image:").build();
-        GeminiContent.GeminiPart imagePart = GeminiContent.GeminiPart.builder().inlineData(imageBlob).build();
+        GeminiContent.GeminiPart textPart = GeminiContent.GeminiPart.builder()
+                .text("Here's your generated image:")
+                .build();
+        GeminiContent.GeminiPart imagePart =
+                GeminiContent.GeminiPart.builder().inlineData(imageBlob).build();
         List<GeminiContent.GeminiPart> parts = List.of(textPart, imagePart);
 
         // When
@@ -152,7 +156,8 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_ignoresNonImageInlineData() {
         // Given
         GeminiBlob audioBlob = new GeminiBlob("audio/mp3", "base64audiodata");
-        GeminiContent.GeminiPart audioPart = GeminiContent.GeminiPart.builder().inlineData(audioBlob).build();
+        GeminiContent.GeminiPart audioPart =
+                GeminiContent.GeminiPart.builder().inlineData(audioBlob).build();
         List<GeminiContent.GeminiPart> parts = List.of(audioPart);
 
         // When
