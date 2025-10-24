@@ -24,6 +24,8 @@ public interface AgentInvoker extends AgentSpecification {
 
     Method method();
 
+    String[] argumentNames();
+
     String toCard();
 
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;

@@ -2,7 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
-import static dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl.SUPERVISOR_CONTEXT_KEY;
+import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;

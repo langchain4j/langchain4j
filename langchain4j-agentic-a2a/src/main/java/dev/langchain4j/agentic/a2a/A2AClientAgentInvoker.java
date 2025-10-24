@@ -6,8 +6,8 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
-import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -79,6 +79,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public Method method() {
         return method;
+    }
+
+    @Override
+    public String[] argumentNames() {
+        return inputKeys;
     }
 
     @Override
