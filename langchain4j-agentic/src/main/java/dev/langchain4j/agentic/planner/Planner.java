@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface Planner {
 
-    default void init(AgenticScope agenticScope, List<AgentInstance> agents) { }
+    default void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) { }
 
     Action firstAction(AgenticScope agenticScope);
 

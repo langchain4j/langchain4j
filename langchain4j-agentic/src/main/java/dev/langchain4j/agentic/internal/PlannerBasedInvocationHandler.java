@@ -45,6 +45,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
     private final Executor executor;
 
+    private final AgentInstance plannerInstance;
     private final List<AgentInstance> agentInstances;
     private final Function<AgenticScope, Object> output;
 
@@ -85,6 +86,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         this.afterListener = service.afterListener;
         this.plannerSupplier = plannerSupplier;
         this.agenticScope = agenticScope;
+        this.plannerInstance = AgentUtil.agentToExecutor(AgentUtil.buildAgent(agentServiceClass, this));
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
@@ -173,7 +175,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         }
 
         Planner planner = plannerSupplier.get();
-        planner.init(currentScope, agentInstances);
+        planner.init(currentScope, plannerInstance, agentInstances);
         Object result = new PlannerLoop(planner, currentScope).loop();
 
         if (isRootCall()) {

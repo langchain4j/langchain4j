@@ -27,8 +27,8 @@ public class LoopPlanner implements Planner {
     }
 
     @Override
-    public void init(AgenticScope agenticScope, List<AgentInstance> agents) {
-        this.agents = agents;
+    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
+        this.agents = subagents;
     }
 
     @Override

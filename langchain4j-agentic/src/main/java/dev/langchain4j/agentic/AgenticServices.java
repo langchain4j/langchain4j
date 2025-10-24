@@ -217,6 +217,10 @@ public class AgenticServices {
         return SupervisorAgentServiceImpl.builder(agentServiceClass);
     }
 
+    public static PlannerBasedService<UntypedAgent> plannerBuilder() {
+        return PlannerBasedServiceImpl.builder(UntypedAgent.class);
+    }
+
     public static <T> PlannerBasedService<T> plannerBuilder(Class<T> agentServiceClass) {
         return PlannerBasedServiceImpl.builder(agentServiceClass);
     }

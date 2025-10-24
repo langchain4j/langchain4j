@@ -9,7 +9,6 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;

@@ -66,9 +66,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     @Override
-    public void init(AgenticScope agenticScope, List<AgentInstance> agents) {
-        this.agents = agents.stream().collect(toMap(AgentInstance::uniqueName, Function.identity()));
-        this.agentsList = agents.stream()
+    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
+        this.agents = subagents.stream().collect(toMap(AgentInstance::uniqueName, Function.identity()));
+        this.agentsList = subagents.stream()
                 .map(AgentInstance::toCard)
                 .collect(Collectors.joining(", "));
 

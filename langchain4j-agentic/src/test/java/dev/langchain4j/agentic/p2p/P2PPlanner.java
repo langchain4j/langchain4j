@@ -61,8 +61,8 @@ public class P2PPlanner implements Planner {
     }
 
     @Override
-    public void init(AgenticScope agenticScope, List<AgentInstance> agents) {
-        this.agentActivators = agents.stream().collect(toMap(AgentInstance::uniqueName, AgentActivator::new));
+    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
+        this.agentActivators = subagents.stream().collect(toMap(AgentInstance::uniqueName, AgentActivator::new));
     }
 
     @Override
