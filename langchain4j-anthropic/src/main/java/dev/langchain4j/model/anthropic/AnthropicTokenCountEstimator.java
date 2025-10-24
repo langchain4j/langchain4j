@@ -28,6 +28,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
 
     private final AnthropicClient client;
     private final String modelName;
+    private final boolean addDummyUserMessageIfNoUserMessages;
+    private final String dummyUserMessageText;
 
     public AnthropicTokenCountEstimator(Builder builder) {
         this.client = AnthropicClient.builder()
@@ -42,6 +44,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
                 .build();
 
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.addDummyUserMessageIfNoUserMessages = Boolean.TRUE.equals(builder.addDummyUserMessageIfNoUserMessages);
+        this.dummyUserMessageText = getOrDefault(builder.dummyUserMessageText, "ping");
     }
 
     @Override
@@ -77,8 +81,16 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
         if (!systemMessages.isEmpty()) {
             requestBuilder.system(toAnthropicSystemPrompt(systemMessages, AnthropicCacheType.NO_CACHE));
         }
+
         if (!otherMessages.isEmpty()) {
             requestBuilder.messages(toAnthropicMessages(otherMessages));
+        } else if (addDummyUserMessageIfNoUserMessages) {
+            requestBuilder.messages(List.of(new AnthropicMessage(AnthropicRole.USER, List.of(new AnthropicTextContent(dummyUserMessageText)))));
+        } else {
+            throw new IllegalArgumentException("Anthropic countTokens requires at least one non-system message. " +
+                    "Provided messages contained only system messages or were empty. To fix: add a UserMessage to " +
+                    "your conversation, or configure AnthropicTokenCountEstimator.builder().addDummyUserMessageIfNoUserMessages() " +
+                    "to auto-insert a minimal dummy user message for token estimation.");
         }
 
         return client.countTokens(requestBuilder.build()).getInputTokens();
@@ -99,6 +111,8 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
         private Boolean logRequests;
         private Boolean logResponses;
         private String modelName;
+        private Boolean addDummyUserMessageIfNoUserMessages;
+        private String dummyUserMessageText;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -141,12 +155,23 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
         }
 
         public Builder modelName(String modelName) {
-            this.modelName = modelName.toString();
+            this.modelName = modelName;
             return this;
         }
 
         public Builder modelName(AnthropicChatModelName modelName) {
             return modelName(modelName.toString());
+        }
+
+        public Builder addDummyUserMessageIfNoUserMessages() {
+            this.addDummyUserMessageIfNoUserMessages = true;
+            return this;
+        }
+
+        public Builder addDummyUserMessageIfNoUserMessages(String dummyUserMessage) {
+            this.addDummyUserMessageIfNoUserMessages = true;
+            this.dummyUserMessageText = dummyUserMessage;
+            return this;
         }
 
         public AnthropicTokenCountEstimator build() {
