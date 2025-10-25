@@ -9,14 +9,19 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -27,6 +32,8 @@ public class AgentUtil {
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
     private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
+
+    private static final Set<String> WORKFLOW_STREAMING_AGENTS = new CopyOnWriteArraySet<>();
 
     private AgentUtil() {}
 
@@ -195,5 +202,49 @@ public class AgentUtil {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;
+    }
+
+    public static boolean hasStreamingAgent(Collection<AgentExecutor> agentExecutors) {
+        for (final AgentExecutor executor : agentExecutors) {
+            if (isStreamingAgent(executor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean allHaveSameOutput(Collection<AgentExecutor> agentExecutors) {
+        HashSet<String> set = new HashSet<>();
+        for (final AgentExecutor executor : agentExecutors) {
+            set.add(executor.agentInvoker().outputKey());
+        }
+        return set.size() == 1;
+    }
+
+    public static boolean isAllStreamingAgent(Collection<AgentExecutor> agentExecutors) {
+        for (final AgentExecutor executor : agentExecutors) {
+            if (!isStreamingAgent(executor)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean isOnlyLastStreamingAgent(List<AgentExecutor> agentExecutors) {
+        final List<AgentExecutor> executors = agentExecutors.subList(0, agentExecutors.size() - 1);
+        return !hasStreamingAgent(executors) && isStreamingAgent(agentExecutors.get(agentExecutors.size() - 1));
+    }
+
+    public static boolean isStreamingAgent(AgentExecutor agentExecutor) {
+        return WORKFLOW_STREAMING_AGENTS.contains(agentExecutor.agentInvoker().uniqueName())
+                || agentExecutor.agentInvoker().method().getReturnType().equals(TokenStream.class);
+    }
+
+    public static AgentExecutor getLastAgent(List<AgentExecutor> agentExecutors) {
+        return agentExecutors.get(agentExecutors.size() - 1);
+    }
+
+    public static void addWorkflowStreamingAgent(String name) {
+        WORKFLOW_STREAMING_AGENTS.add(name);
     }
 }

@@ -1,21 +1,22 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
 import dev.langchain4j.agentic.internal.AbstractService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService<T>> implements LoopAgentService<T> {
 
@@ -29,10 +30,17 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
 
     @Override
     public T build() {
+        checkSubAgents();
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new LoopInvocationHandler());
+    }
+
+    private void checkSubAgents() {
+        if (hasStreamingAgent(this.agentExecutors())) {
+            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
+        }
     }
 
     public class LoopInvocationHandler extends AbstractAgentInvocationHandler {
@@ -50,11 +58,11 @@ public class LoopAgentServiceImpl<T> extends AbstractService<T, LoopAgentService
             for (int i = 0; i < maxIterations; i++) {
                 for (AgentExecutor agentExecutor : agentExecutors()) {
                     agentExecutor.execute(agenticScope);
-                    if (!testExitAtLoopEnd && exitCondition.test(agenticScope, i+1)) {
+                    if (!testExitAtLoopEnd && exitCondition.test(agenticScope, i + 1)) {
                         return result(agenticScope, output.apply(agenticScope));
                     }
                 }
-                if (testExitAtLoopEnd && exitCondition.test(agenticScope, i+1)) {
+                if (testExitAtLoopEnd && exitCondition.test(agenticScope, i + 1)) {
                     return result(agenticScope, output.apply(agenticScope));
                 }
             }
