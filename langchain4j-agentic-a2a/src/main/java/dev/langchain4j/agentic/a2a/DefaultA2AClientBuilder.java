@@ -56,7 +56,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.uniqueName = uniqueAgentName(agentServiceClass, this.name);
         try {
             this.a2aClient = Client.builder(agentCard)
                     .clientConfig(new ClientConfig.Builder()

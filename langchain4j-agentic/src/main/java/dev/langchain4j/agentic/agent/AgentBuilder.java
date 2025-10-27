@@ -82,7 +82,7 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.uniqueName = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
@@ -285,7 +285,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.uniqueName = uniqueAgentName(this.name);
+        this.uniqueName = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 
