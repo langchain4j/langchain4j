@@ -434,6 +434,57 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+### Scheduled workflow
+
+Automated periodic business is a common scenario in our daily lives, such as checking business reports every day, reading summary news every morning, and so on.
+Langchain4j provides a scheduled workflow to support this feature. Here's an example, we have three sub agents:
+ - `BusinessData` agent retrieves business data;
+ - `DataAnalysis` agent is based on analyzing large models to obtain professional analysis reports;
+ - `Sender` agent will send the analysis report to the relevant personnel.
+
+```java
+public class BusinessData {
+    @Agent(value = "business data", outputKey = "data")
+    public String getData() {
+        ......
+    }
+}
+
+public interface DataAnalysis {
+    @UserMessage(
+            """
+                    Summary the business data(it's a json-like string), and give a professional report.
+                    The data is: '{{data}}'.
+                    """)
+    @Agent(value = "summary report", outputKey = "content")
+    String summary(@V("data") String data);
+}
+
+public class Sender {
+    @Agent(value = "send content to peoples")
+    public void send(@V("content") String content) {
+        ......
+    }
+}
+```
+
+In a scheduled workflow, the scheduling period can be set using cron expression `cron("0 0 8 */1 * ?")`, and the maximum number of scheduled executions can be set using `maxIterations(5)`.
+
+```java
+        DataAnalysis dataAnalysis = spy(AgenticServices.agentBuilder(DataAnalysis.class)
+                .chatModel(baseModel())
+                .outputKey("content")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.scheduledBuilder()
+                .cron("0 0 8 * * ?") 
+                .maxIterations(30)
+                .subAgents(new BusinessData(), dataAnalysis, new Sender())
+                .build();
+
+        novelCreator.invoke(new HashMap<>());
+```
+
 ## Asynchronous agents
 
 By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.

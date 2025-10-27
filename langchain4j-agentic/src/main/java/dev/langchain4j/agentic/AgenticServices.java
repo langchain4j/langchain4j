@@ -50,6 +50,7 @@ import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import dev.langchain4j.agentic.workflow.ScheduledAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.WorkflowService;
@@ -195,6 +196,23 @@ public class AgenticServices {
      */
     public static <T> ConditionalAgentService<T> conditionalBuilder(Class<T> agentServiceClass) {
         return workflowAgentsBuilder().conditionalBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a workflow scheduled of its subagents.
+     */
+    public static ScheduledAgentService<UntypedAgent> scheduledBuilder() {
+        return workflowAgentsBuilder().scheduledBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a workflow scheduled of its subagents
+     * that can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> ScheduledAgentService<T> scheduledBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().scheduledBuilder(agentServiceClass);
     }
 
     /**

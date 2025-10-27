@@ -4,11 +4,11 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import dev.langchain4j.agentic.workflow.ScheduledAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 
 public enum WorkflowAgentsBuilderImpl implements WorkflowAgentsBuilder {
-
     INSTANCE;
 
     @Override
@@ -19,6 +19,16 @@ public enum WorkflowAgentsBuilderImpl implements WorkflowAgentsBuilder {
     @Override
     public <T> SequentialAgentService<T> sequenceBuilder(final Class<T> agentServiceClass) {
         return SequentialAgentServiceImpl.builder(agentServiceClass);
+    }
+
+    @Override
+    public ScheduledAgentService<UntypedAgent> scheduledBuilder() {
+        return ScheduledAgentServiceImpl.builder();
+    }
+
+    @Override
+    public <T> ScheduledAgentService<T> scheduledBuilder(final Class<T> agentServiceClass) {
+        return ScheduledAgentServiceImpl.builder(agentServiceClass);
     }
 
     @Override

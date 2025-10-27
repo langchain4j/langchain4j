@@ -17,13 +17,28 @@
             <email>mario.fusco@gmail.com</email>
             <url>https://github.com/mariofusco</url>
         </developer>
+        <developer>
+            <id>xinwang</id>
+            <email>xinwang@apache.org</email>
+            <url>https://github.com/vesense</url>
+        </developer>
     </developers>
+
+    <properties>
+        <quartz.version>2.3.2</quartz.version>
+    </properties>
 
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>1.9.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+            <version>${quartz.version}</version>
         </dependency>
 
         <dependency>

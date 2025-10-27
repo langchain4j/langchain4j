@@ -10,8 +10,10 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
+import dev.langchain4j.agentic.Agents.BusinessData;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.DataAnalysis;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -23,6 +25,7 @@ import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
 import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.Sender;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyledWriter;
@@ -794,5 +797,28 @@ public class WorkflowAgentsIT {
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
         assertThat(story).containsIgnoringCase("dragon").containsIgnoringCase("wizard");
+    }
+
+    @Test
+    void check_scheduled_agents() {
+
+        DataAnalysis dataAnalysis = spy(AgenticServices.agentBuilder(DataAnalysis.class)
+                .chatModel(baseModel())
+                .outputKey("content")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.scheduledBuilder()
+                .cron("0 * * * * ?") // every minutes
+                .maxIterations(3)
+                .subAgents(new BusinessData(), dataAnalysis, new Sender())
+                .build();
+
+        novelCreator.invoke(new HashMap<>());
+
+        try {
+            Thread.sleep(300 * 1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
