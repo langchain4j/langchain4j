@@ -84,14 +84,12 @@ public class McpRegistryClientIT {
 
     @Test
     public void testHealth() {
-        DefaultMcpRegistryClient client = DefaultMcpRegistryClient.builder().build();
         McpRegistryHealth health = client.healthCheck();
         assertThat(health.getStatus()).isEqualTo("ok");
     }
 
     @Test
     public void testPing() {
-        DefaultMcpRegistryClient client = DefaultMcpRegistryClient.builder().build();
         McpRegistryPong pong = client.ping();
         assertThat(pong.pong()).isTrue();
     }
