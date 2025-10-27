@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * Represents the result of a tool execution.
@@ -13,12 +14,23 @@ public class ToolExecutionResult {
 
     private final boolean isError;
     private final Object result;
-    private final String resultText;
+    private volatile String resultText;
+    private final Supplier<String> resultTextSupplier;
 
     public ToolExecutionResult(Builder builder) {
         this.isError = builder.isError;
         this.result = builder.result;
-        this.resultText = ensureNotNull(builder.resultText, "resultText");
+        
+        // If resultText is provided directly, use it; otherwise use the supplier
+        if (builder.resultText != null) {
+            this.resultText = builder.resultText;
+            this.resultTextSupplier = null;
+        } else if (builder.resultTextSupplier != null) {
+            this.resultText = null;
+            this.resultTextSupplier = builder.resultTextSupplier;
+        } else {
+            throw new IllegalArgumentException("Either resultText or resultTextSupplier must be provided");
+        }
     }
 
     /**
@@ -41,10 +53,18 @@ public class ToolExecutionResult {
     /**
      * Returns the tool execution result as text.
      * It is a {@link #result()} that is serialized into JSON string.
+     * The text is calculated lazily on first access and then cached.
      *
      * @see #result()
      */
     public String resultText() {
+        if (resultText == null && resultTextSupplier != null) {
+            synchronized (this) {
+                if (resultText == null) {
+                    resultText = resultTextSupplier.get();
+                }
+            }
+        }
         return resultText;
     }
 
@@ -55,12 +75,12 @@ public class ToolExecutionResult {
         ToolExecutionResult that = (ToolExecutionResult) object;
         return isError == that.isError
                 && Objects.equals(result, that.result)
-                && Objects.equals(resultText, that.resultText);
+                && Objects.equals(resultText(), that.resultText());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isError, result, resultText);
+        return Objects.hash(isError, result, resultText());
     }
 
     @Override
@@ -68,7 +88,7 @@ public class ToolExecutionResult {
         return "ToolExecutionResult{" +
                 "isError=" + isError +
                 ", result=" + result +
-                ", resultText='" + resultText + '\'' +
+                ", resultText='" + resultText() + '\'' +
                 '}';
     }
 
@@ -81,6 +101,7 @@ public class ToolExecutionResult {
         private boolean isError;
         private Object result;
         private String resultText;
+        private Supplier<String> resultTextSupplier;
 
         public Builder isError(boolean isError) {
             this.isError = isError;
@@ -94,6 +115,21 @@ public class ToolExecutionResult {
 
         public Builder resultText(String resultText) {
             this.resultText = resultText;
+            this.resultTextSupplier = null;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for lazy calculation of the result text.
+         * The supplier will be called only when {@link ToolExecutionResult#resultText()} is first accessed.
+         *
+         * @param resultTextSupplier the supplier to calculate result text on demand
+         * @return this builder
+         * @since 1.6.0
+         */
+        public Builder resultTextSupplier(Supplier<String> resultTextSupplier) {
+            this.resultTextSupplier = resultTextSupplier;
+            this.resultText = null;
             return this;
         }
 
