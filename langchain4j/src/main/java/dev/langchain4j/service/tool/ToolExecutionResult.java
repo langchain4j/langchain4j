@@ -1,7 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -20,7 +18,7 @@ public class ToolExecutionResult {
     public ToolExecutionResult(Builder builder) {
         this.isError = builder.isError;
         this.result = builder.result;
-        
+
         // If resultText is provided directly, use it; otherwise use the supplier
         if (builder.resultText != null) {
             this.resultText = builder.resultText;
@@ -85,11 +83,10 @@ public class ToolExecutionResult {
 
     @Override
     public String toString() {
-        return "ToolExecutionResult{" +
-                "isError=" + isError +
-                ", result=" + result +
-                ", resultText='" + resultText() + '\'' +
-                '}';
+        return "ToolExecutionResult{" + "isError="
+                + isError + ", result="
+                + result + ", resultText='"
+                + resultText() + '\'' + '}';
     }
 
     public static Builder builder() {

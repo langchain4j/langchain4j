@@ -1,11 +1,10 @@
 package dev.langchain4j.service.tool;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
 
 class ToolExecutionResultTest {
 
@@ -65,9 +64,8 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_neither_result_text_nor_supplier_provided() {
         // when/then
-        assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .build())
+        assertThatThrownBy(
+                        () -> ToolExecutionResult.builder().result(new Object()).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Either resultText or resultTextSupplier must be provided");
     }
@@ -128,10 +126,8 @@ class ToolExecutionResultTest {
                 .resultTextSupplier(() -> "result")
                 .build();
 
-        ToolExecutionResult result2 = ToolExecutionResult.builder()
-                .result("obj")
-                .resultText("result")
-                .build();
+        ToolExecutionResult result2 =
+                ToolExecutionResult.builder().result("obj").resultText("result").build();
 
         // when/then
         assertThat(result1).isEqualTo(result2);
@@ -146,10 +142,8 @@ class ToolExecutionResultTest {
                 .resultTextSupplier(() -> "result")
                 .build();
 
-        ToolExecutionResult result2 = ToolExecutionResult.builder()
-                .result("obj")
-                .resultText("result")
-                .build();
+        ToolExecutionResult result2 =
+                ToolExecutionResult.builder().result("obj").resultText("result").build();
 
         // when/then
         assertThat(result1.hashCode()).isEqualTo(result2.hashCode());
