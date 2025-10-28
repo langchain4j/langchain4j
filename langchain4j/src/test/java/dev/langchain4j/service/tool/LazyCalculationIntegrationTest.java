@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  * 2. For IMMEDIATE tools, JSON marshalling is completely avoided
  * 3. The optimization provides measurable performance improvement
  */
-class ManualLazyCalculationIT {
+class LazyCalculationIntegrationTest {
 
     static class LargeResultObject {
         List<String> data = new ArrayList<>();
