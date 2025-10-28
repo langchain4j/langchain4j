@@ -133,11 +133,17 @@ class LazyCalculationIntegrationTest {
                 .arguments("{}")
                 .build();
 
-        int iterations = 1000;
+        int iterations = 10000;
 
-        // Warm up
-        for (int i = 0; i < 10; i++) {
-            executor.executeWithContext(request, InvocationContext.builder().build());
+        // Warm up - increased to ensure JIT compilation
+        for (int i = 0; i < 100; i++) {
+            ToolExecutionResult warmupResult = executor.executeWithContext(
+                    request, InvocationContext.builder().build());
+            if (i % 2 == 0) {
+                warmupResult.result();
+            } else {
+                warmupResult.resultText();
+            }
         }
 
         // Test 1: WITHOUT accessing resultText (IMMEDIATE tool scenario)
