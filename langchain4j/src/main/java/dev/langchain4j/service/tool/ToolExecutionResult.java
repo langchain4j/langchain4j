@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -12,7 +13,7 @@ public class ToolExecutionResult {
 
     private final boolean isError;
     private final Object result;
-    private volatile String resultText;
+    private final AtomicReference<String> resultText;
     private final Supplier<String> resultTextSupplier;
 
     public ToolExecutionResult(Builder builder) {
@@ -21,10 +22,10 @@ public class ToolExecutionResult {
 
         // If resultText is provided directly, use it; otherwise use the supplier
         if (builder.resultText != null) {
-            this.resultText = builder.resultText;
+            this.resultText = new AtomicReference<>(builder.resultText);
             this.resultTextSupplier = null;
         } else if (builder.resultTextSupplier != null) {
-            this.resultText = null;
+            this.resultText = new AtomicReference<>();
             this.resultTextSupplier = builder.resultTextSupplier;
         } else {
             throw new IllegalArgumentException("Either resultText or resultTextSupplier must be provided");
@@ -56,14 +57,14 @@ public class ToolExecutionResult {
      * @see #result()
      */
     public String resultText() {
-        if (resultText == null && resultTextSupplier != null) {
-            synchronized (this) {
-                if (resultText == null) {
-                    resultText = resultTextSupplier.get();
-                }
-            }
+        String text = resultText.get();
+        if (text == null && resultTextSupplier != null) {
+            text = resultTextSupplier.get();
+            resultText.compareAndSet(null, text);
+            // Re-read to ensure we return the winning value in case of race
+            text = resultText.get();
         }
-        return resultText;
+        return text;
     }
 
     @Override
