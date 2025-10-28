@@ -54,6 +54,13 @@ public class ToolExecutionResult {
      * It is a {@link #result()} that is serialized into JSON string.
      * The text is calculated lazily on first access and then cached.
      *
+     * <p>Thread-safety: In rare concurrent scenarios, the supplier may be invoked
+     * multiple times, but only one result will be cached. Suppliers should be
+     * idempotent and side-effect free.
+     *
+     * <p>Virtual thread friendly: Uses lock-free atomic operations that do not
+     * pin carrier threads.
+     *
      * @see #result()
      */
     public String resultText() {
