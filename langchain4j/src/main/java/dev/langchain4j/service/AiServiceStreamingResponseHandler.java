@@ -35,6 +35,7 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -43,6 +44,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -82,12 +84,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
-    private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {
+    }
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -185,16 +187,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        if (toolExecutor != null) {
-            ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutionResult toolResult = execute(toolRequest);
-                        return new ToolRequestResult(toolRequest, toolResult);
-                    },
-                    toolExecutor);
-            toolExecutionFutures.add(future);
-        }
     }
 
     private <T> void fireInvocationComplete(T result) {
@@ -238,42 +230,30 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            boolean immediateToolReturn = true;
-
+            AtomicBoolean atomicImmediateToolReturn = new AtomicBoolean(true);
             if (toolExecutor != null) {
-                for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
-                    try {
-                        ToolRequestResult toolRequestResult = toolExecutionFuture.get();
-                        fireToolExecutedEvent(toolRequestResult);
-                        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
-                                toolRequestResult.request(),
-                                toolRequestResult.result().resultText());
-                        addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = immediateToolReturn
-                                && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
-                    } catch (ExecutionException e) {
-                        if (e.getCause() instanceof RuntimeException re) {
-                            throw re;
-                        } else {
-                            throw new RuntimeException(e.getCause());
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(e);
-                    }
-                }
+                final List<CompletableFuture<Void>> tasks = aiMessage.toolExecutionRequests().stream()
+                        .map(toolRequest ->
+                                CompletableFuture.runAsync(() -> {
+                                    ToolExecutionResult toolResult = execute(toolRequest);
+                                    ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
+                                    fireToolExecutedEvent(toolRequestResult);
+                                    addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
+                                    atomicImmediateToolReturn.set(atomicImmediateToolReturn.get() && context.toolService.isImmediateTool(toolRequest.name()));
+                                }, toolExecutor)
+                        ).toList();
+                CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
             } else {
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
                     ToolExecutionResult toolResult = execute(toolRequest);
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
                     addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
-                    immediateToolReturn =
-                            immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());
+                    atomicImmediateToolReturn.set(atomicImmediateToolReturn.get() && context.toolService.isImmediateTool(toolRequest.name()));
                 }
             }
 
-            if (immediateToolReturn) {
+            if (atomicImmediateToolReturn.get()) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 
