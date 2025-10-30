@@ -35,15 +35,10 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -88,8 +83,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {
-    }
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -186,8 +180,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-    }
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
     private <T> void fireInvocationComplete(T result) {
         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
@@ -233,15 +226,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             AtomicBoolean atomicImmediateToolReturn = new AtomicBoolean(true);
             if (toolExecutor != null) {
                 final List<CompletableFuture<Void>> tasks = aiMessage.toolExecutionRequests().stream()
-                        .map(toolRequest ->
-                                CompletableFuture.runAsync(() -> {
+                        .map(toolRequest -> CompletableFuture.runAsync(
+                                () -> {
                                     ToolExecutionResult toolResult = execute(toolRequest);
-                                    ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
+                                    ToolRequestResult toolRequestResult =
+                                            new ToolRequestResult(toolRequest, toolResult);
                                     fireToolExecutedEvent(toolRequestResult);
                                     addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
-                                    atomicImmediateToolReturn.set(atomicImmediateToolReturn.get() && context.toolService.isImmediateTool(toolRequest.name()));
-                                }, toolExecutor)
-                        ).toList();
+                                    atomicImmediateToolReturn.set(atomicImmediateToolReturn.get()
+                                            && context.toolService.isImmediateTool(toolRequest.name()));
+                                },
+                                toolExecutor))
+                        .toList();
                 CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
             } else {
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
@@ -249,7 +245,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
                     addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
-                    atomicImmediateToolReturn.set(atomicImmediateToolReturn.get() && context.toolService.isImmediateTool(toolRequest.name()));
+                    atomicImmediateToolReturn.set(
+                            atomicImmediateToolReturn.get() && context.toolService.isImmediateTool(toolRequest.name()));
                 }
             }
 
