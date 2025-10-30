@@ -260,6 +260,23 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
+    @Test
+    void should_handle_content_filtered_responses() {
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .build();
+        UserMessage userMessage = userMessage("Give me a detailed description of a knife fight.");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).hasSizeGreaterThan(0);
+    }
+
     record Dinosaur(String name, String periodOfActivity, String description) {}
 
     record Milestone(String name, String period, String description) {}
