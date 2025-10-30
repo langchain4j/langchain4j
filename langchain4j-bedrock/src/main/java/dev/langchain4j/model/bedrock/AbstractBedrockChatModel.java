@@ -119,6 +119,7 @@ abstract class AbstractBedrockChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
+                .promptCaching(bedrockParameters.cachePointPlacement())
                 .build();
     }
 
@@ -427,8 +428,14 @@ abstract class AbstractBedrockChatModel {
 
     protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
         return Optional.ofNullable(tokenUsage)
-                .map(usage -> new TokenUsage(usage.inputTokens(), usage.outputTokens(), usage.totalTokens()))
-                .orElseGet(TokenUsage::new);
+                .map(usage ->  BedrockTokenUsage.builder()
+                                    .inputTokenCount(usage.inputTokens())
+                                    .outputTokenCount(usage.outputTokens())
+                                    .cacheReadInputTokens(usage.cacheReadInputTokens())
+                                    .cacheWriteInputTokens(usage.cacheWriteInputTokens())
+                                    .totalTokenCount(usage.totalTokens())
+                                    .build())
+                .orElseGet(()->BedrockTokenUsage.builder().build());
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
@@ -442,6 +449,10 @@ abstract class AbstractBedrockChatModel {
 
         if (stopReason == StopReason.TOOL_USE) {
             return FinishReason.TOOL_EXECUTION;
+        }
+
+        if (stopReason == StopReason.CONTENT_FILTERED) {
+            return FinishReason.CONTENT_FILTER;
         }
 
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
