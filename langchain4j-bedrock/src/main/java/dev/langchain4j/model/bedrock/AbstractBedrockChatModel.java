@@ -428,14 +428,14 @@ abstract class AbstractBedrockChatModel {
 
     protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
         return Optional.ofNullable(tokenUsage)
-                .map(usage ->  BedrockTokenUsage.builder()
-                                    .inputTokenCount(usage.inputTokens())
-                                    .outputTokenCount(usage.outputTokens())
-                                    .cacheReadInputTokens(usage.cacheReadInputTokens())
-                                    .cacheWriteInputTokens(usage.cacheWriteInputTokens())
-                                    .totalTokenCount(usage.totalTokens())
-                                    .build())
-                .orElseGet(()->BedrockTokenUsage.builder().build());
+                .map(usage -> BedrockTokenUsage.builder()
+                        .inputTokenCount(usage.inputTokens())
+                        .outputTokenCount(usage.outputTokens())
+                        .cacheReadInputTokens(usage.cacheReadInputTokens())
+                        .cacheWriteInputTokens(usage.cacheWriteInputTokens())
+                        .totalTokenCount(usage.totalTokens())
+                        .build())
+                .orElseGet(() -> BedrockTokenUsage.builder().build());
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {

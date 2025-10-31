@@ -63,13 +63,12 @@ public class BedrockTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "BedrockTokenUsage {" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", totalTokenCount = " + totalTokenCount() +
-                ", cacheWriteInputTokens = " + cacheWriteInputTokens +
-                ", cacheReadInputTokens = " + cacheReadInputTokens +
-                " }";
+        return "BedrockTokenUsage {" + " inputTokenCount = "
+                + inputTokenCount() + ", outputTokenCount = "
+                + outputTokenCount() + ", totalTokenCount = "
+                + totalTokenCount() + ", cacheWriteInputTokens = "
+                + cacheWriteInputTokens + ", cacheReadInputTokens = "
+                + cacheReadInputTokens + " }";
     }
 
     public static Builder builder() {

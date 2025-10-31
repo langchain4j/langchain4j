@@ -160,23 +160,23 @@ class BedrockPromptCachingIT {
 
         // Simulate a conversation with multiple turns
         ChatRequest request1 = ChatRequest.builder()
-                .messages(Arrays.asList(
-                        SystemMessage.from(systemMessage), UserMessage.from("What is Java?")))
+                .messages(Arrays.asList(SystemMessage.from(systemMessage), UserMessage.from("What is Java?")))
                 .build();
 
         ChatResponse response1 = model.chat(request1);
         assertThat(response1.aiMessage().text()).isNotBlank();
-        assertThat(((BedrockTokenUsage)response1.tokenUsage()).cacheWriteInputTokens()).isGreaterThan(0);
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
 
         // Second request with same system message (should benefit from caching)
         ChatRequest request2 = ChatRequest.builder()
-                .messages(Arrays.asList(
-                        SystemMessage.from(systemMessage), UserMessage.from("What is Python?")))
+                .messages(Arrays.asList(SystemMessage.from(systemMessage), UserMessage.from("What is Python?")))
                 .build();
 
         ChatResponse response2 = model.chat(request2);
         assertThat(response2.aiMessage().text()).isNotBlank();
-        assertThat(((BedrockTokenUsage)response2.tokenUsage()).cacheReadInputTokens()).isGreaterThan(0);
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
 
         // Verify both responses are valid
         assertThat(response1.metadata().tokenUsage()).isNotNull();
@@ -225,7 +225,8 @@ class BedrockPromptCachingIT {
                 .build();
 
         // When
-        BedrockChatRequestParameters defaultRequestParameters = (BedrockChatRequestParameters) model.defaultRequestParameters();
+        BedrockChatRequestParameters defaultRequestParameters =
+                (BedrockChatRequestParameters) model.defaultRequestParameters();
 
         // Then
         assertThat(defaultRequestParameters).isNotNull();
