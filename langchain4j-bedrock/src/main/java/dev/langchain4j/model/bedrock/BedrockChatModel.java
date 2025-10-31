@@ -76,6 +76,13 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
             cachePointPlacement = defaultRequestParameters.cachePointPlacement();
         }
 
+        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = null;
+        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
+            bedrockGuardrailConfiguration = bedrockParams.bedrockGuardrailConfiguration();
+        } else if (defaultRequestParameters != null) {
+            bedrockGuardrailConfiguration = defaultRequestParameters.bedrockGuardrailConfiguration();
+        }
+
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
@@ -83,6 +90,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
+                .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
                 .build();
     }
 

@@ -60,6 +60,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
@@ -120,6 +123,7 @@ abstract class AbstractBedrockChatModel {
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement())
+                .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .build();
     }
 
@@ -428,14 +432,14 @@ abstract class AbstractBedrockChatModel {
 
     protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
         return Optional.ofNullable(tokenUsage)
-                .map(usage ->  BedrockTokenUsage.builder()
-                                    .inputTokenCount(usage.inputTokens())
-                                    .outputTokenCount(usage.outputTokens())
-                                    .cacheReadInputTokens(usage.cacheReadInputTokens())
-                                    .cacheWriteInputTokens(usage.cacheWriteInputTokens())
-                                    .totalTokenCount(usage.totalTokens())
-                                    .build())
-                .orElseGet(()->BedrockTokenUsage.builder().build());
+                .map(usage -> BedrockTokenUsage.builder()
+                        .inputTokenCount(usage.inputTokens())
+                        .outputTokenCount(usage.outputTokens())
+                        .cacheReadInputTokens(usage.cacheReadInputTokens())
+                        .cacheWriteInputTokens(usage.cacheWriteInputTokens())
+                        .totalTokenCount(usage.totalTokens())
+                        .build())
+                .orElseGet(() -> BedrockTokenUsage.builder().build());
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
@@ -464,6 +468,32 @@ abstract class AbstractBedrockChatModel {
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
                 .stopSequences(isNullOrEmpty(parameters.stopSequences()) ? null : parameters.stopSequences())
+                .build();
+    }
+
+    protected GuardrailConfiguration guardrailConfigFrom(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        return GuardrailConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.getGuardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.getGuardrailIdentifier())
+                .trace(GuardrailTrace.ENABLED)
+                .build();
+    }
+
+    protected GuardrailStreamConfiguration guardrailStreamConfigFrom(
+            BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        return GuardrailStreamConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.getGuardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.getGuardrailIdentifier())
                 .build();
     }
 
