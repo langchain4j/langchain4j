@@ -3,9 +3,11 @@ package dev.langchain4j.store.embedding.filter.parser.sql;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
+import dev.langchain4j.store.embedding.filter.comparison.Like;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Clock;
@@ -1690,4 +1692,32 @@ class SqlFilterParserTest {
     }
 
     // TODO SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama') ORDER BY RAND() LIMIT 1
+
+    @ParameterizedTest
+    @CsvSource({
+            // LIKE cases (case-sensitive)
+            "planet LIKE '%mars%', planet, %mars%, LIKE, false",
+            "planet NOT LIKE '%mars%', planet, %mars%, LIKE, true",
+            "planet LIKE 'Hello% M_rs', planet, Hello% M_rs, LIKE, false",
+            "planet ILIKE 'Hello% M_rs', planet, Hello% M_rs, ILIKE, false",
+            "planet NOT ILIKE '%mars%', planet, %mars%, ILIKE, true"
+    })
+    void should_support_like_and_ilike(
+            String expression,
+            String expectedKey,
+            String expectedPattern,
+            String expectedOperator,
+            boolean expectedNegated
+    ) {
+        Filter filter = parser.parse(expression);
+
+        // Validate the type
+        assertThat(filter).isInstanceOf(Like.class);
+
+        Like like = (Like) filter;
+        assertThat(like.key()).isEqualTo(expectedKey);
+        assertThat(like.pattern()).isEqualTo(expectedPattern);
+        assertThat(like.operator()).isEqualTo(Like.Operator.valueOf(expectedOperator));
+        assertThat(like.negated()).isEqualTo(expectedNegated);
+    }
 }

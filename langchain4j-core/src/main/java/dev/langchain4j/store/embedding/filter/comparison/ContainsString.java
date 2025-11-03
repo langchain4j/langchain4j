@@ -1,29 +1,29 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Objects;
 
 /**
  * A filter that checks if the value of a metadata key contains a specific string.
  * The value of the metadata key must be a string.
+ * <p>
+ * ContainsString covers a subset (match whole string) of the like operator concept that why is considered a child of {@link Like}.
  */
-public class ContainsString implements Filter {
+public class ContainsString extends Like {
 
-    private final String key;
     private final String comparisonValue;
 
     public ContainsString(String key, String comparisonValue) {
-        this.key = ensureNotBlank(key, "key");
+        super(key, comparisonValue);
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
 
+    @Override
     public String key() {
-        return key;
+        return super.key();
     }
 
     public String comparisonValue() {
@@ -36,11 +36,11 @@ public class ContainsString implements Filter {
             return false;
         }
 
-        if (!metadata.containsKey(key)) {
+        if (!metadata.containsKey(key())) {
             return false;
         }
 
-        Object actualValue = metadata.toMap().get(key);
+        Object actualValue = metadata.toMap().get(key());
 
         if (actualValue instanceof String str) {
             return str.contains(comparisonValue);
@@ -49,7 +49,7 @@ public class ContainsString implements Filter {
         throw illegalArgument(
                 "Type mismatch: actual value of metadata key \"%s\" (%s) has type %s, "
                         + "while it is expected to be a string",
-                key, actualValue, actualValue.getClass().getName());
+                key(), actualValue, actualValue.getClass().getName());
     }
 
     @Override
@@ -57,16 +57,17 @@ public class ContainsString implements Filter {
         if (o == this) return true;
         if (!(o instanceof ContainsString other)) return false;
 
-        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key(), other.key()) &&
+                Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(key, comparisonValue);
+        return Objects.hash(key(), comparisonValue);
     }
 
     @Override
     public String toString() {
-        return "ContainsString(key=" + this.key + ", comparisonValue=" + this.comparisonValue + ")";
+        return "ContainsString(key=" + key() + ", comparisonValue=" + comparisonValue + ")";
     }
 }

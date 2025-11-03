@@ -41,6 +41,8 @@ class ElasticsearchMetadataFilterMapper {
             return mapNot((Not) filter);
         } else if (filter instanceof Or) {
             return mapOr((Or) filter);
+        } else if (filter instanceof Like) {
+            return mapLike((Like) filter);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
@@ -139,6 +141,31 @@ class ElasticsearchMetadataFilterMapper {
         return new Query.Builder().bool(boolQuery).build();
     }
 
+    private static Query mapLike(Like like) {
+
+        // convert sql like operator pattern to elastic syntax
+        final String esPattern = like.pattern().replace("%", "*").replace("_", "?");
+
+        if (Boolean.TRUE.equals(like.negated())) {
+            // NOT LIKE -> must_not wildcard
+            return new Query.Builder().bool(b -> b.mustNot(mn -> mn.wildcard(w -> w
+                    .field(like.operator() == Like.Operator.ILIKE
+                            ? "metadata." + like.key() + ".lowercase"
+                            : "metadata." + like.key() + ".keyword")
+                    .value(esPattern)
+            ))).build();
+
+        } else {
+            // LIKE -> filter wildcard
+            return new Query.Builder().bool(b -> b.filter(f -> f.wildcard(w -> w
+                    .field(like.operator() == Like.Operator.ILIKE
+                            ? "metadata." + like.key() + ".lowercase"
+                            : "metadata." + like.key() + ".keyword")
+                    .value(esPattern)
+            ))).build();
+        }
+    }
+
     private static String formatKey(String key, Object comparisonValue) {
         if (comparisonValue instanceof String || comparisonValue instanceof UUID) {
             return "metadata." + key + ".keyword";
@@ -151,4 +178,3 @@ class ElasticsearchMetadataFilterMapper {
         return formatKey(key, comparisonValues.iterator().next());
     }
 }
-

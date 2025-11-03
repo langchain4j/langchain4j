@@ -52,6 +52,7 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
  * - {@link IsLessThanOrEqualTo}: {@code age <= 18}
  * - {@link IsIn}: {@code name IN ('Klaus', 'Francine')}
  * - {@link IsNotIn}: {@code id NOT IN (1, 2, 3)}
+ * - {@link Like}: {@code name LIKE ('%Fra_cine%')}
  * - BETWEEN: {@code year BETWEEN 2000 AND 2020}: will be parsed into {@code key("year").gte(2000).and(key("year").lte(2020))}
  *
  * - {@link And}: {@code name = 'Klaus' AND age = 18}
@@ -162,7 +163,15 @@ public class SqlFilterParser implements FilterParser {
             return new IsLessThan(getKey(exp), getValue(exp));
         } else if (exp instanceof MinorThanEquals) {
             return new IsLessThanOrEqualTo(getKey(exp), getValue(exp));
-        } else {
+        } else if (exp instanceof LikeExpression likeExp) {
+            LikeExpression.KeyWord keyword = likeExp.getLikeKeyWord();
+            return new Like(
+                getKey(exp),
+                getValue(exp),
+                Like.Operator.valueOf(keyword.name()),
+                likeExp.isNot());
+        }
+         else {
             throw illegalArgument("Unsupported expression: '%s'%s", exp, createGithubIssueLink(exp));
         }
     }
