@@ -57,8 +57,7 @@ public class ContainsString extends Like {
         if (o == this) return true;
         if (!(o instanceof ContainsString other)) return false;
 
-        return Objects.equals(this.key(), other.key()) &&
-                Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key(), other.key()) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     @Override

@@ -1,10 +1,9 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.store.embedding.filter.Filter;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Objects;
 
 /**
@@ -20,7 +19,10 @@ public class Like implements Filter {
      * Supported LIKE operators.
      */
     public enum Operator {
-        LIKE, ILIKE, RLIKE, REGEXP
+        LIKE,
+        ILIKE,
+        RLIKE,
+        REGEXP
     }
 
     private final String key;
@@ -31,9 +33,10 @@ public class Like implements Filter {
     /**
      * Main constructor with explicit likeKeyword.
      */
-    public Like(String key, Object pattern, Operator operator,boolean negated) {
+    public Like(String key, Object pattern, Operator operator, boolean negated) {
         this.key = ensureNotBlank(key, "key");
-        this.pattern = ensureNotNull(pattern, "comparisonValue with key '" + key + "'").toString();
+        this.pattern =
+                ensureNotNull(pattern, "comparisonValue with key '" + key + "'").toString();
         this.operator = ensureNotNull(operator, "operator");
         this.negated = negated;
     }

@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static java.util.stream.Collectors.toList;
+
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -9,12 +11,9 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-
-import static java.util.stream.Collectors.toList;
 
 class ElasticsearchMetadataFilterMapper {
 
@@ -44,78 +43,77 @@ class ElasticsearchMetadataFilterMapper {
         } else if (filter instanceof Like) {
             return mapLike((Like) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
     private static Query mapEqual(IsEqualTo isEqualTo) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.term(t ->
-                t.field(formatKey(isEqualTo.key(), isEqualTo.comparisonValue()))
-                        .value(v -> v.anyValue(JsonData.of(isEqualTo.comparisonValue())))
-        ))).build();
+        return new Query.Builder()
+                .bool(b -> b.filter(f -> f.term(t -> t.field(formatKey(isEqualTo.key(), isEqualTo.comparisonValue()))
+                        .value(v -> v.anyValue(JsonData.of(isEqualTo.comparisonValue()))))))
+                .build();
     }
 
     private static Query mapNotEqual(IsNotEqualTo isNotEqualTo) {
-        return new Query.Builder().bool(b -> b.mustNot(mn -> mn.term(t ->
-                t.field(formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue()))
-                        .value(v -> v.anyValue(JsonData.of(isNotEqualTo.comparisonValue())))
-        ))).build();
+        return new Query.Builder()
+                .bool(b -> b.mustNot(
+                        mn -> mn.term(t -> t.field(formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue()))
+                                .value(v -> v.anyValue(JsonData.of(isNotEqualTo.comparisonValue()))))))
+                .build();
     }
 
     private static Query mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.untyped(nf -> nf
-                        .field("metadata." + isGreaterThan.key())
-                        .gt(JsonData.of(isGreaterThan.comparisonValue()))
-                )))).build();
+        return new Query.Builder()
+                .bool(b -> b.filter(f -> f.range(r -> r.untyped(nf ->
+                        nf.field("metadata." + isGreaterThan.key()).gt(JsonData.of(isGreaterThan.comparisonValue()))))))
+                .build();
     }
 
     private static Query mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.untyped(nf -> nf
-                        .field("metadata." + isGreaterThanOrEqualTo.key())
-                        .gte(JsonData.of(isGreaterThanOrEqualTo.comparisonValue()))
-                )))).build();
+        return new Query.Builder()
+                .bool(b ->
+                        b.filter(f -> f.range(r -> r.untyped(nf -> nf.field("metadata." + isGreaterThanOrEqualTo.key())
+                                .gte(JsonData.of(isGreaterThanOrEqualTo.comparisonValue()))))))
+                .build();
     }
 
     private static Query mapLessThan(IsLessThan isLessThan) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.untyped(nf -> nf
-                        .field("metadata." + isLessThan.key())
-                        .lt(JsonData.of(isLessThan.comparisonValue()))
-                )))).build();
+        return new Query.Builder()
+                .bool(b -> b.filter(f -> f.range(r -> r.untyped(
+                        nf -> nf.field("metadata." + isLessThan.key()).lt(JsonData.of(isLessThan.comparisonValue()))))))
+                .build();
     }
 
     private static Query mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.untyped(nf -> nf
-                        .field("metadata." + isLessThanOrEqualTo.key())
-                        .lte(JsonData.of(isLessThanOrEqualTo.comparisonValue()))
-                )))).build();
+        return new Query.Builder()
+                .bool(b -> b.filter(f -> f.range(r -> r.untyped(nf -> nf.field("metadata." + isLessThanOrEqualTo.key())
+                        .lte(JsonData.of(isLessThanOrEqualTo.comparisonValue()))))))
+                .build();
     }
 
     public static Query mapIn(IsIn isIn) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.terms(t ->
-                t.field(formatKey(isIn.key(), isIn.comparisonValues()))
+        return new Query.Builder()
+                .bool(b -> b.filter(f -> f.terms(t -> t.field(formatKey(isIn.key(), isIn.comparisonValues()))
                         .terms(terms -> {
                             List<FieldValue> values = isIn.comparisonValues().stream()
                                     .map(it -> FieldValue.of(JsonData.of(it)))
                                     .collect(toList());
                             return terms.value(values);
-                        })
-        ))).build();
+                        }))))
+                .build();
     }
 
     public static Query mapNotIn(IsNotIn isNotIn) {
-        return new Query.Builder().bool(b -> b.mustNot(mn -> mn.terms(t ->
-                t.field(formatKey(isNotIn.key(), isNotIn.comparisonValues()))
+        return new Query.Builder()
+                .bool(b -> b.mustNot(mn -> mn.terms(t -> t.field(formatKey(isNotIn.key(), isNotIn.comparisonValues()))
                         .terms(terms -> {
                             List<FieldValue> values = isNotIn.comparisonValues().stream()
                                     .map(it -> FieldValue.of(JsonData.of(it)))
                                     .collect(toList());
                             return terms.value(values);
-                        })
-        ))).build();
+                        }))))
+                .build();
     }
 
     private static Query mapAnd(And and) {
@@ -127,9 +125,8 @@ class ElasticsearchMetadataFilterMapper {
     }
 
     private static Query mapNot(Not not) {
-        BoolQuery boolQuery = new BoolQuery.Builder()
-                .mustNot(map(not.expression()))
-                .build();
+        BoolQuery boolQuery =
+                new BoolQuery.Builder().mustNot(map(not.expression())).build();
         return new Query.Builder().bool(boolQuery).build();
     }
 
@@ -148,21 +145,23 @@ class ElasticsearchMetadataFilterMapper {
 
         if (Boolean.TRUE.equals(like.negated())) {
             // NOT LIKE -> must_not wildcard
-            return new Query.Builder().bool(b -> b.mustNot(mn -> mn.wildcard(w -> w
-                    .field(like.operator() == Like.Operator.ILIKE
-                            ? "metadata." + like.key() + ".lowercase"
-                            : "metadata." + like.key() + ".keyword")
-                    .value(esPattern)
-            ))).build();
+            return new Query.Builder()
+                    .bool(b -> b.mustNot(mn -> mn.wildcard(w -> w.field(
+                                    like.operator() == Like.Operator.ILIKE
+                                            ? "metadata." + like.key() + ".lowercase"
+                                            : "metadata." + like.key() + ".keyword")
+                            .value(esPattern))))
+                    .build();
 
         } else {
             // LIKE -> filter wildcard
-            return new Query.Builder().bool(b -> b.filter(f -> f.wildcard(w -> w
-                    .field(like.operator() == Like.Operator.ILIKE
-                            ? "metadata." + like.key() + ".lowercase"
-                            : "metadata." + like.key() + ".keyword")
-                    .value(esPattern)
-            ))).build();
+            return new Query.Builder()
+                    .bool(b -> b.filter(f -> f.wildcard(w -> w.field(
+                                    like.operator() == Like.Operator.ILIKE
+                                            ? "metadata." + like.key() + ".lowercase"
+                                            : "metadata." + like.key() + ".keyword")
+                            .value(esPattern))))
+                    .build();
         }
     }
 
