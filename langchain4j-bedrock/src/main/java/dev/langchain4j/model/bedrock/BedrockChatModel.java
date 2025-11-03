@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -54,11 +53,12 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(BedrockChatResponseMetadata.builder()
                         .id(converseResponse.responseMetadata().requestId())
                         .finishReason(finishReasonFrom(converseResponse.stopReason()))
                         .tokenUsage(tokenUsageFrom(converseResponse.usage()))
                         .modelName(converseRequest.modelId())
+                        .guardrailAssessmentSummary(guardrailAssessmentSummaryFrom(converseResponse.trace()))
                         .build())
                 .build();
     }
