@@ -16,7 +16,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
@@ -211,11 +210,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     private ChatResponse responseFrom(ConverseResponse converseResponse, String modelId) {
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(BedrockChatResponseMetadata.builder()
                         .id(UUID.randomUUID().toString())
                         .finishReason(finishReasonFrom(converseResponse.stopReason()))
                         .tokenUsage(tokenUsageFrom(converseResponse.usage()))
                         .modelName(modelId)
+                        .guardrailAssessmentSummary(guardrailAssessmentSummaryFrom(converseResponse.trace()))
                         .build())
                 .build();
     }
