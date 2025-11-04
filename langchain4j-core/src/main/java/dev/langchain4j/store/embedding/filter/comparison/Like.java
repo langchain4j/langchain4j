@@ -92,6 +92,7 @@ public class Like implements Filter {
 
     @Override
     public String toString() {
-        return "Like(column=" + key + ", pattern=" + pattern + ", like-operator=" + operator + ")";
+        return "Like(column=" + key + ", pattern=" + pattern + ", like-operator=" + operator + ", negated=" + negated
+                + ")";
     }
 }

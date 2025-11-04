@@ -140,11 +140,15 @@ class ElasticsearchMetadataFilterMapper {
 
     private static Query mapLike(Like like) {
 
-        // convert sql like operator pattern to elastic syntax
-        final String esPattern = like.pattern().replace("%", "*").replace("_", "?");
+        // convert sql like operator pattern to elastic supported syntax
+        final String esPattern = (like.operator() == Like.Operator.ILIKE
+                        ? like.pattern().toLowerCase()
+                        : like.pattern())
+                .replace("%", "*")
+                .replace("_", "?");
 
         if (Boolean.TRUE.equals(like.negated())) {
-            // NOT LIKE -> must_not wildcard
+            // NOT LIKE - must_not wildcard
             return new Query.Builder()
                     .bool(b -> b.mustNot(mn -> mn.wildcard(w -> w.field(
                                     like.operator() == Like.Operator.ILIKE
@@ -154,7 +158,7 @@ class ElasticsearchMetadataFilterMapper {
                     .build();
 
         } else {
-            // LIKE -> filter wildcard
+            // LIKE - filter wildcard
             return new Query.Builder()
                     .bool(b -> b.filter(f -> f.wildcard(w -> w.field(
                                     like.operator() == Like.Operator.ILIKE

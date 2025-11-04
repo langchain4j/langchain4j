@@ -17,8 +17,8 @@ class ElasticsearchMetadataFilterMapperTest {
         "%mars, LIKE, metadata.planet.keyword, *mars",
         "_ars, LIKE, metadata.planet.keyword, ?ars",
         "%mars%, LIKE, metadata.planet.keyword, *mars*",
-        "%mars%, ILIKE, metadata.planet.lowercase, *mars*",
-        "%mars%, ILIKE, metadata.planet.lowercase, *mars*",
+        "%Mars%, ILIKE, metadata.planet.lowercase, *mars*",
+        "%m_rs%, ILIKE, metadata.planet.lowercase, *m?rs*",
         "m_r%, LIKE, metadata.planet.keyword, m?r*"
     })
     void map_likeFilter_nonNegated(String pattern, String operator, String expectedField, String expectedValue) {
