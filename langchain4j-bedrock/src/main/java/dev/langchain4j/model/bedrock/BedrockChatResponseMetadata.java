@@ -16,6 +16,11 @@ public class BedrockChatResponseMetadata extends ChatResponseMetadata {
         return guardrailAssessmentSummary;
     }
 
+    @Override
+    public Builder toBuilder() {
+        return ((Builder) super.toBuilder(builder())).guardrailAssessmentSummary(guardrailAssessmentSummary);
+    }
+
     public static Builder builder() {
         return new Builder();
     }
