@@ -422,7 +422,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgsAfterResult.subList(1, msgsAfterResult.size())).containsExactly(u1, ai1, result1);
 
         // Add a new AiMessage, which triggers eviction (exceeds maxMessages with summarizeThreshold=2)
-        AiMessage ai2 = aiMessage("2 + 2 = 4");
+        AiMessage ai2 = aiMessage("2 + 2 = 4 !!!!");
         chatMemory.add(ai2);
 
         List<ChatMessage> finalMsgs = chatMemory.messages();
