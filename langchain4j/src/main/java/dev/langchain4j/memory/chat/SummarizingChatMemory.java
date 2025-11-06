@@ -19,13 +19,13 @@ import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 
 /**
- * @author: PaperFly
  * A chat memory implementation that automatically summarizes conversation history
  * when the number of messages exceeds a configurable threshold.
  *
  * <p>This class behaves similarly to {@link MessageWindowChatMemory} but adds automatic
  * summarization capabilities using an underlying {@link ChatModel}.
- * <h3>Key Features:</h3>
+ *
+ * <p>Key features:
  * <ul>
  *     <li>Supports both static and dynamic configuration of <b>maxMessages</b>:
  *         the maximum number of messages retained before triggering evictions.</li>
@@ -41,7 +41,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
  *     <li>Integrates with any {@link ChatMemoryStore} to persist memory state.</li>
  * </ul>
  *
- * <p><b>Usage Notes:</b>
+ * <p>Usage notes:
  * <ul>
  *     <li>Messages are only summarized when the total message count exceeds <b>maxMessages</b>.</li>
  *     <li>The number of messages removed during summarization is determined by
@@ -49,9 +49,6 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
  *     <li>Dynamic configuration functions allow real-time adjustment of
  *         maxMessages, summarizeThreshold, and system prompts for different memory IDs.</li>
  * </ul>
- *
- * <p>This design allows flexible memory management, efficient handling of tool execution messages,
- * and context-aware conversation summarization, while retaining a window of recent interactions.
  *
  * <p>Example usage:
  * <pre>{@code
@@ -63,10 +60,8 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
  *     .build();
  * }</pre>
  *
- * <p>See {@link MessageWindowChatMemory} for comparison, which provides a simpler
- * sliding-window memory without summarization.
+ * @author PaperFly
  */
-
 public class SummarizingChatMemory implements ChatMemory {
 
     private final Object id;
@@ -77,9 +72,6 @@ public class SummarizingChatMemory implements ChatMemory {
     private final Function<Object, Integer> summarizeThresholdFunction;
     private final Function<Object, String> systemPromptFunction;
 
-    /**
-     * Default system prompt used to summarize conversations
-     */
     private static final String DEFAULT_SYSTEM_PROMPT = """
             You are a conversation summarization assistant. Please read the entire history of interactions between the user and the AI, and generate a concise summary.
                     
@@ -93,7 +85,6 @@ public class SummarizingChatMemory implements ChatMemory {
             - Do not include introductions such as “Here is the summary” or “The user said.” Output only the summary text itself.
             """;
 
-    // -------------------- Constructor --------------------
 
     private SummarizingChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -109,11 +100,10 @@ public class SummarizingChatMemory implements ChatMemory {
         int max = maxMessagesFunction.apply(id);
         int threshold = summarizeThresholdFunction.apply(id);
         ensureGreaterThanZero(max, "maxMessages");
-        ensureGreaterThanZero(threshold-1, "summarizeThreshold -1");
+        ensureGreaterThanZero(threshold - 1, "summarizeThreshold -1");
         ensureGreaterThanZero(max - threshold, "maxMessages - summarizeThreshold");
     }
 
-    // -------------------- Public API --------------------
 
     @Override
     public Object id() {
@@ -153,7 +143,6 @@ public class SummarizingChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
-    // -------------------- Internal Logic --------------------
 
     /**
      * Check message list size and trigger summarization if it exceeds threshold.
@@ -163,7 +152,7 @@ public class SummarizingChatMemory implements ChatMemory {
         int summarizeThreshold = summarizeThresholdFunction.apply(id);
 
         ensureGreaterThanZero(maxMessages, "maxMessages");
-        ensureGreaterThanZero(summarizeThreshold-1, "summarizeThreshold -1");
+        ensureGreaterThanZero(summarizeThreshold - 1, "summarizeThreshold -1");
         ensureGreaterThanZero(maxMessages - summarizeThreshold, "maxMessages - summarizeThreshold");
 
         if (messages.size() <= maxMessages) return;
@@ -198,7 +187,6 @@ public class SummarizingChatMemory implements ChatMemory {
         return AiMessage.aiMessage(chatResponse.aiMessage().text());
     }
 
-    // -------------------- Builder --------------------
 
     /**
      * Builder for {@link SummarizingChatMemory}.
