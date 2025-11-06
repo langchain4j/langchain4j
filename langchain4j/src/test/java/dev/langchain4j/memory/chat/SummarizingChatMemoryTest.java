@@ -769,9 +769,10 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         return Stream.of(
                 Arguments.of(
                         OpenAiChatModel.builder()
-                                .baseUrl("https://api.deepseek.com")
-                                .apiKey(System.getenv("deepseek-key"))
-                                .modelName("deepseek-chat")
+                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                                .apiKey(System.getenv("OPENAI_API_KEY"))
+                                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                                .modelName(GPT_4_O_MINI)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()
