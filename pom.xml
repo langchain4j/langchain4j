@@ -114,6 +114,9 @@
         <!-- internal -->
         <module>internal/langchain4j-docu-chatbot-updater</module>
 
+        <!-- Protocols -->
+        <module>langchain4j-agui</module>
+
     </modules>
 
     <properties>
