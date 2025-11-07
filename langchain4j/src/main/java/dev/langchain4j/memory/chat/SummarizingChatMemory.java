@@ -91,7 +91,7 @@ public class SummarizingChatMemory implements ChatMemory {
         this.store = ensureNotNull(builder.getStore(), "store");
         this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
 
-        this.systemPromptFunction = ensureNotNull(builder.getSystemPromptFunction(), "chatModel");
+        this.systemPromptFunction = ensureNotNull(builder.getSystemPromptFunction(), "systemPromptFunction");
 
         this.maxMessagesFunction = ensureNotNull(builder.maxMessagesFunction, "maxMessagesFunction");
         this.summarizeThresholdFunction =
