@@ -1,5 +1,10 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.data.message.SystemMessage.systemMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -9,19 +14,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.List;
+import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.SystemMessage.systemMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 @EnabledIfEnvironmentVariable(named = "deepseek-key", matches = ".+")
 public class SummarizingChatMemoryTest implements WithAssertions {
@@ -29,23 +28,20 @@ public class SummarizingChatMemoryTest implements WithAssertions {
     @MethodSource("models")
     void id(ChatModel chatModel) {
         {
-
-            ChatMemory chatMemory =
-                    SummarizingChatMemory.builder()
-                            .maxMessages(4)
-                            .chatModel(chatModel)
-                            .summarizeThreshold(2)
-                            .build();
+            ChatMemory chatMemory = SummarizingChatMemory.builder()
+                    .maxMessages(4)
+                    .chatModel(chatModel)
+                    .summarizeThreshold(2)
+                    .build();
             assertThat(chatMemory.id()).isEqualTo("default");
         }
         {
-            ChatMemory chatMemory =
-                    SummarizingChatMemory.builder()
-                            .id("abc")
-                            .maxMessages(4)
-                            .chatModel(chatModel)
-                            .summarizeThreshold(2)
-                            .build();
+            ChatMemory chatMemory = SummarizingChatMemory.builder()
+                    .id("abc")
+                    .maxMessages(4)
+                    .chatModel(chatModel)
+                    .summarizeThreshold(2)
+                    .build();
             assertThat(chatMemory.id()).isEqualTo("abc");
         }
     }
@@ -55,9 +51,9 @@ public class SummarizingChatMemoryTest implements WithAssertions {
     void store_and_clear(ChatModel chatModel) {
         // Create a summarizing chat memory instance
         ChatMemory chatMemory = SummarizingChatMemory.builder()
-                .maxMessages(4)         // Keep at most 4 messages
+                .maxMessages(4) // Keep at most 4 messages
                 .chatModel(chatModel)
-                .summarizeThreshold(2)  // Trigger summarization when exceeding 2 messages
+                .summarizeThreshold(2) // Trigger summarization when exceeding 2 messages
                 .build();
 
         // Add the first three messages
@@ -77,7 +73,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         List<ChatMessage> messagesAfterSummarize = chatMemory.messages();
         assertThat(messagesAfterSummarize.size()).isEqualTo(4); // Ensure total count remains equal to maxMessages
 
-        // Add a fifth message; summarization logic may replace or summarize older messages instead of appending directly
+        // Add a fifth message; summarization logic may replace or summarize older messages instead of appending
+        // directly
         chatMemory.add(userMessage("I am wangwu"));
 
         // Verify that the last message is NOT the raw "I am wangwu" (it should have been summarized or excluded)
@@ -93,16 +90,15 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(chatMemory.messages()).isEmpty();
     }
 
-
     @ParameterizedTest
     @MethodSource("models")
     void should_summarize_messages_when_threshold_exceeded(ChatModel chatModel) {
 
         // Create a chat memory instance with summarization capability
         ChatMemory chatMemory = SummarizingChatMemory.builder()
-                .maxMessages(4)          // Keep at most 4 messages
+                .maxMessages(4) // Keep at most 4 messages
                 .chatModel(chatModel)
-                .summarizeThreshold(2)   // Summarization is triggered only when the threshold is exceeded
+                .summarizeThreshold(2) // Summarization is triggered only when the threshold is exceeded
                 .build();
 
         // Add the first four messages — no summarization occurs yet
@@ -118,8 +114,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         // Message order remains FIFO, with no summarization applied
         List<ChatMessage> afterFourth = chatMemory.messages();
-        assertThat(afterFourth)
-                .containsExactly(m1, m2, m3, m4);
+        assertThat(afterFourth).containsExactly(m1, m2, m3, m4);
 
         // Add a fifth message, exceeding maxMessages and triggering summarization
         UserMessage m5 = userMessage("I am wangwu");
@@ -139,8 +134,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .isNotEqualTo(m5);
 
         // The remaining part of the queue contains the three most recent original messages, preserved in FIFO order
-        assertThat(afterFifth.subList(1, 4))
-                .containsExactly(m3, m4, m5); // Note: these are m3, m4, and m5
+        assertThat(afterFifth.subList(1, 4)).containsExactly(m3, m4, m5); // Note: these are m3, m4, and m5
 
         // Clear the memory
         chatMemory.clear();
@@ -148,16 +142,15 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(chatMemory.messages()).isEmpty();
     }
 
-
     @ParameterizedTest
     @MethodSource("models")
     void should_not_evict_system_message_from_chat_memory(ChatModel chatModel) {
 
         // Create a chat memory instance with summarization capability
         ChatMemory chatMemory = SummarizingChatMemory.builder()
-                .maxMessages(4)          // Keep at most 4 messages
+                .maxMessages(4) // Keep at most 4 messages
                 .chatModel(chatModel)
-                .summarizeThreshold(2)   // Summarization is triggered only when the threshold is exceeded
+                .summarizeThreshold(2) // Summarization is triggered only when the threshold is exceeded
                 .build();
 
         // Add a system message
@@ -203,11 +196,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .isNotEqualTo(m4);
 
         // The remaining two messages are the most recent original messages in FIFO order
-        assertThat(messages.subList(2, 4))
-                .containsExactly(m3, m4);
+        assertThat(messages.subList(2, 4)).containsExactly(m3, m4);
     }
-
-
 
     @ParameterizedTest
     @MethodSource("models")
@@ -267,7 +257,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgs.subList(2, 4)).containsExactly(u2, a2);
     }
 
-
     @ParameterizedTest
     @MethodSource("models")
     void should_not_add_the_same_system_message_to_chat_memory_if_it_is_already_there(ChatModel chatModel) {
@@ -325,16 +314,16 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgs.subList(2, 4)).containsExactly(u2, a2);
     }
 
-
     @ParameterizedTest
     @MethodSource("models")
-    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest(ChatModel chatModel) {
+    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest(
+            ChatModel chatModel) {
 
         // Configure maxMessages=3 and summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(3)
                 .chatModel(chatModel)
-                .summarizeThreshold(2)  // must be greater than 1
+                .summarizeThreshold(2) // must be greater than 1
                 .build();
 
         // Add a user message
@@ -379,16 +368,17 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(finalMsgs.subList(1, 2)).containsExactly(ai2);
     }
 
-
     @ParameterizedTest
     @MethodSource("models")
-    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present(ChatModel chatModel) {
+    void
+            should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present(
+                    ChatModel chatModel) {
 
         // Configure summarizeThreshold > 1
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
                 .chatModel(chatModel)
-                .summarizeThreshold(2)  // must be greater than 1
+                .summarizeThreshold(2) // must be greater than 1
                 .build();
 
         // Add a SystemMessage
@@ -447,7 +437,9 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present_2(ChatModel chatModel) {
+    void
+            should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present_2(
+                    ChatModel chatModel) {
 
         // given: chat memory with maxMessages=3, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
@@ -489,10 +481,12 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The SystemMessage remains at the front of the queue
         assertThat(finalMsgs.get(0)).isEqualTo(sys);
 
-        // The remaining messages (after the SystemMessage) should only contain summary messages and the latest messages;
+        // The remaining messages (after the SystemMessage) should only contain summary messages and the latest
+        // messages;
         // no UserMessages or AiMessages with ToolExecutionRequests should remain
         assertThat(finalMsgs.subList(1, finalMsgs.size()))
-                .allMatch(msg -> !(msg instanceof UserMessage) && !(msg instanceof AiMessage && ((AiMessage) msg).hasToolExecutionRequests()));
+                .allMatch(msg -> !(msg instanceof UserMessage)
+                        && !(msg instanceof AiMessage && ((AiMessage) msg).hasToolExecutionRequests()));
 
         // Add a new AiMessage to ensure the latest message is retained
         AiMessage ai2 = aiMessage("2 + 2 = 4");
@@ -506,7 +500,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests(ChatModel chatModel) {
+    void should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests(
+            ChatModel chatModel) {
 
         // given: SummarizingChatMemory with maxMessages=4, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
@@ -566,9 +561,12 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         assertThat(finalMsgs.get(1)).isEqualTo(ai2);
     }
+
     @ParameterizedTest
     @MethodSource("models")
-    void should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present(ChatModel chatModel) {
+    void
+            should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present(
+                    ChatModel chatModel) {
 
         // given: SummarizingChatMemory with maxMessages=5, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
@@ -624,7 +622,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // while the SystemMessage and the summary are retained
         assertThat(finalMsgs.get(0)).isEqualTo(sys);
 
-        // The remaining messages (after the SystemMessage) should only contain summary messages and the latest AiMessage;
+        // The remaining messages (after the SystemMessage) should only contain summary messages and the latest
+        // AiMessage;
         // no AiMessages with ToolExecutionRequests or ToolExecutionResultMessages should remain
         assertThat(finalMsgs.subList(1, finalMsgs.size()))
                 .allMatch(msg -> !(msg instanceof AiMessage && ((AiMessage) msg).hasToolExecutionRequests())
@@ -633,6 +632,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The last message in the queue is the newly added ai2
         assertThat(finalMsgs.get(finalMsgs.size() - 1)).isEqualTo(ai2);
     }
+
     @ParameterizedTest
     @MethodSource("models")
     void should_handle_dynamic_maxMessages_and_summarizeThreshold(ChatModel chatModel) {
@@ -654,9 +654,15 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         // Add an AiMessage containing two ToolExecutionRequests
         ToolExecutionRequest req1 = ToolExecutionRequest.builder()
-                .id("1").name("calculator").arguments("{ \"a\": 2, \"b\": 2 }").build();
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
         ToolExecutionRequest req2 = ToolExecutionRequest.builder()
-                .id("2").name("calculator").arguments("{ \"a\": 3, \"b\": 3 }").build();
+                .id("2")
+                .name("calculator")
+                .arguments("{ \"a\": 3, \"b\": 3 }")
+                .build();
         AiMessage ai1 = AiMessage.from(req1, req2);
         chatMemory.add(ai1);
         assertThat(chatMemory.messages()).contains(u1, ai1);
@@ -707,6 +713,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgsAfterAi4).hasSizeGreaterThanOrEqualTo(2);
         assertThat(msgsAfterAi4.get(msgsAfterAi4.size() - 1)).isEqualTo(ai4);
     }
+
     @ParameterizedTest
     @MethodSource("models")
     void should_use_dynamic_systemPrompt_and_update_it(ChatModel chatModel) {
@@ -762,21 +769,14 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(finalMsgs.get(finalMsgs.size() - 1)).isEqualTo(u4);
     }
 
-
-
-
     static Stream<Arguments> models() {
-        return Stream.of(
-                Arguments.of(
-                        OpenAiChatModel.builder()
-                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                                .apiKey(System.getenv("OPENAI_API_KEY"))
-                                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                                .modelName(GPT_4_O_MINI)
-                                .logRequests(true)
-                                .logResponses(true)
-                                .build()
-                )
-        );
+        return Stream.of(Arguments.of(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .logRequests(true)
+                .logResponses(true)
+                .build()));
     }
 }

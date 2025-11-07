@@ -3,11 +3,6 @@ package dev.langchain4j.memory.chat;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -17,6 +12,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * A chat memory implementation that automatically summarizes conversation history
@@ -72,9 +72,10 @@ public class SummarizingChatMemory implements ChatMemory {
     private final Function<Object, Integer> summarizeThresholdFunction;
     private final Function<Object, String> systemPromptFunction;
 
-    private static final String DEFAULT_SYSTEM_PROMPT = """
+    private static final String DEFAULT_SYSTEM_PROMPT =
+            """
             You are a conversation summarization assistant. Please read the entire history of interactions between the user and the AI, and generate a concise summary.
-                    
+
             Requirements for the summary:
             - Write in natural and fluent Chinese.
             - Keep the length between 50 and 500 characters.
@@ -85,7 +86,6 @@ public class SummarizingChatMemory implements ChatMemory {
             - Do not include introductions such as “Here is the summary” or “The user said.” Output only the summary text itself.
             """;
 
-
     private SummarizingChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.store = ensureNotNull(builder.getStore(), "store");
@@ -94,7 +94,8 @@ public class SummarizingChatMemory implements ChatMemory {
         this.systemPromptFunction = ensureNotNull(builder.getSystemPromptFunction(), "chatModel");
 
         this.maxMessagesFunction = ensureNotNull(builder.maxMessagesFunction, "maxMessagesFunction");
-        this.summarizeThresholdFunction = ensureNotNull(builder.summarizeThresholdFunction, "summarizeThresholdFunction");
+        this.summarizeThresholdFunction =
+                ensureNotNull(builder.summarizeThresholdFunction, "summarizeThresholdFunction");
 
         // Validate configuration once on build
         int max = maxMessagesFunction.apply(id);
@@ -103,7 +104,6 @@ public class SummarizingChatMemory implements ChatMemory {
         ensureGreaterThanZero(threshold - 1, "summarizeThreshold -1");
         ensureGreaterThanZero(max - threshold, "maxMessages - summarizeThreshold");
     }
-
 
     @Override
     public Object id() {
@@ -142,7 +142,6 @@ public class SummarizingChatMemory implements ChatMemory {
     public void clear() {
         store.deleteMessages(id);
     }
-
 
     /**
      * Check message list size and trigger summarization if it exceeds threshold.
@@ -187,7 +186,6 @@ public class SummarizingChatMemory implements ChatMemory {
         return AiMessage.aiMessage(chatResponse.aiMessage().text());
     }
 
-
     /**
      * Builder for {@link SummarizingChatMemory}.
      */
@@ -208,7 +206,6 @@ public class SummarizingChatMemory implements ChatMemory {
             this.id = id;
             return this;
         }
-
 
         /**
          * Sets a dynamic function to determine the maximum number of messages to retain.
@@ -250,7 +247,6 @@ public class SummarizingChatMemory implements ChatMemory {
             this.summarizeThresholdFunction = func;
             return this;
         }
-
 
         /**
          * Sets a static summarization threshold.
@@ -324,7 +320,6 @@ public class SummarizingChatMemory implements ChatMemory {
             this.chatModel = chatModel;
             return this;
         }
-
 
         private Function<Object, String> getSystemPromptFunction() {
             return systemPromptFunction != null ? systemPromptFunction : (id) -> DEFAULT_SYSTEM_PROMPT;
