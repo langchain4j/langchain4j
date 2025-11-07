@@ -50,8 +50,34 @@ EmbeddingStore<TextSegment> embeddingStore = SQLServerEmbeddingStore.dataSourceB
    .dataSource(myDataSource)
    .embeddingTable(EmbeddingTable.builder()
            .name("my_embedding_table")
-           .createOption(CreateOption.CREATE) // Use CreateOption.CREATE_OR_REPLACE to replace the existing table
-           .dimension(384) // Must specify dimension
+           .createOption(CreateOption.CREATE)
+           .dimension(384) 
+           .build())
+   .build();
+```
+
+The previous option will fail if the table already exists. In that case, you can use the CREATE_IF_NOT_EXISTS option:
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = SQLServerEmbeddingStore.dataSourceBuilder()
+   .dataSource(myDataSource)
+   .embeddingTable(EmbeddingTable.builder()
+           .name("my_embedding_table")
+           .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
+           .dimension(384) 
+           .build())
+   .build();
+```
+
+Finally, If you want to recreate the table, you can use the CREATE_OR_REPLACE option:
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = SQLServerEmbeddingStore.dataSourceBuilder()
+   .dataSource(myDataSource)
+   .embeddingTable(EmbeddingTable.builder()
+           .name("my_embedding_table")
+           .createOption(CreateOption.CREATE_OR_REPLACE)
+           .dimension(384) 
            .build())
    .build();
 ```
@@ -144,6 +170,8 @@ SQLServerEmbeddingStore embeddingStore =
         )
         .build();
 ```
+
+- Indexes created with `Index.jsonIndexBuilder()` do not support the `CreateOption.CREATE_IF_NOT_EXISTS` option.
 
 ## Limitations
 
