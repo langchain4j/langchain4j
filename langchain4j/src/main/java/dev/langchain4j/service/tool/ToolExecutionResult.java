@@ -64,14 +64,7 @@ public class ToolExecutionResult {
      * @see #result()
      */
     public String resultText() {
-        String text = resultText.get();
-        if (text == null && resultTextSupplier != null) {
-            text = resultTextSupplier.get();
-            resultText.compareAndSet(null, text);
-            // Re-read to ensure we return the winning value in case of race
-            text = resultText.get();
-        }
-        return text;
+        return resultText.updateAndGet(current -> current != null ? current : (resultTextSupplier != null ? resultTextSupplier.get() : null));
     }
 
     @Override
