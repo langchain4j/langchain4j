@@ -64,7 +64,8 @@ public class ToolExecutionResult {
      * @see #result()
      */
     public String resultText() {
-        return resultText.updateAndGet(current -> current != null ? current : (resultTextSupplier != null ? resultTextSupplier.get() : null));
+        return resultText.updateAndGet(
+                current -> current != null ? current : (resultTextSupplier != null ? resultTextSupplier.get() : null));
     }
 
     @Override
