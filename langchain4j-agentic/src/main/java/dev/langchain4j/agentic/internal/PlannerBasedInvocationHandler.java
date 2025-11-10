@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -17,7 +18,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
@@ -218,20 +218,20 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                     Thread.yield();
                     continue;
                 }
-                AgentExecutor[] agents = ((Action.AgentCallAction) nextAction).agentsToCall();
+                List<AgentExecutor> agents = ((Action.AgentCallAction) nextAction).agentsToCall();
                 nextAction = null;
-                switch (agents.length) {
+                switch (agents.size()) {
                     case 0 -> Thread.yield();
-                    case 1 -> agents[0].execute(agenticScope, this);
-                    default -> parallelExecution((agents));
+                    case 1 -> agents.get(0).execute(agenticScope, this);
+                    default -> parallelExecution(agents);
                 }
             }
             return result();
         }
 
-        private void parallelExecution(AgentExecutor[] agents) {
+        private void parallelExecution(List<AgentExecutor> agents) {
             Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
-            var tasks = Stream.of(agents)
+            var tasks = agents.stream()
                     .map(agentExecutor -> CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))
                     .toList();
             try {
@@ -258,7 +258,21 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
         @Override
         public void onAgentInvoked(AgentInvocation agentInvocation) {
-            this.nextAction = planner.nextAction(new PlannerRequest(agenticScope, agentInvocation));
+            this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlannerRequest(agenticScope, agentInvocation)));
+        }
+
+        private static Action composeActions(Action first, Action second) {
+            if (first == null || first.isDone()) {
+                return second;
+            }
+            if (second == null || second.isDone()) {
+                return first;
+            }
+
+            List<AgentExecutor> agentsToCall = new ArrayList<>();
+            agentsToCall.addAll(((Action.AgentCallAction) first).agentsToCall());
+            agentsToCall.addAll(((Action.AgentCallAction) second).agentsToCall());
+            return new Action.AgentCallAction(agentsToCall);
         }
     }
 

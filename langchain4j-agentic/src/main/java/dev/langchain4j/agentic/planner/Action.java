@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.planner;
 
 import dev.langchain4j.agentic.internal.AgentExecutor;
+import java.util.List;
+import java.util.stream.Stream;
 
 public interface Action {
 
@@ -53,13 +55,14 @@ public interface Action {
 
         static final Action NO_OP = new AgentCallAction();
 
-        private final AgentExecutor[] agents;
+        private final List<AgentExecutor> agents;
 
-        AgentCallAction(AgentInstance... agents) {
-            this.agents = new AgentExecutor[agents.length];
-            for (int i = 0; i < agents.length; i++) {
-                this.agents[i] = (AgentExecutor) agents[i];
-            }
+        public AgentCallAction(AgentInstance... agents) {
+            this(Stream.of(agents).map(AgentExecutor.class::cast).toList());
+        }
+
+        public AgentCallAction(List<AgentExecutor> agents) {
+            this.agents = agents;
         }
 
         @Override
@@ -72,7 +75,7 @@ public interface Action {
             return false;
         }
 
-        public AgentExecutor[] agentsToCall() {
+        public List<AgentExecutor> agentsToCall() {
             return agents;
         }
     }
