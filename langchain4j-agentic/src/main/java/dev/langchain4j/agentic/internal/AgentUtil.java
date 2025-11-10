@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -26,14 +25,12 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
-    private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
-
     private AgentUtil() {}
 
     public record AgentArgument(Class<?> type, String name) {}
 
-    public static String uniqueAgentName(String agentName) {
-        return agentName + "$" + AGENT_COUNTER.incrementAndGet();
+    public static String uniqueAgentName(Class<?> agentClass, String agentName) {
+        return agentName + "_" + agentClass.getSimpleName();
     }
 
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
@@ -53,7 +50,7 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
-        String uniqueName = uniqueAgentName(name);
+        String uniqueName = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec
                 ? new MethodAgentInvoker(
