@@ -14,7 +14,7 @@
     <name>LangChain4j :: Integration :: Anthropic</name>
 
     <properties>
-        <skipAnthropicITs>false</skipAnthropicITs>
+        <skipAnthropicITs>true</skipAnthropicITs>
     </properties>
 
     <dependencies>

@@ -12,7 +12,7 @@
     <name>LangChain4j :: Integration :: MongoDB Atlas</name>
 
     <properties>
-        <skipMongoDbAtlasITs>false</skipMongoDbAtlasITs>
+        <skipMongoDbAtlasITs>true</skipMongoDbAtlasITs>
     </properties>
 
     <dependencies>

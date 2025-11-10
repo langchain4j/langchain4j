@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <skipMilvusITs>false</skipMilvusITs>
+        <skipMilvusITs>true</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>

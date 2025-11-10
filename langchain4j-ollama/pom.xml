@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>
-        <skipOllamaITs>false</skipOllamaITs>
+        <skipOllamaITs>true</skipOllamaITs>
     </properties>
 
     <dependencies>

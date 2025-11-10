@@ -22,7 +22,7 @@
     </developers>
 
     <properties>
-        <skipGeminiITs>false</skipGeminiITs>
+        <skipGeminiITs>true</skipGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 

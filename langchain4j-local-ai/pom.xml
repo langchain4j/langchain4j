@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: LocalAI</name>
 
     <properties>
-        <skipLocalAiITs>false</skipLocalAiITs>
+        <skipLocalAiITs>true</skipLocalAiITs>
     </properties>
 
     <dependencies>

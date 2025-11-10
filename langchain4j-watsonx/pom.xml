@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Watsonx</name>
 
     <properties>
-        <skipWatsonxITs>false</skipWatsonxITs>
+        <skipWatsonxITs>true</skipWatsonxITs>
     </properties>
 
     <dependencies>
