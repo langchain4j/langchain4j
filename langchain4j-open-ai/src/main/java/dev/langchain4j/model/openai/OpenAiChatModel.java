@@ -130,7 +130,7 @@ public class OpenAiChatModel implements ChatModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
-        if ("json_schema".equals(responseFormatString)) {
+        if ("json_schema".equals(responseFormatString) || "json_object".equals(responseFormatString)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
