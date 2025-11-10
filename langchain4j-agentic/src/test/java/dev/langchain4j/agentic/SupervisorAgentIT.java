@@ -522,46 +522,6 @@ public class SupervisorAgentIT {
         assertThat(((AiMessage) lastMessage).text()).contains("done");
     }
 
-    public static class InMemoryChatMemoryProvider implements ChatMemory {
-
-        private final String conversationId;
-        private Map<String, List<ChatMessage>> messageStore;
-
-        public InMemoryChatMemoryProvider(final String conversationId, Map<String, List<ChatMessage>> messageStore) {
-            this.conversationId = conversationId;
-            this.messageStore = messageStore;
-        }
-
-        @Override
-        public Object id() {
-            return conversationId;
-        }
-
-        @Override
-        public void add(ChatMessage message) {
-            List<ChatMessage> messages = messageStore.computeIfAbsent(conversationId, k -> new ArrayList<>());
-            if (message instanceof dev.langchain4j.data.message.SystemMessage) {
-                if (!messages.isEmpty() && messages.get(0) instanceof dev.langchain4j.data.message.SystemMessage) {
-                    messages.set(0, message);
-                } else {
-                    messages.add(0, message);
-                }
-            } else {
-                messages.add(message);
-            }
-        }
-
-        @Override
-        public List<ChatMessage> messages() {
-            return new ArrayList<>(messageStore.getOrDefault(conversationId, List.of()));
-        }
-
-        @Override
-        public void clear() {
-            messageStore.remove(conversationId);
-        }
-    }
-
     public interface GeneralAssistant extends ChatMemoryAccess {
 
         @UserMessage("{{userMessage}}")
@@ -589,18 +549,18 @@ public class SupervisorAgentIT {
 
         JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("jokester", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         GeneralAssistant generalAssistant = AgenticServices.agentBuilder(GeneralAssistant.class)
                 .chatModel(baseModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("general", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         Supervisor supervisorAgent = AgenticServices.supervisorBuilder(Supervisor.class)
                 .subAgents(generalAssistant, jokesterAssistant)
                 .chatModel(plannerModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("supervisor", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .build();
 
@@ -610,18 +570,18 @@ public class SupervisorAgentIT {
         // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
         JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("jokester", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         GeneralAssistant generalAssistant2 = AgenticServices.agentBuilder(GeneralAssistant.class)
                 .chatModel(baseModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("general", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         Supervisor supervisorAgent2 = AgenticServices.supervisorBuilder(Supervisor.class)
                 .subAgents(generalAssistant2, jokesterAssistant2)
                 .chatModel(plannerModel())
-                .chatMemoryProvider(memoryId -> new InMemoryChatMemoryProvider("supervisor", messageMap))
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .build();
 
@@ -642,6 +602,6 @@ public class SupervisorAgentIT {
 
         // only 2 agents, the jokester and done
         assertThat(agentNames).hasSize(2);
-        assertThat(agentNames).contains("done");
+        assertThat(agentNames).containsExactly("JokesterAgent_JokesterAssistant", "done");
     }
 }
