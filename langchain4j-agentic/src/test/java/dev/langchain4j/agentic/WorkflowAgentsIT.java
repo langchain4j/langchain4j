@@ -32,7 +32,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;

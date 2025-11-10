@@ -9,7 +9,7 @@ import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.Agents.StyleScorer;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;

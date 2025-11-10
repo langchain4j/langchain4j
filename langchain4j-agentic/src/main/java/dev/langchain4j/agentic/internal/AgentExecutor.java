@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.scope.AgentExecution;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgentExecutionListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import org.slf4j.Logger;
@@ -57,9 +57,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             if (outputKey != null && !outputKey.isBlank()) {
                 agenticScope.writeState(outputKey, response);
             }
-            agenticScope.registerAgentCall(agentInvoker, invokedAgent, args, response);
+            AgentInvocation agentInvocation = new AgentInvocation(name(), agentId(), args.namedArgs(), response);
+            agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
             if (listener != null) {
-                listener.onAgentExecuted(new AgentExecution(agentInvoker, agent, args.namedArgs(), response));
+                listener.onAgentInvoked(agentInvocation);
             }
             return response;
         } catch (AgentInvocationException e) {

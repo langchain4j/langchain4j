@@ -4,8 +4,9 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
 public class LoopPlanner implements Planner {
@@ -32,19 +33,19 @@ public class LoopPlanner implements Planner {
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
+    public Action firstAction(PlannerRequest plannerRequest) {
         return call(agents.get(agentCursor));
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
+    public Action nextAction(PlannerRequest plannerRequest) {
         agentCursor = (agentCursor+1) % agents.size();
         if (agentCursor == 0) {
-            if (iterationsCounter > maxIterations || exitCondition.test(agenticScope, iterationsCounter)) {
+            if (iterationsCounter > maxIterations || exitCondition.test(plannerRequest.agenticScope(), iterationsCounter)) {
                 return done();
             }
             iterationsCounter++;
-        } else if (!testExitAtLoopEnd && exitCondition.test(agenticScope, iterationsCounter)) {
+        } else if (!testExitAtLoopEnd && exitCondition.test(plannerRequest.agenticScope(), iterationsCounter)) {
             return done();
         }
         return call(agents.get(agentCursor));

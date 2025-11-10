@@ -3,8 +3,8 @@ package dev.langchain4j.agentic.patterns.p2p;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
@@ -66,32 +66,32 @@ public class P2PPlanner implements Planner {
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
-        if (agenticScope.hasState("p2pRequest")) {
-            String request = agenticScope.readState("p2pRequest", "");
+    public Action firstAction(PlannerRequest plannerRequest) {
+        if (plannerRequest.agenticScope().hasState("p2pRequest")) {
+            String request = plannerRequest.agenticScope().readState("p2pRequest", "");
             Collection<String> variableNames = this.agentActivators.values().stream()
                     .flatMap(agentActivator -> agentActivator.argumentNames().stream())
                     .distinct().toList();
 
             Map<String, String> vars = createVariablesExtractorAgent(chatModel).extractVariables(request, variableNames);
             LOG.info("Variables extracted from user's prompt: {}", vars);
-            vars.forEach(agenticScope::writeState);
+            vars.forEach(plannerRequest.agenticScope()::writeState);
         }
 
-        return nextCallAction(agenticScope);
+        return nextCallAction(plannerRequest.agenticScope());
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
-        if (terminated(agenticScope)) {
+    public Action nextAction(PlannerRequest plannerRequest) {
+        if (terminated(plannerRequest.agenticScope())) {
             return done();
         }
 
-        AgentActivator lastExecutedAgent = agentActivators.get(previousAgentExecution.agentSpec().agentId());
+        AgentActivator lastExecutedAgent = agentActivators.get(plannerRequest.previousAgentInvocation().agentId());
         lastExecutedAgent.finishExecution();
         agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
 
-        return nextCallAction(agenticScope);
+        return nextCallAction(plannerRequest.agenticScope());
     }
 
     private Action nextCallAction(AgenticScope agenticScope) {

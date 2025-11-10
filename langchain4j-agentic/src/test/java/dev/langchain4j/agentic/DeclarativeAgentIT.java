@@ -45,7 +45,7 @@ import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;

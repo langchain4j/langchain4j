@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -80,12 +80,14 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
-        String lastResponse = previousAgentExecution == null ? "" : previousAgentExecution.output().toString();
+    public Action nextAction(PlannerRequest plannerRequest) {
+        String lastResponse = plannerRequest.previousAgentInvocation() == null ?
+                "" :
+                plannerRequest.previousAgentInvocation().output().toString();
         if (loopCount++ >= maxAgentsInvocations) {
-            return doneAction(agenticScope, lastResponse, null);
+            return doneAction(plannerRequest.agenticScope(), lastResponse, null);
         }
-        return nextSubagent(agenticScope, lastResponse);
+        return nextSubagent(plannerRequest.agenticScope(), lastResponse);
     }
 
     private static String toCard(AgentInstance agent) {

@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.scope;
 
 public interface AgentExecutionListener {
 
-    AgentExecutionListener NO_OP = agentExecution -> { };
+    AgentExecutionListener NO_OP = agentInvocation -> { };
 
-    void onAgentExecuted(AgentExecution agentExecution);
+    void onAgentInvoked(AgentInvocation agentInvocation);
 }

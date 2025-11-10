@@ -3,8 +3,8 @@ package dev.langchain4j.agentic.workflow.impl;
 import java.util.List;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
 public class ParallelPlanner implements Planner {
@@ -17,12 +17,12 @@ public class ParallelPlanner implements Planner {
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
+    public Action firstAction(PlannerRequest plannerRequest) {
         return call(agents);
     }
 
     @Override
-    public Action nextAction(final AgenticScope agenticScope, final AgentExecution previousAgentExecution) {
+    public Action nextAction(PlannerRequest plannerRequest) {
         return done();
     }
 }

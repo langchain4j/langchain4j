@@ -3,8 +3,8 @@ package dev.langchain4j.agentic.patterns.goap;
 import java.util.List;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
 public class GoalOrientedPlanner implements Planner {
@@ -23,8 +23,8 @@ public class GoalOrientedPlanner implements Planner {
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
-        path = graph.search(agenticScope.state().keySet(), goal);
+    public Action firstAction(PlannerRequest plannerRequest) {
+        path = graph.search(plannerRequest.agenticScope().state().keySet(), goal);
         if (path.isEmpty()) {
             throw new IllegalStateException("No path found for goal: " + goal);
         }
@@ -32,7 +32,7 @@ public class GoalOrientedPlanner implements Planner {
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
+    public Action nextAction(PlannerRequest plannerRequest) {
         return agentCursor >= path.size() ? done() : call(path.get(agentCursor++));
     }
 }

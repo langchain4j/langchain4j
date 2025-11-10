@@ -25,10 +25,11 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.DefaultAgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgentExecutionListener;
@@ -211,7 +212,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         }
 
         public Object loop() {
-            nextAction = planner.firstAction(agenticScope);
+            nextAction = planner.firstAction(new PlannerRequest(agenticScope, null));
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
                     Thread.yield();
@@ -256,8 +257,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         }
 
         @Override
-        public void onAgentExecuted(AgentExecution agentExecution) {
-            this.nextAction = planner.nextAction(agenticScope, agentExecution);
+        public void onAgentInvoked(AgentInvocation agentInvocation) {
+            this.nextAction = planner.nextAction(new PlannerRequest(agenticScope, agentInvocation));
         }
     }
 

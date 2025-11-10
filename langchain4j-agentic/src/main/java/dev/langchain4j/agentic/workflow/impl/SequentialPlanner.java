@@ -2,8 +2,8 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class SequentialPlanner implements Planner {
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
+    public Action nextAction(PlannerRequest plannerRequest) {
         return agentCursor >= agents.size() ? done() : call(agents.get(agentCursor++));
     }
 }

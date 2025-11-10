@@ -2,8 +2,8 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.PlannerRequest;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgentExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
 import java.util.List;
@@ -14,16 +14,16 @@ public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) imple
     record ConditionalAgent(Predicate<AgenticScope> condition, List<AgentInstance> agentInstances) { }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
+    public Action firstAction(PlannerRequest plannerRequest) {
         List<AgentInstance> agentsToCall = conditionalAgents.stream()
-                .filter(conditionalAgent -> conditionalAgent.condition.test(agenticScope))
+                .filter(conditionalAgent -> conditionalAgent.condition.test(plannerRequest.agenticScope()))
                 .flatMap(conditionalAgent -> conditionalAgent.agentInstances.stream())
                 .toList();
         return call(agentsToCall);
     }
 
     @Override
-    public Action nextAction(final AgenticScope agenticScope, final AgentExecution previousAgentExecution) {
+    public Action nextAction(PlannerRequest plannerRequest) {
         return done();
     }
 }
