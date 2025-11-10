@@ -49,7 +49,7 @@ public abstract class AbstractAgentInvocationHandler implements InvocationHandle
     protected AbstractAgentInvocationHandler(AbstractService<?, ?> service, DefaultAgenticScope agenticScope) {
         this.agentServiceClass = service.agentServiceClass;
         this.name = service.name;
-        this.uniqueName = uniqueAgentName(this.name);
+        this.uniqueName = uniqueAgentName(this.agentServiceClass, this.name);
         this.description = service.description;
         this.outputKey = service.outputKey;
         this.beforeCall = service.beforeCall;

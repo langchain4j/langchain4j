@@ -29,7 +29,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
         this.agentCard = a2AClientInstance.agentCard();
-        this.uniqueName = uniqueAgentName(name());
+        this.uniqueName = uniqueAgentName(method.getDeclaringClass(), name());
         this.inputKeys = inputKeys(a2AClientInstance);
     }
 
