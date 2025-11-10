@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import co.elastic.clients.elasticsearch._types.mapping.DenseVectorIndexOptionsType;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
 
 import java.io.IOException;
@@ -26,7 +27,7 @@ class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingSto
                                             .efConstruction(100)
                                             // We must use float instead of the int8_hnsw default
                                             // as the tests are failing otherwise due to the approximation
-                                            .type("hnsw")
+                                            .type(DenseVectorIndexOptionsType.Hnsw)
                                     )
                             ))
                     ));

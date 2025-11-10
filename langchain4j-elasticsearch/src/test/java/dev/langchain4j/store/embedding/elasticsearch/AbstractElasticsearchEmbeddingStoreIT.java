@@ -14,6 +14,7 @@ import java.io.IOException;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 /**
  * For this test, because Elasticsearch container might not be super fast to start,
@@ -78,6 +79,12 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
 
     @Override
     protected void ensureStoreIsEmpty() {
-        // TODO fix
+        try {
+            assertEquals(0,elasticsearchClientHelper.client.indices()
+                    .stats(s -> s.index(indexName))
+                    .indices().get(indexName).total().docs().count());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
