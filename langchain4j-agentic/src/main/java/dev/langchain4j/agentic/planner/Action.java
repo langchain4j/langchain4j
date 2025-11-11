@@ -53,8 +53,6 @@ public interface Action {
 
     class AgentCallAction implements Action {
 
-        static final Action NO_OP = new AgentCallAction();
-
         private final List<AgentExecutor> agents;
 
         public AgentCallAction(AgentInstance... agents) {
@@ -78,5 +76,9 @@ public interface Action {
         public List<AgentExecutor> agentsToCall() {
             return agents;
         }
+    }
+
+    class NoOpAction extends AgentCallAction {
+        static final Action INSTANCE = new NoOpAction();
     }
 }

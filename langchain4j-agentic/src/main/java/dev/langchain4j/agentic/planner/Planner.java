@@ -13,7 +13,7 @@ public interface Planner {
     Action nextAction(PlanningContext planningContext);
 
     default Action noOp() {
-        return Action.AgentCallAction.NO_OP;
+        return Action.NoOpAction.INSTANCE;
     }
 
     default Action call(AgentInstance... agents) {
