@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
+import static dev.langchain4j.agentic.patterns.p2p.P2PAgent.P2P_REQUEST_KEY;
 import static java.util.stream.Collectors.toMap;
 
 public class P2PPlanner implements Planner {
@@ -67,8 +68,8 @@ public class P2PPlanner implements Planner {
 
     @Override
     public Action firstAction(PlannerRequest plannerRequest) {
-        if (plannerRequest.agenticScope().hasState("p2pRequest")) {
-            String request = plannerRequest.agenticScope().readState("p2pRequest", "");
+        if (plannerRequest.agenticScope().hasState(P2P_REQUEST_KEY)) {
+            String request = plannerRequest.agenticScope().readState(P2P_REQUEST_KEY, "");
             Collection<String> variableNames = this.agentActivators.values().stream()
                     .flatMap(agentActivator -> agentActivator.argumentNames().stream())
                     .distinct().toList();
