@@ -12,4 +12,9 @@ public abstract class ElasticsearchConfiguration {
                                             String indexName,
                                             EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
+    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
+                                                     String indexName,
+                                                     EmbeddingSearchRequest embeddingSearchRequest,
+                                                     boolean includeVectorResponse)
+            throws ElasticsearchException, IOException;
 }

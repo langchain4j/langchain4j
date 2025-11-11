@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
@@ -54,6 +55,10 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         Embedding embedding3 = embeddingModel.embed("buen día").content();
         List<Embedding> embeddings = Arrays.asList(embedding1, embedding2, embedding3);
 
+        boolean includeVector = false;
+        if (isGTENineTwo(elasticsearchClientHelper.version)) {
+            includeVector = true;
+        }
         // Test with a high numCandidates
         {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
@@ -62,6 +67,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
+                    .includeVectorResponse(includeVector)
                     .build();
 
             // given
@@ -87,6 +93,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
+                    .includeVectorResponse(includeVector)
                     .build();
 
             // given

@@ -98,7 +98,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
 
         ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
 
-        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"));
+        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"), false);
     }
 
     /**
@@ -110,7 +110,20 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      *                      Index will be created automatically if not exists.
      */
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
-        this.initialize(configuration, restClient, indexName);
+        this.initialize(configuration, restClient, indexName, false);
+    }
+
+    /**
+     * Constructor using a RestClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param restClient            Elasticsearch Rest Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
+     */
+    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, boolean includeVectorResponse) {
+        this.initialize(configuration, restClient, indexName, includeVectorResponse);
     }
 
     public static Builder builder() {
@@ -126,6 +139,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         private RestClient restClient;
         private String indexName = "default";
         private ElasticsearchConfiguration configuration = ElasticsearchConfigurationKnn.builder().build();
+        private boolean includeVectorResponse = false;
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -210,9 +224,18 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             return this;
         }
 
+        /**
+         * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
+         * @return builder
+         */
+        public Builder includeVectorResponse(boolean includeVectorResponse) {
+            this.includeVectorResponse = includeVectorResponse;
+            return this;
+        }
+
         public ElasticsearchEmbeddingStore build() {
             if (restClient != null) {
-                return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
+                return new ElasticsearchEmbeddingStore(configuration, restClient, indexName, includeVectorResponse);
             } else {
                 log.warn("This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
                 return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);

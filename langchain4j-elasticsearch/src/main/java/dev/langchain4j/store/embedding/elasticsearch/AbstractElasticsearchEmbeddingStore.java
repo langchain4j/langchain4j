@@ -54,6 +54,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private ElasticsearchConfiguration configuration;
     private ElasticsearchClient client;
     private String indexName;
+    private boolean includeVectorResponse;
 
     /**
      * Initialize using a RestClient
@@ -63,13 +64,14 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
      */
-    protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
+    protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, boolean includeVectorResponse) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
         this.configuration = configuration;
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
+        this.includeVectorResponse = includeVectorResponse;
     }
 
 
@@ -106,7 +108,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         log.debug("search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
                 embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, embeddingSearchRequest);
+            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, embeddingSearchRequest, includeVectorResponse);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
@@ -244,7 +246,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                         .map(document -> new EmbeddingMatch<>(
                                 hit.score(),
                                 hit.id(),
-                                new Embedding(document.getVector()),
+                                new Embedding(Optional.ofNullable(document.getVector())
+                                        .orElse(new float[]{})),
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))

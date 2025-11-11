@@ -41,6 +41,7 @@ class ElasticsearchClientHelper {
     RestClient restClient;
     ElasticsearchContainer elasticsearch;
     ElasticsearchClient client;
+    String version;
 
     void startServices() throws IOException {
         String cloudUrl = System.getenv("ELASTICSEARCH_CLOUD_URL");
@@ -135,6 +136,7 @@ class ElasticsearchClientHelper {
 
             InfoResponse info = client.info();
             log.info("Found Elasticsearch cluster version [{}] running at [{}].", info.version().number(), address);
+            version = info.version().number();
 
             return restClient;
         } catch (Exception e) {
@@ -142,5 +144,11 @@ class ElasticsearchClientHelper {
             log.debug("No cluster is running yet at {}.", address);
             return null;
         }
+    }
+
+    static boolean isGTENineTwo(String version) {
+        int major = Integer.parseInt(version.split("\\.")[0]);
+        int minor = Integer.parseInt(version.split("\\.")[1]);
+        return major >= 9 && minor >= 2;
     }
 }

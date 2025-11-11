@@ -1,11 +1,13 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import java.io.IOException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,14 +15,13 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 
-import java.io.IOException;
-
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
  * <br>
  * Supports storing {@link Metadata} and filtering by it using {@link Filter}
  * (provided inside {@link EmbeddingSearchRequest}).
+ *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
 public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration {
@@ -42,14 +43,30 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
 
     @Override
     SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                   String indexName,
-                                                   EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+                                            String indexName,
+                                            EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+        return internalSearch(client,indexName,embeddingSearchRequest,false);
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(ElasticsearchClient client,
+                                            String indexName,
+                                            EmbeddingSearchRequest embeddingSearchRequest,
+                                            boolean includeVectorResponse) throws ElasticsearchException, IOException {
         ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(embeddingSearchRequest.queryEmbedding().vector(),
                 (float) embeddingSearchRequest.minScore(), embeddingSearchRequest.filter());
         return client.search(
-                SearchRequest.of(s -> s.index(indexName)
+                SearchRequest.of(s -> s
+                        .source(sr -> {
+                            if (includeVectorResponse) {
+                                return sr.filter(f -> f.excludeVectors(false));
+                            }
+                            return new SourceConfig.Builder().filter(f -> f);
+                        })
+                        .index(indexName)
                         .query(n -> n.scriptScore(scriptScoreQuery))
-                        .size(embeddingSearchRequest.maxResults())),
+                        .size(embeddingSearchRequest.maxResults()))
+                ,
                 Document.class
         );
     }

@@ -16,6 +16,7 @@ import java.io.IOException;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
@@ -47,9 +48,14 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     void createEmbeddingStore() throws IOException {
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
+        boolean includeVector = false;
+        if (isGTENineTwo(elasticsearchClientHelper.version)) {
+            includeVector = true;
+        }
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
+                .includeVectorResponse(includeVector)
                 .build();
     }
 
