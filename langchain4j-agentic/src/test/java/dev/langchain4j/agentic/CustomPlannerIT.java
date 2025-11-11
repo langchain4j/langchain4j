@@ -2,9 +2,9 @@ package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.planner.PlannerRequest;
-import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,12 +34,12 @@ public class CustomPlannerIT {
         }
 
         @Override
-        public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-            this.agents = subagents;
+        public void init(InitPlanningContext initPlanningContext) {
+            this.agents = initPlanningContext.subagents();
         }
 
         @Override
-        public Action nextAction(PlannerRequest plannerRequest) {
+        public Action nextAction(PlanningContext planningContext) {
             lock.lock();
             try {
                 if (--onGoingRequests == 0) {

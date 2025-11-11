@@ -1,18 +1,16 @@
 package dev.langchain4j.agentic.planner;
 
-import dev.langchain4j.agentic.scope.AgentInvocation;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.List;
 
 public interface Planner {
 
-    default void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) { }
+    default void init(InitPlanningContext initPlanningContext) { }
 
-    default Action firstAction(PlannerRequest plannerRequest) {
-        return nextAction(plannerRequest);
+    default Action firstAction(PlanningContext planningContext) {
+        return nextAction(planningContext);
     }
 
-    Action nextAction(PlannerRequest plannerRequest);
+    Action nextAction(PlanningContext planningContext);
 
     default Action noOp() {
         return Action.AgentCallAction.NO_OP;

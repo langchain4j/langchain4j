@@ -9,8 +9,9 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
+import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.planner.PlannerRequest;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -67,27 +68,27 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     @Override
-    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-        this.agents = subagents.stream().collect(toMap(AgentInstance::agentId, Function.identity()));
-        this.agentsList = subagents.stream()
+    public void init(final InitPlanningContext initPlanningContext) {
+        this.agents = initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
+        this.agentsList = initPlanningContext.subagents().stream()
                 .map(SupervisorPlanner::toCard)
                 .collect(Collectors.joining(", "));
 
-        this.request = requestGenerator != null ? requestGenerator.apply(agenticScope) : agenticScope.readState("request", "");
+        this.request = requestGenerator != null ? requestGenerator.apply(initPlanningContext.agenticScope()) : initPlanningContext.agenticScope().readState("request", "");
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
             this.responseAgent = AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
         }
     }
 
     @Override
-    public Action nextAction(PlannerRequest plannerRequest) {
-        String lastResponse = plannerRequest.previousAgentInvocation() == null ?
+    public Action nextAction(PlanningContext planningContext) {
+        String lastResponse = planningContext.previousAgentInvocation() == null ?
                 "" :
-                plannerRequest.previousAgentInvocation().output().toString();
+                planningContext.previousAgentInvocation().output().toString();
         if (loopCount++ >= maxAgentsInvocations) {
-            return doneAction(plannerRequest.agenticScope(), lastResponse, null);
+            return doneAction(planningContext.agenticScope(), lastResponse, null);
         }
-        return nextSubagent(plannerRequest.agenticScope(), lastResponse);
+        return nextSubagent(planningContext.agenticScope(), lastResponse);
     }
 
     private static String toCard(AgentInstance agent) {

@@ -25,14 +25,15 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.planner.PlannerRequest;
+import dev.langchain4j.agentic.planner.InitPlanningContext;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.DefaultAgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.scope.AgentExecutionListener;
+import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -187,7 +188,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         }
 
         Planner planner = plannerSupplier.get();
-        planner.init(currentScope, plannerInstance, agentInstances);
+        planner.init(new InitPlanningContext(currentScope, plannerInstance, agentInstances));
         Object result = new PlannerLoop(planner, currentScope).loop();
 
         if (isRootCall()) {
@@ -200,7 +201,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                 : output;
     }
 
-    private class PlannerLoop implements AgentExecutionListener {
+    private class PlannerLoop implements AgentInvocationListener {
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
 
@@ -212,7 +213,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         }
 
         public Object loop() {
-            nextAction = planner.firstAction(new PlannerRequest(agenticScope, null));
+            nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
                     Thread.yield();
@@ -258,7 +259,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
         @Override
         public void onAgentInvoked(AgentInvocation agentInvocation) {
-            this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlannerRequest(agenticScope, agentInvocation)));
+            this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
         }
 
         private static Action composeActions(Action first, Action second) {

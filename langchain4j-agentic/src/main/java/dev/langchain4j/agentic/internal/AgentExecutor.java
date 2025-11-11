@@ -5,7 +5,7 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgentInvocation;
-import dev.langchain4j.agentic.scope.AgentExecutionListener;
+import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,24 +15,24 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
-    public Object execute(DefaultAgenticScope agenticScope, AgentExecutionListener listener) {
+    public Object execute(DefaultAgenticScope agenticScope, AgentInvocationListener listener) {
         return execute(agenticScope, listener, agentInvoker.async());
     }
 
-    public Object syncExecute(DefaultAgenticScope agenticScope, AgentExecutionListener listener) {
+    public Object syncExecute(DefaultAgenticScope agenticScope, AgentInvocationListener listener) {
         if (agentInvoker.async()) {
             LOG.info("Executing '{}' agent in a sync way even if declared as async", agentInvoker.name());
         }
         return execute(agenticScope, listener, false);
     }
 
-    private Object execute(DefaultAgenticScope agenticScope, AgentExecutionListener listener, boolean async) {
+    private Object execute(DefaultAgenticScope agenticScope, AgentInvocationListener listener, boolean async) {
         Object invokedAgent = (agent instanceof AgenticScopeOwner co ? co.withAgenticScope(agenticScope) : agent);
         return internalExecute(agenticScope, invokedAgent, listener, async);
     }
 
     private Object handleAgentFailure(
-            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, AgentExecutionListener listener) {
+            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, AgentInvocationListener listener) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
@@ -41,7 +41,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         };
     }
 
-    private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, AgentExecutionListener listener, boolean async) {
+    private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, AgentInvocationListener listener, boolean async) {
         try {
             AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
             Object response = async
