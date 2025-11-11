@@ -1120,17 +1120,19 @@ In more details an agentic pattern is simply the specification of an execution p
 ```java
 public interface Planner {
 
-    default void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) { }
+    default void init(InitPlanningContext initPlanningContext) { }
 
-    default Action firstAction(AgenticScope agenticScope) {
-        return nextAction(agenticScope, null);
+    default Action firstAction(PlanningContext planningContext) {
+        return nextAction(planningContext);
     }
 
-    Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution);
+    Action nextAction(PlanningContext planningContext);
 }
 ```
 
 This interface has three methods: `init`, `firstAction`, and `nextAction`. The `init` method is called once at the beginning of the execution, and can be used to initialize any state or data structures needed by the planner. The `firstAction` method is called to determine the first action to be taken by the agentic pattern, while the `nextAction` method is called after each agent execution to determine the next action to be taken based on the current state of the `AgenticScope` and the result of the previous agent execution.
+
+Note that the `firstAction` method has been introduced only because in many cases it is convenient to have a distinct callback defining the very first agent to be invoked by the `Planner`. However, for the situations where this distinction is not necessary, it provides a default implementation that simply forwards the call to the `nextAction` method, so it is not strictly necessary to override it.
 
 The `Action` class returned by the `firstAction` and `nextAction` methods represents the next step to be taken by the agentic pattern, and can be one either a list of one or more subagents to be called next, or a signal that the execution has been completed. If the action specifies only one subagent invocation, then it will be executed sequentially, and in the same thread that is executing the planner itself, while if there are more than one, they will be executed in parallel using the provided `Executor` or the LangChain4j default one.
 
@@ -1142,17 +1144,17 @@ public class ParallelPlanner implements Planner {
     private List<AgentInstance> agents;
 
     @Override
-    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-        this.agents = subagents;
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agents = initPlanningContext.subagents();
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
+    public Action firstAction(PlanningContext planningContext) {
         return call(agents);
     }
 
     @Override
-    public Action nextAction(final AgenticScope agenticScope, final AgentExecution previousAgentExecution) {
+    public Action nextAction(PlanningContext planningContext) {
         return done();
     }
 }
@@ -1169,12 +1171,12 @@ public class SequentialPlanner implements Planner {
     private int agentCursor = 0;
 
     @Override
-    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-        this.agents = subagents;
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agents = initPlanningContext.subagents();
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
+    public Action nextAction(PlanningContext planningContext) {
         return agentCursor >= agents.size() ? done() : call(agents.get(agentCursor++));
     }
 }
@@ -1222,14 +1224,14 @@ public class GoalOrientedPlanner implements Planner {
     private int agentCursor = 0;
 
     @Override
-    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-        this.goal = plannerAgent.outputKey();
-        this.graph = new GoalOrientedSearchGraph(subagents);
+    public void init(InitPlanningContext initPlanningContext) {
+        this.goal = initPlanningContext.plannerAgent().outputKey();
+        this.graph = new GoalOrientedSearchGraph(initPlanningContext.subagents());
     }
 
     @Override
-    public Action firstAction(AgenticScope agenticScope) {
-        path = graph.search(agenticScope.state().keySet(), goal);
+    public Action firstAction(PlanningContext planningContext) {
+        path = graph.search(planningContext.agenticScope().state().keySet(), goal);
         if (path.isEmpty()) {
             throw new IllegalStateException("No path found for goal: " + goal);
         }
@@ -1237,7 +1239,7 @@ public class GoalOrientedPlanner implements Planner {
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
+    public Action nextAction(PlanningContext planningContext) {
         return agentCursor >= path.size() ? done() : call(path.get(agentCursor++));
     }
 }
@@ -1249,31 +1251,22 @@ To give a practical example of how this works, let's try to build a goal-oriente
 
 ```java
 public interface HoroscopeGenerator {
-    @SystemMessage(
-            """
-            You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
-            """)
-    @UserMessage("""
-            Generate the horoscope for {{person}} who is a {{sign}}.
-            """)
+    @SystemMessage("You are an astrologist that generates horoscopes based on the user's name and zodiac sign.")
+    @UserMessage("Generate the horoscope for {{person}} who is a {{sign}}.")
     @Agent("An astrologist that generates horoscopes based on the user's name and zodiac sign.")
     String horoscope(@V("person") Person person, @V("sign") Sign sign);
 }
 
 public interface PersonExtractor {
 
-    @UserMessage("""
-            Extract a person from the following prompt: {{prompt}}
-            """)
+    @UserMessage("Extract a person from the following prompt: {{prompt}}")
     @Agent("Extract a person from user's prompt")
     Person extractPerson(@V("prompt") String prompt);
 }
 
 public interface SignExtractor {
 
-    @UserMessage("""
-            Extract the zodiac sign of a person from the following prompt: {{prompt}}
-            """)
+    @UserMessage("Extract the zodiac sign of a person from the following prompt: {{prompt}}")
     @Agent("Extract a person from user's prompt")
     Sign extractSign(@V("prompt") String prompt);
 }
@@ -1377,20 +1370,24 @@ public class P2PPlanner implements Planner {
     }
 
     @Override
-    public void init(AgenticScope agenticScope, AgentInstance plannerAgent, List<AgentInstance> subagents) {
-        this.agentActivators = subagents.stream().collect(toMap(AgentInstance::name, AgentActivator::new));
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agentActivators = initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, AgentActivator::new));
     }
 
     @Override
-    public Action nextAction(AgenticScope agenticScope, AgentExecution previousAgentExecution) {
-        if (terminated(agenticScope)) {
+    public Action nextAction(PlanningContext planningContext) {
+        if (terminated(planningContext.agenticScope())) {
             return done();
         }
 
-        AgentActivator lastExecutedAgent = agentActivators.get(previousAgentExecution.agentSpec().uniqueName());
+        AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
         lastExecutedAgent.finishExecution();
         agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
 
+        return nextCallAction(planningContext.agenticScope());
+    }
+
+    private Action nextCallAction(AgenticScope agenticScope) {
         AgentInstance[] agentsToCall = agentActivators.values().stream()
                 .filter(agentActivator -> agentActivator.canActivate(agenticScope))
                 .peek(AgentActivator::startExecution)
