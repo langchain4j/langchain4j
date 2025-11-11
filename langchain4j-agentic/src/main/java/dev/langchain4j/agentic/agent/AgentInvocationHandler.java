@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.agent;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -45,7 +46,7 @@ public class AgentInvocationHandler implements InvocationHandler {
             return switch (method.getName()) {
                 case "withAgenticScope" ->
                     agenticScopeDependent
-                            ? ((DefaultAgenticScope) args[0]).getOrCreateAgent(builder.agentId(), builder::build)
+                            ? ((DefaultAgenticScope) args[0]).getOrCreateAgent(builder.agentId, builder::build)
                             : proxy;
                 case "registry" ->
                     throw new UnsupportedOperationException(
@@ -68,12 +69,20 @@ public class AgentInvocationHandler implements InvocationHandler {
             };
         }
 
-        if (method.getDeclaringClass() == AgentSpecification.class) {
+        if (method.getDeclaringClass() == AgentInstance.class) {
             return switch (method.getName()) {
                 case "name" -> builder.name;
-                case "uniqueName" -> builder.uniqueName;
+                case "agentId" -> builder.agentId;
                 case "description" -> builder.description;
                 case "outputKey" -> builder.outputKey;
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on AgentInstance class : " + method.getName());
+            };
+        }
+
+        if (method.getDeclaringClass() == AgentSpecification.class) {
+            return switch (method.getName()) {
                 case "async" -> builder.async;
                 case "beforeInvocation" -> {
                     builder.beforeListener.accept((AgentRequest) args[0]);
@@ -85,7 +94,17 @@ public class AgentInvocationHandler implements InvocationHandler {
                 }
                 default ->
                     throw new UnsupportedOperationException(
-                            "Unknown method on ChatMemoryAccess class : " + method.getName());
+                            "Unknown method on AgentSpecification class : " + method.getName());
+            };
+        }
+
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
+                case "hashCode" -> System.identityHashCode(agent);
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on Object class : " + method.getName());
             };
         }
 

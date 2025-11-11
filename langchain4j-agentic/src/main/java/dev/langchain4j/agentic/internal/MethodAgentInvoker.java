@@ -3,12 +3,13 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 
 public record MethodAgentInvoker(
-        Method method, AgentSpecification agentSpecification, List<AgentUtil.AgentArgument> arguments)
+        Method method, AgentSpecification agentSpecification, List<AgentArgument> arguments)
         implements AgentInvoker {
 
     @Override
@@ -17,8 +18,8 @@ public record MethodAgentInvoker(
     }
 
     @Override
-    public String uniqueName() {
-        return agentSpecification.uniqueName();
+    public String agentId() {
+        return agentSpecification.agentId();
     }
 
     @Override
@@ -44,15 +45,6 @@ public record MethodAgentInvoker(
     @Override
     public void afterInvocation(final AgentResponse response) {
         agentSpecification.afterInvocation(response);
-    }
-
-    @Override
-    public String toCard() {
-        List<String> agentArguments = arguments.stream()
-                .map(AgentUtil.AgentArgument::name)
-                .filter(a -> !a.equals("@MemoryId"))
-                .toList();
-        return "{" + uniqueName() + ": " + description() + ", " + agentArguments + "}";
     }
 
     @Override
