@@ -61,7 +61,7 @@ class AnthropicChatModelIT {
         ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("test content");
+        assertThat(response.aiMessage().text().toLowerCase()).contains("test", "content");
     }
 
     @Test

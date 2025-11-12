@@ -32,13 +32,14 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
+import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.UserMessage;
@@ -65,15 +66,20 @@ public class WorkflowAgentsIT {
 
     @Test
     void sequential_agents_tests() {
-        check_sequential_agents(false);
+        check_sequential_agents(false, false);
     }
 
     @Test
     void sequential_agents_using_declarative_api_tests() {
-        check_sequential_agents(true);
+        check_sequential_agents(true, false);
     }
 
-    void check_sequential_agents(boolean useDeclarativeAPI) {
+    @Test
+    void sequential_agents_as_planner() {
+        check_sequential_agents(false, true);
+    }
+
+    void check_sequential_agents(boolean useDeclarativeAPI, boolean asPlanner) {
         CreativeWriter creativeWriter = useDeclarativeAPI
                 ? spy(AgenticServices.agentBuilder(CreativeWriterWithModel.class)
                         .outputKey("story")
@@ -93,10 +99,16 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
-        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                .subAgents(creativeWriter, audienceEditor, styleEditor)
-                .outputKey("story")
-                .build();
+        UntypedAgent novelCreator = asPlanner ?
+                AgenticServices.plannerBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .planner(SequentialPlanner::new)
+                        .build() :
+                AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
 
         Map<String, Object> input = Map.of(
                 "topic", "dragons and wizards",
@@ -516,18 +528,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
-                        medicalExpert)
-                .subAgents(
-                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
-                                == RequestCategory.TECHNICAL,
-                        technicalExpert)
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
-                        legalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
@@ -674,15 +677,15 @@ public class WorkflowAgentsIT {
 
     static class NotificationTool {
 
-        private final AtomicBoolean done;
+        private final String agentName;
 
-        NotificationTool(final AtomicBoolean done) {
-            this.done = done;
+        NotificationTool(String agentName) {
+            this.agentName = agentName;
         }
 
         @Tool("notify that you are done")
-        void done() {
-            done.set(true);
+        void done(AgenticScope agenticScope) {
+            agenticScope.writeState(agentName, "done");
         }
     }
 
@@ -696,8 +699,8 @@ public class WorkflowAgentsIT {
             For each meal, just give the name of the meal.
             Provide a list with the 3 items and nothing else.
 
-            When you are done and immediately before returning also call the provided tool,
-            to notify that you have completed your task.
+            When you are done and immediately before returning also call, once and only once,
+            the provided tool, to notify that you have completed your task.
             """)
         @Agent
         List<String> findMeal(@V("mood") String mood);
@@ -721,19 +724,16 @@ public class WorkflowAgentsIT {
 
     @Test
     void async_untyped_agents_tests() {
-        AtomicBoolean foodDone = new AtomicBoolean(false);
-        AtomicBoolean moviesDone = new AtomicBoolean(false);
-
         FoodExpertWithNotification foodExpert = AgenticServices.agentBuilder(FoodExpertWithNotification.class)
                 .chatModel(baseModel())
-                .tools(new NotificationTool(foodDone))
+                .tools(new NotificationTool("foodAgent"))
                 .async(true)
                 .outputKey("meals")
                 .build();
 
         MovieExpertWithNotification movieExpert = AgenticServices.agentBuilder(MovieExpertWithNotification.class)
                 .chatModel(baseModel())
-                .tools(new NotificationTool(moviesDone))
+                .tools(new NotificationTool("moviesAgent"))
                 .async(true)
                 .outputKey("movies")
                 .build();
@@ -742,9 +742,9 @@ public class WorkflowAgentsIT {
                 .subAgents(foodExpert, movieExpert)
                 .build();
 
-        eveningPlannerAgent.invoke(Map.of("mood", "romantic"));
-        assertThat(foodDone).isTrue();
-        assertThat(moviesDone).isTrue();
+        ResultWithAgenticScope<String> result = eveningPlannerAgent.invokeWithAgenticScope(Map.of("mood", "romantic"));
+        assertThat(result.agenticScope().readState("foodAgent", "")).isEqualTo("done");
+        assertThat(result.agenticScope().readState("moviesAgent", "")).isEqualTo("done");
     }
 
     public interface CreativeWriterDeclarative {

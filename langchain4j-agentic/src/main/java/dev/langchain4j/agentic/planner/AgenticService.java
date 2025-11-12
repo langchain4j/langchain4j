@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.workflow;
+package dev.langchain4j.agentic.planner;
 
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
@@ -6,13 +6,14 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.scope.AgenticScope;
+
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public interface WorkflowService<T, W> {
+public interface AgenticService<T, A> {
 
-    W build();
+    A build();
 
     T subAgents(Object... agents);
 

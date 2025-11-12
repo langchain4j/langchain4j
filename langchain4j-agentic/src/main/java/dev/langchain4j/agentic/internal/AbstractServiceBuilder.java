@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
+import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -8,20 +9,24 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
-public abstract class AbstractService<T, S> {
+public abstract class AbstractServiceBuilder<T, S> {
 
-    private static final Function<AgenticScope, Object> DEFAULT_OUTPUT_FUNCTION = agenticScope -> null;
     private static final Consumer<AgenticScope> DEFAULT_INIT_FUNCTION = agenticScope -> {};
 
     protected final Class<T> agentServiceClass;
+    protected final Method agenticMethod;
 
     protected Consumer<AgenticScope> beforeCall = DEFAULT_INIT_FUNCTION;
 
@@ -29,7 +34,7 @@ public abstract class AbstractService<T, S> {
     protected String name;
     protected String description;
     protected String outputKey;
-    protected Function<AgenticScope, Object> output = DEFAULT_OUTPUT_FUNCTION;
+    protected Function<AgenticScope, Object> output;
 
     protected Consumer<AgentRequest> beforeListener = request -> {};
     protected Consumer<AgentResponse> afterListener = response -> {};
@@ -38,8 +43,11 @@ public abstract class AbstractService<T, S> {
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
-    protected AbstractService(Class<T> agentServiceClass, Method agenticMethod) {
+    protected Executor executor;
+
+    protected AbstractServiceBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agenticMethod = agenticMethod;
         initService(agenticMethod);
     }
 
@@ -50,7 +58,7 @@ public abstract class AbstractService<T, S> {
         }
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
-            throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
+            return;
         }
 
         if (!isNullOrBlank(agent.name())) {
@@ -117,6 +125,11 @@ public abstract class AbstractService<T, S> {
         return (S) this;
     }
 
+    public S executor(Executor executor) {
+        this.executor = executor;
+        return (S) this;
+    }
+
     protected List<AgentExecutor> agentExecutors() {
         return agentExecutors != null ? agentExecutors : List.of();
     }
@@ -128,7 +141,13 @@ public abstract class AbstractService<T, S> {
         this.agentExecutors.addAll(agents);
     }
 
-    protected boolean hasOutputFunction() {
-        return this.output != DEFAULT_OUTPUT_FUNCTION;
+    public T build(Supplier<Planner> plannerSupplier) {
+        return build(new PlannerBasedInvocationHandler(this, plannerSupplier));
     }
+
+    public T build(InvocationHandler invocationHandler) {
+        return buildAgent(agentServiceClass, invocationHandler);
+    }
+
+    public abstract String serviceType();
 }

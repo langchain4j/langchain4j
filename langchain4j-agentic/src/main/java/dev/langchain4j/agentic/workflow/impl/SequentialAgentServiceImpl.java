@@ -6,77 +6,21 @@ import static dev.langchain4j.agentic.internal.AgentUtil.isOnlyLastStreamingAgen
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.internal.AbstractAgentInvocationHandler;
-import dev.langchain4j.agentic.internal.AbstractService;
-import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.internal.AgentSpecification;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 
-public class SequentialAgentServiceImpl<T> extends AbstractService<T, SequentialAgentService<T>>
-        implements SequentialAgentService<T> {
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
-    private SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
+
+    public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
     }
 
     @Override
     public T build() {
-        checkSubAgents();
-        return (T) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
-                new SequentialInvocationHandler());
-    }
-
-    private void checkSubAgents() {
-        if (hasStreamingAgent(this.agentExecutors())) {
-            if (isOnlyLastStreamingAgent(this.agentExecutors())) {
-                final AgentExecutor lastAgent = getLastAgent(this.agentExecutors());
-                // The outputKey of the last agent in a sequential workflow is the same outputKey of the workflow
-                // itself.
-                if (hasSameOutputWithWorkflow(lastAgent)) {
-                    // Consider the workflow is a streaming. for processing they are subagent themselves or more
-                    // complex workflow.
-                    this.streaming = true;
-                } else {
-                    throw new IllegalArgumentException(
-                            "The last sub-agent and the workflow should have the same outputKey.");
-                }
-            } else {
-                throw new IllegalArgumentException("Only the last sub-agent can return TokenStream.");
-            }
-        }
-    }
-
-    private boolean hasSameOutputWithWorkflow(AgentExecutor agent) {
-        return this.outputKey.equals(agent.agentInvoker().outputKey());
-    }
-
-    private class SequentialInvocationHandler extends AbstractAgentInvocationHandler {
-
-        private SequentialInvocationHandler() {
-            super(SequentialAgentServiceImpl.this);
-        }
-
-        private SequentialInvocationHandler(DefaultAgenticScope agenticScope) {
-            super(SequentialAgentServiceImpl.this, agenticScope);
-        }
-
-        @Override
-        protected Object doAgentAction(DefaultAgenticScope agenticScope) {
-            agentExecutors().forEach(agentExecutor -> agentExecutor.execute(agenticScope));
-            return result(agenticScope, output.apply(agenticScope));
-        }
-
-        @Override
-        protected InvocationHandler createSubAgentWithAgenticScope(DefaultAgenticScope agenticScope) {
-            return new SequentialInvocationHandler(agenticScope);
-        }
+        return build(SequentialPlanner::new);
     }
 
     public static SequentialAgentServiceImpl<UntypedAgent> builder() {
@@ -85,5 +29,10 @@ public class SequentialAgentServiceImpl<T> extends AbstractService<T, Sequential
 
     public static <T> SequentialAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
         return new SequentialAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
+    }
+
+    @Override
+    public String serviceType() {
+        return "Sequential";
     }
 }

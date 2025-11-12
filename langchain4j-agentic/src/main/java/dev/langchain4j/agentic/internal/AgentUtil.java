@@ -7,12 +7,16 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -20,9 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -31,16 +32,10 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
-    private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
-
-    private static final Set<String> WORKFLOW_STREAMING_AGENTS = new CopyOnWriteArraySet<>();
-
     private AgentUtil() {}
 
-    public record AgentArgument(Class<?> type, String name) {}
-
-    public static String uniqueAgentName(String agentName) {
-        return agentName + "$" + AGENT_COUNTER.incrementAndGet();
+    public static String uniqueAgentName(Class<?> agentClass, String agentName) {
+        return agentName + "_" + agentClass.getSimpleName();
     }
 
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
@@ -60,25 +55,20 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
-        String uniqueName = uniqueAgentName(name);
+        String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec
-                ? new MethodAgentInvoker(
-                        agenticMethod,
-                        new AgentSpecificationImpl(
-                                name, uniqueName, spec.description(), spec.outputKey(), spec.async(), x -> {}, x -> {}),
-                        List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputKey())))
+        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+    }
+
+    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+        return agent instanceof AgentSpecsProvider spec
+                ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
                         new AgentSpecificationImpl(
-                                name,
-                                uniqueName,
-                                description,
-                                annotation.outputKey(),
-                                annotation.async(),
-                                x -> {},
-                                x -> {}),
-                        agenticMethod);
-        return new AgentExecutor(agentInvoker, agent);
+                                name, agentId, description, annotation.outputKey(), annotation.async(),
+                                argumentsFromMethod(agenticMethod),
+                                x -> {},x -> {}),
+                agenticMethod);
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
@@ -204,47 +194,10 @@ public class AgentUtil {
         return agentMethod;
     }
 
-    public static boolean hasStreamingAgent(Collection<AgentExecutor> agentExecutors) {
-        for (final AgentExecutor executor : agentExecutors) {
-            if (isStreamingAgent(executor)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean allHaveSameOutput(Collection<AgentExecutor> agentExecutors) {
-        HashSet<String> set = new HashSet<>();
-        for (final AgentExecutor executor : agentExecutors) {
-            set.add(executor.agentInvoker().outputKey());
-        }
-        return set.size() == 1;
-    }
-
-    public static boolean isAllStreamingAgent(Collection<AgentExecutor> agentExecutors) {
-        for (final AgentExecutor executor : agentExecutors) {
-            if (!isStreamingAgent(executor)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public static boolean isOnlyLastStreamingAgent(List<AgentExecutor> agentExecutors) {
-        final List<AgentExecutor> executors = agentExecutors.subList(0, agentExecutors.size() - 1);
-        return !hasStreamingAgent(executors) && isStreamingAgent(agentExecutors.get(agentExecutors.size() - 1));
-    }
-
-    public static boolean isStreamingAgent(AgentExecutor agentExecutor) {
-        return WORKFLOW_STREAMING_AGENTS.contains(agentExecutor.agentInvoker().uniqueName())
-                || agentExecutor.agentInvoker().method().getReturnType().equals(TokenStream.class);
-    }
-
-    public static AgentExecutor getLastAgent(List<AgentExecutor> agentExecutors) {
-        return agentExecutors.get(agentExecutors.size() - 1);
-    }
-
-    public static void addWorkflowStreamingAgent(String name) {
-        WORKFLOW_STREAMING_AGENTS.add(name);
+    public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
+        return (T) Proxy.newProxyInstance(
+                agentServiceClass.getClassLoader(),
+                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                invocationHandler);
     }
 }

@@ -2,8 +2,10 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
+import java.util.List;
 
 public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
 
@@ -13,8 +15,8 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public String uniqueName() {
-        return agentSpecification.uniqueName();
+    public String agentId() {
+        return agentSpecification.agentId();
     }
 
     @Override
@@ -43,8 +45,8 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     }
 
     @Override
-    public String toCard() {
-        return "{" + uniqueName() + ": " + description() + "}";
+    public List<AgentArgument> arguments() {
+        throw new UnsupportedOperationException("Untyped agent does not know what arguments it needs");
     }
 
     @Override

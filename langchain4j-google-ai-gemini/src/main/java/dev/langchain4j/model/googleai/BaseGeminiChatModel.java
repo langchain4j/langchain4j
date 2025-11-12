@@ -42,17 +42,9 @@ class BaseGeminiChatModel {
 
     protected final ChatRequestParameters defaultRequestParameters;
 
-    protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder) {
+    protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder, GeminiService geminiService) {
         ensureNotBlank(builder.apiKey, "apiKey");
-        this.geminiService = new GeminiService(
-                builder.httpClientBuilder,
-                builder.apiKey,
-                builder.baseUrl,
-                getOrDefault(builder.logRequestsAndResponses, false),
-                getOrDefault(builder.logRequests, false),
-                getOrDefault(builder.logResponses, false),
-                builder.logger,
-                builder.timeout);
+        this.geminiService = geminiService;
 
         this.functionCallingConfig = builder.functionCallingConfig;
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
@@ -89,6 +81,18 @@ class BaseGeminiChatModel {
                 .build();
     }
 
+    protected static GeminiService buildGeminiService(GoogleAiGeminiChatModelBaseBuilder<?> builder) {
+        return new GeminiService(
+                builder.httpClientBuilder,
+                builder.apiKey,
+                builder.baseUrl,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger,
+                builder.timeout);
+    }
+
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -103,7 +107,6 @@ class BaseGeminiChatModel {
         }
 
         return GeminiGenerateContentRequest.builder()
-                .model(chatRequest.modelName())
                 .contents(geminiContentList)
                 .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
                 .generationConfig(GeminiGenerationConfig.builder()

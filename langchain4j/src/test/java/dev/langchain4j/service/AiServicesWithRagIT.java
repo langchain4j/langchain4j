@@ -8,7 +8,6 @@ import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.Fallback
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -20,16 +19,29 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -42,7 +54,6 @@ import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
@@ -53,16 +64,10 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Stream;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -571,6 +576,58 @@ class AiServicesWithRagIT {
                 .isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
+    @Test
+    void should_pass_custom_attributes_from_query_transformer_to_chat_memory_store() {
+
+        // given
+        String attributeKey = "attribute-key";
+        String attributeValue = "attribute-value";
+
+        QueryTransformer queryTransformer = new QueryTransformer() {
+            @Override
+            public Collection<Query> transform(Query query) {
+                UserMessage userMessage = (UserMessage) query.metadata().chatMessage();
+                userMessage.attributes().put(attributeKey, attributeValue);
+                return List.of(query);
+            }
+        };
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build();
+
+        AtomicReference<String> observedAttributeValue = new AtomicReference<>();
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(new InMemoryChatMemoryStore() {
+                    @Override
+                    public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+                        UserMessage userMessage = (UserMessage) messages.get(0);
+                        observedAttributeValue.set(userMessage.attribute(attributeKey, String.class));
+                        super.updateMessages(memoryId, messages);
+                    }
+                })
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("does not matter"))
+                .chatMemory(chatMemory)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(queryTransformer)
+                        .contentRetriever(contentRetriever)
+                        .build())
+                .build();
+
+        // when
+        assistant.answer("does not matter");
+
+        // then
+        assertThat(observedAttributeValue).hasValue(attributeValue);
+    }
+
     private void ingest(
             String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
@@ -596,7 +653,7 @@ class AiServicesWithRagIT {
                         .logResponses(true)
                         .build())
                 // TODO add more models
-                );
+        );
     }
 
     private Path toPath(String fileName) {
