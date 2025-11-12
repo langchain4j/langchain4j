@@ -38,7 +38,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(12);
+        assertThat(tools).hasSize(13);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -202,6 +202,11 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
 
     @Override
     protected void configureGetWeatherTool(AiServices<?> aiServiceBuilder) {
+        aiServiceBuilder.toolProvider(createMcpToolProvider());
+    }
+
+    @Override
+    protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
         aiServiceBuilder.toolProvider(createMcpToolProvider());
     }
 
