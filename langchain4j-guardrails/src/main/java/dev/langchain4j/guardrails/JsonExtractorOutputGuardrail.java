@@ -1,4 +1,4 @@
-package dev.langchain4j.guardrail;
+package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -6,6 +6,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.internal.JsonParsingUtils;
 import java.util.Optional;
 import org.slf4j.Logger;
