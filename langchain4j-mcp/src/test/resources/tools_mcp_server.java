@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.ImageContent;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
@@ -94,5 +95,10 @@ public class tools_mcp_server {
     @Tool
     public String getWeather(String arg0) {
         return "Sunny";
+    }
+
+    @Tool
+    public ToolResponse getImage() {
+        return new ToolResponse(false, List.of(new ImageContent("does not matter", "does not matter")));
     }
 }

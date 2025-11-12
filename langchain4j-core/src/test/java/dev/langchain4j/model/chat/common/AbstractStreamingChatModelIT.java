@@ -60,8 +60,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         AtomicInteger partialResponsesCounter = new AtomicInteger();
         AtomicReference<StreamingHandle> streamingHandleReference = new AtomicReference<>();
         Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
+            assertThat(streamingHandle.isCancelled()).isFalse();
             streamingHandleReference.set(streamingHandle);
-            if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
+
+            assertThat(partialResponsesCounter).hasValueLessThan(partialResponsesBeforeCancellation);
+            if (partialResponsesCounter.incrementAndGet() == partialResponsesBeforeCancellation) {
                 streamingHandle.cancel();
             }
         };
