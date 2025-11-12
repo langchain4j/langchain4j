@@ -51,10 +51,10 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private static final Logger log = LoggerFactory.getLogger(AbstractElasticsearchEmbeddingStore.class);
 
-    private ElasticsearchConfiguration configuration;
-    private ElasticsearchClient client;
-    private String indexName;
-    private boolean includeVectorResponse;
+    protected ElasticsearchConfiguration configuration;
+    protected ElasticsearchClient client;
+    protected String indexName;
+    protected boolean includeVectorResponse;
 
     /**
      * Initialize using a RestClient
