@@ -25,14 +25,6 @@ import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
 import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.declarative.PlannerAgent;
-import dev.langchain4j.agentic.declarative.PlannerSupplier;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgenticService;
-import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.planner.PlannerBasedService;
-import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -41,6 +33,8 @@ import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
@@ -49,6 +43,12 @@ import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlannerBasedService;
+import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -541,11 +541,13 @@ public class AgenticServices {
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         getAnnotatedMethodOnClass(agentServiceClass, PlannerSupplier.class)
-                .ifPresentOrElse(method -> {
-                    checkReturnType(method, Planner.class);
-                    builder.planner(() -> invokeStatic(method));
-                }, () -> new IllegalArgumentException(
-                    "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
+                .ifPresentOrElse(
+                        method -> {
+                            checkReturnType(method, Planner.class);
+                            builder.planner(() -> invokeStatic(method));
+                        },
+                        () -> new IllegalArgumentException(
+                                "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
 
         return builder.build();
     }

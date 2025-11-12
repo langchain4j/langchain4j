@@ -35,13 +35,15 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
+import dev.langchain4j.agentic.workflow.impl.ScheduledPlanner;
+import dev.langchain4j.agentic.workflow.impl.SchedulerServiceImpl;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -103,13 +105,13 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
-        UntypedAgent novelCreator = asPlanner ?
-                AgenticServices.plannerBuilder()
+        UntypedAgent novelCreator = asPlanner
+                ? AgenticServices.plannerBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .planner(SequentialPlanner::new)
-                        .build() :
-                AgenticServices.sequenceBuilder()
+                        .build()
+                : AgenticServices.sequenceBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .build();
@@ -532,9 +534,18 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
@@ -804,18 +815,32 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void check_scheduled_agents() {
+    void scheduled_agents() {
+        check_scheduled_agents(false);
+    }
+
+    @Test
+    void scheduled_agents_as_planner() {
+        check_scheduled_agents(true);
+    }
+
+    void check_scheduled_agents(boolean asPlanner) {
 
         DataAnalysis dataAnalysis = spy(AgenticServices.agentBuilder(DataAnalysis.class)
                 .chatModel(baseModel())
                 .outputKey("content")
                 .build());
 
-        UntypedAgent novelCreator = AgenticServices.scheduledBuilder()
-                .cron("0 * * * * ?") // every minutes
-                .maxIterations(3)
-                .subAgents(new BusinessData(), dataAnalysis, new Sender())
-                .build();
+        UntypedAgent novelCreator = asPlanner
+                ? AgenticServices.plannerBuilder()
+                        .subAgents(new BusinessData(), dataAnalysis, new Sender())
+                        .planner(() -> new ScheduledPlanner("0 * * * * ?", 3, new SchedulerServiceImpl()))
+                        .build()
+                : AgenticServices.scheduledBuilder()
+                        .cron("0 * * * * ?") // every minutes
+                        .maxIterations(3)
+                        .subAgents(new BusinessData(), dataAnalysis, new Sender())
+                        .build();
 
         novelCreator.invoke(new HashMap<>());
 
