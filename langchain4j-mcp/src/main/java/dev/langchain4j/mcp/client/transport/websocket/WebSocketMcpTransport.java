@@ -59,7 +59,7 @@ public class WebSocketMcpTransport implements McpTransport {
         this.executor = builder.executor;
         this.httpClient = createHttpClient();
     }
-    
+
     private HttpClient createHttpClient() {
         HttpClient.Builder clientBuilder = HttpClient.newBuilder()
                 .connectTimeout(connectTimeout);

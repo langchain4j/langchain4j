@@ -33,7 +33,7 @@ First, you need an instance of an MCP Transport.
 For stdio - this example shows how to start a server from a NPM package as a subprocess:
 
 ```java
-McpTransport transport = new StdioMcpTransport.Builder()
+McpTransport transport = StdioMcpTransport.builder()
     .command(List.of("/usr/bin/npm", "exec", "@modelcontextprotocol/server-everything@0.6.2"))
     .logEvents(true) // only if you want to see the traffic in the log
     .build();
@@ -42,7 +42,7 @@ McpTransport transport = new StdioMcpTransport.Builder()
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
 ```java
-McpTransport transport = new StreamableHttpMcpTransport.Builder()
+McpTransport transport = StreamableHttpMcpTransport.builder()
         .url("http://localhost:3001/mcp")
         .logRequests(true) // if you want to see the traffic in the log
         .logResponses(true)
@@ -52,13 +52,13 @@ McpTransport transport = new StreamableHttpMcpTransport.Builder()
 **_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
 (as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
 Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
-If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work. 
+If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
 
 For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
 The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
 
 ```java
-McpTransport transport = new HttpMcpTransport.Builder()
+McpTransport transport = HttpMcpTransport.builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
@@ -77,7 +77,7 @@ For the Docker stdio transport, you first need to add a module to your pom.xml:
 Then you need to create a Docker transport:
 
 ```java
-McpTransport transport = new DockerMcpTransport.Builder()
+McpTransport transport = DockerMcpTransport.builder()
     .image("mcp/time")
     .dockerHost("unix:///var/run/docker.sock")
     .logEvents(true) // if you want to see the traffic in the log
@@ -89,7 +89,7 @@ McpTransport transport = new DockerMcpTransport.Builder()
 To create an MCP client from the transport:
 
 ```java
-McpClient mcpClient = new DefaultMcpClient.Builder()
+McpClient mcpClient = DefaultMcpClient.builder()
     .key("MyMCPClient")
     .transport(transport)
     .build();
