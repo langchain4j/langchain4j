@@ -155,10 +155,8 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     private EventSource startSseChannel(boolean logResponses) {
-        Request request = new Request.Builder()
-                .url(sseUrl)
-                .headers(buildCommonHeaders())
-                .build();
+        Request request =
+                new Request.Builder().url(sseUrl).headers(buildCommonHeaders()).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
         SseEventListener listener =
                 new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
@@ -194,8 +192,7 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     private Request createRequest(McpClientMessage message) throws JsonProcessingException {
-        Headers.Builder headerBuilder = new Headers.Builder()
-                .add(CONTENT_TYPE, CONTENT_TYPE_JSON);
+        Headers.Builder headerBuilder = new Headers.Builder().add(CONTENT_TYPE, CONTENT_TYPE_JSON);
         Map<String, String> headers = customHeadersSupplier.get();
         if (headers != null) {
             headers.forEach(headerBuilder::add);
