@@ -14,6 +14,12 @@ The protocol specifies two types of transport, both of these are supported:
   can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
 
+On top of the spec, LangChain4j implements the `WebSocket` transport. This transport is not
+standardized and currently, the client side is developed in a way that it is compatible
+with the WebSocket transport as implemented by the 
+[Quarkus MCP Server extension](https://docs.quarkiverse.io/quarkus-mcp-server/dev). For MCP servers exposing WebSockets but
+built using other frameworks, compatibility is not guaranteed.
+
 Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
 container image.
 
@@ -53,6 +59,15 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
 (as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
 Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
 If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
+
+For the WebSocket transport:
+```java
+McpTransport transport = WebSocketMcpTransport.builder()
+        .url("ws://localhost:3001/mcp/ws")
+        .logResponses(true)
+        .logRequests(true)
+        .build();
+```
 
 For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
 The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
