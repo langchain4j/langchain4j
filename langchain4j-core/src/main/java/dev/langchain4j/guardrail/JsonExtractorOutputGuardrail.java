@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  * @deprecated This class has been moved to the `langchain4j-guardrails` module and will be removed in a future release.
  * *             Add a dependency on `dev.langchain4j:langchain4j-guardrails` and use the class from that module instead.
  */
-@Deprecated(forRemoval = true)
+@Deprecated(since = "1.9.0", forRemoval = true)
 public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     /**
      * The default message to use when reprompting
