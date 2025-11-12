@@ -331,7 +331,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
         return this;
     }
