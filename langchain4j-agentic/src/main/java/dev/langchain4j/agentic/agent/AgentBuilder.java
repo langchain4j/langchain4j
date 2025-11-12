@@ -35,10 +35,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
-    private final Class<T> agentServiceClass;
+    final Class<T> agentServiceClass;
 
     String name;
-    String uniqueName;
+    String agentId;
     String description;
     String outputKey;
     boolean async;
@@ -82,7 +82,7 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
@@ -201,10 +201,6 @@ public class AgentBuilder<T> {
         }
     }
 
-    String agentId() {
-        return agentServiceClass.getName();
-    }
-
     public AgentBuilder<T> chatModel(ChatModel model) {
         this.model = model;
         return this;
@@ -285,7 +281,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 

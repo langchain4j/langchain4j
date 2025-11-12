@@ -6,18 +6,19 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
-import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
-    private final String uniqueName;
+    private final String agentId;
     private final String[] inputKeys;
 
     private final A2AClientSpecification a2AClientInstance;
@@ -29,7 +30,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
         this.agentCard = a2AClientInstance.agentCard();
-        this.uniqueName = uniqueAgentName(name());
+        this.agentId = uniqueAgentName(method.getDeclaringClass(), name());
         this.inputKeys = inputKeys(a2AClientInstance);
     }
 
@@ -47,8 +48,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public String uniqueName() {
-        return uniqueName;
+    public String agentId() {
+        return agentId;
     }
 
     @Override
@@ -82,8 +83,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public String toCard() {
-        return "{" + uniqueName() + ": " + description() + ", " + Arrays.toString(inputKeys) + "}";
+    public List<AgentArgument> arguments() {
+        return Stream.of(inputKeys).map(input -> new AgentArgument(Object.class, input)).toList();
     }
 
     @Override

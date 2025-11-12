@@ -1753,7 +1753,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         if (maxOutputTokens != null) {
-            assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+            // Some providers (e.g., Gemini) produce one token less than expected (e.g., 4 instead of 5)
+            assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
         }
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

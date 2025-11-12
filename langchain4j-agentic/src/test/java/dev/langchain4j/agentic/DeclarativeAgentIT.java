@@ -38,13 +38,16 @@ import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
@@ -52,6 +55,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -94,6 +98,31 @@ public class DeclarativeAgentIT {
     @Test
     void declarative_sequence_tests() {
         StoryCreator storyCreator = AgenticServices.createAgenticSystem(StoryCreator.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
+    }
+
+    public interface PlannerBasedStoryCreator {
+
+        @PlannerAgent(
+                outputKey = "story",
+                subAgents = {
+                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                })
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+        @PlannerSupplier
+        static Planner planner() {
+            return new SequentialPlanner();
+        }
+    }
+
+    @Test
+    void declarative_planner_tests() {
+        PlannerBasedStoryCreator storyCreator = AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -705,7 +734,7 @@ public class DeclarativeAgentIT {
 
         SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
-        assertThat(result).isNotBlank();
+        assertThat(result).isNotBlank().contains("Mario").contains("Georgios");
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
