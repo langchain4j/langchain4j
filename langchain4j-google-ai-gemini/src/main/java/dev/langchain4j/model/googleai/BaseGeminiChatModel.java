@@ -96,7 +96,7 @@ class BaseGeminiChatModel {
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
-        GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
+        GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
                 fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
@@ -108,7 +108,7 @@ class BaseGeminiChatModel {
 
         return GeminiGenerateContentRequest.builder()
                 .contents(geminiContentList)
-                .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
+                .systemInstruction(!systemInstruction.parts().isEmpty() ? systemInstruction : null)
                 .generationConfig(GeminiGenerationConfig.builder()
                         .candidateCount(1) // Multiple candidates aren't supported by langchain4j
                         .maxOutputTokens(parameters.maxOutputTokens())
