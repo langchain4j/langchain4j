@@ -10,7 +10,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.util.List;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
@@ -20,6 +19,7 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,7 +33,8 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelDeepSeekThinkingIT {
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+    private final SpyingHttpClient spyingHttpClient =
+            new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
     void should_return_thinking() {
@@ -46,9 +47,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
-
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -62,14 +61,12 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking())
-                .containsIgnoringCase("Berlin")
-                .isEqualTo(spyHandler1.getThinking());
+        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin").isEqualTo(spyHandler1.getThinking());
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
@@ -105,9 +102,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
-
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -123,6 +118,6 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
 
-        verify(spyHandler, never()).onPartialThinking(any());
+        verify(spyHandler, never()).onPartialThinking(any(), any());
     }
 }

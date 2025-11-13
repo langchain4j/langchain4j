@@ -9,6 +9,7 @@ import java.util.Set;
 public record StreamingMetadata(
         String concatenatedPartialResponses,
         int timesOnPartialResponseWasCalled,
+        int timesOnPartialThinkingWasCalled,
         List<PartialToolCall> partialToolCalls,
         List<CompleteToolCall> completeToolCalls,
         int timesOnCompleteResponseWasCalled,

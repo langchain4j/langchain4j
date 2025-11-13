@@ -16,7 +16,8 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
     }
 
     @Override
-    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException e, AiServices<?> aiServiceBuilder) {
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(
+            RuntimeException e, AiServices<?> aiServiceBuilder) {
         class Tools {
             @Tool
             String getWeatherThrowingExceptionWithoutMessage(String ignored) {
@@ -32,6 +33,17 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
             @Tool
             String getWeather(String ignored) {
                 return "Sunny";
+            }
+        }
+        aiServiceBuilder.tools(new Tools());
+    }
+
+    @Override
+    protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
+        class Tools {
+            @Tool
+            String getImage() {
+                throw new RuntimeException("Unsupported content type: \"image\"");
             }
         }
         aiServiceBuilder.tools(new Tools());

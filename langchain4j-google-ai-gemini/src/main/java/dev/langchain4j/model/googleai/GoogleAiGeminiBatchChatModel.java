@@ -39,8 +39,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * This interface is sealed, allowing only specific implementations:
      * {@link BatchIncomplete}, {@link BatchSuccess}, and {@link BatchError}.
      */
-    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {
-    }
+    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {}
 
     /**
      * Represents a batch operation that is currently pending or in progress.
@@ -48,8 +47,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param state     the current state of the batch job
      */
-    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {
-    }
+    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {}
 
     /**
      * Represents a successful batch operation.
@@ -57,8 +55,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param responses a list of chat responses from the batch operation
      */
-    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {
-    }
+    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {}
 
     /**
      * Represents an error that occurred during a batch operation.
@@ -68,10 +65,9 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param message   a descriptive message about the error
      * @param details   additional details about the error, if available
      */
-    public record BatchError(BatchName batchName, int code, String message, BatchJobState state,
-                             List<Map<String, Object>> details)
-            implements BatchResponse {
-    }
+    public record BatchError(
+            BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
+            implements BatchResponse {}
 
     /**
      * Represents a List of Batches, returned from {@link GoogleAiGeminiBatchChatModel#listBatchJobs(String, Integer, String)}
@@ -79,8 +75,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param pageToken Token used to paginate to the next page.
      * @param responses List of batch responses.
      */
-    public record BatchList(String pageToken, List<BatchResponse> responses) {
-    }
+    public record BatchList(String pageToken, List<BatchResponse> responses) {}
 
     /**
      * Represents the name of a batch operation.
@@ -297,8 +292,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
 
     public static final class Builder extends GoogleAiGeminiChatModelBaseBuilder<Builder> {
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);

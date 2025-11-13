@@ -1,23 +1,22 @@
 package dev.langchain4j.model.bedrock.common;
 
+import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
+import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+
 import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
-import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
@@ -97,7 +96,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the
+    // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
     // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override

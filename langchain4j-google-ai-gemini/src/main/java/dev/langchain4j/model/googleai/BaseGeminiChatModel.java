@@ -23,6 +23,8 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -103,7 +105,7 @@ class BaseGeminiChatModel {
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
-        GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
+        GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
                 fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
 
@@ -115,7 +117,7 @@ class BaseGeminiChatModel {
 
         return GeminiGenerateContentRequest.builder()
                 .contents(geminiContentList)
-                .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
+                .systemInstruction(!systemInstruction.parts().isEmpty() ? systemInstruction : null)
                 .generationConfig(GeminiGenerationConfig.builder()
                         .candidateCount(1) // Multiple candidates aren't supported by langchain4j
                         .maxOutputTokens(parameters.maxOutputTokens())
@@ -193,10 +195,10 @@ class BaseGeminiChatModel {
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
-        GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);
+        GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
-        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.getFinishReason());
+        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.finishReason());
         if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
             finishReason = TOOL_EXECUTION;
         }
@@ -204,27 +206,25 @@ class BaseGeminiChatModel {
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        .id(geminiResponse.getResponseId())
-                        .modelName(geminiResponse.getModelVersion())
-                        .tokenUsage(createTokenUsage(geminiResponse.getUsageMetadata()))
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
                         .finishReason(finishReason)
                         .build())
                 .build();
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {
-        if (candidate == null || candidate.getContent() == null) {
+        if (candidate == null || candidate.content() == null) {
             return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
         }
 
-        return fromGPartsToAiMessage(candidate.getContent().getParts(), includeCodeExecutionOutput, returnThinking);
+        return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
     }
 
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
         return new TokenUsage(
-                tokenCounts.getPromptTokenCount(),
-                tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount());
+                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
     }
 
     /**

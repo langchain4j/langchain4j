@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
@@ -53,6 +54,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.HashSet;
@@ -60,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 /**
@@ -231,11 +234,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModelName = new AtomicReference<>();
+        AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-        chatCompletionsStream.subscribe(
+        Disposable disposable = chatCompletionsStream.subscribe(
                 chatCompletion -> {
                     responseBuilder.append(chatCompletion);
-                    handle(chatCompletion, toolCallBuilder, handler);
+                    handle(chatCompletion, toolCallBuilder, handler, streamingHandle.get());
 
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
@@ -265,16 +269,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                     .build())
                             .build();
 
-                    try {
-                        handler.onCompleteResponse(chatResponse);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onCompleteResponse(handler, chatResponse);
                 });
+
+        streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
     }
 
     private static void handle(
-            ChatCompletions chatCompletions, ToolCallBuilder toolCallBuilder, StreamingChatResponseHandler handler) {
+            ChatCompletions chatCompletions,
+            ToolCallBuilder toolCallBuilder,
+            StreamingChatResponseHandler handler,
+            StreamingHandle streamingHandle) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -287,7 +292,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.getContent();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content, streamingHandle);
         }
 
         List<ChatCompletionsToolCall> toolCalls = delta.getToolCalls();
@@ -318,7 +323,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                 .name(name)
                                 .partialArguments(partialArguments)
                                 .build();
-                        onPartialToolCall(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest, streamingHandle);
                     }
                 }
             }

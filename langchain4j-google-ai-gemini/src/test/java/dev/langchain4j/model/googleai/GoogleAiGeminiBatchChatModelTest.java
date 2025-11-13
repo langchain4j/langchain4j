@@ -18,6 +18,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentResponse;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchError;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchIncomplete;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState;
@@ -329,8 +333,12 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(batchName,
-                            13, "batches/test-error failed without error", BATCH_STATE_CANCELLED, List.of()));
+                    .isEqualTo(new BatchError(
+                            batchName,
+                            13,
+                            "batches/test-error failed without error",
+                            BATCH_STATE_CANCELLED,
+                            List.of()));
         }
 
         @Test
@@ -346,7 +354,8 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(batchName, 404, "Not Found", BatchJobState.BATCH_STATE_FAILED, List.of()));
+                    .isEqualTo(
+                            new BatchError(batchName, 404, "Not Found", BatchJobState.BATCH_STATE_FAILED, List.of()));
         }
 
         @Test
@@ -441,9 +450,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class CancelBatchJob {
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
-                "batches/test-already-cancelled, Batch is already in CANCELLED state",
-                "batches/non-existent, Batch not found"
+            "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
+            "batches/test-already-cancelled, Batch is already in CANCELLED state",
+            "batches/non-existent, Batch not found"
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchNameValue, String errorMessage) {
             // given
@@ -485,9 +494,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class DeleteBatchJob {
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-delete, Batch cannot be deleted due to server error",
-                "batches/non-existent, Batch not found",
-                "batches/invalid-name, Invalid batch name format"
+            "batches/test-cannot-delete, Batch cannot be deleted due to server error",
+            "batches/non-existent, Batch not found",
+            "batches/invalid-name, Invalid batch name format"
         })
         void should_throw_exception_when_batch_deletion_fails(String batchNameValue, String errorMessage) {
             // given
@@ -561,10 +570,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static GeminiGenerateContentResponse toGeminiResponse(ChatResponse chatResponse) {
         var part = GeminiPart.builder().text(chatResponse.aiMessage().text()).build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = GeminiCandidate.builder()
-                .content(content)
-                .finishReason(GeminiFinishReason.STOP)
-                .build();
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP);
         var usageMetadata = GeminiUsageMetadata.builder()
                 .promptTokenCount(chatResponse.metadata().tokenUsage().inputTokenCount())
                 .candidatesTokenCount(chatResponse.metadata().tokenUsage().outputTokenCount())
@@ -572,11 +578,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(),
-                chatResponse.metadata().modelName(),
-                List.of(candidate),
-                GeminiPromptFeedback.builder().build(),
-                usageMetadata);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {

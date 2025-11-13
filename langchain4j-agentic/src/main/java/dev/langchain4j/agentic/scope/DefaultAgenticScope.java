@@ -5,8 +5,6 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
@@ -15,8 +13,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,13 +23,15 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, String agentUniqueName, ChatMessage message) {}
+    public record AgentMessage(String agentName, String agentagentId, ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -48,8 +46,11 @@ public class DefaultAgenticScope implements AgenticScope {
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
     public enum Kind {
-        EPHEMERAL, REGISTERED, PERSISTENT
+        EPHEMERAL,
+        REGISTERED,
+        PERSISTENT
     }
+
     private final Kind kind;
 
     /**
@@ -128,16 +129,16 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentCall(AgentSpecification agentSpec, Object agent, AgentInvocationArguments input, Object output) {
+    public void registerAgentInvocation(AgentInvocation agentInvocation, Object agent) {
         withReadLock(() -> {
-            agentInvocations.computeIfAbsent(agentSpec.name(), name -> new ArrayList<>())
-                            .add(new AgentInvocation(agentSpec.name(), input.namedArgs(), output));
-            registerContext(agentSpec, agent, output);
+            agentInvocations
+                    .computeIfAbsent(agentInvocation.agentName(), name -> new ArrayList<>())
+                    .add(agentInvocation);
+            registerContext(agentInvocation, agent);
         });
     }
 
-    public void rootCallStarted(AgenticScopeRegistry registry) {
-    }
+    public void rootCallStarted(AgenticScopeRegistry registry) {}
 
     public void rootCallEnded(AgenticScopeRegistry registry) {
         // ensure that all pending async operations are completed before ending the root call
@@ -160,17 +161,22 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
-    private void registerContext(AgentSpecification agentSpec, Object agent, Object output) {
-    	ChatMemory chatMemory = agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
-    	if (chatMemory != null) {
-            registerContextFromChatMemory(agentSpec, chatMemory);
-    	} else if (output != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), chatMessagesAccess.lastUserMessage()));
-            context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), AiMessage.aiMessage(output.toString())));
+    private void registerContext(AgentInvocation agentInvocation, Object agent) {
+        ChatMemory chatMemory =
+                agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
+        if (chatMemory != null) {
+            registerContextFromChatMemory(agentInvocation, chatMemory);
+        } else if (agentInvocation.output() != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
+            context.add(new AgentMessage(
+                    agentInvocation.agentName(), agentInvocation.agentId(), chatMessagesAccess.lastUserMessage()));
+            context.add(new AgentMessage(
+                    agentInvocation.agentName(),
+                    agentInvocation.agentId(),
+                    AiMessage.aiMessage(agentInvocation.output().toString())));
         }
     }
 
-    private void registerContextFromChatMemory(AgentSpecification agentSpec, ChatMemory chatMemory) {
+    private void registerContextFromChatMemory(AgentInvocation agentInvocation, ChatMemory chatMemory) {
         List<ChatMessage> agentMessages = chatMemory.messages();
         if (Utils.isNullOrEmpty(agentMessages)) {
             return;
@@ -182,13 +188,13 @@ public class DefaultAgenticScope implements AgenticScope {
         }
 
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
-        	if (agentMessages.get(i) instanceof UserMessage userMessage) {
-        		// Only add to the agenticScope's context the last UserMessage ...
-        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), userMessage));
-        		// ... and last AiMessage response, all other messages are local to the invoked agent internals
-        		context.add(new AgentMessage(agentSpec.name(), agentSpec.uniqueName(), aiMessage));
+            if (agentMessages.get(i) instanceof UserMessage userMessage) {
+                // Only add to the agenticScope's context the last UserMessage ...
+                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), userMessage));
+                // ... and last AiMessage response, all other messages are local to the invoked agent internals
+                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), aiMessage));
                 return;
-        	}
+            }
         }
     }
 
@@ -198,18 +204,20 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String contextAsConversation(Object... agents) {
-        Predicate<String> agentFilter = agents != null && agents.length > 0 ?
-                Arrays.stream(agents).filter(AgentSpecification.class::isInstance).map(AgentSpecification.class::cast)
-                        .map(AgentSpecification::name).toList()::contains :
-                agent -> true;
+        Predicate<String> agentFilter = agents != null && agents.length > 0
+                ? Arrays.stream(agents)
+                        .filter(AgentSpecification.class::isInstance)
+                        .map(AgentSpecification.class::cast)
+                        .map(AgentSpecification::name)
+                        .toList()::contains
+                : agent -> true;
         return contextAsConversation(agentFilter);
     }
 
     @Override
     public String contextAsConversation(String... agentNames) {
-        Predicate<String> agentFilter = agentNames != null && agentNames.length > 0 ?
-                List.of(agentNames)::contains :
-                agent -> true;
+        Predicate<String> agentFilter =
+                agentNames != null && agentNames.length > 0 ? List.of(agentNames)::contains : agent -> true;
         return contextAsConversation(agentFilter);
     }
 
@@ -223,7 +231,10 @@ public class DefaultAgenticScope implements AgenticScope {
             if (message instanceof UserMessage userMessage) {
                 sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
-                sb.append(agentMessage.agentName()).append(" agent: \"").append(aiMessage.text()).append("\"\n");
+                sb.append(agentMessage.agentName())
+                        .append(" agent: \"")
+                        .append(aiMessage.text())
+                        .append("\"\n");
             }
         }
 
@@ -238,10 +249,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        return "AgenticScope{" +
-                "memoryId='" + memoryId + '\'' +
-                ", state=" + state +
-                '}';
+        return "AgenticScope{" + "memoryId='" + memoryId + '\'' + ", state=" + state + '}';
     }
 
     private void withReadLock(Runnable action) {

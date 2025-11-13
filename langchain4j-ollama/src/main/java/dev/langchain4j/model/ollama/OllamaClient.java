@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -27,7 +28,9 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
@@ -35,12 +38,13 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
 
 class OllamaClient {
 
@@ -61,7 +65,8 @@ class OllamaClient {
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -154,10 +159,20 @@ class OllamaClient {
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
+            final OllamaStreamingResponseBuilder responseBuilder =
+                    new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
@@ -169,12 +184,12 @@ class OllamaClient {
 
                 String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
-                    onPartialResponse(handler, content);
+                    onPartialResponse(handler, content, streamingHandle);
                 }
 
                 String thinking = message.getThinking();
                 if (returnThinking && !isNullOrEmpty(thinking)) {
-                    onPartialThinking(handler, thinking);
+                    onPartialThinking(handler, thinking, streamingHandle);
                 }
 
                 List<ToolCall> toolCalls = message.getToolCalls();
@@ -189,7 +204,8 @@ class OllamaClient {
 
                         toolCallBuilder.updateName(toolCall.getFunction().getName());
 
-                        String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
+                        String partialArguments =
+                                toJsonWithoutIdent(toolCall.getFunction().getArguments());
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolCallBuilder.appendArguments(partialArguments);
                         }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -14,13 +15,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -28,18 +22,26 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
-
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
@@ -107,8 +109,7 @@ class GeminiService {
         String url = buildUrl(
                 baseUrl + "/batches",
                 new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
-                new StringPair("pageToken", pageToken)
-        );
+                new StringPair("pageToken", pageToken));
         return sendRequest(url, apiKey, null, ListOperationsResponse.class, GET);
     }
 
@@ -121,7 +122,6 @@ class GeminiService {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
     }
-
 
     GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
@@ -163,19 +163,29 @@ class GeminiService {
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
             AtomicInteger toolIndex = new AtomicInteger(0);
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
+
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text);
+                    onPartialResponse(handler, text, streamingHandle);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought);
+                        onPartialThinking(handler, thought, streamingHandle);
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought); // for backward compatibility
+                        onPartialResponse(handler, thought, streamingHandle); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
@@ -187,8 +197,10 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                ChatResponse completeResponse = responseBuilder.build();
-                onCompleteResponse(handler, completeResponse);
+                if (streamingHandle == null || !streamingHandle.isCancelled()) {
+                    ChatResponse completeResponse = responseBuilder.build();
+                    onCompleteResponse(handler, completeResponse);
+                }
             }
 
             @Override
@@ -221,6 +233,5 @@ class GeminiService {
         return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
     }
 
-    private static record StringPair(String key, @Nullable String value) {
-    }
+    private static record StringPair(String key, @Nullable String value) {}
 }

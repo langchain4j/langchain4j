@@ -11,9 +11,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchError;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchIncomplete;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchName;
+import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchSuccess;
 import java.util.List;
 import java.util.Objects;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchSuccess;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,11 +31,17 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_create_batch_with_valid_requests() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             var displayName = "Test Batch - Valid Requests";
             var priority = 1L;
-            var requests = List.of(createChatRequest("What is the capital of France?"), createChatRequest("What is the capital of Germany?"));
+            var requests = List.of(
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?"));
 
             // when
             var response = subject.createBatchInline(displayName, priority, requests);
@@ -53,18 +59,25 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_cancel_just_created_batch() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             var displayName = "Test Batch - Valid Requests";
             var priority = 1L;
-            var requests = List.of(createChatRequest("What is the capital of France?"), createChatRequest("What is the capital of Germany?"));
+            var requests = List.of(
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?"));
             BatchIncomplete response = (BatchIncomplete) subject.createBatchInline(displayName, priority, requests);
 
             // when
             subject.cancelBatchJob(response.batchName());
 
             // then
-            var retrieveResponse = subject.retrieveBatchResults(response.batchName()); // Retrieve the results to check cancelled state.
+            var retrieveResponse = subject.retrieveBatchResults(
+                    response.batchName()); // Retrieve the results to check cancelled state.
             assertThat(retrieveResponse).isInstanceOf(BatchError.class);
             assertThat(((BatchError) retrieveResponse).state()).isEqualTo(BATCH_STATE_CANCELLED);
             assertThat(((BatchError) retrieveResponse).code()).isEqualTo(13);
@@ -73,11 +86,17 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_throw_on_invalid_batch_name() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             // when & then
             var batchName = new BatchName("batches/test-batch");
-            assertThatThrownBy(() -> subject.cancelBatchJob(batchName)).isInstanceOf(HttpException.class).hasMessageContaining("\"message\": \"Could not parse the batch name\"");
+            assertThatThrownBy(() -> subject.cancelBatchJob(batchName))
+                    .isInstanceOf(HttpException.class)
+                    .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
     }
 
@@ -86,11 +105,17 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_delete_just_created_batch() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             var displayName = "Test Batch - Valid Requests";
             var priority = 1L;
-            var requests = List.of(createChatRequest("What is the capital of France?"), createChatRequest("What is the capital of Germany?"));
+            var requests = List.of(
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?"));
             BatchIncomplete response = (BatchIncomplete) subject.createBatchInline(displayName, priority, requests);
 
             // when
@@ -98,18 +123,27 @@ class GoogleAiGeminiBatchChatModelIT {
 
             // then - no longer exists
             var list = subject.listBatchJobs(null, null);
-            var batchNames = list.responses().stream().map(GoogleAiGeminiBatchChatModelIT::getBatchName).filter(Objects::nonNull).toList();
+            var batchNames = list.responses().stream()
+                    .map(GoogleAiGeminiBatchChatModelIT::getBatchName)
+                    .filter(Objects::nonNull)
+                    .toList();
             assertThat(batchNames).doesNotContain(response.batchName());
         }
 
         @Test
         void should_throw_on_invalid_batch_name() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             // when & then
             var batchName = new BatchName("batches/test-batch");
-            assertThatThrownBy(() -> subject.deleteBatchJob(batchName)).isInstanceOf(HttpException.class).hasMessageContaining("\"message\": \"Could not parse the batch name\"");
+            assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
+                    .isInstanceOf(HttpException.class)
+                    .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
     }
 
@@ -118,11 +152,17 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_list_just_created_batch() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
 
             var displayName = "Test Batch - Valid Requests";
             var priority = 1L;
-            var requests = List.of(createChatRequest("What is the capital of France?"), createChatRequest("What is the capital of Germany?"));
+            var requests = List.of(
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?"));
             var createOperation = (BatchIncomplete) subject.createBatchInline(displayName, priority, requests);
 
             // when
@@ -135,10 +175,16 @@ class GoogleAiGeminiBatchChatModelIT {
         @Test
         void should_paginate_batches() {
             // given
-            var subject = GoogleAiGeminiBatchChatModel.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).modelName("gemini-2.5-flash-lite").logRequestsAndResponses(true).build();
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName("gemini-2.5-flash-lite")
+                    .logRequestsAndResponses(true)
+                    .build();
             var displayName = "Test Batch - Valid Requests ";
             var priority = 1L;
-            var requests = List.of(createChatRequest("What is the capital of France?"), createChatRequest("What is the capital of Germany?"));
+            var requests = List.of(
+                    createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Germany?"));
             subject.createBatchInline(displayName + "1", priority, requests);
             subject.createBatchInline(displayName + "2", priority, requests);
 
@@ -149,11 +195,13 @@ class GoogleAiGeminiBatchChatModelIT {
             var secondList = subject.listBatchJobs(1, list.pageToken());
             assertThat(secondList.responses()).hasSize(1);
         }
-
     }
 
     private static ChatRequest createChatRequest(String message) {
-        return ChatRequest.builder().modelName(MODEL_NAME).messages(UserMessage.from(message)).build();
+        return ChatRequest.builder()
+                .modelName(MODEL_NAME)
+                .messages(UserMessage.from(message))
+                .build();
     }
 
     private static @Nullable BatchName getBatchName(GoogleAiGeminiBatchChatModel.BatchResponse res) {

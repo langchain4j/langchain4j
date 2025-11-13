@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.scope;
 
-import dev.langchain4j.agentic.internal.AgentInvocation;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +31,7 @@ public interface AgenticScope extends LangChain4jManaged {
     Map<String, Object> state();
 
     String contextAsConversation(String... agentNames);
+
     String contextAsConversation(Object... agents);
 
     List<AgentInvocation> agentInvocations(String agentName);

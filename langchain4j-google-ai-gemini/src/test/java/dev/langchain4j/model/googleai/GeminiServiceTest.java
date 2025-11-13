@@ -3,10 +3,6 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -15,6 +11,12 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +28,7 @@ class GeminiServiceTest {
     @Test
     void shouldThrownWhenApiKeyIsMissing() {
         assertThatThrownBy(() ->
-                new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
+                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("apiKey cannot be null or blank");
     }
@@ -46,10 +48,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -72,10 +72,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -104,10 +102,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient, null, null);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -137,11 +133,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiCountTokensRequest request = new GeminiCountTokensRequest();
-            request.setContents(List.of(GeminiContent.builder()
-                    .role("user")
-                    .parts(List.of(
-                            GeminiPart.builder().text("Count these tokens").build()))
-                    .build()));
+            request.setContents(List.of(new GeminiContent(
+                    List.of(GeminiPart.builder().text("Count these tokens").build()), "user")));
 
             // When
             GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
@@ -165,10 +158,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiCountTokensRequest request = new GeminiCountTokensRequest();
-            request.setContents(List.of(GeminiContent.builder()
-                    .role("user")
-                    .parts(List.of(GeminiPart.builder().text("Test").build()))
-                    .build()));
+            request.setContents(List.of(
+                    new GeminiContent(List.of(GeminiPart.builder().text("Test").build()), "user")));
 
             // When
             subject.countTokens(TEST_MODEL_NAME, request);
@@ -202,9 +193,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(GeminiContent.builder()
-                    .parts(List.of(GeminiPart.builder().text("Embed this").build()))
-                    .build());
+            request.setContent(new GeminiContent(
+                    List.of(GeminiPart.builder().text("Embed this").build()), null));
 
             // When
             GoogleAiEmbeddingResponse actualResponse = subject.embed(TEST_MODEL_NAME, request);
@@ -231,9 +221,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(GeminiContent.builder()
-                    .parts(List.of(GeminiPart.builder().text("Test").build()))
-                    .build());
+            request.setContent(
+                    new GeminiContent(List.of(GeminiPart.builder().text("Test").build()), null));
 
             // When
             subject.embed(TEST_MODEL_NAME, request);
@@ -269,14 +258,12 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GoogleAiEmbeddingRequest request1 = createEmptyEmbeddingRequest();
-            request1.setContent(GeminiContent.builder()
-                    .parts(List.of(GeminiPart.builder().text("First").build()))
-                    .build());
+            request1.setContent(
+                    new GeminiContent(List.of(GeminiPart.builder().text("First").build()), null));
 
             GoogleAiEmbeddingRequest request2 = createEmptyEmbeddingRequest();
-            request2.setContent(GeminiContent.builder()
-                    .parts(List.of(GeminiPart.builder().text("Second").build()))
-                    .build());
+            request2.setContent(new GeminiContent(
+                    List.of(GeminiPart.builder().text("Second").build()), null));
 
             GoogleAiBatchEmbeddingRequest batchRequest = new GoogleAiBatchEmbeddingRequest();
             batchRequest.setRequests(List.of(request1, request2));
@@ -332,10 +319,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -376,10 +361,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             CompletableFuture<Void> futureComplete = new CompletableFuture<>();
@@ -387,8 +370,7 @@ class GeminiServiceTest {
             // When
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
-                public void onPartialResponse(String partialResponse) {
-                }
+                public void onPartialResponse(String partialResponse) {}
 
                 @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
@@ -430,10 +412,8 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient, customTimeout);
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Hi").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -449,13 +429,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchGenerateContentRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse = new BatchRequestResponse.Operation(
-                    "operations/test-123",
-                    null,
-                    false,
-                    null,
-                    null
-            );
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -464,26 +439,19 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest contentRequest = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Test").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Test").build()), "user")))
                     .build();
 
-            BatchRequestResponse.BatchGenerateContentRequest request = new BatchRequestResponse.BatchGenerateContentRequest(
-                    new BatchRequestResponse.BatchGenerateContentRequest.Batch(
-                            "test-batch",
-                            new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
-                                    new BatchRequestResponse.BatchGenerateContentRequest.Requests(
-                                            List.of(new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
-                                                    contentRequest,
-                                                    null
-                                            ))
-                                    )
-                            ),
-                            1L
-                    )
-            );
+            BatchRequestResponse.BatchGenerateContentRequest request =
+                    new BatchRequestResponse.BatchGenerateContentRequest(
+                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
+                                    "test-batch",
+                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
+                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
+                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
+                                                            contentRequest, null)))),
+                                    1L));
 
             // When
             BatchRequestResponse.Operation actualResponse = subject.batchGenerateContent(TEST_MODEL_NAME, request);
@@ -495,13 +463,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchGenerateContentHttpRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse = new BatchRequestResponse.Operation(
-                    "operations/test-123",
-                    null,
-                    false,
-                    null,
-                    null
-            );
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -510,26 +473,19 @@ class GeminiServiceTest {
             GeminiService subject = createService(mockHttpClient);
 
             GeminiGenerateContentRequest contentRequest = GeminiGenerateContentRequest.builder()
-                    .contents(List.of(GeminiContent.builder()
-                            .role("user")
-                            .parts(List.of(GeminiPart.builder().text("Test").build()))
-                            .build()))
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Test").build()), "user")))
                     .build();
 
-            BatchRequestResponse.BatchGenerateContentRequest request = new BatchRequestResponse.BatchGenerateContentRequest(
-                    new BatchRequestResponse.BatchGenerateContentRequest.Batch(
-                            "test-batch",
-                            new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
-                                    new BatchRequestResponse.BatchGenerateContentRequest.Requests(
-                                            List.of(new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
-                                                    contentRequest,
-                                                    null
-                                            ))
-                                    )
-                            ),
-                            1L
-                    )
-            );
+            BatchRequestResponse.BatchGenerateContentRequest request =
+                    new BatchRequestResponse.BatchGenerateContentRequest(
+                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
+                                    "test-batch",
+                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
+                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
+                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
+                                                            contentRequest, null)))),
+                                    1L));
 
             // When
             subject.batchGenerateContent(TEST_MODEL_NAME, request);
@@ -537,7 +493,8 @@ class GeminiServiceTest {
             // Then
             HttpRequest sentRequest = mockHttpClient.request();
             assertThat(sentRequest.method()).isEqualTo(HttpMethod.POST);
-            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/models/" + TEST_MODEL_NAME + ":batchGenerateContent");
+            assertThat(sentRequest.url())
+                    .isEqualTo(TEST_BASE_URL + "/models/" + TEST_MODEL_NAME + ":batchGenerateContent");
             assertThat(sentRequest.headers().get("Content-Type")).containsExactly("application/json");
             assertThat(sentRequest.headers().get("User-Agent")).containsExactly("LangChain4j");
             assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
@@ -550,13 +507,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchRetrieveBatchRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse = new BatchRequestResponse.Operation(
-                    "batches/test-batch",
-                    null,
-                    true,
-                    null,
-                    null
-            );
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -576,13 +528,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchRetrieveBatchHttpRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse = new BatchRequestResponse.Operation(
-                    "batches/test-batch",
-                    null,
-                    true,
-                    null,
-                    null
-            );
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -608,10 +555,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchCancelBatchRequest() {
             // Given
-            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body("{}")
-                    .build();
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
             GeminiService subject = createService(mockHttpClient);
 
@@ -627,10 +572,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchCancelBatchHttpRequest() {
             // Given
-            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body("{}")
-                    .build();
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
             GeminiService subject = createService(mockHttpClient);
 
@@ -652,10 +595,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchDeleteBatchRequest() {
             // Given
-            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body("{}")
-                    .build();
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
             GeminiService subject = createService(mockHttpClient);
 
@@ -671,10 +612,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchDeleteBatchHttpRequest() {
             // Given
-            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body("{}")
-                    .build();
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
             GeminiService subject = createService(mockHttpClient);
 
@@ -696,10 +635,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchListBatchesRequestWithNoParameters() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(),
-                    null
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -717,16 +654,10 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchListBatchesRequestWithAllParameters() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(new BatchRequestResponse.Operation(
-                            "batches/test-batch",
-                            null,
-                            false,
-                            null,
-                            null
-                    )),
-                    "nextToken"
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(
+                            List.of(new BatchRequestResponse.Operation("batches/test-batch", null, false, null, null)),
+                            "nextToken");
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -744,10 +675,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchListBatchesHttpRequestWithNoParameters() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(),
-                    null
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -768,10 +697,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchListBatchesHttpRequestWithPageSize() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(),
-                    null
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -792,10 +719,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchListBatchesHttpRequestWithPageToken() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(),
-                    null
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -816,10 +741,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchListBatchesHttpRequestWithAllParameters() {
             // Given
-            BatchRequestResponse.ListOperationsResponse expectedResponse = new BatchRequestResponse.ListOperationsResponse(
-                    List.of(),
-                    null
-            );
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -852,13 +775,9 @@ class GeminiServiceTest {
     }
 
     private static GeminiGenerateContentResponse createGenerateContentResponse(String text) {
-        var candidate = GeminiCandidate.builder()
-                .content(GeminiContent.builder()
-                        .role("model")
-                        .parts(List.of(GeminiPart.builder().text(text).build()))
-                        .build())
-                .build();
-        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null);
+        var candidate = new GeminiCandidate(
+                new GeminiContent(List.of(GeminiPart.builder().text(text).build()), "model"), null);
+        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
     }
 
     private static GoogleAiEmbeddingRequest createEmptyEmbeddingRequest() {

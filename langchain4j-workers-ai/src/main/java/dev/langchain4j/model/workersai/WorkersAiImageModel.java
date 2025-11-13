@@ -1,5 +1,9 @@
 package dev.langchain4j.model.workersai;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
@@ -7,9 +11,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
-import okhttp3.ResponseBody;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -18,10 +19,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Base64;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import javax.imageio.ImageIO;
+import okhttp3.ResponseBody;
 
 /**
  * WorkerAI Image model.
@@ -91,8 +90,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         /**
          * Simple constructor.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Simple constructor.
@@ -208,9 +206,8 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 }
             }
 
-            retrofit2.Response<ResponseBody> response = workerAiClient
-                    .generateImage(imgReq, accountId, modelName)
-                    .execute();
+            retrofit2.Response<ResponseBody> response =
+                    workerAiClient.generateImage(imgReq, accountId, modelName).execute();
 
             if (response.isSuccessful() && response.body() != null) {
                 InputStream inputStream = response.body().byteStream();
@@ -223,7 +220,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 buffer.flush();
                 return buffer.toByteArray();
             }
-            throw new IllegalStateException("An error occured while generating image.");
+            throw new IllegalStateException("An error occurred while generating image.");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -285,7 +282,4 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 .mimeType(MIME_TYPE)
                 .build();
     }
-
 }
-
-

@@ -1,18 +1,17 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
-import org.mockito.InOrder;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeast;
+import org.mockito.InOrder;
 
 class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -31,7 +30,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -52,16 +51,14 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
     }
-    
+
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // not tested
@@ -80,7 +77,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
@@ -88,7 +85,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 

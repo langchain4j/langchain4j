@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Headers;
@@ -38,7 +39,7 @@ public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
-    private final Map<String, String> customHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
@@ -65,7 +66,7 @@ public class HttpMcpTransport implements McpTransport {
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
-        customHeaders = getOrDefault(builder.customHeaders, Map.of());
+        customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         client = httpClientBuilder.build();
     }
 
@@ -154,10 +155,8 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     private EventSource startSseChannel(boolean logResponses) {
-        Request request = new Request.Builder()
-                .url(sseUrl)
-                .headers(buildCommonHeaders())
-                .build();
+        Request request =
+                new Request.Builder().url(sseUrl).headers(buildCommonHeaders()).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
         SseEventListener listener =
                 new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
@@ -185,14 +184,19 @@ public class HttpMcpTransport implements McpTransport {
 
     private Headers buildCommonHeaders() {
         Headers.Builder headerBuilder = new Headers.Builder();
-        customHeaders.forEach(headerBuilder::add);
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
         return headerBuilder.build();
     }
 
     private Request createRequest(McpClientMessage message) throws JsonProcessingException {
-        Headers.Builder headerBuilder = new Headers.Builder()
-                .add(CONTENT_TYPE, CONTENT_TYPE_JSON);
-        customHeaders.forEach(headerBuilder::add);
+        Headers.Builder headerBuilder = new Headers.Builder().add(CONTENT_TYPE, CONTENT_TYPE_JSON);
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
 
         return new Request.Builder()
                 .url(postUrl)
@@ -214,7 +218,7 @@ public class HttpMcpTransport implements McpTransport {
     public static class Builder {
 
         private String sseUrl;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -230,7 +234,12 @@ public class HttpMcpTransport implements McpTransport {
         }
 
         public Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

@@ -274,7 +274,7 @@ public class ConverterTest {
                 .temperature(0.3)
                 .toolChoice(ToolChoice.AUTO)
                 .responseFormat(ResponseFormat.TEXT)
-                .timeLimit(Duration.ofMillis(30))
+                .timeout(Duration.ofMillis(30))
                 .topK(1)
                 .topP(0.4)
                 .projectId("projectId")

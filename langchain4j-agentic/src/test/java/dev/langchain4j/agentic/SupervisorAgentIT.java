@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -30,7 +31,10 @@ import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -78,15 +82,15 @@ public class SupervisorAgentIT {
         RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
                 .chatModel(baseModel())
                 .build();
-        MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(baseModel())
-                .build();
-        LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(baseModel())
-                .build();
-        TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(baseModel())
-                .build();
+                .build());
 
         SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
@@ -95,6 +99,8 @@ public class SupervisorAgentIT {
                 .build();
 
         System.out.println(askToExpert.invoke("I broke my leg what should I do"));
+
+        verify(medicalExpert).medical(any());
     }
 
     public interface BankerAgent {
@@ -264,7 +270,7 @@ public class SupervisorAgentIT {
         }
     }
 
-    public class ExchangeOperator {
+    public static class ExchangeOperator {
         public static Map<String, Double> exchangeRatesToUSD = new HashMap<>();
 
         static {
@@ -510,5 +516,91 @@ public class SupervisorAgentIT {
         ChatMessage lastMessage = messages.get(messages.size() - 1);
         assertThat(lastMessage).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) lastMessage).text()).contains("done");
+    }
+
+    public interface GeneralAssistant extends ChatMemoryAccess {
+
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "SeriousAgent", description = "Use me for serious non-joking questions")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface JokesterAssistant extends ChatMemoryAccess {
+
+        @SystemMessage("You are a jokester. You are funny, yet helpful ai assistant")
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "JokesterAgent", description = "A fun assistant that specializes in telling jokes")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface Supervisor extends ChatMemoryAccess {
+
+        @Agent
+        String respond(@MemoryId String id, @V("request") String userMessage);
+    }
+
+    @Test
+    void subagent_unique_name_test() {
+        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
+
+        JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        GeneralAssistant generalAssistant = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        Supervisor supervisorAgent = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant, jokesterAssistant)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+        String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
+        assertThat(lionJoke1).isNotNull().containsIgnoringCase("lion");
+
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be
+        // generated
+        JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        GeneralAssistant generalAssistant2 = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        Supervisor supervisorAgent2 = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant2, jokesterAssistant2)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+        String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
+        assertThat(lionJoke2).isNotNull().containsIgnoringCase("cheetah");
+
+        List<ChatMessage> supervisorMessages =
+                supervisorAgent.getChatMemory("supervisor").messages();
+
+        Set<String> agentNames = supervisorMessages.stream()
+                .filter(AiMessage.class::isInstance)
+                .map(AiMessage.class::cast)
+                .map(AiMessage::text)
+                .map(text -> {
+                    int start = text.indexOf("\"agentName\":") + "agentName:".length();
+                    int agentNameStart = text.indexOf('"', start + 1) + 1;
+                    return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
+                })
+                .collect(Collectors.toSet());
+
+        // only 2 agents, the jokester and done
+        assertThat(agentNames).hasSize(2);
+        assertThat(agentNames).containsExactly("JokesterAgent_JokesterAssistant", "done");
     }
 }

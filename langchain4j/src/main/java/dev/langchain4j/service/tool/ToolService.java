@@ -54,7 +54,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -412,9 +413,9 @@ public class ToolService {
 
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
-                errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
-                errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
             }
 
             return ToolExecutionResult.builder()
@@ -422,6 +423,11 @@ public class ToolService {
                     .resultText(errorHandlerResult.text())
                     .build();
         }
+    }
+
+    private static Throwable getCause(Exception e) {
+        Throwable cause = e.getCause();
+        return cause != null ? cause : e;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
