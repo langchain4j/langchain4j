@@ -1,10 +1,12 @@
 package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -163,8 +165,9 @@ class JsonParsingUtilsTest {
     @Test
     void extract_invalid_json() throws Exception {
         String json = "not a json";
-        JsonParsingUtils.ParsedJson<MyPojo> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
-        assertThat(result).isNotNull();
+        assertThatThrownBy(() -> JsonParsingUtils.extractAndParseJson(json, MyPojo.class))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(JsonParseException.class);
     }
 
     /**
