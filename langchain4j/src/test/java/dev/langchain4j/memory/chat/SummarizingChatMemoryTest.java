@@ -15,6 +15,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.List;
 import java.util.stream.Stream;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,18 +55,21 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .defaultGenerateSummaryFunction(chatModel)
                 .maxMessagesToSummarize(2) // Trigger summarization when exceeding 2 messages
                 .build();
+        UserMessage hello = userMessage("hello");
+        UserMessage world = userMessage("world");
+        UserMessage lisi = userMessage("I am lisi");
 
         // Add the first three messages
-        chatMemory.add(userMessage("hello"));
-        chatMemory.add(userMessage("world"));
-        chatMemory.add(userMessage("I am lisi"));
+        chatMemory.add(hello);
+        chatMemory.add(world);
+        chatMemory.add(lisi);
 
         // Verify that the first three messages are still retained
         assertThat(chatMemory.messages())
-                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id", "timestamp", "createdAt")
-                .containsExactly(userMessage("hello"), userMessage("world"), userMessage("I am lisi"));
+                .containsExactly(hello, world, lisi);
 
-        chatMemory.add(userMessage("who are you"));
+        UserMessage whoAreYou = userMessage("who are you");
+        chatMemory.add(whoAreYou);
 
         // The first three messages might have been summarized; verify the message list after summarization
         List<ChatMessage> messagesAfterSummarize = chatMemory.messages();
@@ -73,13 +77,12 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         // Add a fifth message; summarization logic may replace or summarize older messages instead of appending
         // directly
-        chatMemory.add(userMessage("I am wangwu"));
+        UserMessage iAmWangwu = userMessage("I am wangwu");
+        chatMemory.add(iAmWangwu);
 
         // Verify that the last message is NOT the raw "I am wangwu" (it should have been summarized or excluded)
         assertThat(messagesAfterSummarize.get(messagesAfterSummarize.size() - 1))
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
-                .isNotEqualTo(userMessage("I am wangwu"));
+                .isNotEqualTo(iAmWangwu);
 
         // Clear the memory
         chatMemory.clear();
@@ -681,8 +684,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(finalMsgs).hasSize(2);
         ChatMessage summary = finalMsgs.get(0);
         assertThat(summary)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(u1)
                 .isNotEqualTo(ai1)
                 .isNotEqualTo(result1)
@@ -714,8 +715,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         return Stream.of(Arguments.of(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                //                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName("deepseek-chat")
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(OpenAiChatModelName.GPT_4_O_MINI)
                 .logRequests(true)
                 .logResponses(true)
                 .build()));
