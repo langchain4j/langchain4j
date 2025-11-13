@@ -124,7 +124,7 @@ public class ToolExecutionResult {
          *
          * @param resultTextSupplier the supplier to calculate result text on demand
          * @return this builder
-         * @since 1.6.0
+         * @since 1.9.0
          */
         public Builder resultTextSupplier(Supplier<String> resultTextSupplier) {
             this.resultTextSupplier = resultTextSupplier;
