@@ -27,7 +27,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.118.Final</version>
+                <version>4.1.128.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -46,6 +46,20 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-openai</artifactId>
             <version>${azure-ai-openai.version}</version>
+            <exclusions>
+                <!-- because of CVE-2025-55163 -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http2</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- fixes CVE-2025-55163 -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>4.1.128.Final</version>
         </dependency>
 
         <dependency>
