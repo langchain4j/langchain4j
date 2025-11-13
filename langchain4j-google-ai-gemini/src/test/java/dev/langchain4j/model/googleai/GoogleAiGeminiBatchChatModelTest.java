@@ -18,6 +18,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentResponse;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchError;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchIncomplete;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState;
@@ -529,10 +533,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static GeminiGenerateContentResponse toGeminiResponse(ChatResponse chatResponse) {
         var part = GeminiPart.builder().text(chatResponse.aiMessage().text()).build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = GeminiCandidate.builder()
-                .content(content)
-                .finishReason(GeminiFinishReason.STOP)
-                .build();
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP);
         var usageMetadata = GeminiUsageMetadata.builder()
                 .promptTokenCount(chatResponse.metadata().tokenUsage().inputTokenCount())
                 .candidatesTokenCount(chatResponse.metadata().tokenUsage().outputTokenCount())
@@ -540,11 +541,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(),
-                chatResponse.metadata().modelName(),
-                List.of(candidate),
-                GeminiPromptFeedback.builder().build(),
-                usageMetadata);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {
