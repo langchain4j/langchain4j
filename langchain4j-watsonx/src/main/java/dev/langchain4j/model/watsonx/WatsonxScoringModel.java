@@ -13,7 +13,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,7 +23,7 @@ import java.util.List;
  *
  * <pre>{@code
  * ScoringModel scoringModel = new WatsonxScoringModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
@@ -46,7 +45,7 @@ public class WatsonxScoringModel implements ScoringModel {
         }
 
         rerankService = rerankServiceBuilder
-                .baseUrl(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)
@@ -94,7 +93,7 @@ public class WatsonxScoringModel implements ScoringModel {
      *
      * <pre>{@code
      * ScoringModel scoringModel = new WatsonxScoringModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
@@ -111,14 +110,11 @@ public class WatsonxScoringModel implements ScoringModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
-        private Duration timeout;
 
         private Builder() {}
 
-        public Builder url(CloudRegion cloudRegion) {
-            return super.url(cloudRegion.getMlEndpoint());
+        public Builder baseUrl(CloudRegion cloudRegion) {
+            return super.baseUrl(cloudRegion.getMlEndpoint());
         }
 
         public Builder modelName(String modelName) {
@@ -133,11 +129,6 @@ public class WatsonxScoringModel implements ScoringModel {
 
         public Builder spaceId(String spaceId) {
             this.spaceId = spaceId;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
             return this;
         }
 
