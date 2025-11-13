@@ -137,6 +137,90 @@ public class StreamingAgentsWorkflowIT {
     }
 
     @Test
+    void streaming_sequence_agent_in_sequence_workflow() throws Exception {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("story")
+                .build();
+
+        UntypedAgent novelCreator1 = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, novelCreator1)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        TokenStream tokenStream = (TokenStream) novelCreator.invoke(input);
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        tokenStream
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResponse.complete(response);
+                })
+                .onError(futureAnswer::completeExceptionally)
+                .start();
+
+        String story = futureAnswer.get(60, SECONDS);
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        assertThat(story).isNotBlank();
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void streaming_sequence_agent_in_sequence_workflow_2() throws Exception {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("story")
+                .build();
+
+        UntypedAgent novelCreator1 = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
+
+        final SequentialAgentService<UntypedAgent> sequentialAgentService = AgenticServices.sequenceBuilder()
+                .subAgents(novelCreator1, creativeWriter, audienceEditor)
+                .outputKey("story");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> sequentialAgentService.build())
+                .withMessage("Only the last sub-agent can return TokenStream.");
+    }
+
+    @Test
     void streaming_agent_in_parallel_workflow() throws Exception {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())

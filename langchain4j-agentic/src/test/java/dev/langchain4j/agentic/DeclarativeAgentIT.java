@@ -49,9 +49,9 @@ import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
@@ -158,7 +158,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_planner_tests() {
-        PlannerBasedStoryCreator storyCreator = AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
+        PlannerBasedStoryCreator storyCreator =
+                AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();

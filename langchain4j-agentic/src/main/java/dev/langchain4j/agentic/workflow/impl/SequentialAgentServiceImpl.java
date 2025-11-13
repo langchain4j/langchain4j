@@ -1,8 +1,5 @@
 package dev.langchain4j.agentic.workflow.impl;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.getLastAgent;
-import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
-import static dev.langchain4j.agentic.internal.AgentUtil.isOnlyLastStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -10,9 +7,8 @@ import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.Method;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
-
-public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
+public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>>
+        implements SequentialAgentService<T> {
 
     public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
