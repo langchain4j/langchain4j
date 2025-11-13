@@ -36,7 +36,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
-
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
