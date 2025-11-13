@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
 
@@ -22,10 +23,10 @@ public interface McpClient extends AutoCloseable {
     List<ToolSpecification> listTools();
 
     /**
-     * Executes a tool on the MCP server and returns the result as a String.
-     * Currently, this expects a tool execution to only contain text-based results.
+     * Executes a tool on the MCP server and returns the result.
+     * Currently, this expects a tool execution to only contain text-based results or JSON structured content.
      */
-    String executeTool(ToolExecutionRequest executionRequest);
+    ToolExecutionResult executeTool(ToolExecutionRequest executionRequest);
 
     /**
      * Obtains the current list of resources available on the MCP server.
@@ -59,4 +60,10 @@ public interface McpClient extends AutoCloseable {
      * the health of this MCP client is considered degraded.
      */
     void checkHealth();
+
+    /**
+     * Sets the roots that are made available to the server upon its request.
+     * After calling this method, the client also sends a `notifications/roots/list_changed` message to the server.
+     */
+    void setRoots(List<McpRoot> roots);
 }

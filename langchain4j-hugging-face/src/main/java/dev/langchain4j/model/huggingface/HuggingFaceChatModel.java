@@ -1,17 +1,19 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.joining;
 
+import java.time.Duration;
+import java.util.List;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
@@ -22,9 +24,18 @@ import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
-import java.time.Duration;
-import java.util.List;
 
+/**
+ * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
+ * <pre>
+ * ChatModel model = OpenAiChatModel.builder()
+ *     .apiKey(System.getenv("HF_API_KEY"))
+ *     .baseUrl("https://router.huggingface.co/v1")
+ *     .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+ *     .build();
+ * </pre>
+ */
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 public class HuggingFaceChatModel implements ChatModel {
 
     private final HuggingFaceClient client;
@@ -215,10 +226,7 @@ public class HuggingFaceChatModel implements ChatModel {
         }
 
         public HuggingFaceChatModel build() {
-            if (isNullOrBlank(accessToken)) {
-                throw new IllegalArgumentException(
-                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-            }
+            ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             return new HuggingFaceChatModel(this);
         }
     }

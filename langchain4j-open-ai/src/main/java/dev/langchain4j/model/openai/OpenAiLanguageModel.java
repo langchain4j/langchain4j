@@ -1,17 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
-import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
-import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
-import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
-
-import java.time.Duration;
-import java.util.Map;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -20,6 +8,18 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.Map;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
@@ -44,8 +44,10 @@ public class OpenAiLanguageModel implements LanguageModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
@@ -65,14 +67,14 @@ public class OpenAiLanguageModel implements LanguageModel {
                 .temperature(temperature)
                 .build();
 
-        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response =
+                withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(
                 completionChoice.text(),
                 tokenUsageFrom(response.usage()),
-                finishReasonFrom(completionChoice.finishReason())
-        );
+                finishReasonFrom(completionChoice.finishReason()));
     }
 
     public static OpenAiLanguageModelBuilder builder() {
@@ -100,7 +102,9 @@ public class OpenAiLanguageModel implements LanguageModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
 
         public OpenAiLanguageModelBuilder() {
             // This is public so it can be extended
@@ -166,8 +170,22 @@ public class OpenAiLanguageModel implements LanguageModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiLanguageModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public OpenAiLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

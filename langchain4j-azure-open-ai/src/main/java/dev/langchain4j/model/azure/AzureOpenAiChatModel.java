@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERED;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,12 +21,15 @@ import static java.util.Arrays.asList;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
+import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
@@ -80,6 +84,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
     private final Boolean strictJsonSchema;
+    private final Integer maxCompletionTokens;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -93,6 +98,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -106,6 +112,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -118,6 +125,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -155,6 +163,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.enhancements = builder.enhancements;
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -182,9 +191,10 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
-                .setStop(parameters.stopSequences())
+                .setMaxCompletionTokens(maxCompletionTokens)
+                .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
-                .setLogitBias(logitBias)
+                .setLogitBias(logitBias.isEmpty() ? null : logitBias)
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
@@ -197,16 +207,28 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                client.getChatCompletions(parameters.modelName(), options));
+        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.getChatCompletions(parameters.modelName(), options));
+
+        ChatChoice chatChoice = chatCompletions.getChoices().get(0);
+
+        if (chatChoice.getFinishReason() == CONTENT_FILTERED) {
+            String details;
+            try {
+                details = chatChoice.getContentFilterResults().toJsonString();
+            } catch (Exception ignored) {
+                details = "The content has been filtered, and no additional information is available.";
+            }
+            throw new ContentFilteredException(details);
+        }
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()))
+                .aiMessage(aiMessageFrom(chatChoice.getMessage()))
                 .metadata(ChatResponseMetadata.builder()
                         .id(chatCompletions.getId())
                         .modelName(chatCompletions.getModel())
                         .tokenUsage(tokenUsageFrom(chatCompletions.getUsage()))
-                        .finishReason(finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason()))
+                        .finishReason(finishReasonFrom(chatChoice.getFinishReason()))
                         .build())
                 .build();
     }
@@ -240,6 +262,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
+        private Integer maxCompletionTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
@@ -254,6 +277,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Boolean strictJsonSchema;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -351,6 +375,11 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
+            return this;
+        }
+
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
@@ -418,6 +447,11 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

@@ -11,10 +11,13 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -196,6 +200,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    threads.add(Thread.currentThread());
+                    events.add(event);
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     threads.add(Thread.currentThread());
                     completableFuture.completeExceptionally(throwable);
@@ -229,9 +239,86 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
+        }
+    }
+
+    @Test
+    void should_cancel_streaming_async() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            int eventsBeforeCancellation = 5;
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "Tell me a story about kittens"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
+
+            // when
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                private AtomicInteger counter = new AtomicInteger();
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    counter.incrementAndGet();
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    if (counter.incrementAndGet() >= eventsBeforeCancellation) {
+                        context.parsingHandle().cancel();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    completableFuture.completeExceptionally(throwable);
+                }
+
+                @Override
+                public void onClose() {
+                    completableFuture.complete(null);
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+
+            // then
+            completableFuture.get(30, TimeUnit.SECONDS);
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onOpen(any());
+            inOrder.verify(spyListener, times(eventsBeforeCancellation)).onEvent(any(), any());
+            inOrder.verify(spyListener, times(1)).onClose();
+            inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -287,6 +374,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    threads.add(Thread.currentThread());
+                    events.add(event);
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     threads.add(Thread.currentThread());
                     completableFuture.completeExceptionally(throwable);
@@ -320,9 +413,10 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -395,9 +489,8 @@ public abstract class HttpClientIT {
             assertThat(streamingResult.threads()).hasSize(1);
             assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -450,6 +543,12 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
@@ -474,9 +573,10 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -529,6 +629,14 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+
+                    throw new RuntimeException("Unexpected exception in onEvent()");
+                }
+
+                @Override
                 public void onError(Throwable throwable) {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
@@ -553,9 +661,10 @@ public abstract class HttpClientIT {
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, times(events.size())).onEvent(any());
+            inOrder.verify(spyListener, times(events.size())).onEvent(any(), any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -635,9 +744,8 @@ public abstract class HttpClientIT {
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -712,9 +820,8 @@ public abstract class HttpClientIT {
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 }

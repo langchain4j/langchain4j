@@ -14,12 +14,11 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.junit.jupiter.api.Test;
 
 class FunctionCallHelperTest {
@@ -130,7 +129,41 @@ class FunctionCallHelperTest {
         // given
         ToolExecutionRequest newExecutionRequest = ToolExecutionRequest.builder()
                 .name("getWeatherForecast")
+                .id("0")
                 .arguments("{\"location\":\"Paris\"}")
+                .build();
+
+        // when
+        FunctionCall newFunctionCall = FunctionCallHelper.fromToolExecutionRequest(newExecutionRequest);
+        ToolExecutionRequest sameExecutionRequest = FunctionCallHelper.fromFunctionCalls(
+                        Collections.singletonList(newFunctionCall))
+                .get(0);
+
+        // then
+        assertThat(newExecutionRequest).isEqualTo(sameExecutionRequest);
+    }
+
+    @Test
+    void should_convert_function_calls_to_tool_execution_requests_and_back_without_args() {
+        // given
+        FunctionCall functionCall = FunctionCall.newBuilder()
+                .setName("getDataSources")
+                .setArgs(Struct.newBuilder())
+                .build();
+
+        // when
+        List<ToolExecutionRequest> toolExecutionRequest =
+                FunctionCallHelper.fromFunctionCalls(Collections.singletonList(functionCall));
+        FunctionCall sameFunctionCall = FunctionCallHelper.fromToolExecutionRequest(toolExecutionRequest.get(0));
+
+        // then
+        assertThat(functionCall).isEqualTo(sameFunctionCall);
+
+        // given
+        ToolExecutionRequest newExecutionRequest = ToolExecutionRequest.builder()
+                .id("0")
+                .name("getDataSources")
+                .arguments("{}")
                 .build();
 
         // when

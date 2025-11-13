@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -8,6 +10,7 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -73,6 +77,33 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return OpenAiOfficialTokenUsage.class;
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "{\"")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "city")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "\":\"")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "Mun")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "ich")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "\"}")), any());
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "{\"ci")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "ty\": ")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "\"Munic")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "h\"}")), any());
+        io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
+
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "{\"co")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "untry")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "\": \"Fr")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "ance")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "\"}")), any());
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
     @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")

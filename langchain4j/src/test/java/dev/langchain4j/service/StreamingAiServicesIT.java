@@ -11,6 +11,8 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationResult;
@@ -20,10 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -31,8 +38,11 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -66,11 +76,13 @@ class StreamingAiServicesIT {
         Assistant assistant = AiServices.create(Assistant.class, model);
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -91,6 +103,8 @@ class StreamingAiServicesIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+
+        assertThat(intermediateResponses).isEmpty();
     }
 
     @ParameterizedTest
@@ -206,6 +220,7 @@ class StreamingAiServicesIT {
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -213,6 +228,7 @@ class StreamingAiServicesIT {
 
         assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -262,6 +278,9 @@ class StreamingAiServicesIT {
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(3)).text()).contains("6.97");
+
+        assertThat(intermediateResponses).hasSize(1);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(aiMessage);
     }
 
     @Test
@@ -290,6 +309,7 @@ class StreamingAiServicesIT {
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -297,6 +317,7 @@ class StreamingAiServicesIT {
 
         assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -360,6 +381,10 @@ class StreamingAiServicesIT {
 
         assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(5)).text()).contains("6.97", "9.89");
+
+        assertThat(intermediateResponses).hasSize(2);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(aiMessage);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(secondAiMessage);
     }
 
     @Test
@@ -455,5 +480,162 @@ class StreamingAiServicesIT {
 
         assertThat(messages.get(4)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(4)).text()).contains("6.97", "9.89");
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
+    void should_stream_thinking() throws Exception {
+
+        // given
+        boolean returnThinking = true;
+
+        StreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
+                .baseUrl("https://api.deepseek.com/v1")
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .modelName("deepseek-reasoner")
+                .returnThinking(returnThinking)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Assistant assistant = AiServices.create(Assistant.class, streamingChatModel);
+
+        interface TokenStreamHandler {
+            void onPartialThinking(PartialThinking partialThinking);
+            void onPartialResponse(String partialResponse);
+            void onError(Throwable error);
+            void onCompleteResponse(ChatResponse completeResponse);
+        }
+
+        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the capital of Germany?")
+                .onPartialThinking(partialThinking -> tokenStreamHandler.onPartialThinking(partialThinking))
+                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
+                .onError(error -> {
+                    tokenStreamHandler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse chatResponse = futureResponse.get(60, SECONDS);
+
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+
+        InOrder inOrder = inOrder(tokenStreamHandler);
+        inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialThinking(any());
+        inOrder.verify(tokenStreamHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(tokenStreamHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(tokenStreamHandler);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_cancel_streaming_from_onPartialResponse_callback(StreamingChatModel model) throws Exception {
+
+        int partialResponsesBeforeCancellation = 5;
+        AtomicInteger partialResponsesCounter = new AtomicInteger();
+
+        StringBuilder partialResponsesBuilder = new StringBuilder();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        Assistant assistant = AiServices.create(Assistant.class, model);
+        assistant.chat("What is the capital of Germany?")
+                .onPartialResponseWithContext((partialResponse, context) -> {
+                    partialResponsesBuilder.append(partialResponse);
+                    if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
+                        context.streamingHandle().cancel();
+                    }
+                })
+                .onCompleteResponse(response -> {
+                    futureResponse.complete(response);
+                })
+                .onError(futureResponse::completeExceptionally)
+                .start();
+
+        ChatResponse response = null;
+        try {
+            response = futureResponse.get(5, SECONDS);
+        } catch (TimeoutException ignored) {
+        }
+
+        assertThat(response).isNull();
+        assertThat(partialResponsesBuilder.toString()).isNotEmpty();
+        assertThat(partialResponsesCounter).hasValue(partialResponsesBeforeCancellation);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
+    void should_cancel_streaming_from_onPartialThinking_callback() throws Exception {
+
+        // given
+        int partialThoughtsBeforeCancellation = 5;
+        AtomicInteger partialThoughtsCounter = new AtomicInteger();
+
+        StreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
+                .baseUrl("https://api.deepseek.com/v1")
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .modelName("deepseek-reasoner")
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Assistant assistant = AiServices.create(Assistant.class, streamingChatModel);
+
+        interface TokenStreamHandler {
+            void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context);
+
+            void onPartialResponse(String partialResponse);
+
+            void onError(Throwable error);
+
+            void onCompleteResponse(ChatResponse completeResponse);
+        }
+
+        TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("What is the capital of Germany?")
+                .onPartialThinkingWithContext((partialThinking, context) -> {
+                    tokenStreamHandler.onPartialThinking(partialThinking, context);
+                    if (partialThoughtsCounter.incrementAndGet() >= partialThoughtsBeforeCancellation) {
+                        context.streamingHandle().cancel();
+                    }
+                })
+                .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
+                .onError(error -> {
+                    tokenStreamHandler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    tokenStreamHandler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse chatResponse = null;
+        try {
+            chatResponse = futureResponse.get(5, SECONDS);
+        } catch (TimeoutException ignored) {
+
+        }
+
+        assertThat(chatResponse).isNull();
+
+        InOrder inOrder = inOrder(tokenStreamHandler);
+        inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation)).onPartialThinking(any(), any());
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(tokenStreamHandler);
     }
 }

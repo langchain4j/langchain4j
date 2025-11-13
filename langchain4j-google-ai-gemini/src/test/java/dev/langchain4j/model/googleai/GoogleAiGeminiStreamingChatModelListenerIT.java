@@ -20,13 +20,14 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
     @Override
     protected String modelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.5-flash-lite";
     }
 
     @Override
@@ -34,7 +35,8 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey("banana")
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 

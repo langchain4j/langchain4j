@@ -1,12 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -16,10 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class DefaultToolExecutorTest implements WithAssertions {
 
@@ -112,7 +115,11 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
+        InvocationContext invocationContext = InvocationContext.builder()
+                .chatMemoryId(memoryId)
+                .build();
+
+        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
 
         assertThat(args)
                 .containsExactly(
@@ -143,7 +150,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, memoryId))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, invocationContext))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
@@ -258,21 +265,21 @@ class DefaultToolExecutorTest implements WithAssertions {
                         "Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
 
         assertThat(coerceArgument(
-                asList(1.0, 2.0, 3.0), "arg", List.class, new TypeReference<List<Integer>>() {
-                }.getType()))
+                        asList(1.0, 2.0, 3.0), "arg", List.class, new TypeReference<List<Integer>>() {}.getType()))
                 .isEqualTo(asList(1, 2, 3));
 
         assertThat(coerceArgument(
-                new HashSet<>(asList("A", "B")),
-                "arg",
-                List.class,
-                new TypeReference<Set<ExampleEnum>>() {
-                }.getType()))
+                        new HashSet<>(asList("A", "B")),
+                        "arg",
+                        List.class,
+                        new TypeReference<Set<ExampleEnum>>() {}.getType()))
                 .isEqualTo(new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
 
         assertThat(coerceArgument(
-                singletonMap("A", 1.0), "arg", List.class, new TypeReference<Map<String, Integer>>() {
-                }.getType()))
+                        singletonMap("A", 1.0),
+                        "arg",
+                        List.class,
+                        new TypeReference<Map<String, Integer>>() {}.getType()))
                 .isEqualTo(singletonMap("A", 1));
     }
 
@@ -316,7 +323,7 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+    void should_not_execute_tool_with_wrong_execution_request() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("unknownMethod")
@@ -330,8 +337,31 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     @Test
     void should_not_execute_tool_with_null_execution_request() {
-        assertThatExceptionOfType(NullPointerException.class)
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+    }
+
+    private static class TestNullArgumentTool {
+
+        @Tool
+        public boolean notNull(Integer num) {
+            return num != null;
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"{ \"arg0\": null }, false", "{}, false", "{ \"arg0\": 1 }, true"})
+    void execute_with_argument_value_might_be_null(String arguments, String expectedResult) {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("notNull")
+                .arguments(arguments)
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestNullArgumentTool(), request);
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo(expectedResult);
     }
 
     private static class PersonTool {
@@ -418,7 +448,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2).isEqualToIgnoringWhitespace("""
+        assertThat(result2)
+                .isEqualToIgnoringWhitespace(
+                        """
                 [
                   {
                     "name": "Klaus",
@@ -437,7 +469,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3).isEqualToIgnoringWhitespace("""
+        assertThat(result3)
+                .isEqualToIgnoringWhitespace(
+                        """
                 [
                   {
                     "name": "Peter",
@@ -457,7 +491,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4).isEqualToIgnoringWhitespace("""
+        assertThat(result4)
+                .isEqualToIgnoringWhitespace(
+                        """
                 {
                   "p1": {
                     "name": "Klaus",
@@ -476,7 +512,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5).isEqualToIgnoringWhitespace("""
+        assertThat(result5)
+                .isEqualToIgnoringWhitespace(
+                        """
                 [
                   {
                     "name": "Klaus",
@@ -487,5 +525,68 @@ class DefaultToolExecutorTest implements WithAssertions {
                     "age": 43
                   }
                 ]""");
+    }
+
+    @Test
+    void should_throw_exception_when_arguments_cannot_be_parsed() throws NoSuchMethodException {
+
+        // given
+        String arguments = "{ invalid JSON }";
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .name("tool")
+                .arguments(arguments)
+                .build();
+
+        class Tools {
+
+            @Tool
+            void tool(String s) {
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+
+        // when-then
+        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("was expecting double-quote");
+    }
+
+    @Test
+    void should_return_exception_message_when_tool_method_throws_exception() throws NoSuchMethodException {
+
+        // given
+        String errorMessage = "something went wrong...";
+
+        class Tools {
+
+            @Tool
+            void tool() {
+                throw new RuntimeException(errorMessage);
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool"));
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .name("tool")
+                .arguments("{}")
+                .build();
+
+        // when
+        String toolResult = toolExecutor.execute(toolRequest, "default");
+
+        // then
+        assertThat(toolResult).isEqualTo(errorMessage);
+
+        // when
+        ToolExecutionResult toolExecutionResult = toolExecutor.executeWithContext(toolRequest, null);
+
+        // then
+        assertThat(toolExecutionResult.isError()).isTrue();
+        assertThat(toolExecutionResult.result()).isNull();
+        assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
     }
 }

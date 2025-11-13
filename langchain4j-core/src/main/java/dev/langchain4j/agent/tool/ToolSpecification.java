@@ -84,6 +84,13 @@ public class ToolSpecification {
                 + " }";
     }
 
+    public Builder toBuilder() {
+        return builder()
+                .name(name)
+                .description(description)
+                .parameters(parameters);
+    }
+
     /**
      * Creates builder to build {@link ToolSpecification}.
      *

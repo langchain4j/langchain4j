@@ -7,10 +7,19 @@ website](https://modelcontextprotocol.io/).
 
 The protocol specifies two types of transport, both of these are supported:
 
-- `HTTP`: The client requests an SSE channel to receive events from the
-  server and then sends commands via HTTP POST requests.
-- `stdio`: The client can run an MCP server as a local subprocess and
+- [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http):
+  The client sends HTTP requests and the server responds either with a regular response or opens
+  an SSE stream if it needs to send multiple responses over time.
+- [stdio](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio): The client 
+  can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
+
+Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
+container image.
+
+LangChain4j also supports the legacy 
+[HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
+but this is deprecated and will be removed in the future.
 
 To let your chat model or AI service run tools provided by an MCP server,
 you need to create an instance of an MCP tool provider.
@@ -30,13 +39,48 @@ McpTransport transport = new StdioMcpTransport.Builder()
     .build();
 ```
 
-For HTTP, you need two URLs, one for starting the SSE channel and one for submitting commands via `POST`:
+For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
+
+```java
+McpTransport transport = new StreamableHttpMcpTransport.Builder()
+        .url("http://localhost:3001/mcp")
+        .logRequests(true) // if you want to see the traffic in the log
+        .logResponses(true)
+        .build();
+```
+
+**_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
+(as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
+Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
+If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work. 
+
+For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
+The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
 
 ```java
 McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
+    .build();
+```
+
+For the Docker stdio transport, you first need to add a module to your pom.xml:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-mcp-docker</artifactId>
+</dependency>
+```
+
+Then you need to create a Docker transport:
+
+```java
+McpTransport transport = new DockerMcpTransport.Builder()
+    .image("mcp/time")
+    .dockerHost("unix:///var/run/docker.sock")
+    .logEvents(true) // if you want to see the traffic in the log
     .build();
 ```
 
@@ -119,7 +163,61 @@ Bot bot = AiServices.builder(Bot.class)
     .build();
 ```
 
+Alternatively, you can provide tools using a `Map<ToolSpecification, ToolExecutor>`.
+
+```java
+Map<ToolSpecification, ToolExecutor> tools = mcpClient.listTools().stream().collect(Collectors.toMap(
+        tool -> tool, 
+        tool -> new McpToolExecutor(mcpClient)
+));
+```
+
+To bind tools to an AI service, simply use the `tools` method of an AI service builder:
+
+```java
+Bot bot = AiServices.builder(Bot.class)
+    .chatModel(model)
+    .tools(tools)
+    .build();
+```
+
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
+
+### MCP Tool Name Mapping
+
+If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
+adjust an inappropriately chosen name), it may be useful to apply a tool name mapping function.
+This can be done by specifying a `BiFunction<McpClient, ToolSpecification, String>` when creating the `McpToolProvider`.
+
+For example:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient1, mcpClient2)
+        .toolNameMapper((client, toolSpec) -> {
+            // Prefix all tool names with the name of the MCP client and an underscore
+            return client.key() + "_" + toolSpec.name();
+        })
+        .build();
+```
+
+After this, the `ToolSpecification` objects returned by the tool provider will contain the mapped (logical) names,
+but the generated `ToolExecutor` objects will be fixed to pass the original (physical) names to the server when invoking the tools.
+
+### MCP Tool Specification Mapping
+
+Similarly to MCP tool mapping (above), one can map complete `ToolSpecification`:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolSpecificationMapper((client, toolSpec) -> {
+            // Prefix all tool names with "myprefix_" and convert the description to uppercase
+            return toolSpec.toBuilder()
+                .name("myprefix_" + toolSpec.name())
+                .description(toolSpec.description().toUpperCase())
+                .build();
+        })
+        .build();
+```
 
 ## Logging
 
@@ -140,6 +238,13 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 
 ## Resources
 
+There are two ways how to work with resources. Either the application can call the MCP client's
+resource-related methods to access resources programmatically, or there is an option to expose
+resources automatically to LLM calls via synthetic tools (one tool to obtain a list of resources
+and one to obtain the contents of a resource) so that Chat Models can consult resources by themselves.
+
+### Accessing resources programmatically
+
 To obtain a list of [MCP resources](https://modelcontextprotocol.io/docs/concepts/resources) 
 on the server, use `client.listResources()`, or `client.listResourceTemplates()` in case of resource templates.
 This will return a list of `McpResource` objects (or `McpResourceTemplate` respectively). These
@@ -149,6 +254,49 @@ To obtain the actual contents of the resource, use `client.readResource(uri)`, s
 This returns a `McpReadResourceResult`, which contains a  list of `McpResourceContents` objects (there may be more resource contents on a single URI, for 
 example if the URI represents a directory). Each `McpResourceContents` object represents either a 
 binary blob (`McpBlobResourceContents`) or text (`McpTextResourceContents`).
+
+### Exposing resources automatically via synthetic tools
+
+If you set a `McpResourcesAsToolsPresenter` instance using the builder when building an `McpToolProvider`,
+the MCP tool provider will automatically add two synthetic tools to the result of its `provideTools` method,
+along the 'regular' tools that are supported by the backing MCP servers. One tool should serve for obtaining
+a list of resources and the other for obtaining a particular resource. LangChain4j provides
+a default implementation named `DefaultMcpResourcesAsToolsPresenter` that adds these two tools:
+
+**_NOTE:_** The rest of this section describes `DefaultMcpResourcesAsToolsPresenter`. You may plug in your own implementation
+that behaves differently.
+
+- `list_resources`: Lists all resources exposed by the backing MCP servers. This tool takes no arguments.
+- `get_resource`: Reads the contents of a resource. This tool takes two arguments that together identify a resource:
+MCP server name and the URI.
+
+The output of `list_resources` is a JSON array like:
+
+```json
+[ {
+  "mcpServer" : "alice",
+  "uri" : "file:///info",
+  "uriTemplate" : null,
+  "name" : "basicInfo",
+  "description" : "Basic information about Alice",
+  "mimeType" : "text/plain"
+}, {
+  "mcpServer" : "bob",
+  "uri" : "file:///info",
+  "uriTemplate" : null,
+  "name" : "basicInfo",
+  "description" : "Basic information about Bob",
+  "mimeType" : "text/plain"
+} ]
+```
+
+Each document in this array represents one resource. Each resource is identified by a combination of `uri` and `mcpServer`, 
+where `mcpServer` is the value of `key` that was assigned to the MCP client during creation (see `DefaultMcpClient.Builder#key`).
+When the Chat model invokes the `list_resources` tool, 
+it receives this list of resources and can then decide to invoke `read_resource`. The default descriptions of `list_resources`
+and `get_resource` tools should suffice under most circumstances to explain to an LLM how to use them. However, if you need
+to customize the descriptions of these tools and their arguments, you override them using the methods of
+`DefaultMcpResourcesAsToolsPresenter.Builder`.
 
 ## Prompts
 
@@ -170,7 +318,7 @@ messages with binary blob content to a `ChatMessage` is unsupported regardless o
 
 Let's now see how to use the Model Context Protocol (MCP) to bridge AI models with external tools in a standardized way.
 The following example will interact with GitHub, through the LangChain4j MCP client, to fetch and summarize the latest commits from a public GitHub repository.
-For that, no need to reinvent the wheel, we can use the existing [GitHub MCP server implementation](https://github.com/modelcontextprotocol/servers/tree/main/src/github) available in the [MCP GitHub repo](https://github.com/modelcontextprotocol).
+For that, no need to reinvent the wheel, we can use the existing [GitHub MCP server implementation](https://github.com/github/github-mcp-server) available in the [MCP GitHub repo](https://github.com/modelcontextprotocol).
 
 The idea is to build a Java application that connects to a GitHub MCP server running locally in Docker, to fetch and summarize the latest commits.
 The example uses the stdio transport mechanism of MCP to communicate between our Java application and the GitHub MCP server.
@@ -282,3 +430,84 @@ Here are the summaries of the last three commits in the LangChain4j GitHub repos
 
 All commits were made by the same author, Dmytro Liubarskyi, on the same day, focusing on updating various GitHub Actions to newer versions.
 ```
+
+## Using MCP without AI Services
+
+The previous examples showed how to use MCP with the high-level AI Services API. However, it is also possible to use MCP through the low-level API.
+You can manually use the `DefaultMcpClient` instance that you built to execute commands against the server. Some examples:
+
+```java
+// obtain a list of tools from the server
+List<ToolSpecification> toolSpecifications = mcpClient.listTools();
+
+// build and execute a ChatRequest that has access to the MCP tools
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+        .toolSpecifications(toolSpecifications)
+        .build();
+ChatResponse response = chatModel.chat(chatRequest);
+AiMessage aiMessage = response.aiMessage();
+
+// if the LLM requested to invoke a tool, forward it to the MCP server
+if(aiMessage.hasToolExecutionRequests()) {
+    for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
+        String resultString = mcpClient.executeTool(req);
+        // prepare the result for adding it to the memory for the next ChatRequest...
+        ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(req.id(), req.name(), resultString);
+    }
+}
+```
+
+If you want to directly programmatically execute a tool using the MCP client (outside of a chat),
+you need to build a `ToolExecutionRequest` instance manually:
+
+```java
+// to execute a tool named "tool1" with argument "a=b"
+ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .name("tool1")
+                .arguments("{\"a\": \"b\"}")
+                .build();
+String toolResult = mcpClient.executeTool(request);
+```
+
+## Notes about Tool Caching
+
+`DefaultMcpClient` maintains an internal cache of MCP tools. Once retrieved, the
+tool list won't be requested again from the MCP server unless the server sends a
+notification that the list has been updated. You can manually clear this cache
+by calling `DefaultMcpClient.evictToolListCache()`. If you prefer to disable
+caching entirely, configure the client as follows:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+    .key("MyMCPClient")
+    .transport(transport)
+    .cacheToolList(false)
+    .build();
+```
+
+## MCP Registry client
+
+LangChain4j also offers a separate client implementation that can talk to 
+[MCP registries](https://registry.modelcontextprotocol.io/docs#/). Right now, only
+read-only operations are implemented (you can search for MCP servers, but managing and adding servers
+is not supported - please use the 
+[official tools](https://github.com/modelcontextprotocol/registry/blob/main/docs/guides/publishing/publish-server.md) for that).
+
+**_WARNING:_** Discovering MCP servers and using them (especially running locally) may present serious security risks. Before
+running any MCP server that you locate in a public registry, make sure you can trust it.
+
+The registry client
+lives in the `dev.langchain4j.mcp.registryclient` package and can be initialized like this:
+
+```java
+McpRegistryClient client = DefaultMcpRegistryClient.builder()
+        .baseUrl("URL-OF-THE-REGISTRY")
+        .build();
+```
+
+If no base URL is provided, the official registry will be used as the default (https://registry.modelcontextprotocol.io).
+Then, to search for MCP servers, use the `registry.listServers(McpServerListRequest)` method. A `McpServerListRequest`
+object can be built using the `McpServerListRequest.Builder` class. The Java API in LangChain4j
+closely mirrors the REST API of MCP registries as described in the official
+[MCP Registry Reference](https://registry.modelcontextprotocol.io/docs).

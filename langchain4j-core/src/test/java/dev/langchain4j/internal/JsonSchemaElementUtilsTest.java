@@ -1,14 +1,12 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonArray;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonString;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
@@ -136,6 +134,37 @@ class JsonSchemaElementUtilsTest {
     }
 
     @Test
+    void givenVisitedJsonObjectSchema_whenDescriptionIsDifferent_thenReturnsNewSchemaWithUpdatedDescription() {
+        JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
+                .description("old")
+                .addStringProperty("a")
+                .build();
+        Map<Class<?>, VisitedClassMetadata> visited =
+                Map.of(CustomClass.class, new VisitedClassMetadata(jsonObjectSchema, "ref-object", false));
+
+        JsonSchemaElement result = jsonObjectOrReferenceSchemaFrom(CustomClass.class, "new", false, visited, false);
+
+        assertThat(result).isNotSameAs(jsonObjectSchema);
+        assertThat(result.description()).isEqualTo("new");
+    }
+
+    @Test
+    void givenVisitedJsonObjectSchema_whenDescriptionIsSame_thenReturnsSameInstance() {
+        JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
+                .description("same-desc")
+                .addStringProperty("a")
+                .build();
+        Map<Class<?>, VisitedClassMetadata> visited =
+                Map.of(CustomClass.class, new VisitedClassMetadata(jsonObjectSchema, "ref-object", false));
+
+        JsonSchemaElement result =
+                jsonObjectOrReferenceSchemaFrom(CustomClass.class, "same-desc", false, visited, false);
+
+        assertThat(result).isSameAs(jsonObjectSchema);
+        assertThat(result.description()).isEqualTo("same-desc");
+    }
+
+    @Test
     void toMap_not_strict() throws JsonProcessingException {
 
         // given
@@ -149,7 +178,9 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, false);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
                 {
                    "type":"object",
                    "properties":{
@@ -164,8 +195,7 @@ class JsonSchemaElementUtilsTest {
                       "name"
                    ]
                 }
-                """
-        );
+                """);
     }
 
     @Test
@@ -182,7 +212,9 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, true);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
                 {
                    "type":"object",
                    "properties":{
@@ -198,8 +230,33 @@ class JsonSchemaElementUtilsTest {
                    ],
                    "additionalProperties": false
                 }
+                """);
+    }
+
+    @Test
+    void nativeSchemaToMap() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        String rawJsonSchema =
                 """
-        );
+        {
+            "additionalProperties": false,
+            "type" : "object",
+            "properties" : {
+              "$schema" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              }
+            },
+            "required": [ "name" ]
+        }
+        """;
+        var nativeJson = JsonRawSchema.from(rawJsonSchema);
+        var map = toMap(nativeJson);
+        assertThat(mapper.writeValueAsString(map))
+                .as("injection of existing full-blown schemas as string are possible")
+                .isEqualToIgnoringWhitespace(rawJsonSchema);
     }
 
     @Test

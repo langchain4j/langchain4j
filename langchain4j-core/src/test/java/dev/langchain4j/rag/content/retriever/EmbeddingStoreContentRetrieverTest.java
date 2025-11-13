@@ -1,5 +1,16 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -12,16 +23,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 class EmbeddingStoreContentRetrieverTest {
 
@@ -41,15 +42,15 @@ class EmbeddingStoreContentRetrieverTest {
     @BeforeEach
     void beforeEach() {
         EMBEDDING_STORE = mock(EmbeddingStore.class);
-        when(EMBEDDING_STORE.search(any())).thenReturn(new EmbeddingSearchResult<>(asList(
-                new EmbeddingMatch<>(0.9, "id 1", null, TextSegment.from("content 1")),
-                new EmbeddingMatch<>(0.7, "id 2", null, TextSegment.from("content 2"))
-        )));
+        when(EMBEDDING_STORE.search(any()))
+                .thenReturn(new EmbeddingSearchResult<>(asList(
+                        new EmbeddingMatch<>(0.9, "id 1", null, TextSegment.from("content 1")),
+                        new EmbeddingMatch<>(0.7, "id 2", null, TextSegment.from("content 2")))));
 
         EMBEDDING_MODEL = mock(EmbeddingModel.class);
         when(EMBEDDING_MODEL.embed(anyString())).thenReturn(Response.from(EMBEDDING));
     }
-    
+
     @Test
     void should_retrieve() {
 
@@ -60,11 +61,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -83,11 +85,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -97,21 +100,19 @@ class EmbeddingStoreContentRetrieverTest {
     void should_retrieve_with_custom_maxResults() {
 
         // given
-        ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(
-                EMBEDDING_STORE,
-                EMBEDDING_MODEL,
-                CUSTOM_MAX_RESULTS
-        );
+        ContentRetriever contentRetriever =
+                new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL, CUSTOM_MAX_RESULTS);
 
         // when
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(CUSTOM_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(CUSTOM_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -131,11 +132,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(CUSTOM_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(CUSTOM_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -155,11 +157,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(CUSTOM_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(CUSTOM_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -169,22 +172,19 @@ class EmbeddingStoreContentRetrieverTest {
     void should_retrieve_with_custom_minScore_ctor() {
 
         // given
-        ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(
-                EMBEDDING_STORE,
-                EMBEDDING_MODEL,
-                null,
-                CUSTOM_MIN_SCORE
-        );
+        ContentRetriever contentRetriever =
+                new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL, null, CUSTOM_MIN_SCORE);
 
         // when
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(CUSTOM_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(CUSTOM_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -204,11 +204,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(CUSTOM_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(CUSTOM_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -228,11 +229,12 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(CUSTOM_MIN_SCORE)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(CUSTOM_MIN_SCORE)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -254,12 +256,13 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .filter(metadataFilter)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .filter(metadataFilter)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -281,12 +284,13 @@ class EmbeddingStoreContentRetrieverTest {
         contentRetriever.retrieve(QUERY);
 
         // then
-        verify(EMBEDDING_STORE).search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING)
-                .maxResults(DEFAULT_MAX_RESULTS)
-                .minScore(DEFAULT_MIN_SCORE)
-                .filter(metadataFilter)
-                .build());
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(DEFAULT_MAX_RESULTS)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .filter(metadataFilter)
+                        .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
         verify(EMBEDDING_MODEL).embed(QUERY.text());
         verifyNoMoreInteractions(EMBEDDING_MODEL);
@@ -334,5 +338,44 @@ class EmbeddingStoreContentRetrieverTest {
 
         // then
         assertThat(result).contains(EmbeddingStoreContentRetriever.DEFAULT_DISPLAY_NAME);
+    }
+
+    @Test
+    void should_prefer_dynamic_values_over_static() {
+        // given
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .maxResults(10) // static value
+                .dynamicMaxResults((query) -> 1) // should override static
+                .minScore(0.1) // static value
+                .dynamicMinScore((query) -> 0.1) // should override static
+                .build();
+
+        // when
+        contentRetriever.retrieve(QUERY);
+
+        // then
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(1) // dynamic value used
+                        .minScore(0.1) // dynamic value used
+                        .build());
+    }
+
+    @Test
+    void should_validate_required_fields_in_builder() {
+        // when/then - missing embedding store
+        assertThatThrownBy(() -> EmbeddingStoreContentRetriever.builder()
+                        .embeddingModel(EMBEDDING_MODEL)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // when/then - missing embedding model
+        assertThatThrownBy(() -> EmbeddingStoreContentRetriever.builder()
+                        .embeddingStore(EMBEDDING_STORE)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

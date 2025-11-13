@@ -1,10 +1,12 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.InitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpClientMessage;
+import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -22,14 +24,17 @@ public class StdioMcpTransport implements McpTransport {
     private Process process;
     private ProcessIOHandler processIOHandler;
     private final boolean logEvents;
+    private final Logger logger;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
+    private ProcessStderrHandler stderrHandler;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
+        this.logger = builder.logger;
     }
 
     @Override
@@ -47,17 +52,18 @@ public class StdioMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
+        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents, logger);
         // FIXME: where should we obtain the thread?
         new Thread(processIOHandler).start();
-        new Thread(new ProcessStderrHandler(process)).start();
+        stderrHandler = new ProcessStderrHandler(process);
+        new Thread(stderrHandler).start();
     }
 
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new InitializationNotification());
+            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
             return execute(requestString, operation.getId())
                     .thenCompose(originalResponse -> execute(initializationNotification, null)
                             .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
@@ -100,6 +106,14 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public void close() throws IOException {
+        try {
+            stderrHandler.close();
+        } catch (Exception ignored) {
+        }
+        try {
+            processIOHandler.close();
+        } catch (Exception ignored) {
+        }
         process.destroy();
     }
 
@@ -129,6 +143,7 @@ public class StdioMcpTransport implements McpTransport {
         private List<String> command;
         private Map<String, String> environment;
         private boolean logEvents;
+        private Logger logger;
 
         public Builder command(List<String> command) {
             this.command = command;
@@ -145,10 +160,17 @@ public class StdioMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public StdioMcpTransport build() {
-            if (command == null || command.isEmpty()) {
-                throw new IllegalArgumentException("Missing command");
-            }
+            ensureNotEmpty(command, "command");
             if (environment == null) {
                 environment = Map.of();
             }

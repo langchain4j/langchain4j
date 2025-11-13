@@ -1,8 +1,15 @@
 package dev.langchain4j.model.openai.common;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,16 +22,10 @@ import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
-
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class OpenAiChatModelIT extends AbstractChatModelIT {
 
@@ -43,11 +44,8 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                defaultModelBuilder()
-                        .build(),
-                defaultModelBuilder()
-                        .strictTools(true)
-                        .build(),
+                defaultModelBuilder().build(),
+                defaultModelBuilder().strictTools(true).build(),
                 defaultModelBuilder()
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .strictJsonSchema(true)
@@ -57,7 +55,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
-        );
+                );
     }
 
     @Override
@@ -103,11 +101,10 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // given
         Map<String, Integer> logitBias = Map.of(
                 "72782", 100 // token ID for "Paris", see https://platform.openai.com/tokenizer -> "Token IDs"
-        );
+                );
 
-        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
-                .logitBias(logitBias)
-                .build();
+        OpenAiChatRequestParameters openAiParameters =
+                OpenAiChatRequestParameters.builder().logitBias(logitBias).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(openAiParameters)
@@ -141,19 +138,18 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .build())
                 .build();
 
-        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(UserMessage.from("How much is 2+2 and 3+3?"));
+        ChatRequest.Builder chatRequestBuilder =
+                ChatRequest.builder().messages(UserMessage.from("How much is 2+2 and 3+3?"));
 
-        ChatModel chatModel = defaultModelBuilder()
-                .build();
+        ChatModel chatModel = defaultModelBuilder().build();
 
         // when parallelToolCalls = true
         OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
                 .parallelToolCalls(true)
                 .build();
-        ChatRequest chatRequest = chatRequestBuilder.parameters(openAiParameters)
-                .build();
+        ChatRequest chatRequest =
+                chatRequestBuilder.parameters(openAiParameters).build();
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         // then
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
@@ -163,8 +159,8 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .toolSpecifications(toolSpecification)
                 .parallelToolCalls(false)
                 .build();
-        ChatRequest chatRequest2 = chatRequestBuilder.parameters(openAiChatParameters2)
-                .build();
+        ChatRequest chatRequest2 =
+                chatRequestBuilder.parameters(openAiChatParameters2).build();
         ChatResponse chatResponse2 = chatModel.chat(chatRequest2);
         // then
         assertThat(chatResponse2.aiMessage().toolExecutionRequests()).hasSize(1);
@@ -204,7 +200,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         }
 
         // then
-        Assertions.assertThat(mockHttpClient.request().body())
+        assertThat(mockHttpClient.request().body())
                 .containsIgnoringWhitespaces("\"seed\": 12345")
                 .containsIgnoringWhitespaces("\"user\": \"Klaus\"")
                 .containsIgnoringWhitespaces("\"store\": true")
@@ -218,13 +214,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // given
         int maxOutputTokens = 3;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
 
-        ChatModel chatModel = defaultModelBuilder()
-                .defaultRequestParameters(parameters)
-                .build();
+        ChatModel chatModel =
+                defaultModelBuilder().defaultRequestParameters(parameters).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
@@ -266,8 +260,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("Hi"))
                 .build();
 
-        OpenAiChatModel chatModel = defaultModelBuilder()
-                .build();
+        OpenAiChatModel chatModel = defaultModelBuilder().build();
 
         // when
         ChatResponse chatResponse = chatModel.chat(chatRequest);
@@ -276,7 +269,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         OpenAiChatResponseMetadata openAiChatResponseMetadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
         assertThat(openAiChatResponseMetadata.created()).isPositive();
         assertThat(openAiChatResponseMetadata.serviceTier()).isEqualTo(serviceTier);
-        assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank();
+        // assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank(); OpenAI stopped providing it
 
         OpenAiTokenUsage tokenUsage = openAiChatResponseMetadata.tokenUsage();
 
@@ -296,8 +289,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // given
         Map<String, String> customHeaders = Map.of(
                 "key1", "value1",
-                "key2", "value2"
-        );
+                "key2", "value2");
 
         MockHttpClient mockHttpClient = new MockHttpClient();
 
@@ -319,8 +311,41 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         }
 
         // then
-        Assertions.assertThat(mockHttpClient.request().headers())
+        assertThat(mockHttpClient.request().headers())
                 .containsEntry("key1", List.of("value1"))
                 .containsEntry("key2", List.of("value2"));
+    }
+
+    @Test
+    void should_propagate_custom_query_parameters() {
+
+        // given
+        Map<String, String> customQueryParams = new LinkedHashMap<>();
+        customQueryParams.put("param1", "value1");
+        customQueryParams.put("param2", "value2");
+
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        ChatModel chatModel = defaultModelBuilder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .baseUrl("https://localhost/v1")
+                .customQueryParams(customQueryParams)
+                .maxRetries(0) // it will fail, so no need to retry
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because MockHttpClient.execute() returns null
+        }
+
+        // then
+        assertThat(mockHttpClient.request().url())
+                .isEqualTo("https://localhost/v1/chat/completions?param1=value1&param2=value2");
     }
 }

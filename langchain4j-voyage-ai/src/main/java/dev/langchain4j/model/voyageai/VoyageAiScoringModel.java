@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final Integer topK;
     private final Boolean truncation;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiScoringModel(
             HttpClientBuilder httpClientBuilder,
             Map<String, String> customHeaders,
@@ -56,6 +58,26 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .customHeaders(customHeaders)
+                .build();
+    }
+
+    public VoyageAiScoringModel(Builder builder) {
+        // Below attributes are force to non-null
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        // Below attributes can be null
+        this.truncation = builder.truncation;
+        this.topK = builder.topK;
+
+        this.client = VoyageAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .customHeaders(builder.customHeaders)
                 .build();
     }
 
@@ -96,6 +118,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean truncation;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -174,19 +197,17 @@ public class VoyageAiScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public VoyageAiScoringModel build() {
-            return new VoyageAiScoringModel(
-                    httpClientBuilder,
-                    customHeaders,
-                    baseUrl,
-                    timeout,
-                    maxRetries,
-                    apiKey,
-                    modelName,
-                    topK,
-                    truncation,
-                    logRequests,
-                    logResponses);
+            return new VoyageAiScoringModel(this);
         }
     }
 }

@@ -17,7 +17,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -306,15 +305,13 @@ class GitHubModelsChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        SystemMessage systemMessage =
-                SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage(
-                "List teams in the past French presidents, with their first name, last name, dates of service.");
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
 
-        ChatResponse response = model.chat(systemMessage, userMessage);
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        String answer = model.chat(userMessage);
+
+        assertThat(answer).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @ParameterizedTest(name = "Testing model {0}")

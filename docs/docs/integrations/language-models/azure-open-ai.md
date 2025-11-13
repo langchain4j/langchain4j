@@ -27,13 +27,13 @@ Azure OpenAI provides language models from OpenAI (`gpt-4`, `gpt-4o`, etc.) host
 
 ### Plain Java
 
-The `langchain4j-azure-open-ai` library is availlable on Maven Central.
+The `langchain4j-azure-open-ai` library is available on Maven Central.
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.1.0-rc1</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 
@@ -66,7 +66,7 @@ ChatModel model = AzureOpenAiChatModel.builder()
         .build();
 ```
 
-This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and depoyment name.
+This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and deployment name.
 Other parameters can be customized by providing values in the builder.
 
 ### Spring Boot
@@ -78,6 +78,7 @@ langchain4j.azure-open-ai.chat-model.service-version=...
 langchain4j.azure-open-ai.chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.chat-model.non-azure-api-key=${OPENAI_API_KEY}
 langchain4j.azure-open-ai.chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.chat-model.max-tokens=...
 langchain4j.azure-open-ai.chat-model.temperature=...
 langchain4j.azure-open-ai.chat-model.top-p=
@@ -326,6 +327,7 @@ langchain4j.azure-open-ai.streaming-chat-model.endpoint=${AZURE_OPENAI_URL}
 langchain4j.azure-open-ai.streaming-chat-model.service-version=...
 langchain4j.azure-open-ai.streaming-chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.streaming-chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.streaming-chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.max-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.temperature=...
 langchain4j.azure-open-ai.streaming-chat-model.top-p=...
@@ -341,6 +343,70 @@ langchain4j.azure-open-ai.streaming-chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
 ```
+
+
+## Audio Transcription
+
+Azure OpenAI now supports audio transcription, enabling you to convert spoken language from audio files into text using state-of-the-art models hosted on Azure.
+
+### Maven Dependency
+
+The audio transcription feature is included in the main `langchain4j-azure-open-ai` package:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-azure-open-ai</artifactId>
+    <version>1.8.0</version>
+</dependency>
+```
+
+### Plain Java Usage
+
+You can transcribe audio files with the `AzureOpenAiAudioTranscriptionModel`:
+
+```java
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import java.io.File;
+import java.nio.file.Files;
+
+AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
+    .endpoint(System.getenv("AZURE_OPENAI_URL"))
+    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    .deploymentName("your-audio-model-deployment-name") // e.g., "whisper"
+    .build();
+
+// Read audio file as binary data
+File audioFile = new File("path/to/audio-file.wav");
+byte[] audioData = Files.readAllBytes(audioFile.toPath());
+
+// Create Audio object with binary data
+Audio audio = Audio.builder()
+    .binaryData(audioData)
+    .build();
+
+// Create transcription request
+AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+    .audio(audio)
+    .prompt("This is an audio file containing ...") // optional
+    .language("en") // optional
+    .temperature(0.0) // optional
+    .build();
+
+// Transcribe audio
+AudioTranscriptionResponse response = model.transcribe(request);
+String transcript = response.text();
+System.out.println(transcript);
+```
+
+### Notes
+
+- **Deployment**: You must deploy an audio transcription model (such as Whisper) in your Azure OpenAI resource. See the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/) for details.
+- **Supported Formats**: Common audio formats such as WAV, MP3, and FLAC are supported.
+- **Quotas and Pricing**: Audio transcription consumes resources from your Azure subscription. Review the applicable quotas and pricing in your Azure portal.
+
 
 ## Examples
 

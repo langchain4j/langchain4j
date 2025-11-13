@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.Utils.quoted;
  * Represents an LLM-generated request to execute a tool.
  */
 public class ToolExecutionRequest {
+
     private final String id;
     private final String name;
     private final String arguments;
@@ -75,6 +76,13 @@ public class ToolExecutionRequest {
                 + ", name = " + quoted(name)
                 + ", arguments = " + quoted(arguments)
                 + " }";
+    }
+
+    public Builder toBuilder() {
+        return builder()
+                .id(id)
+                .name(name)
+                .arguments(arguments);
     }
 
     /**

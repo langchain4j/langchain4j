@@ -2,64 +2,25 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-class GeminiGenerationConfig {
-
-    @JsonProperty
-    private final List<String> stopSequences;
-
-    @JsonProperty
-    private final String responseMimeType;
-
-    @JsonProperty
-    private final GeminiSchema responseSchema;
-
-    @JsonProperty
-    private final Integer candidateCount;
-
-    @JsonProperty
-    private final Integer maxOutputTokens;
-
-    @JsonProperty
-    private final Double temperature;
-
-    @JsonProperty
-    private final Integer topK;
-
-    @JsonProperty
-    private Integer seed;
-
-    @JsonProperty
-    private final Double topP;
-
-    @JsonProperty
-    private final Double presencePenalty;
-
-    @JsonProperty
-    private final Double frequencyPenalty;
-
-    @JsonProperty
-    private final GeminiThinkingConfig thinkingConfig;
-
-    GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
-        this.stopSequences = builder.stopSequences;
-        this.responseMimeType = builder.responseMimeType;
-        this.responseSchema = builder.responseSchema;
-        this.candidateCount = builder.candidateCount;
-        this.maxOutputTokens = builder.maxOutputTokens;
-        this.temperature = builder.temperature;
-        this.topK = builder.topK;
-        this.seed = builder.seed;
-        this.topP = builder.topP;
-        this.presencePenalty = builder.presencePenalty;
-        this.frequencyPenalty = builder.frequencyPenalty;
-        this.thinkingConfig = builder.thinkingConfig;
-    }
+record GeminiGenerationConfig(
+        @JsonProperty("stopSequences") List<String> stopSequences,
+        @JsonProperty("responseMimeType") String responseMimeType,
+        @JsonProperty("responseSchema") GeminiSchema responseSchema,
+        @JsonProperty("candidateCount") Integer candidateCount,
+        @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
+        @JsonProperty("temperature") Double temperature,
+        @JsonProperty("topK") Integer topK,
+        @JsonProperty("seed") Integer seed,
+        @JsonProperty("topP") Double topP,
+        @JsonProperty("presencePenalty") Double presencePenalty,
+        @JsonProperty("frequencyPenalty") Double frequencyPenalty,
+        @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
+        @JsonProperty("responseLogprobs") Boolean responseLogprobs,
+        @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
+        @JsonProperty("logprobs") Integer logprobs) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
@@ -78,7 +39,10 @@ class GeminiGenerationConfig {
         private Double topP;
         private Double presencePenalty;
         private Double frequencyPenalty;
+        private Boolean responseLogprobs;
+        private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
+        private Integer logprobs;
 
         GeminiGenerationConfigBuilder() {}
 
@@ -142,8 +106,38 @@ class GeminiGenerationConfig {
             return this;
         }
 
+        GeminiGenerationConfigBuilder responseLogprobs(Boolean responseLogprobs) {
+            this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
+            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder logprobs(Integer logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
         GeminiGenerationConfig build() {
-            return new GeminiGenerationConfig(this);
+            return new GeminiGenerationConfig(
+                    stopSequences,
+                    responseMimeType,
+                    responseSchema,
+                    candidateCount,
+                    maxOutputTokens,
+                    temperature,
+                    topK,
+                    seed,
+                    topP,
+                    presencePenalty,
+                    frequencyPenalty,
+                    thinkingConfig,
+                    responseLogprobs,
+                    enableEnhancedCivicAnswers,
+                    logprobs);
         }
     }
 }
