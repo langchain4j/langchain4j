@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.registryclient.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
@@ -13,11 +14,13 @@ public class McpVariable {
     private String description;
     private String format;
 
-    @JsonProperty("is_required")
+    @JsonAlias("is_required")
     private boolean isRequired;
 
-    @JsonProperty("is_secret")
+    @JsonAlias("is_secret")
     private boolean isSecret;
+
+    private String placeholder;
 
     private String value;
 
@@ -43,6 +46,10 @@ public class McpVariable {
 
     public boolean isSecret() {
         return isSecret;
+    }
+
+    public String getPlaceholder() {
+        return placeholder;
     }
 
     public String getValue() {

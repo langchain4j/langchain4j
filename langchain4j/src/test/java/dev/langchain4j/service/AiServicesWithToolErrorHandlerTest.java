@@ -36,4 +36,15 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
         }
         aiServiceBuilder.tools(new Tools());
     }
+
+    @Override
+    protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
+        class Tools {
+            @Tool
+            String getImage() {
+                throw new RuntimeException("Unsupported content type: \"image\"");
+            }
+        }
+        aiServiceBuilder.tools(new Tools());
+    }
 }
