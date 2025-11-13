@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private final String url;
-    private final Map<String, String> customHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
@@ -49,7 +50,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         logResponses = builder.logResponses;
         trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
-        customHeaders = getOrDefault(builder.customHeaders, Map.of());
+        customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         HttpClient.Builder clientBuilder = HttpClient.newBuilder();
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
@@ -87,7 +88,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (sessionId != null && !(message instanceof McpInitializeRequest)) {
             builder.header("Mcp-Session-Id", sessionId);
         }
-        customHeaders.forEach(builder::header);
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(builder::header);
+        }
         return builder.uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
@@ -219,7 +223,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private Executor executor;
         private String url;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -237,7 +241,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * The request headers of the MCP server.
          */
         public StreamableHttpMcpTransport.Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * A supplier for dynamic request headers of the MCP server.
+         * The supplier is called for each request, allowing headers to be updated dynamically.
+         */
+        public StreamableHttpMcpTransport.Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

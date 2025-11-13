@@ -1,10 +1,7 @@
 package dev.langchain4j.mcp.client.integration;
 
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
-import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
@@ -13,19 +10,16 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 
-class McpReconnectIT {
-
-    private static Process process;
-    private static DefaultMcpClient mcpClient;
+class McpReconnectHttpTransportIT extends McpReconnectTestBase {
 
     @BeforeAll
     static void setup() throws IOException, InterruptedException, TimeoutException {
         skipTestsIfJbangNotAvailable();
-        process = startServerHttp("tools_mcp_server.java");
+        process = startProcess();
         McpTransport transport = new HttpMcpTransport.Builder()
                 .sseUrl("http://localhost:8080/mcp/sse")
+                .customHeaders(() -> customHeaders)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -36,36 +30,13 @@ class McpReconnectIT {
                 .build();
     }
 
-    @Test
-    void reconnect() throws IOException, TimeoutException, InterruptedException {
-        executeAToolAndAssertSuccess();
-
-        // kill the server and restart it
-        process.destroy();
-        process = startServerHttp("tools_mcp_server.java");
-
-        // give the MCP client some time to reconnect
-        Thread.sleep(5_000);
-
-        executeAToolAndAssertSuccess();
-    }
-
     @AfterAll
-    static void tearDown() throws IOException, InterruptedException {
+    static void tearDown() throws Exception {
         if (mcpClient != null) {
             mcpClient.close();
         }
         if (process != null) {
             process.destroyForcibly();
         }
-    }
-
-    private void executeAToolAndAssertSuccess() {
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoString")
-                .arguments("{\"input\": \"abc\"}")
-                .build();
-        String result = mcpClient.executeTool(toolExecutionRequest).resultText();
-        assertThat(result).isEqualTo("abc");
     }
 }

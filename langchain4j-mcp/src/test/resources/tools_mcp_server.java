@@ -14,8 +14,13 @@ import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.ToolResponse;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
+import jakarta.inject.Inject;
 
 public class tools_mcp_server {
+
+    @Inject
+    private CurrentVertxRequest currentRequest;
 
     @Tool(description = "Echoes a string")
     public String echoString(@ToolArg(description = "The string to be echoed") String input) {
@@ -37,6 +42,11 @@ public class tools_mcp_server {
     @Tool(description = "Echoes a boolean")
     public String echoBoolean(@ToolArg(description = "The boolean to be echoed") Boolean input) {
         return Boolean.valueOf(input).toString();
+    }
+
+    @Tool(description = "Returns the value of the given HTTP header")
+    public String echoHeader(@ToolArg(description = "The name of the header to return") String headerName) {
+        return currentRequest.getCurrent().request().getHeader(headerName);
     }
 
     volatile boolean cancellationReceived = false;
