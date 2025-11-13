@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {

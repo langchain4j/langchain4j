@@ -1,33 +1,30 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 record GeminiGenerationConfig(
-        @JsonProperty("stopSequences") List<String> stopSequences,
-        @JsonProperty("responseMimeType") String responseMimeType,
-        @JsonProperty("responseSchema") GeminiSchema responseSchema,
-        @JsonProperty("candidateCount") Integer candidateCount,
-        @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
-        @JsonProperty("temperature") Double temperature,
-        @JsonProperty("topK") Integer topK,
-        @JsonProperty("seed") Integer seed,
-        @JsonProperty("topP") Double topP,
-        @JsonProperty("presencePenalty") Double presencePenalty,
-        @JsonProperty("frequencyPenalty") Double frequencyPenalty,
-        @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
-        @JsonProperty("responseLogprobs") Boolean responseLogprobs,
-        @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
-        @JsonProperty("logprobs") Integer logprobs) {
+        List<String> stopSequences,
+        String responseMimeType,
+        GeminiSchema responseSchema,
+        Integer candidateCount,
+        Integer maxOutputTokens,
+        Double temperature,
+        Integer topK,
+        Integer seed,
+        Double topP,
+        Double presencePenalty,
+        Double frequencyPenalty,
+        GeminiThinkingConfig thinkingConfig,
+        Boolean responseLogprobs,
+        Integer logprobs) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
     }
 
     static class GeminiGenerationConfigBuilder {
-
         private List<String> stopSequences;
         private String responseMimeType;
         private GeminiSchema responseSchema;
@@ -40,11 +37,11 @@ record GeminiGenerationConfig(
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Boolean responseLogprobs;
-        private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
         private Integer logprobs;
 
-        GeminiGenerationConfigBuilder() {}
+        GeminiGenerationConfigBuilder() {
+        }
 
         GeminiGenerationConfigBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
@@ -111,11 +108,6 @@ record GeminiGenerationConfig(
             return this;
         }
 
-        GeminiGenerationConfigBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
-            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
-            return this;
-        }
-
         GeminiGenerationConfigBuilder logprobs(Integer logprobs) {
             this.logprobs = logprobs;
             return this;
@@ -136,7 +128,6 @@ record GeminiGenerationConfig(
                     frequencyPenalty,
                     thinkingConfig,
                     responseLogprobs,
-                    enableEnhancedCivicAnswers,
                     logprobs);
         }
     }

@@ -31,6 +31,10 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -82,14 +86,14 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
     }
 
-    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+    GeminiEmbeddingResponse embed(String modelName, GeminiEmbeddingRequest request) {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiEmbeddingResponse.class);
     }
 
-    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+    GeminiBatchEmbeddingResponse batchEmbed(String modelName, GeminiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiBatchEmbeddingResponse.class);
     }
 
     void generateContentStream(

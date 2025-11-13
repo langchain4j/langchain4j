@@ -27,7 +27,7 @@ class FunctionMapper {
 
         List<GeminiFunctionDeclaration> functionDeclarations = specifications.stream()
                 .map(specification -> {
-                    GeminiFunctionDeclaration.GeminiFunctionDeclarationBuilder fnBuilder =
+                    GeminiFunctionDeclaration.Builder fnBuilder =
                             GeminiFunctionDeclaration.builder().name(specification.name());
 
                     if (specification.description() != null) {

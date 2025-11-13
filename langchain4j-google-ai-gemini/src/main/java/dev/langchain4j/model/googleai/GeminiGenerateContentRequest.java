@@ -24,7 +24,8 @@ record GeminiGenerateContentRequest(
         private GeminiContent systemInstruction;
         private GeminiGenerationConfig generationConfig;
 
-        GeminiGenerateContentRequestBuilder() {}
+        GeminiGenerateContentRequestBuilder() {
+        }
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -70,6 +71,11 @@ record GeminiGenerateContentRequest(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiTool(List<GeminiFunctionDeclaration> functionDeclarations, GeminiCodeExecution codeExecution) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiCodeExecution() {}
+        record GeminiCodeExecution() {
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {
     }
 }

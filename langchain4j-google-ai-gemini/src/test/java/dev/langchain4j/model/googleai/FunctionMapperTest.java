@@ -72,10 +72,10 @@ class FunctionMapperTest {
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("distanceBetween");
+        assertThat(gFnDecl.name()).isEqualTo("distanceBetween");
 
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
 
         assertThat(props).hasSize(2);
         assertThat(props.keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
@@ -114,8 +114,8 @@ class FunctionMapperTest {
         //        private final Address billingAddress;
 
         public Customer(String firstname, String lastname, Address shippingAddress
-                //                        Address billingAddress
-                ) {
+                        //                        Address billingAddress
+        ) {
             this.firstname = firstname;
             this.lastname = lastname;
             this.shippingAddress = shippingAddress;
@@ -179,10 +179,10 @@ class FunctionMapperTest {
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("makeOrder");
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
+        assertThat(gFnDecl.name()).isEqualTo("makeOrder");
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
 
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
         assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("order");
 
@@ -247,10 +247,10 @@ class FunctionMapperTest {
         List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("toolName");
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
+        assertThat(gFnDecl.name()).isEqualTo("toolName");
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
 
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
         System.out.println("props = " + withoutNullValues(props.toString()));
         assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("arrayParameter");
