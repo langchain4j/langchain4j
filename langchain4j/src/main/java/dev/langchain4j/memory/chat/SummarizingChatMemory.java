@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -20,43 +21,45 @@ import java.util.function.Function;
 
 /**
  * A chat memory implementation that automatically summarizes conversation history
- * when the number of messages exceeds a configurable threshold.
+ * when the number of messages exceeds a configurable limit.
  *
  * <p>This class behaves similarly to {@link MessageWindowChatMemory} but adds automatic
- * summarization capabilities using an underlying {@link ChatModel}.
+ * summarization capabilities through a customizable <b>summary generation function</b>.
  *
  * <p>Key features:
  * <ul>
- *     <li>Supports both static and dynamic configuration of <b>maxMessages</b>:
- *         the maximum number of messages retained before triggering evictions.</li>
- *     <li>Supports both static and dynamic configuration of <b>summarizeThreshold</b>:
- *         the number of messages to remove and summarize once the message limit is exceeded.
- *         Must be greater than 1.</li>
+ *     <li>Supports both static and dynamic configuration of <b>maxMessages</b> —
+ *         the maximum number of messages retained before triggering summarization.</li>
+ *     <li>Supports both static and dynamic configuration of <b>maxMessagesToSummarize</b> —
+ *         the number of messages to remove and summarize once the limit is exceeded.</li>
  *     <li>Supports dynamic generation of <b>system prompts</b> per memory ID,
- *         allowing context-specific instructions for summarization.</li>
+ *         allowing context-specific summarization instructions.</li>
  *     <li>Automatically evicts orphaned {@link ToolExecutionResultMessage}s
  *         when their parent {@link AiMessage} is evicted.</li>
- *     <li>Ensures that {@link SystemMessage}s are preserved at the head of the memory
- *         and never summarized or evicted.</li>
+ *     <li>Ensures that {@link SystemMessage}s are preserved at the beginning of the memory
+ *         and are never summarized or removed.</li>
  *     <li>Integrates with any {@link ChatMemoryStore} to persist memory state.</li>
+ *     <li>Allows injection of a custom summary generation function, or uses the
+ *         <b>default summary function</b> </li>
  * </ul>
  *
  * <p>Usage notes:
  * <ul>
- *     <li>Messages are only summarized when the total message count exceeds <b>maxMessages</b>.</li>
- *     <li>The number of messages removed during summarization is determined by
- *         <b>summarizeThreshold</b>, and the summary is inserted back into the memory.</li>
+ *     <li>Messages are summarized only when their count exceeds <b>maxMessages</b>.</li>
+ *     <li>The number of messages summarized each time is determined by
+ *         <b>maxMessagesToSummarize</b>, and the generated summary is added back into memory.</li>
+ *     <li>You can provide your own summary generation function or use the default one,
+ *         which only requires a {@link ChatModel} instance.</li>
  *     <li>Dynamic configuration functions allow real-time adjustment of
- *         maxMessages, summarizeThreshold, and system prompts for different memory IDs.</li>
+ *         maxMessages, maxMessagesToSummarize, and system prompts for different memory IDs.</li>
  * </ul>
  *
  * <p>Example usage:
  * <pre>{@code
  * SummarizingChatMemory memory = SummarizingChatMemory.builder()
- *     .chatModel(chatModel)
+ *     .defaultGenerateSummaryFunction(chatModel) // use default summarization with a ChatModel
  *     .maxMessages(10)
- *     .summarizeThreshold(3)
- *     .dynamicSystemPrompt(id -> "Summarize conversation for user: " + id)
+ *     .maxMessagesToSummarize(3)
  *     .build();
  * }</pre>
  *
@@ -66,43 +69,26 @@ public class SummarizingChatMemory implements ChatMemory {
 
     private final Object id;
     private final ChatMemoryStore store;
-    private final ChatModel chatModel;
 
     private final Function<Object, Integer> maxMessagesFunction;
-    private final Function<Object, Integer> summarizeThresholdFunction;
-    private final Function<Object, String> systemPromptFunction;
-
-    private static final String DEFAULT_SYSTEM_PROMPT =
-            """
-            You are a conversation summarization assistant. Please read the entire history of interactions between the user and the AI, and generate a concise summary.
-
-            Requirements for the summary:
-            - Write in natural and fluent Chinese.
-            - Keep the length between 50 and 500 characters.
-            - Accurately capture the main topics, goals, and conclusions discussed.
-            - Exclude any irrelevant dialogue or system messages.
-            - Maintain a neutral and objective tone, without adding unexpressed or speculative information.
-            - If the conversation covers multiple topics, organize the summary clearly by theme.
-            - Do not include introductions such as “Here is the summary” or “The user said.” Output only the summary text itself.
-            """;
+    private final Function<Object, Integer> maxMessagesToSummarizeFunction;
+    private final Function<List<ChatMessage>, UserMessage> generateSummaryFunction;
 
     private SummarizingChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.store = ensureNotNull(builder.getStore(), "store");
-        this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
-
-        this.systemPromptFunction = ensureNotNull(builder.getSystemPromptFunction(), "systemPromptFunction");
 
         this.maxMessagesFunction = ensureNotNull(builder.maxMessagesFunction, "maxMessagesFunction");
-        this.summarizeThresholdFunction =
-                ensureNotNull(builder.summarizeThresholdFunction, "summarizeThresholdFunction");
+        this.maxMessagesToSummarizeFunction =
+                ensureNotNull(builder.maxMessagesToSummarizeFunction, "maxMessagesToSummarizeFunction");
+        this.generateSummaryFunction = ensureNotNull(builder.generateSummaryFunction, "generateSummaryFunction");
 
         // Validate configuration once on build
         int max = maxMessagesFunction.apply(id);
-        int threshold = summarizeThresholdFunction.apply(id);
+        int maxMessagesToSummarize = maxMessagesToSummarizeFunction.apply(id);
         ensureGreaterThanZero(max, "maxMessages");
-        ensureGreaterThanZero(threshold - 1, "summarizeThreshold -1");
-        ensureGreaterThanZero(max - threshold, "maxMessages - summarizeThreshold");
+        ensureGreaterThanZero(maxMessagesToSummarize - 1, "maxMessagesToSummarize -1");
+        ensureGreaterThanZero(max - maxMessagesToSummarize, "maxMessages - maxMessagesToSummarize");
     }
 
     @Override
@@ -144,21 +130,21 @@ public class SummarizingChatMemory implements ChatMemory {
     }
 
     /**
-     * Check message list size and trigger summarization if it exceeds threshold.
+     * Check message list size and trigger summarization if it exceeds maxMessages.
      */
     private void checkAndSummarizeMessages(List<ChatMessage> messages) {
         int maxMessages = maxMessagesFunction.apply(id);
-        int summarizeThreshold = summarizeThresholdFunction.apply(id);
+        int maxMessagesToSummarize = maxMessagesToSummarizeFunction.apply(id);
 
         ensureGreaterThanZero(maxMessages, "maxMessages");
-        ensureGreaterThanZero(summarizeThreshold - 1, "summarizeThreshold -1");
-        ensureGreaterThanZero(maxMessages - summarizeThreshold, "maxMessages - summarizeThreshold");
+        ensureGreaterThanZero(maxMessagesToSummarize - 1, "maxMessagesToSummarize -1");
+        ensureGreaterThanZero(maxMessages - maxMessagesToSummarize, "maxMessages - maxMessagesToSummarize");
 
         if (messages.size() <= maxMessages) return;
 
         List<ChatMessage> removedMessages = new ArrayList<>();
         int removedCount = 0;
-        while (!messages.isEmpty() && removedCount < summarizeThreshold) {
+        while (!messages.isEmpty() && removedCount < maxMessagesToSummarize) {
             int evictIndex = (messages.get(0) instanceof SystemMessage) ? 1 : 0;
 
             ChatMessage evicted = messages.remove(evictIndex);
@@ -171,31 +157,32 @@ public class SummarizingChatMemory implements ChatMemory {
                 }
             }
         }
-
         int insertIndex = (!messages.isEmpty() && messages.get(0) instanceof SystemMessage) ? 1 : 0;
-        messages.add(insertIndex, generateSummary(removedMessages));
-    }
-
-    /**
-     * Generate a concise AI summary for the removed messages.
-     */
-    private AiMessage generateSummary(List<ChatMessage> messages) {
-        SystemMessage systemPrompt = SystemMessage.from(systemPromptFunction.apply(id));
-        messages.add(0, systemPrompt);
-        ChatResponse chatResponse = chatModel.chat(messages);
-        return AiMessage.aiMessage(chatResponse.aiMessage().text());
+        messages.add(insertIndex, this.generateSummaryFunction.apply(removedMessages));
     }
 
     /**
      * Builder for {@link SummarizingChatMemory}.
      */
     public static class Builder {
+        private static final String DEFAULT_SYSTEM_PROMPT =
+                """
+                        You are a conversation summarization assistant. Please read the entire history of interactions between the user and the AI, and generate a concise summary.
+    
+                        Requirements for the summary:
+                        - Write in natural and fluent Chinese.
+                        - Keep the length between 50 and 500 characters.
+                        - Accurately capture the main topics, goals, and conclusions discussed.
+                        - Exclude any irrelevant dialogue or system messages.
+                        - Maintain a neutral and objective tone, without adding unexpressed or speculative information.
+                        - If the conversation covers multiple topics, organize the summary clearly by theme.
+                        - Do not include introductions such as “Here is the summary” or “The user said.” Output only the summary text itself.
+                        """;
         private Object id = ChatMemoryService.DEFAULT;
         private Function<Object, Integer> maxMessagesFunction;
-        private Function<Object, Integer> summarizeThresholdFunction;
-        private Function<Object, String> systemPromptFunction;
+        private Function<Object, Integer> maxMessagesToSummarizeFunction;
+        private Function<List<ChatMessage>, UserMessage> generateSummaryFunction;
         private ChatMemoryStore store;
-        private ChatModel chatModel;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -232,67 +219,39 @@ public class SummarizingChatMemory implements ChatMemory {
         }
 
         /**
-         * Sets a dynamic function to determine when summarization should occur.
-         * <p>
-         * When the number of messages exceeds the configured {@code maxMessages},
-         * this function is evaluated to decide the summarization threshold.
-         * Messages beyond the threshold are removed, summarized,
-         * and the summary message is inserted back into the message list.
+         * Sets a dynamic function to determine how many messages should be summarized
+         * when the total message count exceeds the configured {@code maxMessages}.
          *
-         * @param func a function that determines the summarization threshold based on the context or ID
-         *             Must return a value greater than 1.
+         * <p>When the number of messages exceeds {@code maxMessages},
+         * the system will remove the specified number of messages
+         * (determined by this function’s return value), generate a summary
+         * of those messages, and insert the summary back into the memory.
+         *
+         * @param func a function that returns the number of messages to remove and summarize
+         *             when the total exceeds {@code maxMessages}. Must return a value greater than 1.
          * @return the builder instance
          */
-        public Builder dynamicSummarizeThreshold(Function<Object, Integer> func) {
-            this.summarizeThresholdFunction = func;
+        public Builder dynamicMaxMessagesToSummarize(Function<Object, Integer> func) {
+            this.maxMessagesToSummarizeFunction = func;
             return this;
         }
 
         /**
-         * Sets a static summarization threshold.
-         * <p>
-         * When the number of messages exceeds the configured {@code maxMessages},
-         * and this static threshold is reached, messages beyond the threshold will be
-         * removed and summarized. The generated summary message will then be inserted
-         * back into the message list.
+         * Sets a static number of messages to remove and summarize
+         * when the total message count exceeds the configured {@code maxMessages}.
          *
-         * @param summarizeThreshold the fixed number of messages that triggers summarization
-         *                           Must greater than 1.
+         * <p>When the number of messages exceeds {@code maxMessages},
+         * the system will remove the specified number of messages
+         * (defined by {@code maxMessagesToSummarize}), generate a summary
+         * of those messages, and insert the summary back into the memory.
+         *
+         * @param maxMessagesToSummarize the fixed number of messages to remove and summarize
+         *                               when total messages exceed {@code maxMessages}.
+         *                               Must be greater than 1.
          * @return the builder instance
          */
-        public Builder summarizeThreshold(Integer summarizeThreshold) {
-            this.summarizeThresholdFunction = (id) -> summarizeThreshold;
-            return this;
-        }
-
-        /**
-         * Sets a static system prompt used during summarization.
-         * <p>
-         * The specified prompt will be applied each time a summarization is performed,
-         * providing consistent system-level instructions for generating summary content.
-         *
-         * @param systemPrompt the static system prompt to use during summarization
-         *                     If not provided, an {@code DEFAULT_SYSTEM_PROMPT} will be used.
-         * @return the builder instance
-         */
-        public Builder systemPrompt(String systemPrompt) {
-            this.systemPromptFunction = (id) -> systemPrompt;
-            return this;
-        }
-
-        /**
-         * Sets a dynamic system prompt generator used during summarization.
-         * <p>
-         * The provided function is invoked to dynamically generate a system prompt
-         * based on the given context or identifier each time a summarization occurs.
-         * This allows different system instructions to be used for different sessions or contexts.
-         *
-         * @param systemPromptFunction a function that generates the system prompt dynamically
-         *                             If not provided, an {@code DEFAULT_SYSTEM_PROMPT} will be used.
-         * @return the builder instance
-         */
-        public Builder dynamicSystemPrompt(Function<Object, String> systemPromptFunction) {
-            this.systemPromptFunction = systemPromptFunction;
+        public Builder maxMessagesToSummarize(Integer maxMessagesToSummarize) {
+            this.maxMessagesToSummarizeFunction = (id) -> maxMessagesToSummarize;
             return this;
         }
 
@@ -307,22 +266,46 @@ public class SummarizingChatMemory implements ChatMemory {
         }
 
         /**
-         * Sets the chat model used for summarizing removed conversations.
+         * Sets a custom conversation summarization function.
          * <p>
-         * When the number of messages exceeds the configured limits and older messages
-         * need to be summarized, this {@link ChatModel} will be used to generate
-         * the summary content for the removed conversation.
+         * When the total number of tokens in the chat history exceeds {@code maxTokens},
+         * this function is used to generate a condensed summary of past messages.
+         * The summary helps preserve conversational context while reducing token usage.
+         * </p>
          *
-         * @param chatModel the chat model used to summarize removed messages
-         * @return the builder instance
+         * @param generateSummaryFunction a custom summary generation function that takes
+         *                                a list of {@link ChatMessage} instances and
+         *                                returns a {@link UserMessage} containing the summary
+         * @return this {@code Builder} instance
          */
-        public Builder chatModel(ChatModel chatModel) {
-            this.chatModel = chatModel;
+        public Builder generateSummaryFunction(Function<List<ChatMessage>, UserMessage> generateSummaryFunction) {
+            this.generateSummaryFunction = generateSummaryFunction;
             return this;
         }
 
-        private Function<Object, String> getSystemPromptFunction() {
-            return systemPromptFunction != null ? systemPromptFunction : (id) -> DEFAULT_SYSTEM_PROMPT;
+        /**
+         * Initializes a default summary generation function.
+         * <p>
+         * The default implementation prepends a system prompt ({@link #DEFAULT_SYSTEM_PROMPT})
+         * and uses the provided {@link ChatModel} to generate a short summary of the
+         * conversation history. This method is useful when no custom summary function is specified.
+         * </p>
+         *
+         * @param chatModel the {@link ChatModel} used to generate conversation summaries
+         * @return this {@code Builder} instance
+         */
+        public Builder defaultGenerateSummaryFunction(ChatModel chatModel) {
+            this.generateSummaryFunction = (messages -> {
+                SystemMessage systemPrompt = SystemMessage.from(DEFAULT_SYSTEM_PROMPT);
+
+                List<ChatMessage> chatMessages = new ArrayList<>();
+                chatMessages.add(systemPrompt);
+                chatMessages.addAll(messages);
+                ChatResponse chatResponse = chatModel.chat(chatMessages);
+
+                return UserMessage.userMessage(chatResponse.aiMessage().text());
+            });
+            return this;
         }
 
         private ChatMemoryStore getStore() {

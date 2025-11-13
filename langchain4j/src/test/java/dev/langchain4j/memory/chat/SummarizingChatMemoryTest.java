@@ -3,7 +3,6 @@ package dev.langchain4j.memory.chat;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -22,7 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-@EnabledIfEnvironmentVariable(named = "deepseek-key", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class SummarizingChatMemoryTest implements WithAssertions {
     @ParameterizedTest
     @MethodSource("models")
@@ -30,8 +29,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         {
             ChatMemory chatMemory = SummarizingChatMemory.builder()
                     .maxMessages(4)
-                    .chatModel(chatModel)
-                    .summarizeThreshold(2)
+                    .defaultGenerateSummaryFunction(chatModel)
+                    .maxMessagesToSummarize(2)
                     .build();
             assertThat(chatMemory.id()).isEqualTo("default");
         }
@@ -39,8 +38,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
             ChatMemory chatMemory = SummarizingChatMemory.builder()
                     .id("abc")
                     .maxMessages(4)
-                    .chatModel(chatModel)
-                    .summarizeThreshold(2)
+                    .defaultGenerateSummaryFunction(chatModel)
+                    .maxMessagesToSummarize(2)
                     .build();
             assertThat(chatMemory.id()).isEqualTo("abc");
         }
@@ -52,8 +51,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // Create a summarizing chat memory instance
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4) // Keep at most 4 messages
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // Trigger summarization when exceeding 2 messages
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // Trigger summarization when exceeding 2 messages
                 .build();
 
         // Add the first three messages
@@ -66,7 +65,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id", "timestamp", "createdAt")
                 .containsExactly(userMessage("hello"), userMessage("world"), userMessage("I am lisi"));
 
-        // Add the fourth message, which may trigger summarization logic
         chatMemory.add(userMessage("who are you"));
 
         // The first three messages might have been summarized; verify the message list after summarization
@@ -97,8 +95,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // Create a chat memory instance with summarization capability
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4) // Keep at most 4 messages
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // Summarization is triggered only when the threshold is exceeded
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // Summarization is triggered only when the threshold is exceeded
                 .build();
 
         // Add the first four messages — no summarization occurs yet
@@ -149,8 +147,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // Create a chat memory instance with summarization capability
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4) // Keep at most 4 messages
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // Summarization is triggered only when the threshold is exceeded
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // Summarization is triggered only when the threshold is exceeded
                 .build();
 
         // Add a system message
@@ -205,8 +203,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
-                .chatModel(chatModel)
-                .summarizeThreshold(2)
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2)
                 .build();
 
         SystemMessage sys1 = systemMessage("You are a helpful assistant");
@@ -263,8 +261,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
-                .chatModel(chatModel)
-                .summarizeThreshold(2)
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2)
                 .build();
 
         // Add a system message
@@ -322,8 +320,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // Configure maxMessages=3 and summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(3)
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // must be greater than 1
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // must be greater than 1
                 .build();
 
         // Add a user message
@@ -377,8 +375,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // Configure summarizeThreshold > 1
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // must be greater than 1
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // must be greater than 1
                 .build();
 
         // Add a SystemMessage
@@ -444,8 +442,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // given: chat memory with maxMessages=3, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(3)
-                .chatModel(chatModel)
-                .summarizeThreshold(2)
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2)
                 .build();
 
         // Add a SystemMessage
@@ -484,9 +482,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The remaining messages (after the SystemMessage) should only contain summary messages and the latest
         // messages;
         // no UserMessages or AiMessages with ToolExecutionRequests should remain
-        assertThat(finalMsgs.subList(1, finalMsgs.size()))
-                .allMatch(msg -> !(msg instanceof UserMessage)
-                        && !(msg instanceof AiMessage && ((AiMessage) msg).hasToolExecutionRequests()));
+        assertThat(finalMsgs.subList(1, finalMsgs.size())).allMatch(msg -> msg instanceof UserMessage);
 
         // Add a new AiMessage to ensure the latest message is retained
         AiMessage ai2 = aiMessage("2 + 2 = 4");
@@ -506,8 +502,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // given: SummarizingChatMemory with maxMessages=4, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
-                .chatModel(chatModel)
-                .summarizeThreshold(2)
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2)
                 .build();
 
         // Add a user message
@@ -571,8 +567,8 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // given: SummarizingChatMemory with maxMessages=5, summarizeThreshold=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(5)
-                .chatModel(chatModel)
-                .summarizeThreshold(2) // must be greater than 1
+                .defaultGenerateSummaryFunction(chatModel)
+                .maxMessagesToSummarize(2) // must be greater than 1
                 .build();
 
         // Add a SystemMessage
@@ -642,9 +638,9 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         int[] dynamicThreshold = {2};
 
         SummarizingChatMemory chatMemory = SummarizingChatMemory.builder()
-                .chatModel(chatModel)
+                .defaultGenerateSummaryFunction(chatModel)
                 .dynamicMaxMessages(id -> dynamicMaxMessages[0])
-                .dynamicSummarizeThreshold(id -> dynamicThreshold[0])
+                .dynamicMaxMessagesToSummarize(id -> dynamicThreshold[0])
                 .build();
 
         // Add a user message
@@ -714,67 +710,12 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgsAfterAi4.get(msgsAfterAi4.size() - 1)).isEqualTo(ai4);
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_dynamic_systemPrompt_and_update_it(ChatModel chatModel) {
-
-        // Initial system prompt
-        String[] dynamicPrompt = {"Initial system prompt: Please summarize the conversation."};
-
-        SummarizingChatMemory chatMemory = SummarizingChatMemory.builder()
-                .chatModel(chatModel)
-                .maxMessages(4)
-                .summarizeThreshold(2) // must be greater than 1
-                .dynamicSystemPrompt(id -> dynamicPrompt[0])
-                .build();
-
-        // Add messages: add 5 messages in total to exceed maxMessages=4
-        UserMessage u1 = userMessage("How is the weather today?");
-        chatMemory.add(u1);
-
-        AiMessage ai1 = aiMessage("It's sunny—great weather for going out.");
-        chatMemory.add(ai1);
-
-        UserMessage u2 = userMessage("What about tomorrow?");
-        chatMemory.add(u2);
-
-        AiMessage ai2 = aiMessage("There might be light rain tomorrow.");
-        chatMemory.add(ai2);
-
-        // Add the 5th message, exceeding maxMessages=4 and triggering summarization
-        UserMessage u3 = userMessage("Should I bring an umbrella?");
-        chatMemory.add(u3);
-
-        List<ChatMessage> msgsAfterSummary = chatMemory.messages();
-        // The first message in the queue is the summary message
-        ChatMessage summary1 = msgsAfterSummary.get(0);
-        assertThat(summary1).isInstanceOf(AiMessage.class);
-
-        // ---------------- Dynamically update the system prompt ----------------
-        dynamicPrompt[0] = "Updated system prompt: Please summarize the conversation in a formal tone.";
-
-        // Add more messages to trigger a new summarization
-        AiMessage ai3 = aiMessage("Yes, you should bring an umbrella.");
-        chatMemory.add(ai3);
-
-        UserMessage u4 = userMessage("Do I need to bring an umbrella for my commute to work tomorrow?");
-        chatMemory.add(u4);
-
-        List<ChatMessage> finalMsgs = chatMemory.messages();
-        // The first message in the queue is the new summary
-        ChatMessage summary2 = finalMsgs.get(0);
-        assertThat(summary2).isInstanceOf(AiMessage.class);
-
-        // The last message in the queue is the most recent one
-        assertThat(finalMsgs.get(finalMsgs.size() - 1)).isEqualTo(u4);
-    }
-
     static Stream<Arguments> models() {
         return Stream.of(Arguments.of(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
+                //                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName("deepseek-chat")
                 .logRequests(true)
                 .logResponses(true)
                 .build()));
