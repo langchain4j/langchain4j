@@ -47,7 +47,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_simple_object() {
         String json = "{\"name\":\"Tom\",\"age\":18}";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().name).isEqualTo("Tom");
         assertThat(result.get().value().age).isEqualTo(18);
@@ -61,7 +62,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_object_with_prefix_suffix() {
         String json = "prefix {\"name\":\"Jerry\",\"age\":20} suffix";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().name).isEqualTo("Jerry");
         assertThat(result.get().value().age).isEqualTo(20);
@@ -76,7 +78,7 @@ class JsonParsingUtilsTest {
     void extract_array() {
         String json = "[{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}]";
         Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
         assertThat(result.get().value()[0].name).isEqualTo("A");
@@ -92,7 +94,7 @@ class JsonParsingUtilsTest {
     void extract_array_with_noise() {
         String json = "abc [{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}] xyz";
         Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
     }
@@ -107,7 +109,7 @@ class JsonParsingUtilsTest {
     void extract_nested_array() {
         String json = "[[{\"name\":\"A\",\"age\":1}],[{\"name\":\"B\",\"age\":2}]]";
         Optional<JsonParsingUtils.ParsedJson<MyPojo[][]>> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
         assertThat(result.get().value()[0][0].name).isEqualTo("A");
@@ -122,7 +124,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_object_with_array_field() {
         String json = "{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]}";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().tags).containsExactly("a", "b");
     }
@@ -135,7 +138,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_object_with_map_field() {
         String json = "{\"name\":\"Tom\",\"age\":18,\"extra\":{\"k1\":123,\"k2\":\"v2\"}}";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().extra).containsEntry("k1", 123).containsEntry("k2", "v2");
     }
@@ -149,7 +153,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_multiple_json_blocks() {
         String json = "foo {\"name\":\"A\",\"age\":1} bar {\"name\":\"B\",\"age\":2}";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         // Should extract the last JSON block due to lastIndexOf logic
         assertThat(result.get().value().name).isEqualTo("B");
@@ -163,7 +168,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_invalid_json() {
         String json = "not a json";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isEmpty();
     }
 
@@ -176,7 +182,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_json_with_inner_brackets() {
         String json = "{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\",\"[c]\"]}";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo.class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value().tags).contains("[c]");
     }
@@ -192,7 +199,7 @@ class JsonParsingUtilsTest {
         String json =
                 "[{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]},{\"name\":\"Jerry\",\"age\":20,\"tags\":[\"x\",\"y\"]}]";
         Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class).asOptional();
         assertThat(result).isPresent();
         assertThat(result.get().value()[1].tags).containsExactly("x", "y");
     }

@@ -13,15 +13,17 @@ public class JsonParsingUtils {
 
     public record ParsedJson<T>(T value, String json) {}
 
-    public static <T> Optional<ParsedJson<T>> extractAndParseJson(String text, Class<T> type) {
+    public static <T> Either<Exception, ParsedJson<T>> extractAndParseJson(String text, Class<T> type) {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
     }
 
-    public static <T> Optional<ParsedJson<T>> extractAndParseJson(String text, ThrowingFunction<String, T> parser) {
+    public static <T> Either<Exception, ParsedJson<T>> extractAndParseJson(String text, ThrowingFunction<String, T> parser) {
+        Exception parsingException = null;
         try {
-            return Optional.of(new ParsedJson<>(parser.apply(text), text));
-        } catch (Exception ignored) {
-            // Ignore parsing errors and try to find a JSON block in the text
+            return Either.right(new ParsedJson<>(parser.apply(text), text));
+        } catch (Exception e) {
+            // Temporarily ignore parsing errors and try to find a JSON block in the text
+            parsingException = e;
         }
 
         int index = text.length();
@@ -29,17 +31,17 @@ public class JsonParsingUtils {
 
             int jsonEnd = findJsonEnd(text, index);
             if (jsonEnd < 0) {
-                return Optional.empty();
+                return Either.left(parsingException);
             }
 
             int jsonStart = findJsonStart(text, jsonEnd, text.charAt(jsonEnd));
             if (jsonStart < 0) {
-                return Optional.empty();
+                return Either.left(parsingException);
             }
 
             try {
                 String tentativeJson = text.substring(jsonStart, jsonEnd + 1);
-                return Optional.of(new ParsedJson<>(parser.apply(tentativeJson), tentativeJson));
+                return Either.right(new ParsedJson<>(parser.apply(tentativeJson), tentativeJson));
             } catch (Exception ignored) {
                 // If parsing fails, try to extract a JSON block from the text
             }
