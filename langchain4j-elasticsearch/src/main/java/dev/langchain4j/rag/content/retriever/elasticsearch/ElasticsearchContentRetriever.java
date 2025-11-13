@@ -73,9 +73,9 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     @Override
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
-            // TODO full text search
             try {
-                client.search(s -> s);
+                // TODO convert to content and return
+                ((ElasticsearchConfigurationFullText) configuration).fullTextSearch(client, indexName, query.text());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

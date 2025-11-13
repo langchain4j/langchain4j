@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * TODO
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
  * using the approximate kNN query implementation.
  *
@@ -17,6 +18,21 @@ import org.slf4j.LoggerFactory;
  */
 public class ElasticsearchConfigurationFullText extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationFullText.class);
+
+    public static class Builder {
+
+        public ElasticsearchConfigurationFullText build() {
+            return new ElasticsearchConfigurationFullText();
+        }
+
+        public ElasticsearchConfigurationFullText.Builder fieldName() {
+            return this;
+        }
+    }
+
+    public static ElasticsearchConfigurationFullText.Builder builder() {
+        return new ElasticsearchConfigurationFullText.Builder();
+    }
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
@@ -28,15 +44,16 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
         throw new UnsupportedEncodingException("Fulltext configuration does not support embedded search");
     }
 
-    public static class Builder {
-
-        public ElasticsearchConfigurationFullText build() {
-            return new ElasticsearchConfigurationFullText();
-        }
-    }
-
-    public static ElasticsearchConfigurationFullText.Builder builder() {
-        return new Builder();
+    public SearchResponse<Document> fullTextSearch(final ElasticsearchClient client, final String indexName, String query) throws ElasticsearchException, IOException {
+        return client.search(s -> s
+                        .index(indexName)
+                        .query(q -> q
+                                .match(m -> m
+                                        .field("text")
+                                        .query(query)
+                                )
+                        )
+                , Document.class);
     }
 
 }

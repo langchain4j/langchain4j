@@ -1,14 +1,17 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import java.io.IOException;
+import java.util.List;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import co.elastic.clients.elasticsearch._types.KnnQuery;
+import co.elastic.clients.elasticsearch._types.KnnRetriever;
+import co.elastic.clients.elasticsearch._types.Retriever;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.IOException;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
@@ -19,12 +22,15 @@ import java.io.IOException;
 public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
     private final Integer numCandidates;
+    private final String textQuery;
 
     public static class Builder {
         private Integer numCandidates;
+        private String textQuery;
+
 
         public ElasticsearchConfigurationHybrid build() {
-            return new ElasticsearchConfigurationHybrid(numCandidates);
+            return new ElasticsearchConfigurationHybrid(numCandidates, textQuery);
         }
 
         /**
@@ -39,6 +45,11 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             this.numCandidates = numCandidates;
             return this;
         }
+
+        public Builder textQuery(String textQuery) {
+            this.textQuery = textQuery;
+            return this;
+        }
     }
 
     public static ElasticsearchConfigurationHybrid.Builder builder() {
@@ -46,8 +57,9 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     }
 
 
-    private ElasticsearchConfigurationHybrid(Integer numCandidates) {
+    private ElasticsearchConfigurationHybrid(Integer numCandidates, final String textQuery) {
         this.numCandidates = numCandidates;
+        this.textQuery = textQuery;
     }
 
     @Override
@@ -62,7 +74,8 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
                                             String indexName,
                                             EmbeddingSearchRequest embeddingSearchRequest,
                                             boolean includeVectorResponse) throws ElasticsearchException, IOException {
-        KnnQuery.Builder krb = new KnnQuery.Builder()
+        // Building KNN part of the hybrid query
+        KnnRetriever.Builder krb = new KnnRetriever.Builder()
                 .field("vector")
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
@@ -74,7 +87,15 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             krb.numCandidates(numCandidates);
         }
 
-        KnnQuery knn = krb.build();
+        KnnRetriever knn = krb.build();
+
+        // Building full text part of the hybrid query
+        // TODO extract vector and text as constants
+        MatchQuery matchQuery = new MatchQuery.Builder()
+                .field("text")
+                .query(textQuery)
+                .build();
+
 
         log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);
 
@@ -86,8 +107,19 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
                             return new SourceConfig.Builder().filter(f -> f);
                         })
                         .index(indexName)
+                        .retriever(r -> r
+                                .rrf(rf -> rf
+                                        .retrievers(List.of(
+                                                Retriever.of(rt -> rt
+                                                        .standard(st -> st
+                                                                .query(matchQuery)
+                                                        )
+                                                ),
+                                                Retriever.of(rt -> rt.knn(knn))
+                                        ))
+                                )
+                        )
                         .size(embeddingSearchRequest.maxResults())
-                        .query(q -> q.knn(knn))
                         .minScore(embeddingSearchRequest.minScore())
                 , Document.class);
     }
