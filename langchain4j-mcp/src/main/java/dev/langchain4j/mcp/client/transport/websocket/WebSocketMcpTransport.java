@@ -88,7 +88,7 @@ public class WebSocketMcpTransport implements McpTransport {
                 return startWebSocket().get();
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
+                throw new RuntimeException(ex);
             } catch (ExecutionException ex) {
                 // if it failed again, bail out
                 throw new RuntimeException(ex);
