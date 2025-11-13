@@ -16,6 +16,7 @@ public class ToolServiceResult {
     private final ChatResponse finalResponse;
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
+    private final boolean immediateToolReturn;
 
     /**
      * @since 1.2.0
@@ -25,6 +26,7 @@ public class ToolServiceResult {
         this.finalResponse = ensureNotNull(builder.finalResponse, "finalResponse");
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
+        this.immediateToolReturn = builder.immediateToolReturn;
     }
 
     /**
@@ -37,6 +39,7 @@ public class ToolServiceResult {
         this.finalResponse = ensureNotNull(chatResponse, "chatResponse");
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
+        this.immediateToolReturn = false;
     }
 
     /**
@@ -84,6 +87,13 @@ public class ToolServiceResult {
         return aggregateTokenUsage;
     }
 
+    /**
+     * @since 1.4.0
+     */
+    public boolean immediateToolReturn() {
+        return immediateToolReturn;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -92,12 +102,13 @@ public class ToolServiceResult {
         return Objects.equals(this.intermediateResponses, that.intermediateResponses)
                 && Objects.equals(this.finalResponse, that.finalResponse)
                 && Objects.equals(this.toolExecutions, that.toolExecutions)
-                && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage);
+                && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage)
+                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(intermediateResponses, finalResponse, toolExecutions, aggregateTokenUsage);
+        return Objects.hash(intermediateResponses, finalResponse, toolExecutions, aggregateTokenUsage, immediateToolReturn);
     }
 
     @Override
@@ -107,6 +118,7 @@ public class ToolServiceResult {
                 ", finalResponse=" + finalResponse +
                 ", toolExecutions=" + toolExecutions +
                 ", aggregateTokenUsage=" + aggregateTokenUsage +
+                ", immediateToolReturn=" + immediateToolReturn +
                 '}';
     }
 
@@ -120,6 +132,7 @@ public class ToolServiceResult {
         private ChatResponse finalResponse;
         private List<ToolExecution> toolExecutions;
         private TokenUsage aggregateTokenUsage;
+        private boolean immediateToolReturn;
 
         public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
@@ -138,6 +151,11 @@ public class ToolServiceResult {
 
         public Builder aggregateTokenUsage(TokenUsage aggregateTokenUsage) {
             this.aggregateTokenUsage = aggregateTokenUsage;
+            return this;
+        }
+
+        public Builder immediateToolReturn(boolean immediateToolReturn) {
+            this.immediateToolReturn = immediateToolReturn;
             return this;
         }
 

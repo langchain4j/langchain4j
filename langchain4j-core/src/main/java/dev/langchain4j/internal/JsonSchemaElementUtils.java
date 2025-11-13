@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -23,14 +24,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Internal
@@ -106,6 +100,13 @@ public class JsonSchemaElementUtils {
             if (jsonSchemaElement instanceof JsonReferenceSchema) {
                 visitedClassMetadata.recursionDetected = true;
             }
+            if (jsonSchemaElement instanceof JsonObjectSchema obj) {
+                if (Objects.equals(description, obj.description())) {
+                    return obj;
+                }
+                return obj.toBuilder().description(description).build();
+            }
+
             return jsonSchemaElement;
         }
 
@@ -328,6 +329,10 @@ public class JsonSchemaElementUtils {
             return map;
         } else if (jsonSchemaElement instanceof JsonNullSchema) {
             return Map.of("type", "null");
+        } else if (jsonSchemaElement instanceof JsonRawSchema jsonNative) {
+            @SuppressWarnings("unchecked")
+            var map = (Map<String, Object>) Json.fromJson(jsonNative.schema(), Map.class);
+            return map;
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }

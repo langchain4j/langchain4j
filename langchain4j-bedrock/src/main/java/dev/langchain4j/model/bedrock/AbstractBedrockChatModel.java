@@ -35,6 +35,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
@@ -48,6 +49,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -76,7 +78,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Internal
 abstract class AbstractBedrockChatModel {
 
-    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+    private static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
 
     protected final Region region;
     protected final Duration timeout;
@@ -100,9 +103,10 @@ abstract class AbstractBedrockChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        BedrockChatRequestParameters bedrockParameters = builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters ?
-                bedrockChatRequestParameters :
-                BedrockChatRequestParameters.EMPTY;
+        BedrockChatRequestParameters bedrockParameters =
+                builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters
+                        ? bedrockChatRequestParameters
+                        : BedrockChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = BedrockChatRequestParameters.builder()
                 // common parameters
@@ -119,24 +123,69 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(message -> SystemContentBlock.builder()
+        return extractSystemMessages(messages, null);
+    }
+
+    protected List<SystemContentBlock> extractSystemMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        List<SystemContentBlock> systemBlocks = new ArrayList<>();
+
+        for (ChatMessage message : messages) {
+            if (message.type() == ChatMessageType.SYSTEM) {
+                systemBlocks.add(SystemContentBlock.builder()
                         .text(((SystemMessage) message).text())
-                        .build())
-                .toList();
+                        .build());
+            }
+        }
+
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
+            systemBlocks.add(SystemContentBlock.builder()
+                    .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                            .type("default")
+                            .build())
+                    .build());
+        }
+
+        return systemBlocks;
     }
 
     protected List<Message> extractRegularMessages(List<ChatMessage> messages) {
+        return extractRegularMessages(messages, null);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
         List<Message> bedrockMessages = new ArrayList<>();
         List<ContentBlock> currentBlocks = new ArrayList<>();
+        boolean firstUserMessageProcessed = false;
 
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
             } else if (!(msg instanceof SystemMessage)) {
-                bedrockMessages.add(convertToBedRockMessage(msg));
+                Message bedrockMessage = convertToBedRockMessage(msg);
+
+                if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
+                        && msg instanceof UserMessage
+                        && !firstUserMessageProcessed) {
+
+                    List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
+                    contentWithCachePoint.add(ContentBlock.builder()
+                            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                                    .type("default")
+                                    .build())
+                            .build());
+
+                    bedrockMessage = Message.builder()
+                            .role(bedrockMessage.role())
+                            .content(contentWithCachePoint)
+                            .build();
+
+                    firstUserMessageProcessed = true;
+                }
+
+                bedrockMessages.add(bedrockMessage);
             }
         }
 
@@ -200,7 +249,9 @@ abstract class AbstractBedrockChatModel {
                             .signature(message.attribute(THINKING_SIGNATURE_KEY, String.class))
                             .build())
                     .build();
-            blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
+            blocks.add(ContentBlock.builder()
+                    .reasoningContent(reasoningContentBlock)
+                    .build());
         }
 
         if (message.text() != null) {
@@ -275,6 +326,11 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
+        return extractToolConfigurationFrom(chatRequest, null);
+    }
+
+    protected ToolConfiguration extractToolConfigurationFrom(
+            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -298,6 +354,14 @@ abstract class AbstractBedrockChatModel {
                     .toList();
 
             allTools.addAll(tools);
+
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
+                allTools.add(Tool.builder()
+                        .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                                .type("default")
+                                .build())
+                        .build());
+            }
         }
 
         if (allTools.isEmpty()) {
@@ -327,9 +391,9 @@ abstract class AbstractBedrockChatModel {
                         .arguments(documentToJson(cBlock.toolUse().input()))
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
-                 if (isNotNullOrEmpty(cBlock.text())) {
-                     texts.add(cBlock.text());
-                 }
+                if (isNotNullOrEmpty(cBlock.text())) {
+                    texts.add(cBlock.text());
+                }
             } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
                 if (returnThinking) {
                     ReasoningContentBlock reasoningContentBlock = cBlock.reasoningContent();
@@ -388,7 +452,7 @@ abstract class AbstractBedrockChatModel {
                 .maxTokens(parameters.maxOutputTokens())
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
-                .stopSequences(parameters.stopSequences())
+                .stopSequences(isNullOrEmpty(parameters.stopSequences()) ? null : parameters.stopSequences())
                 .build();
     }
 
@@ -451,6 +515,7 @@ abstract class AbstractBedrockChatModel {
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
+        protected Logger logger;
         protected List<ChatModelListener> listeners;
 
         @SuppressWarnings("unchecked")
@@ -475,7 +540,7 @@ abstract class AbstractBedrockChatModel {
 
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code REASONING_CONTENT} block from the API response
          * and return it inside the {@link AiMessage}.
@@ -519,6 +584,15 @@ abstract class AbstractBedrockChatModel {
 
         public T logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return self();
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public T logger(Logger logger) {
+            this.logger = logger;
             return self();
         }
 

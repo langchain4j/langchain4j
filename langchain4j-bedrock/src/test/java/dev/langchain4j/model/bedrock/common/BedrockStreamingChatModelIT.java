@@ -82,6 +82,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return BedrockChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
@@ -99,7 +104,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         // Bedrock can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }

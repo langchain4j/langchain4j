@@ -1,33 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.internal.chat.Delta;
-import dev.langchain4j.model.openai.internal.chat.ToolCall;
-import dev.langchain4j.model.openai.internal.shared.StreamOptions;
-import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -46,6 +18,36 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequ
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
+import dev.langchain4j.model.openai.internal.shared.StreamOptions;
+import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
@@ -72,8 +74,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -102,7 +106,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -133,11 +137,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
-                        .stream(true)
-                        .streamOptions(StreamOptions.builder()
-                                .includeUsage(true)
-                                .build())
+                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                        .streamOptions(
+                                StreamOptions.builder().includeUsage(true).build())
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking);
@@ -146,7 +148,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -163,9 +165,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private void handle(ChatCompletionResponse partialResponse,
-                        ToolCallBuilder toolCallBuilder,
-                        StreamingChatResponseHandler handler) {
+    private void handle(
+            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
+            ToolCallBuilder toolCallBuilder,
+            StreamingChatResponseHandler handler) {
+        ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
             return;
         }
@@ -187,12 +191,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            onPartialThinking(handler, reasoningContent);
+            onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -218,7 +222,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                             .name(name)
                             .partialArguments(partialArguments)
                             .build();
-                    onPartialToolCall(handler, partialToolRequest);
+                    onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
                 }
             }
         }
@@ -235,7 +239,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
-        for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
+        for (OpenAiStreamingChatModelBuilderFactory factory :
+                loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiStreamingChatModelBuilder();
@@ -259,7 +264,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
-        private String responseFormat;
+        private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
         private Integer seed;
         private String user;
@@ -272,7 +277,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
         private List<ChatModelListener> listeners;
 
         public OpenAiStreamingChatModelBuilder() {
@@ -365,8 +372,16 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public OpenAiStreamingChatModelBuilder responseFormat(String responseFormat) {
+        public OpenAiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public OpenAiStreamingChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
             return this;
         }
 
@@ -442,8 +457,22 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public OpenAiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

@@ -21,8 +21,8 @@ Here's how:
    LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Milvus)
    use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them.
    To experiment with different LLMs or embedding stores, you can easily switch between them without the need to rewrite your code.
-   LangChain4j currently supports [15+ popular LLM providers](https://docs.langchain4j.dev/integrations/language-models/)
-   and [15+ embedding stores](https://docs.langchain4j.dev/integrations/embedding-stores/).
+   LangChain4j currently supports [20+ popular LLM providers](https://docs.langchain4j.dev/integrations/language-models/)
+   and [30+ embedding stores](https://docs.langchain4j.dev/integrations/embedding-stores/).
 2. **Comprehensive Toolbox:**
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into practical code.

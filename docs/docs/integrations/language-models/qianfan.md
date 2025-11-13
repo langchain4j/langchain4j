@@ -76,7 +76,7 @@ Or, you can use BOM to manage dependencies consistently:
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
         <version>${latest version here}</version>
-        <typ>pom</typ>
+        <type>pom</type>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>
@@ -308,7 +308,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.2.0-beta8</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 - Use

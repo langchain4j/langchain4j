@@ -19,6 +19,7 @@ import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
@@ -36,6 +37,7 @@ public class MistralAiModerationModel implements ModerationModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -106,6 +108,7 @@ public class MistralAiModerationModel implements ModerationModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private String modelName;
         private Integer maxRetries;
 
@@ -140,6 +143,15 @@ public class MistralAiModerationModel implements ModerationModel {
 
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

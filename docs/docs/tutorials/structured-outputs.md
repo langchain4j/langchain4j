@@ -122,7 +122,9 @@ System.out.println(person); // Person[name=John, age=42, height=1.75, married=fa
 ```
 Notes:
 - [1] - In most cases, the root element must be of `JsonObjectSchema` type,
-however Gemini allows `JsonEnumSchema` and `JsonArraySchema` as well.
+however:
+  - Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official also allow `JsonRawSchema` as a root element
+  - Gemini also allows `JsonEnumSchema` and `JsonArraySchema` as root elements
 - [2] - Required properties must be explicitly specified; otherwise, they are considered optional.
 
 The structure of the JSON schema is defined using `JsonSchemaElement` interface,
@@ -137,6 +139,7 @@ with the following subtypes:
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
 - `JsonAnyOfSchema` - to support polymorphism (e.g., `Shape` can be either `Circle` or `Rectangle`).
 - `JsonNullSchema` - to support nullable type.
+- `JsonRawSchema` - to use your custom fully defined JSON schema.
 
 #### `JsonObjectSchema`
 
@@ -326,8 +329,35 @@ System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},
 ```
 
 :::note
-The `JsonAnyOfSchema` is currently supported only by OpenAI and Azure OpenAI.
+The `JsonAnyOfSchema` is currently supported only by OpenAI, Azure OpenAI and Google AI Gemini.
 :::
+
+#### `JsonRawSchema`
+
+An example of creating a `JsonRawSchema` from an existing schema string:
+
+```java
+var rawSchema = """
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "city": {
+            "type": "string"
+        }
+    },
+    "required": ["city"],
+    "additionalProperties": false
+}
+""";
+
+JsonRawSchema schema = JsonRawSchema.from(rawSchema);
+```
+
+:::note
+The `JsonRawSchema` is currently supported only by Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official.
+:::
+
 
 #### Adding Description
 

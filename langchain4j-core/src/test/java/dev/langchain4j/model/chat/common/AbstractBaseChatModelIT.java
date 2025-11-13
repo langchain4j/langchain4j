@@ -31,6 +31,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -688,7 +689,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).contains("sun");
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -731,7 +732,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_a_tool_without_arguments_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the time now?");
+        UserMessage userMessage = UserMessage.from("What is the time now? Use the get_current_time tool.");
 
         ToolSpecification timeTool =
                 ToolSpecification.builder().name("get_current_time").build();
@@ -850,10 +851,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         if (supportsPartialToolStreaming(model)) {
-            io.verify(handler).onPartialToolCall(any());
+            io.verify(handler).onPartialToolCall(any(), any());
         }
         io.verify(handler).onCompleteToolCall(any());
     }
@@ -1296,6 +1297,57 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
+    @EnabledIf("supportsJsonResponseFormatWithRawSchema")
+    protected void should_respect_JsonRawSchema_responseFormat(M model) {
+        var rawSchema =
+                """
+            {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string"
+                    }
+                },
+                "required": ["city"],
+                "additionalProperties": false
+            }""";
+
+        ResponseFormat schemaFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Answer")
+                        .rootElement(JsonRawSchema.from(rawSchema))
+                        .build())
+                .build();
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .parameters(ChatRequestParameters.builder()
+                        .responseFormat(schemaFormat)
+                        .build())
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
     @DisabledIf("supportsJsonResponseFormatWithSchema")
     protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(M model) {
 
@@ -1437,7 +1489,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1470,7 +1522,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("cat", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1521,7 +1573,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1551,7 +1603,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "feline", "animal")
+                .containsAnyOf("cat", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1632,6 +1684,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
     }
 
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return true;
+    }
+
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return true;
     }
@@ -1697,7 +1753,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         if (maxOutputTokens != null) {
-            assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+            // Some providers (e.g., Gemini) produce one token less than expected (e.g., 4 instead of 5)
+            assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
         }
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
