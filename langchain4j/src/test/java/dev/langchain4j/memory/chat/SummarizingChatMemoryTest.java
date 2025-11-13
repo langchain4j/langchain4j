@@ -57,32 +57,29 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .build();
         UserMessage hello = userMessage("hello");
         UserMessage world = userMessage("world");
+        UserMessage whoAreYou = userMessage("who are you");
         UserMessage lisi = userMessage("I am lisi");
 
         // Add the first three messages
         chatMemory.add(hello);
         chatMemory.add(world);
+        chatMemory.add(whoAreYou);
         chatMemory.add(lisi);
+
 
         // Verify that the first three messages are still retained
         assertThat(chatMemory.messages())
-                .containsExactly(hello, world, lisi);
-
-        UserMessage whoAreYou = userMessage("who are you");
-        chatMemory.add(whoAreYou);
-
-        // The first three messages might have been summarized; verify the message list after summarization
-        List<ChatMessage> messagesAfterSummarize = chatMemory.messages();
-        assertThat(messagesAfterSummarize.size()).isEqualTo(4); // Ensure total count remains equal to maxMessages
-
+                .containsExactly(hello, world, whoAreYou, lisi);
         // Add a fifth message; summarization logic may replace or summarize older messages instead of appending
         // directly
         UserMessage iAmWangwu = userMessage("I am wangwu");
         chatMemory.add(iAmWangwu);
 
-        // Verify that the last message is NOT the raw "I am wangwu" (it should have been summarized or excluded)
-        assertThat(messagesAfterSummarize.get(messagesAfterSummarize.size() - 1))
-                .isNotEqualTo(iAmWangwu);
+        // verify the message list after summarization
+        List<ChatMessage> messagesAfterSummarize = chatMemory.messages();
+        // Verify that the first message is not the hello (it should have been summarized or excluded)
+        assertThat(messagesAfterSummarize.get(0))
+                .isNotEqualTo(hello);
 
         // Clear the memory
         chatMemory.clear();
@@ -95,14 +92,12 @@ public class SummarizingChatMemoryTest implements WithAssertions {
     @MethodSource("models")
     void should_summarize_messages_when_threshold_exceeded(ChatModel chatModel) {
 
-        // Create a chat memory instance with summarization capability
         ChatMemory chatMemory = SummarizingChatMemory.builder()
-                .maxMessages(4) // Keep at most 4 messages
+                .maxMessages(4)
                 .defaultGenerateSummaryFunction(chatModel)
-                .maxMessagesToSummarize(2) // Summarization is triggered only when the threshold is exceeded
+                .maxMessagesToSummarize(2)
                 .build();
 
-        // Add the first four messages — no summarization occurs yet
         UserMessage m1 = userMessage("hello");
         UserMessage m2 = userMessage("world");
         UserMessage m3 = userMessage("I am lisi");
@@ -113,21 +108,16 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         chatMemory.add(m3);
         chatMemory.add(m4);
 
-        // Message order remains FIFO, with no summarization applied
         List<ChatMessage> afterFourth = chatMemory.messages();
         assertThat(afterFourth).containsExactly(m1, m2, m3, m4);
 
-        // Add a fifth message, exceeding maxMessages and triggering summarization
         UserMessage m5 = userMessage("I am wangwu");
         chatMemory.add(m5);
 
         List<ChatMessage> afterFifth = chatMemory.messages();
         assertThat(afterFifth).hasSize(4);
 
-        // The first message is now a summary message, which does not equal any of the original messages
         assertThat(afterFifth.get(0))
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(m1)
                 .isNotEqualTo(m2)
                 .isNotEqualTo(m3)
@@ -189,8 +179,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The second message should be a summary message
         ChatMessage summaryMessage = messages.get(1);
         assertThat(summaryMessage)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(m1)
                 .isNotEqualTo(m2)
                 .isNotEqualTo(m3)
@@ -248,8 +236,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The first message should be a summary message
         ChatMessage summary = msgs.get(0);
         assertThat(summary)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(sys1)
                 .isNotEqualTo(a1)
                 .isNotEqualTo(u1);
@@ -305,8 +291,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         ChatMessage sysMsg = msgs.get(0);
         assertThat(sysMsg).isEqualTo(sys);
         assertThat(summary)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(sys)
                 .isNotEqualTo(u1)
                 .isNotEqualTo(a1);
@@ -320,7 +304,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
     void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest(
             ChatModel chatModel) {
 
-        // Configure maxMessages=3 and summarizeThreshold=2 (>1)
+        // Configure maxMessages=3 and maxMessagesToSummarize=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(3)
                 .defaultGenerateSummaryFunction(chatModel)
@@ -375,7 +359,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
             should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present(
                     ChatModel chatModel) {
 
-        // Configure summarizeThreshold > 1
+        // Configure maxMessagesToSummarize > 1
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
                 .defaultGenerateSummaryFunction(chatModel)
@@ -412,7 +396,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         assertThat(msgsAfterResult.get(0)).isEqualTo(sys);
         assertThat(msgsAfterResult.subList(1, msgsAfterResult.size())).containsExactly(u1, ai1, result1);
 
-        // Add a new AiMessage, which triggers eviction (exceeds maxMessages with summarizeThreshold=2)
+        // Add a new AiMessage, which triggers eviction (exceeds maxMessages with maxMessagesToSummarize=2)
         AiMessage ai2 = aiMessage("2 + 2 = 4 !!!!");
         chatMemory.add(ai2);
 
@@ -425,8 +409,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         // The second message is a summary, which does not equal any of the original messages
         ChatMessage summary = finalMsgs.get(1);
         assertThat(summary)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(u1)
                 .isNotEqualTo(ai1)
                 .isNotEqualTo(result1)
@@ -442,7 +424,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
             should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present_2(
                     ChatModel chatModel) {
 
-        // given: chat memory with maxMessages=3, summarizeThreshold=2 (>1)
+        // given: chat memory with maxMessages=3, maxMessagesToSummarize=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(3)
                 .defaultGenerateSummaryFunction(chatModel)
@@ -502,7 +484,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
     void should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests(
             ChatModel chatModel) {
 
-        // given: SummarizingChatMemory with maxMessages=4, summarizeThreshold=2 (>1)
+        // given: SummarizingChatMemory with maxMessages=4, maxMessagesToSummarize=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(4)
                 .defaultGenerateSummaryFunction(chatModel)
@@ -550,8 +532,6 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
         ChatMessage summary = finalMsgs.get(0);
         assertThat(summary)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "timestamp", "createdAt")
                 .isNotEqualTo(u1)
                 .isNotEqualTo(ai1)
                 .isNotEqualTo(result1)
@@ -567,7 +547,7 @@ public class SummarizingChatMemoryTest implements WithAssertions {
             should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present(
                     ChatModel chatModel) {
 
-        // given: SummarizingChatMemory with maxMessages=5, summarizeThreshold=2 (>1)
+        // given: SummarizingChatMemory with maxMessages=5, maxMessagesToSummarize=2 (>1)
         ChatMemory chatMemory = SummarizingChatMemory.builder()
                 .maxMessages(5)
                 .defaultGenerateSummaryFunction(chatModel)
@@ -634,16 +614,16 @@ public class SummarizingChatMemoryTest implements WithAssertions {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_handle_dynamic_maxMessages_and_summarizeThreshold(ChatModel chatModel) {
+    void should_handle_dynamic_maxMessages_and_maxMessagesToSummarize(ChatModel chatModel) {
 
-        // Dynamic configuration: initial values maxMessages=4, summarizeThreshold=2 (>1)
+        // Dynamic configuration: initial values maxMessages=4, maxMessagesToSummarize=2 (>1)
         int[] dynamicMaxMessages = {4};
-        int[] dynamicThreshold = {2};
+        int[] maxMessagesToSummarize = {2};
 
         SummarizingChatMemory chatMemory = SummarizingChatMemory.builder()
                 .defaultGenerateSummaryFunction(chatModel)
                 .dynamicMaxMessages(id -> dynamicMaxMessages[0])
-                .dynamicMaxMessagesToSummarize(id -> dynamicThreshold[0])
+                .dynamicMaxMessagesToSummarize(id -> maxMessagesToSummarize[0])
                 .build();
 
         // Add a user message
@@ -691,9 +671,9 @@ public class SummarizingChatMemoryTest implements WithAssertions {
                 .isNotEqualTo(ai2);
         assertThat(finalMsgs.get(1)).isEqualTo(ai2);
 
-        // ---------------- Dynamically update maxMessages and summarizeThreshold ----------------
+        // ---------------- Dynamically update maxMessages and maxMessagesToSummarize ----------------
         dynamicMaxMessages[0] = 5;
-        dynamicThreshold[0] = 3;
+        maxMessagesToSummarize[0] = 3;
 
         // Add a new AiMessage (ai3); summarization should not be triggered yet under the new threshold
         AiMessage ai3 = aiMessage("Extra calculation 5+5");
@@ -715,8 +695,9 @@ public class SummarizingChatMemoryTest implements WithAssertions {
         return Stream.of(Arguments.of(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(OpenAiChatModelName.GPT_4_O_MINI)
+//                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+//                .modelName(OpenAiChatModelName.GPT_4_O_MINI)
+                .modelName("deepseek-chat")
                 .logRequests(true)
                 .logResponses(true)
                 .build()));
