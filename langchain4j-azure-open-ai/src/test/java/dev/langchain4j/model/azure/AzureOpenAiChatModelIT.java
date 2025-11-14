@@ -214,7 +214,7 @@ class AzureOpenAiChatModelIT {
     void should_support_ReasoningEffort() {
 
         // given
-        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW
+        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
 
         ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
