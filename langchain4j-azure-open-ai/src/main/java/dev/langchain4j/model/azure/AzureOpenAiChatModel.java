@@ -289,7 +289,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
-        private final ReasoningEffortValue reasoningEffort;
+        private ReasoningEffortValue reasoningEffort;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
