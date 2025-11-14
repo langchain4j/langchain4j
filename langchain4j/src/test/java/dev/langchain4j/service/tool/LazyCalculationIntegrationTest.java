@@ -35,13 +35,11 @@ class LazyCalculationIntegrationTest {
 
         @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
         public LargeResultObject immediateTool() {
-            System.out.println("  [Tool] immediateTool() called");
             return new LargeResultObject();
         }
 
         @Tool(returnBehavior = ReturnBehavior.TO_LLM)
         public LargeResultObject normalTool() {
-            System.out.println("  [Tool] normalTool() called");
             return new LargeResultObject();
         }
     }
