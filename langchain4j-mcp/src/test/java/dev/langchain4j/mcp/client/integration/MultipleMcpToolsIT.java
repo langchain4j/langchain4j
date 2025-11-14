@@ -153,7 +153,7 @@ class MultipleMcpToolsIT {
                         || mcpClient.key().equals("numeric-mcp"))
                 .build()
                 .provideTools(null);
-        assertThat(toolProviderResult.tools()).hasSize(16);
+        assertThat(toolProviderResult.tools()).hasSize(17);
 
         // Execute the numeric-mcp version of echoInteger which adds 1 to the input
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoInteger");
