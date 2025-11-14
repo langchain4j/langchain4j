@@ -29,6 +29,7 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -87,6 +88,32 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         addInternal(id, embedding, null);
     }
 
+    public String add(String text) {
+        String id = randomUUID();
+        add(id, text);
+        return id;
+    }
+
+    public void add(String id, String text) {
+        try {
+            bulkIndexText(List.of(id), List.of(TextSegment.from(text)));
+        } catch (IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
+    public List<String> addAllText(List<String> texts) {
+        List<String> ids = texts.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        try {
+            bulkIndexText(ids, texts.stream().map(TextSegment::from).toList());
+        } catch (IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+        return ids;
+    }
+
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         String id = randomUUID();
@@ -141,8 +168,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             log.trace("found [{}] results", response);
 
             List<TextSegment> results = toTextList(response);
-            // TODO which score for full text search?
-            //results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return results;
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
@@ -222,6 +247,25 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         handleBulkResponseErrors(response);
     }
 
+    private void bulkIndexText(List<String> ids, List<TextSegment> embedded) throws IOException {
+        int size = ids.size();
+        log.debug("calling bulkIndex with [{}] elements", size);
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        for (int i = 0; i < size; i++) {
+            int finalI = i;
+            Document document = Document.builder()
+                    .text(embedded == null ? null : embedded.get(i).text())
+                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
+                    .build();
+            bulkBuilder.operations(op -> op.index(idx -> idx
+                    .index(indexName)
+                    .id(ids.get(finalI))
+                    .document(document)));
+        }
+        BulkResponse response = client.bulk(bulkBuilder.build());
+        handleBulkResponseErrors(response);
+    }
+
     private void handleBulkResponseErrors(BulkResponse response) {
         if (response.errors()) {
             for (BulkResponseItem item : response.items()) {
@@ -292,6 +336,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata())
+                                        .put(ContentMetadata.SCORE.name(),hit.score())
+                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())
                                 )).orElse(null))
                 .collect(toList());
     }

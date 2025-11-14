@@ -78,6 +78,8 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
         // Building KNN part of the hybrid query
         KnnRetriever.Builder krb = new KnnRetriever.Builder()
+                // TODO double check
+                .k(numCandidates)
                 .field("vector")
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
@@ -99,7 +101,7 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
                 .build();
 
 
-        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);
+        log.trace("Searching for embeddings in index [{}] with hybrid query [{}], [{}].", indexName, knn, matchQuery);
 
         return client.search(s -> s
                         .source(sr -> {

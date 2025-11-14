@@ -1,11 +1,12 @@
 package dev.langchain4j.rag.content.retriever.elasticsearch;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -73,8 +74,9 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     @Override
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
-            // TODO check metadata
-            return this.fullTextSearch(query.text()).stream().map(Content::from).toList();
+            return this.fullTextSearch(query.text()).stream().map(t -> Content.from(t, Map.of(
+                    ContentMetadata.SCORE, t.metadata().getDouble(ContentMetadata.SCORE.name()),
+                    ContentMetadata.EMBEDDING_ID, t.metadata().getString(ContentMetadata.EMBEDDING_ID.name())))).toList();
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -91,9 +93,14 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         return mapResultsToContentList(this.search(request));
     }
 
-    // TODO
     private List<Content> mapResultsToContentList(EmbeddingSearchResult<TextSegment> searchResult) {
-        List<Content> result = new ArrayList<>();
+        List<Content> result = searchResult.matches().stream()
+                .filter(f -> f.score() > minScore)
+                .map(m ->
+                        Content.from(m.embedded(), Map.of(
+                                ContentMetadata.SCORE, m.score(),
+                                ContentMetadata.EMBEDDING_ID, m.embeddingId()))
+                ).toList();
         return result;
     }
 
