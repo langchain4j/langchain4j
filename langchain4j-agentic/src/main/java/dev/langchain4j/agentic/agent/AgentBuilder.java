@@ -20,6 +20,7 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
@@ -47,6 +48,7 @@ public class AgentBuilder<T> {
     Consumer<AgentResponse> afterListener = response -> {};
 
     private ChatModel model;
+    private StreamingChatModel streamingChatModel;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -104,6 +106,9 @@ public class AgentBuilder<T> {
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
             aiServices.chatModel(model);
+        }
+        if (streamingChatModel != null) {
+            aiServices.streamingChatModel(streamingChatModel);
         }
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
@@ -203,6 +208,11 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> chatModel(ChatModel model) {
         this.model = model;
+        return this;
+    }
+
+    public AgentBuilder<T> streamingChatModel(StreamingChatModel streamingChatModel) {
+        this.streamingChatModel = streamingChatModel;
         return this;
     }
 

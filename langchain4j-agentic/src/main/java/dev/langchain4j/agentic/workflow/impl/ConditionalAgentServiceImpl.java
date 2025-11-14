@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, ConditionalAgentService<T>> implements ConditionalAgentService<T> {
+public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, ConditionalAgentService<T>>
+        implements ConditionalAgentService<T> {
 
     private final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
 
@@ -52,8 +53,11 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
-        conditionalAgents.add(new ConditionalAgent(condition, agentExecutors.stream().map(AgentInstance.class::cast).toList()));
+    public ConditionalAgentServiceImpl<T> subAgents(
+            Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
+        conditionalAgents.add(new ConditionalAgent(
+                condition,
+                agentExecutors.stream().map(AgentInstance.class::cast).toList()));
         return this;
     }
 
