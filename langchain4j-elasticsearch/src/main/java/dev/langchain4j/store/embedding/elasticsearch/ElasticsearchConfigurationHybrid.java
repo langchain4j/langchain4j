@@ -22,15 +22,13 @@ import org.slf4j.LoggerFactory;
 public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
     private final Integer numCandidates;
-    private final String textQuery;
 
     public static class Builder {
         private Integer numCandidates;
-        private String textQuery;
 
 
         public ElasticsearchConfigurationHybrid build() {
-            return new ElasticsearchConfigurationHybrid(numCandidates, textQuery);
+            return new ElasticsearchConfigurationHybrid(numCandidates);
         }
 
         /**
@@ -45,11 +43,6 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             this.numCandidates = numCandidates;
             return this;
         }
-
-        public Builder textQuery(String textQuery) {
-            this.textQuery = textQuery;
-            return this;
-        }
     }
 
     public static ElasticsearchConfigurationHybrid.Builder builder() {
@@ -57,15 +50,14 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     }
 
 
-    private ElasticsearchConfigurationHybrid(Integer numCandidates, final String textQuery) {
+    private ElasticsearchConfigurationHybrid(Integer numCandidates) {
         this.numCandidates = numCandidates;
-        this.textQuery = textQuery;
     }
 
     @Override
     SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                             String indexName,
-                                            EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+                                            EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException {
         return internalSearch(client, indexName, embeddingSearchRequest, false);
     }
 
@@ -73,7 +65,17 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                             String indexName,
                                             EmbeddingSearchRequest embeddingSearchRequest,
-                                            boolean includeVectorResponse) throws ElasticsearchException, IOException {
+                                            boolean includeVectorResponse) throws ElasticsearchException {
+        throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException {
+        throw new UnsupportedOperationException("Hybrid configuration does not support full text search");
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
         // Building KNN part of the hybrid query
         KnnRetriever.Builder krb = new KnnRetriever.Builder()
                 .field("vector")

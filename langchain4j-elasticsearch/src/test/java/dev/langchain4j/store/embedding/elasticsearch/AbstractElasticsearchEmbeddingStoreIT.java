@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
  * We try first to reach the local cluster and if not available, then start
  * a container with Testcontainers.
  */
-abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
@@ -40,7 +40,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
         elasticsearchClientHelper.stopServices();
     }
 
-    abstract ElasticsearchConfiguration withConfiguration();
+    protected abstract ElasticsearchConfiguration withConfiguration();
 
     void optionallyCreateIndex(String indexName) throws IOException {
     }

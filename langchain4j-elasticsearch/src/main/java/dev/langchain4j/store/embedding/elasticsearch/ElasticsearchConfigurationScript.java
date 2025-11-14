@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -69,6 +70,16 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
                 ,
                 Document.class
         );
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException, IOException {
+        throw new UnsupportedOperationException("Script configuration does not support full text search");
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
+        throw new UnsupportedOperationException("Script configuration does not support hybrid search");
     }
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore,

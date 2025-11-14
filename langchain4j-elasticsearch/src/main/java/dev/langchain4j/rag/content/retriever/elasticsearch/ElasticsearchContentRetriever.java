@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.content.retriever.elasticsearch;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import dev.langchain4j.data.embedding.Embedding;
@@ -14,6 +13,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.elasticsearch.AbstractElasticsearchEmbeddingStore;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationFullText;
+import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationHybrid;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.elasticsearch.client.RestClient;
@@ -73,12 +73,8 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     @Override
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
-            try {
-                // TODO convert to content and return
-                ((ElasticsearchConfigurationFullText) configuration).fullTextSearch(client, indexName, query.text());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            // TODO check metadata
+            return this.fullTextSearch(query.text()).stream().map(Content::from).toList();
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -88,6 +84,10 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
                 .filter(filter)
                 .build();
 
+        if (configuration instanceof ElasticsearchConfigurationHybrid) {
+            return mapResultsToContentList(this.hybridSearch(request, query.text()));
+        }
+
         return mapResultsToContentList(this.search(request));
     }
 
@@ -95,6 +95,10 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     private List<Content> mapResultsToContentList(EmbeddingSearchResult<TextSegment> searchResult) {
         List<Content> result = new ArrayList<>();
         return result;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {

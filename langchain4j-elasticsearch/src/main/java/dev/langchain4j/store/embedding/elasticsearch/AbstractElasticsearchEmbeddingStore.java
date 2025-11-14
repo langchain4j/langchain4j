@@ -119,6 +119,36 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
+    public EmbeddingSearchResult<TextSegment> hybridSearch(EmbeddingSearchRequest embeddingSearchRequest, String textQuery) {
+        log.debug("hybrid search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
+                embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
+        try {
+            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, embeddingSearchRequest, textQuery, includeVectorResponse);
+            log.trace("found [{}] results", response);
+
+            List<EmbeddingMatch<TextSegment>> results = toMatches(response);
+            results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
+            return new EmbeddingSearchResult<>(results);
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
+    public List<TextSegment> fullTextSearch(String textQuery) {
+        log.debug("full text search([...{}...])", textQuery.length());
+        try {
+            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, textQuery);
+            log.trace("found [{}] results", response);
+
+            List<TextSegment> results = toTextList(response);
+            // TODO which score for full text search?
+            //results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
+            return results;
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
@@ -252,6 +282,17 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
                         )).orElse(null))
+                .collect(toList());
+    }
+
+    private List<TextSegment> toTextList(SearchResponse<Document> response) {
+        return response.hits().hits().stream()
+                .map(hit -> Optional.ofNullable(hit.source())
+                        .map(document ->
+                                document.getText() == null
+                                        ? null
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata())
+                                )).orElse(null))
                 .collect(toList());
     }
 }
