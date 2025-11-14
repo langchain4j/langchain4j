@@ -166,6 +166,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
+        this.maxCompletionTokens = builder.reasoningEffort;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
