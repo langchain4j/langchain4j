@@ -210,6 +210,27 @@ class AzureOpenAiChatModelIT {
         assertThat(answer).contains("Berlin");
     }
 
+    @Test
+    void should_support_ReasoningEffort() {
+
+        // given
+        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW
+
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .reasoningEffort(reasoningEffort)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
+    }    
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
