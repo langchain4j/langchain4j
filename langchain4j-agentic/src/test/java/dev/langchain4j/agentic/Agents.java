@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
@@ -215,5 +216,26 @@ public class Agents {
 
         @Agent
         List<EveningPlan> plan(@V("mood") String mood);
+    }
+
+    public interface ColorExpert {
+
+        @UserMessage("""
+            What is the color of a {{object}}?
+            Reply with only the name of the color of the object and nothing else.
+            """)
+        @Agent("Provide the color of an object")
+        String colorOf(@V("object") String object);
+    }
+
+    public interface ColorMixerExpert {
+
+        @SystemMessage("You are a color mixer expert who knows which color result from mixing other colors.")
+        @UserMessage("""
+            What color do you obtain if you mix the following colors: {{colors}}?
+            Reply with only the name of the color resulting from the mix and nothing else.
+            """)
+        @Agent("Provide the resulting color from mixing given colors")
+        String colorMix(@V("colors") List<String> colors);
     }
 }

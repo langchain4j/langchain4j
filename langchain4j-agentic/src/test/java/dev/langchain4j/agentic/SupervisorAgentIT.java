@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.offset;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -15,6 +14,8 @@ import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
+import dev.langchain4j.agentic.Agents.ColorExpert;
+import dev.langchain4j.agentic.Agents.ColorMixerExpert;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
@@ -23,15 +24,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -601,7 +599,27 @@ public class SupervisorAgentIT {
                 }).collect(Collectors.toSet());
 
         // only 2 agents, the jokester and done
-        assertThat(agentNames).hasSize(2);
-        assertThat(agentNames).containsExactly("JokesterAgent_JokesterAssistant", "done");
+        assertThat(agentNames)
+                .hasSize(2)
+                .containsExactly("JokesterAgent_JokesterAssistant", "done");
+    }
+
+    @Test
+    void list_argument_test() {
+        ColorExpert colorExpert = AgenticServices.agentBuilder(ColorExpert.class)
+                .chatModel(baseModel())
+                .build();
+        ColorMixerExpert colorMixerExpert = AgenticServices.agentBuilder(ColorMixerExpert.class)
+                .chatModel(baseModel())
+                .build();
+
+        SupervisorAgent colorSupervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(colorExpert, colorMixerExpert)
+                .build();
+
+        String result = colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
+        assertThat(result).containsIgnoringCase("purple");
     }
 }

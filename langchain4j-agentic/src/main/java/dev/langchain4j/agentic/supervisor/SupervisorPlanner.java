@@ -137,7 +137,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (output != null) {
             return output.apply(agenticScope);
         }
-        String doneResponse = done != null ? done.getArguments().get("response") : null;
+        String doneResponse = done != null ? done.getArguments().get("response").toString() : null;
         if (doneResponse == null) {
             return lastResponse;
         }
