@@ -179,7 +179,7 @@ class AzureOpenAiStreamingChatModelIT {
     void should_support_ReasoningEffort() {
 
         // given
-        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW
+        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
 
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
