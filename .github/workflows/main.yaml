@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         java_version:
-          - 25
+          - 21
     steps:
 
       - uses: actions/checkout@v4
