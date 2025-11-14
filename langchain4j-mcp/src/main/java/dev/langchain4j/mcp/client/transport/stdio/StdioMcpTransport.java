@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,6 +116,10 @@ public class StdioMcpTransport implements McpTransport {
         } catch (Exception ignored) {
         }
         process.destroy();
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     private CompletableFuture<JsonNode> execute(String request, Long id) {

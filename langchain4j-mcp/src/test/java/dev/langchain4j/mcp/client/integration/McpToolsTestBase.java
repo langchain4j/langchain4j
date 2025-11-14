@@ -151,6 +151,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().arguments("{}").build();
         // wait until the server can confirm that the cancellation notification was received
         await().timeout(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofSeconds(5))
                 .until(
                         () -> toolProviderResult
                                 .toolExecutorByName("wasCancellationReceived")

@@ -219,6 +219,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static class Builder {
 
         private Executor executor;
