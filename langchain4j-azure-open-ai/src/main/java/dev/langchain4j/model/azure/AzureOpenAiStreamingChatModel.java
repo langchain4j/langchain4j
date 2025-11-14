@@ -219,7 +219,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
                 .setSeed(seed)
-                .setReasoningEffort(reasoningEffort);;
+                .setReasoningEffort(reasoningEffort);
 
         ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
         ChatCompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
