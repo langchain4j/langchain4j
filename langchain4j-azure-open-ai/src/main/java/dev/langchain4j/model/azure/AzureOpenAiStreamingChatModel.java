@@ -33,6 +33,7 @@ import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
