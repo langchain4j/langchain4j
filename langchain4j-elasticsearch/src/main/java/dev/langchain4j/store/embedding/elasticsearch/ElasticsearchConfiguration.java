@@ -7,6 +7,9 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 
 public abstract class ElasticsearchConfiguration {
+    static final String VECTOR_FIELD = "vector";
+    static final String TEXT_FIELD = "text";
+
     abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                                      String indexName,
                                                      EmbeddingSearchRequest embeddingSearchRequest)

@@ -41,11 +41,12 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException, IOException {
+        // TODO logs
         return client.search(s -> s
                         .index(indexName)
                         .query(q -> q
                                 .match(m -> m
-                                        .field("text")
+                                        .field(TEXT_FIELD)
                                         .query(textQuery)
                                 )
                         )

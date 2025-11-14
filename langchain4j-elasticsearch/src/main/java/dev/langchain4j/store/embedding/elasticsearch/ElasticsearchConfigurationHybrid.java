@@ -78,9 +78,9 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
         // Building KNN part of the hybrid query
         KnnRetriever.Builder krb = new KnnRetriever.Builder()
-                // TODO double check
+                // by default numCandidates needs to be 1.5x the number of k, but since k is
                 .k(numCandidates)
-                .field("vector")
+                .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
         if (embeddingSearchRequest.filter() != null) {
@@ -94,9 +94,8 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
         KnnRetriever knn = krb.build();
 
         // Building full text part of the hybrid query
-        // TODO extract vector and text as constants
         MatchQuery matchQuery = new MatchQuery.Builder()
-                .field("text")
+                .field(TEXT_FIELD)
                 .query(textQuery)
                 .build();
 
