@@ -136,4 +136,28 @@ class LanguageModelSqlFilterBuilderTest {
 
         verify(sqlFilterParser).parse("SELECT * FROM users WHERE id = 1");
     }
+
+    @Test
+    void should_parse_sql_with_like_operator() {
+        TableDefinition universeDoc = TableDefinition.builder()
+                .name("universe")
+                .addColumn("planet", "VARCHAR", String.format("one of: [%s]", "Neptune Saturn Kepler-10b Mercury"))
+                .addColumn("type", "VARCHAR", String.format("one of: [%s]", "Ice Giant Gas Giant Mega-Earth Sub-Earth"))
+                .build();
+
+        String sqlWithLike = "SELECT planet FROM universe WHERE type ILIKE '%Earth%' OR planet NOT LIKE 'Gas%'";
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(sqlWithLike);
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(universeDoc)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        Query query = Query.from("irrelevant text");
+        sqlFilterBuilder.build(query);
+
+        verify(sqlFilterParser).parse(sqlWithLike.trim());
+    }
 }
