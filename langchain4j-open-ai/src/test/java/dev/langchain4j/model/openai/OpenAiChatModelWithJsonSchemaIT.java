@@ -25,15 +25,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelWithJsonSchemaIT {
 
-    OpenAiChatModel model = OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .modelName(GPT_4_O_MINI)
-            .strictJsonSchema(true)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
     @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
     @JsonSubTypes({@JsonSubTypes.Type(Circle.class), @JsonSubTypes.Type(Rectangle.class)})
     interface Shape {}
@@ -49,6 +40,14 @@ class OpenAiChatModelWithJsonSchemaIT {
     void should_generate_valid_json_with_anyof() throws JsonProcessingException {
 
         // given
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_4_O_MINI)
+                .strictJsonSchema(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
         JsonSchemaElement circleSchema = jsonSchemaElementFrom(Circle.class);
         JsonSchemaElement rectangleSchema = jsonSchemaElementFrom(Rectangle.class);
 
@@ -79,6 +78,58 @@ class OpenAiChatModelWithJsonSchemaIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
                 .responseFormat(responseFormat)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        Shapes shapes = new ObjectMapper().readValue(chatResponse.aiMessage().text(), Shapes.class);
+        assertThat(shapes).isNotNull();
+        assertThat(shapes.shapes()).isNotNull().containsExactlyInAnyOrder(new Circle(5), new Rectangle(10, 20));
+    }
+
+    @Test
+    void should_support_json_schema_in_model() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement circleSchema = jsonSchemaElementFrom(Circle.class);
+        JsonSchemaElement rectangleSchema = jsonSchemaElementFrom(Rectangle.class);
+
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("Shapes")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shapes",
+                                JsonArraySchema.builder()
+                                        .items(JsonAnyOfSchema.builder()
+                                                .anyOf(circleSchema, rectangleSchema)
+                                                .build())
+                                        .build())
+                        .required(List.of("shapes"))
+                        .build())
+                .build();
+
+        ResponseFormat responseFormat =
+                ResponseFormat.builder().type(JSON).jsonSchema(jsonSchema).build();
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_4_O_MINI)
+                .responseFormat(responseFormat)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from(
+                """
+                Extract information from the following text:
+                1. A circle with a radius of 5
+                2. A rectangle with a width of 10 and a height of 20
+                """);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
                 .build();
 
         // when

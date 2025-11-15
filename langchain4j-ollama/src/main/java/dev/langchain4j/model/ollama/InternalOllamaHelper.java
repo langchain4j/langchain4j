@@ -3,10 +3,20 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -30,12 +40,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @Internal
 class InternalOllamaHelper {
@@ -45,6 +49,9 @@ class InternalOllamaHelper {
             userMessage -> userMessage.contents().stream().anyMatch(content -> IMAGE.equals(content.type()));
 
     static List<Message> toOllamaMessages(List<ChatMessage> messages) {
+        if (!messagesContainOnlyTextAndOrImageContentType(messages)) {
+            throw new UnsupportedFeatureException("Ollama only supports message types Text and Image.");
+        }
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
                         ? messagesWithImageSupport((UserMessage) message)
@@ -83,7 +90,7 @@ class InternalOllamaHelper {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
                         .name(toolCall.getFunction().getName())
-                        .arguments(toJson(toolCall.getFunction().getArguments()))
+                        .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
                 .toList();
     }
@@ -125,11 +132,21 @@ class InternalOllamaHelper {
         }
     }
 
-    static AiMessage aiMessageFrom(OllamaChatResponse ollamaChatResponse) {
-        return ollamaChatResponse.getMessage().getToolCalls() != null
-                ? AiMessage.from(
-                        toToolExecutionRequests(ollamaChatResponse.getMessage().getToolCalls()))
-                : AiMessage.from(ollamaChatResponse.getMessage().getContent());
+    static AiMessage aiMessageFrom(Message message, boolean returnThinking) {
+        String content = message.getContent();
+
+        String thinking = null;
+        if (returnThinking) {
+            thinking = message.getThinking();
+        }
+
+        List<ToolCall> toolCalls = getOrDefault(message.getToolCalls(), List.of());
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(content) ? null : content)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(toToolExecutionRequests(toolCalls))
+                .build();
     }
 
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
@@ -251,5 +268,22 @@ class InternalOllamaHelper {
             case TOOL_EXECUTION_RESULT -> Role.TOOL;
             default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
         };
+    }
+
+    private static boolean messagesContainOnlyTextAndOrImageContentType(List<ChatMessage> messages) {
+        final Set<ContentType> contentTypes = messages.stream()
+                .filter(isUserMessage)
+                .map(UserMessage.class::cast)
+                .map(UserMessage::contents)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .map(Content::type)
+                .collect(Collectors.toSet()) ;
+        if (contentTypes.size() > 2) {
+            return false;   // contains more than 2 supported content types
+        }
+        contentTypes.remove(TEXT);
+        contentTypes.remove(IMAGE);
+        return contentTypes.isEmpty();  // no remaining other content type
     }
 }

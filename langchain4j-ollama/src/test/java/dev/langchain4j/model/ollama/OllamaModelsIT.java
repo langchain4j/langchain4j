@@ -51,6 +51,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(response.content().getParameters()).isNotBlank();
         assertThat(response.content().getModifiedAt()).isNotNull();
         assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
+        assertThat(response.content().getCapabilities()).contains("completion");
     }
 
     @Test

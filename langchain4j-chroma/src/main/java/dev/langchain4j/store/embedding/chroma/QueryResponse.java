@@ -1,8 +1,10 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.List;
 import java.util.Map;
 
+@Internal
 class QueryResponse {
 
     private List<List<String>> ids;

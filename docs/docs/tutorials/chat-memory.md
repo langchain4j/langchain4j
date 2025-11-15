@@ -134,5 +134,8 @@ that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
   - [Chat memory with ConversationalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
   - [Chat memory with ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 
+All supported chat memory stores can be found [here](/integrations/chat-memory-stores/).
+
+
 ## Related Tutorials
 - [Generative AI Conversations using LangChain4j ChatMemory](https://www.sivalabs.in/generative-ai-conversations-using-langchain4j-chat-memory/) by [Siva](https://www.sivalabs.in/)

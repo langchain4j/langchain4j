@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
@@ -33,40 +34,15 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.apiKey,
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger,
                 builder.timeout);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.taskType = builder.taskType;
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.outputDimensionality = builder.outputDimensionality;
-    }
-
-    /**
-     * @deprecated please use {@link #GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
-    public GoogleAiEmbeddingModel(
-            String modelName,
-            String apiKey,
-            String baseUrl,
-            Integer maxRetries,
-            TaskType taskType,
-            String titleMetadataKey,
-            Integer outputDimensionality,
-            Duration timeout,
-            Boolean logRequestsAndResponses) {
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        ensureNotBlank(apiKey, "apiKey");
-
-        this.maxRetries = getOrDefault(maxRetries, 2);
-
-        this.taskType = taskType;
-        this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
-
-        this.outputDimensionality = outputDimensionality;
-
-        this.geminiService =
-                new GeminiService(null, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
     }
 
     public static GoogleAiEmbeddingModelBuilder builder() {
@@ -118,7 +94,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private GoogleAiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
-        GeminiPart geminiPart = GeminiPart.builder().text(textSegment.text()).build();
+        GeminiContent.GeminiPart geminiPart =
+                GeminiContent.GeminiPart.builder().text(textSegment.text()).build();
 
         GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
 
@@ -160,6 +137,9 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer outputDimensionality;
         private Duration timeout;
         private Boolean logRequestsAndResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
 
         GoogleAiEmbeddingModelBuilder() {}
 
@@ -210,6 +190,25 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public GoogleAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

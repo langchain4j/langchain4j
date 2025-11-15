@@ -13,10 +13,10 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
     /**
      * Validate the interaction between the model and the user in one of the two directions.
      *
-     * @param params
+     * @param request
      *            The parameters of the request or the response to be validated
      *
      * @return The result of the validation
      */
-    R validate(P params);
+    R validate(P request);
 }

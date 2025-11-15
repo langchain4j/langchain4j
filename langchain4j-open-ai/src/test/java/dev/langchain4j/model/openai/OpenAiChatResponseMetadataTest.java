@@ -1,15 +1,16 @@
 package dev.langchain4j.model.openai;
 
-import org.junit.jupiter.api.Test;
-
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
+
 class OpenAiChatResponseMetadataTest {
 
     @Test
-    public void should_modify_specific_properties_via_builder() {
+    void should_modify_specific_properties_via_builder() {
         // given
         OpenAiTokenUsage tokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(10)
@@ -47,7 +48,7 @@ class OpenAiChatResponseMetadataTest {
     }
 
     @Test
-    public void should_modify_parent_properties_via_builder() {
+    void should_modify_parent_properties_via_builder() {
         // given
         OpenAiTokenUsage originalTokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(10)
@@ -93,7 +94,7 @@ class OpenAiChatResponseMetadataTest {
     }
 
     @Test
-    public void should_modify_all_properties_via_builder() {
+    void should_modify_all_properties_via_builder() {
         // given
         OpenAiTokenUsage originalTokenUsage = OpenAiTokenUsage.builder()
                 .inputTokenCount(1)
@@ -128,16 +129,37 @@ class OpenAiChatResponseMetadataTest {
                 .build();
 
         // then
-        assertThat(modified)
-                .isNotEqualTo(original)
-                .satisfies(metadata -> {
-                    assertThat(metadata.id()).isEqualTo("id-2");
-                    assertThat(metadata.modelName()).isEqualTo("model-2");
-                    assertThat(metadata.tokenUsage()).isEqualTo(newTokenUsage);
-                    assertThat(metadata.finishReason()).isEqualTo(LENGTH);
-                    assertThat(metadata.created()).isEqualTo(2000L);
-                    assertThat(metadata.serviceTier()).isEqualTo("tier-b");
-                    assertThat(metadata.systemFingerprint()).isEqualTo("fp-2");
-                });
+        assertThat(modified).isNotEqualTo(original).satisfies(metadata -> {
+            assertThat(metadata.id()).isEqualTo("id-2");
+            assertThat(metadata.modelName()).isEqualTo("model-2");
+            assertThat(metadata.tokenUsage()).isEqualTo(newTokenUsage);
+            assertThat(metadata.finishReason()).isEqualTo(LENGTH);
+            assertThat(metadata.created()).isEqualTo(2000L);
+            assertThat(metadata.serviceTier()).isEqualTo("tier-b");
+            assertThat(metadata.systemFingerprint()).isEqualTo("fp-2");
+        });
+    }
+
+    @Test
+    void should_not_throw_when_casting_TokenUsage_to_OpenAiTokenUsage() {
+
+        // given
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        // when
+        OpenAiChatResponseMetadata original = OpenAiChatResponseMetadata.builder()
+                .id("id-1")
+                .modelName("model-1")
+                .tokenUsage(tokenUsage)
+                .finishReason(STOP)
+                .created(1000L)
+                .serviceTier("tier-a")
+                .systemFingerprint("fp-1")
+                .build();
+
+        // then
+        assertThat(original.tokenUsage().inputTokenCount()).isEqualTo(1);
+        assertThat(original.tokenUsage().outputTokenCount()).isEqualTo(2);
+        assertThat(original.tokenUsage().totalTokenCount()).isEqualTo(3);
     }
 }

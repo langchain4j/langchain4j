@@ -29,7 +29,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> modelsSupportingTools() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, MISTRAL_LARGE);
     }
 
     @Override
@@ -71,6 +71,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
     protected boolean assertExceptionType() {
         // Bedrock throws ValidationException, while test expects UnsupportedFeatureException
         return false;
@@ -92,7 +97,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the
+    // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
     // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override

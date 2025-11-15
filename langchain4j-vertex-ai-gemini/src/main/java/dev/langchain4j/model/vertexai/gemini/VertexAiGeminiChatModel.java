@@ -11,6 +11,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
@@ -23,6 +24,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
+import com.google.common.annotations.VisibleForTesting;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -179,11 +181,22 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                     .build();
         }
 
-        this.vertexAI = new VertexAI.Builder()
+        VertexAI.Builder vertexAiBuilder = new VertexAI.Builder()
                 .setProjectId(ensureNotBlank(builder.project, "project"))
                 .setLocation(ensureNotBlank(builder.location, "location"))
-                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
-                .build();
+                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
+
+        if (builder.credentials != null) {
+            GoogleCredentials scopedCredentials =
+                    builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+            vertexAiBuilder.setCredentials(scopedCredentials);
+        }
+
+        if (builder.apiEndpoint != null) {
+            vertexAiBuilder.setApiEndpoint(builder.apiEndpoint);
+        }
+
+        this.vertexAI = vertexAiBuilder.build();
 
         this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
 
@@ -524,6 +537,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
     }
 
+    @VisibleForTesting
+    VertexAI vertexAI() {
+        return this.vertexAI;
+    }
+
     @Override
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
@@ -568,6 +586,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
+        private GoogleCredentials credentials;
+        private String apiEndpoint;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -676,6 +696,16 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         public VertexAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
+        public VertexAiGeminiChatModelBuilder credentials(GoogleCredentials credentials) {
+            this.credentials = credentials;
+            return this;
+        }
+
+        public VertexAiGeminiChatModelBuilder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
+            return this;
         }
 
         public VertexAiGeminiChatModel build() {

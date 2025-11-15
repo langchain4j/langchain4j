@@ -1,21 +1,18 @@
 package dev.langchain4j.store.memory.chat.coherence;
 
-import com.oracle.coherence.ai.DocumentChunk;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
 import com.tangosol.net.Session;
-
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A {@link ChatMemoryStore} backed by an Oracle Coherence named map.
@@ -86,7 +83,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
      * Create a {@link CoherenceChatMemoryStore} that uses the
      * specified Coherence {@link NamedMap} name.
      *
-     * @param name  the name of the Coherence {@link NamedMap} used to store documents
+     * @param name  the name of the Coherence {@link NamedMap} used to store chat messages
      *
      * @return a {@link CoherenceChatMemoryStore}
      */
@@ -98,7 +95,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
      * Create a {@link CoherenceChatMemoryStore} that uses the
      * specified Coherence {@link NamedMap} name.
      *
-     * @param map  the {@link NamedMap} used to store documents
+     * @param map  the {@link NamedMap} used to store chat messages
      *
      * @return a {@link CoherenceChatMemoryStore}
      */
@@ -120,7 +117,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
      */
     public static class Builder {
         /**
-         * The name of the {@link NamedMap} to contain the {@link DocumentChunk document chunks}.
+         * The name of the {@link NamedMap} to contain the serialized {@link ChatMessage chat messages}.
          */
         private String name = DEFAULT_MAP_NAME;
 
@@ -137,20 +134,17 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
         /**
          * Create a {@link Builder}.
          */
-        protected Builder() {
-        }
+        protected Builder() {}
 
         /**
          * Set the name of the {@link NamedMap} that will hold the
-         * {@link DocumentChunk document chunks}.
+         * serialized {@link ChatMessage chat messages}.
          *
-         * @param name  the name of the {@link NamedMap} that will hold
-         *              the {@link DocumentChunk document chunks}
-         *
+         * @param name the name of the {@link NamedMap} to store serialized {@link ChatMessage chat messages}
          * @return this builder for fluent method calls
          */
         public Builder name(String name) {
-            this.name = isNullOrEmpty(name) ? DEFAULT_MAP_NAME : name;
+            this.name = isNullOrBlank(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
 
@@ -183,17 +177,26 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
         }
 
         /**
-         * Build a {@link CoherenceChatMemoryStore} from the state in this builder.
+         * Creates a new instance of {@link CoherenceChatMemoryStore} using the current
+         * configuration of this {@code Builder}.
+         * <p>
+         * If a {@link Session} has not been explicitly set via the builder, this method
+         * will attempt to resolve it by {@code sessionName} using {@link Coherence#getSession(String)}.
+         * If no {@code sessionName} is provided, the default session will be used via
+         * {@link Coherence#getSession()}.
+         * <p>
+         * Once a {@link Session} is resolved, the configured {@link NamedMap} (or the default
+         * {@link #DEFAULT_MAP_NAME} if none was set) is retrieved and used to create a new
+         * {@link CoherenceChatMemoryStore} instance.
          *
-         * @return a new instance of a {@link CoherenceChatMemoryStore}
+         * @return a new instance of {@link CoherenceChatMemoryStore}
          */
         public CoherenceChatMemoryStore build() {
             Session session = this.session;
             if (session == null) {
                 if (sessionName != null) {
                     session = Coherence.getInstance().getSession(sessionName);
-                }
-                else {
+                } else {
                     session = Coherence.getInstance().getSession();
                 }
             }

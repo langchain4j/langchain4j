@@ -20,7 +20,8 @@ sidebar_position: 0
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                            | ✅                   |
 | [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                          | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
-| [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
+| [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                | ✅                            | ✅                     |
+| [Mariadb](/integrations/embedding-stores/mariadb)                                       | ✅                | ✅                          | ✅                   |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
@@ -29,8 +30,10 @@ sidebar_position: 0
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          | ✅                   |
-| [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
+| [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                              | ✅                   |
+| [SQL Server](/integrations/embedding-stores/sqlserver)                                | ✅                | ✅                          | ✅                    |
 | [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
 | [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅               |                            | ✅                  |
+| [YugabyteDB](/integrations/embedding-stores/yugabytedb)                               | ✅                | ✅                          | ✅                   |

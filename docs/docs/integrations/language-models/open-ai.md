@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.1.0</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 
@@ -113,6 +113,7 @@ langchain4j.open-ai.chat-model.presence-penalty=...
 langchain4j.open-ai.chat-model.project-id=...
 langchain4j.open-ai.chat-model.reasoning-effort=...
 langchain4j.open-ai.chat-model.response-format=...
+langchain4j.open-ai.chat-model.return-thinking=...
 langchain4j.open-ai.chat-model.seed=...
 langchain4j.open-ai.chat-model.service-tier=...
 langchain4j.open-ai.chat-model.stop=...
@@ -124,6 +125,9 @@ langchain4j.open-ai.chat-model.temperature=...
 langchain4j.open-ai.chat-model.timeout=...
 langchain4j.open-ai.chat-model.top-p=
 langchain4j.open-ai.chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.chat-model.custom-parameters.<key>=<value>
 ```
 See the description of most of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
 
@@ -177,6 +181,27 @@ OpenAiChatModel.builder()
 ```
 In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
+### Thinking / Reasoning
+This setting is intended for [DeepSeek](https://api-docs.deepseek.com/guides/reasoning_model).
+
+When the `returnThinking` parameter is enabled while building `OpenAiChatModel` or `OpenAiStreamingChatModel`,
+the `reasoning_content` field of the DeepSeek API response will be parsed
+and returned inside `AiMessage.thinking()`.
+
+When the `returnThinking` parameter is enabled for `OpenAiStreamingChatModel`,
+the `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
+callbacks will be invoked when the DeepSeek API streams `reasoning_content`.
+
+Here is an example of how to configure thinking:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.deepseek.com/v1")
+        .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+        .modelName("deepseek-reasoner")
+        .returnThinking(true)
+        .build();
+```
+
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
@@ -219,6 +244,7 @@ langchain4j.open-ai.streaming-chat-model.presence-penalty=...
 langchain4j.open-ai.streaming-chat-model.project-id=...
 langchain4j.open-ai.streaming-chat-model.reasoning-effort=...
 langchain4j.open-ai.streaming-chat-model.response-format=...
+langchain4j.open-ai.streaming-chat-model.return-thinking=...
 langchain4j.open-ai.streaming-chat-model.seed=...
 langchain4j.open-ai.streaming-chat-model.service-tier=...
 langchain4j.open-ai.streaming-chat-model.stop=...
@@ -229,6 +255,9 @@ langchain4j.open-ai.streaming-chat-model.temperature=...
 langchain4j.open-ai.streaming-chat-model.timeout=...
 langchain4j.open-ai.streaming-chat-model.top-p=...
 langchain4j.open-ai.streaming-chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.streaming-chat-model.custom-parameters.<key>=<value>
 ```
 
 
@@ -336,7 +365,7 @@ System.out.println(rawHttpResponse.headers());
 System.out.println(rawHttpResponse.statusCode());
 ```
 
-When using `OpenAiStreamingChatModel`, you can access raw Server-Sent Events:
+When using `OpenAiStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
 ```java
 List<ServerSentEvent> rawServerSentEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
 System.out.println(rawServerSentEvents.get(0).data());

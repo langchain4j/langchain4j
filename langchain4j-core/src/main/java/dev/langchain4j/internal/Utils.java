@@ -33,12 +33,15 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility methods.
  */
 @Internal
 public class Utils {
+    private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {}
 
@@ -191,6 +194,16 @@ public class Utils {
     }
 
     /**
+     * Utility method to check if an array is null or has no elements.
+     *
+     * @param array the array to check
+     * @return {@code true} if the array is null or has no elements, otherwise {@code false}
+     */
+    public static boolean isNullOrEmpty(Object[] array) {
+        return array == null || array.length == 0;
+    }
+
+    /**
      * Is the map object {@code null} or empty?
      *
      * @param map The iterable object to check.
@@ -304,20 +317,31 @@ public class Utils {
                 // Handle URLs
                 HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
                 connection.setRequestMethod("GET");
+                // Add headers to appear as a legitimate browser request
+                connection.setRequestProperty(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                connection.setRequestProperty(
+                        "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+                connection.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+                connection.setRequestProperty("Accept-Encoding", "gzip, deflate");
+                connection.setRequestProperty("Connection", "keep-alive");
 
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    InputStream inputStream = connection.getInputStream();
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    try (InputStream inputStream = connection.getInputStream();
+                            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, bytesRead);
+                        }
 
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
+                        return outputStream.toByteArray();
+                    } finally {
+                        connection.disconnect();
                     }
-
-                    return outputStream.toByteArray();
                 } else {
                     throw new RuntimeException("Error while reading: " + responseCode);
                 }
@@ -424,6 +448,21 @@ public class Utils {
         return unmodifiableMap(map);
     }
 
+    /**
+     * Returns a mutable copy of the provided map.
+     * Returns an empty map if the provided map is <code>null</code>.
+     *
+     * @param map The map to copy.
+     * @return The copy of the provided map or an empty map.
+     */
+    public static <K, V> Map<K, V> mutableCopy(Map<K, V> map) {
+        if (map == null) {
+            return new HashMap<>();
+        }
+
+        return new HashMap<>(map);
+    }
+
     public static Map<String, String> toStringValueMap(Map<String, Object> map) {
         if (map == null) {
             return null;
@@ -456,7 +495,7 @@ public class Utils {
         if (Proxy.isProxyClass(method.getDeclaringClass())) {
             for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
                 try {
-                    Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                    Method interfaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
                     if (interfaceMethod.isAnnotationPresent(annotation)) {
                         return Optional.of(interfaceMethod);
                     }
@@ -466,5 +505,35 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Logs a warning if the given string value is {@code null} or blank.
+     * <p>
+     * This method is typically used in constructors or validation routines to
+     * highlight missing or incomplete field values without throwing an exception.
+     * It returns the original value unchanged so it can be assigned directly to
+     * a field or variable.
+     * <p>
+     * Example usage:
+     * <pre>
+     * this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
+     * </pre>
+     *
+     * Which will log:
+     * <pre>
+     * McpResource: 'name' is null or blank
+     * </pre>
+     *
+     * @param value     the string value to check (may be {@code null} or blank)
+     * @param fieldName the name of the field being validated (used in the log message)
+     * @param clazz     the class where the validation occurs (used to identify context in the log)
+     * @return the original value (may be {@code null} or blank)
+     */
+    public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
+        if (isNullOrBlank(fieldName)) {
+            log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
+        }
+        return value;
     }
 }

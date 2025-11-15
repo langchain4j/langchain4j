@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.1.0-rc1</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -31,6 +31,7 @@ System.out.println(answer);
 ### Customizing AnthropicChatModel
 ```java
 AnthropicChatModel model = AnthropicChatModel.builder()
+    .httpClientBuilder(...)
     .baseUrl(...)
     .apiKey(...)
     .version(...)
@@ -41,14 +42,24 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .topK(...)
     .maxTokens(...)
     .stopSequences(...)
+    .toolSpecifications(...)
+    .toolChoice(...)
+    .toolChoiceName(...)
+    .disableParallelToolUse(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
+    .returnThinking(...)
+    .sendThinking(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
     .logResponses(...)
+    .listeners(...)
+    .defaultRequestParameters(...)
+    .userId(...)
+    .customParameters(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
@@ -89,6 +100,18 @@ Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
 
+
+## Tool Choice
+
+Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use)
+feature is available for both streaming and non-streaming interactions
+by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
+
+## Parallel Tool Use
+
+By default, Anthropic Claude may use multiple tools to answer a user query,
+but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#parallel-tool-use) by setting `disableParallelToolUse(true)`.
+
 ## Caching
 
 `AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
@@ -106,9 +129,20 @@ More info on caching can be found [here](https://docs.anthropic.com/en/docs/buil
 
 ## Thinking
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` have a **_limited_** support
-for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
-It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
+Both `AnthropicChatModel` and `AnthropicStreamingChatModel` support
+[thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+
+It is controlled by the following parameters:
+- `thinkingType` and `thinkingBudgetTokens`: enable thinking,
+  see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+- `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
+  and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
+  callbacks when using `BedrockStreamingChatModel`.
+  Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+- `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
+Enabled by default.
+
+Here is an example of how to configure thinking:
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -116,17 +150,74 @@ ChatModel model = AnthropicChatModel.builder()
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
         .maxTokens(1024 + 100)
-        .logRequests(true)
-        .logResponses(true)
+        .returnThinking(true)
+        .sendThinking(true)
         .build();
 ```
 
-What is currently not supported:
-- It not possible to get the thinking content from the LC4j API. It is only visible in logs.
-- Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
-- etc
+## Setting custom chat request parameters
 
-More info on thinking can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+When building `AnthropicChatModel` and `AnthropicStreamingChatModel`,
+you can configure custom parameters for the chat request within the HTTP request's JSON body.
+Here is an example of how to enable [context editing](https://docs.claude.com/en/docs/build-with-claude/context-editing):
+```java
+record Edit(String type) {}
+record ContextManagement(List<Edit> edits) { }
+Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_SONNET_4_5_20250929)
+    .beta("context-management-2025-06-27")
+    .customParameters(customParameters)
+    .logRequests(true)
+    .logResponses(true)
+    .build();
+
+String answer = model.chat("Hi");
+```
+
+This will produce an HTTP request with the following body:
+```json
+{
+    "model" : "claude-sonnet-4-5-20250929",
+    "messages" : [ {
+        "role" : "user",
+        "content" : [ {
+            "type" : "text",
+            "text" : "Hi"
+        } ]
+    } ],
+    "context_management" : {
+        "edits" : [ {
+            "type" : "clear_tool_uses_20250919"
+        } ]
+    }
+}
+```
+
+Alternatively, custom parameters can also be specified as a structure of nested maps:
+```java
+Map<String, Object> customParameters = Map.of(
+        "context_management",
+        Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919")))
+);
+```
+
+## AnthropicTokenCountEstimator
+
+```java
+TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
+        .modelName(CLAUDE_3_OPUS_20240229)
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+List<ChatMessage> messages = List.of(...);
+
+int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+```
 
 ## Quarkus
 
@@ -139,7 +230,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.1.0-beta7</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 

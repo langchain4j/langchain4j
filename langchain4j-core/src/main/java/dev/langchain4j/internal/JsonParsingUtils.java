@@ -1,7 +1,6 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
-
 import java.util.Optional;
 
 @Internal
@@ -12,17 +11,19 @@ public class JsonParsingUtils {
         R apply(T t) throws Exception;
     }
 
-    public record ParsedJson<T>(T value, String json) { }
+    public record ParsedJson<T>(T value, String json) {}
 
-    public static <T> Optional<ParsedJson<T>> extractAndParseJson(String text, Class<T> type) {
+    public static <T> ParsedJson<T> extractAndParseJson(String text, Class<T> type) throws Exception {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
     }
 
-    public static <T> Optional<ParsedJson<T>> extractAndParseJson(String text, ThrowingFunction<String, T> parser) {
+    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser) throws Exception {
+        Exception parseException = null;
         try {
-            return Optional.of(new ParsedJson<>(parser.apply(text), text));
-        } catch (Exception ignored) {
-            // Ignore parsing errors and try to find a JSON block in the text
+            return new ParsedJson<>(parser.apply(text), text);
+        } catch (Exception ex) {
+            // Temporarily ignore parsing errors and try to find a JSON block in the text
+            parseException = ex;
         }
 
         int index = text.length();
@@ -30,17 +31,17 @@ public class JsonParsingUtils {
 
             int jsonEnd = findJsonEnd(text, index);
             if (jsonEnd < 0) {
-                return Optional.empty();
+                throw parseException;
             }
 
             int jsonStart = findJsonStart(text, jsonEnd, text.charAt(jsonEnd));
             if (jsonStart < 0) {
-                return Optional.empty();
+                throw parseException;
             }
 
             try {
                 String tentativeJson = text.substring(jsonStart, jsonEnd + 1);
-                return Optional.of(new ParsedJson<>(parser.apply(tentativeJson), tentativeJson));
+                return new ParsedJson<>(parser.apply(tentativeJson), tentativeJson);
             } catch (Exception ignored) {
                 // If parsing fails, try to extract a JSON block from the text
             }
@@ -50,7 +51,7 @@ public class JsonParsingUtils {
 
     private static int findJsonEnd(String text, int fromIndex) {
         int jsonMapEnd = text.lastIndexOf('}', fromIndex);
-        int jsonListEnd = text.indexOf(']', fromIndex);
+        int jsonListEnd = text.lastIndexOf(']', fromIndex);
         return Math.max(jsonMapEnd, jsonListEnd);
     }
 
@@ -63,7 +64,7 @@ public class JsonParsingUtils {
             if (c == openingBrace) {
                 braceCount++;
                 if (braceCount == 0) {
-                    return i == 0 || text.charAt(i-1) != openingBrace ? i : -1;
+                    return i == 0 || text.charAt(i - 1) != openingBrace ? i : -1;
                 }
             } else if (c == closingBrace) {
                 braceCount--;
