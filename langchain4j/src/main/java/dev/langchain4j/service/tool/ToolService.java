@@ -85,6 +85,16 @@ public class ToolService {
         });
     }
 
+    public void tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
+        tools.forEach((toolSpecification, toolExecutor) -> {
+            toolSpecifications.add(toolSpecification);
+            toolExecutors.put(toolSpecification.name(), toolExecutor);
+            if (immediateReturnToolNames.contains(toolSpecification.name())) {
+                immediateReturnTools.add(toolSpecification.name());
+            }
+        });
+    }
+
     public void tools(Collection<Object> objectsWithTools) {
         for (Object objectWithTool : objectsWithTools) {
             if (objectWithTool instanceof Class) {

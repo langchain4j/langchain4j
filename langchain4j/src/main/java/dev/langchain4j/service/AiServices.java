@@ -7,6 +7,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -47,6 +48,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -395,6 +397,24 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
         context.toolService.tools(tools);
+        return this;
+    }
+
+    /**
+     * Configures the tools that the LLM can use.
+     *
+     * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
+     * @param immediateReturnToolNames A set of Tool names {@link ToolSpecification#name()}
+     *               This method of configuring tools is useful when tools must be configured programmatically.
+     *               Otherwise, it is recommended to use the {@link Tool}-annotated java methods
+     *               and configure tools with the {@link #tools(Object...)} and {@link #tools(Collection)} methods.
+     *               Specifically, this method allows you to specify a set of tool that should not automatically
+     *               perform a llm with the tool result provided by the {@link ToolExecutor}.
+     *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
+     * @return builder
+     */
+    public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
+        context.toolService.tools(tools,immediateReturnToolNames);
         return this;
     }
 
