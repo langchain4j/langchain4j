@@ -409,7 +409,7 @@ public abstract class AiServices<T> {
      *               Otherwise, it is recommended to use the {@link Tool}-annotated java methods
      *               and configure tools with the {@link #tools(Object...)} and {@link #tools(Collection)} methods.
      *               Specifically, this method allows you to specify a set of tool that should not automatically
-     *               perform a llm with the tool result provided by the {@link ToolExecutor}.
+     *               perform a llm call with the tool results provided by a {@link ToolExecutor}.
      *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
      * @return builder
      */
