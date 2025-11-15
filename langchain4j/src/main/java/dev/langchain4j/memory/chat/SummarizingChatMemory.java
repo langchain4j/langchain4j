@@ -170,7 +170,6 @@ public class SummarizingChatMemory implements ChatMemory {
                         You are a conversation summarization assistant. Please read the entire history of interactions between the user and the AI, and generate a concise summary.
     
                         Requirements for the summary:
-                        - Write in natural and fluent Chinese.
                         - Keep the length between 50 and 500 characters.
                         - Accurately capture the main topics, goals, and conclusions discussed.
                         - Exclude any irrelevant dialogue or system messages.
