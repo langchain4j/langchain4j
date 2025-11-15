@@ -20,6 +20,7 @@ import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import java.util.function.Function;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -611,4 +612,116 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO));
         chatMemory.add(systemMessageWithTokens(10));
     }
+
+    @Test
+    void dynamic_max_tokens_behavior() {
+        // Dynamic maxTokens function: different IDs have different token windows
+        Function<Object, Integer> dynamicMaxTokens = id -> {
+            if ("short".equals(id)) return 33;
+            if ("long".equals(id)) return 60;
+            return 45; // default
+        };
+
+        // Define messages with token counts
+        var msgA = userMessageWithTokens(10);
+        var msgB = aiMessageWithTokens(10);
+        var msgC = userMessageWithTokens(10);
+        var msgD = aiMessageWithTokens(10);
+        var msgE = userMessageWithTokens(10);
+
+        // shortMemory: maxTokens = 33
+        TokenWindowChatMemory shortMemory = TokenWindowChatMemory.builder()
+                .id("short")
+                .dynamicMaxTokens(dynamicMaxTokens, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        shortMemory.add(msgA);
+        shortMemory.add(msgB);
+        shortMemory.add(msgC);
+        // Adding msgD will trigger eviction of the oldest messages
+        shortMemory.add(msgD);
+
+        // Keep the most recent messages that fit within maxTokens
+        assertThat(shortMemory.messages())
+                .containsExactly(msgB, msgC, msgD);
+
+        // longMemory: maxTokens = 60
+        TokenWindowChatMemory longMemory = TokenWindowChatMemory.builder()
+                .id("long")
+                .dynamicMaxTokens(dynamicMaxTokens, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        longMemory.add(msgA);
+        longMemory.add(msgB);
+        longMemory.add(msgC);
+        longMemory.add(msgD);
+        longMemory.add(msgE);
+
+        // Total tokens do not exceed 60, all messages are retained
+        assertThat(longMemory.messages())
+                .containsExactly(msgA, msgB, msgC, msgD, msgE);
+
+        // Default ID: maxTokens = 45
+        TokenWindowChatMemory defaultMemory = TokenWindowChatMemory.builder()
+                .id("other")
+                .dynamicMaxTokens(dynamicMaxTokens, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        defaultMemory.add(msgA);
+        defaultMemory.add(msgB);
+        defaultMemory.add(msgC);
+        defaultMemory.add(msgD);
+
+        // Keep the most recent messages that fit within maxTokens
+        assertThat(defaultMemory.messages())
+                .containsExactly(msgA, msgB, msgC, msgD);
+    }
+
+
+    @Test
+    void dynamic_max_tokens_can_change_for_same_id() {
+        // Dynamic maxTokens, can be modified during the test
+        int[] currentMaxTokens = {33}; // initial window size
+        Function<Object, Integer> dynamicMaxTokens = id -> currentMaxTokens[0];
+
+        // Create chat memory
+        TokenWindowChatMemory memory = TokenWindowChatMemory.builder()
+                .id("same-id")
+                .dynamicMaxTokens(dynamicMaxTokens, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        // Define messages with token counts
+        var msgA = userMessageWithTokens(10);
+        var msgB = aiMessageWithTokens(10);
+        var msgC = userMessageWithTokens(10);
+        var msgD = aiMessageWithTokens(10);
+        var msgE = userMessageWithTokens(10);
+
+        // Add the first three messages
+        memory.add(msgA);
+        memory.add(msgB);
+        memory.add(msgC);
+
+        assertThat(memory.messages())
+                .containsExactly(msgA, msgB, msgC);
+
+        // Add the fourth message, triggering eviction
+        memory.add(msgD);
+        assertThat(memory.messages())
+                .containsExactly(msgB, msgC, msgD);
+
+        // Increase maxTokens = 43 and add a new message; no eviction triggered
+        currentMaxTokens[0] = 43;
+        memory.add(msgE);
+        assertThat(memory.messages())
+                .containsExactly(msgB, msgC, msgD, msgE);
+
+        // Decrease maxTokens = 33, which automatically evicts the oldest messages
+        currentMaxTokens[0] = 33;
+        var messagesAfterShrink = memory.messages();
+        assertThat(messagesAfterShrink)
+                .containsExactly(msgC, msgD, msgE); // Keep the most recent messages within token limit
+    }
+
+
 }
