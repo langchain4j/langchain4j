@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,9 +17,14 @@ import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 
 /**
- * This chat memory operates as a sliding window of {@link #maxMessages} messages.
+ * This chat memory operates as a sliding window whose size is controlled by a {@link #maxMessagesSupplier}.
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one is evicted.
+ * <p>
+ * The maximum number of messages can be provided either statically or dynamically
+ * through the {@code maxMessagesSupplier}. When supplied dynamically, the effective
+ * window size can change at runtime, and the sliding-window behavior always respects
+ * the most recent value returned by the supplier.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
  * Only one {@code SystemMessage} can be held at a time.
@@ -35,13 +41,14 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 public class MessageWindowChatMemory implements ChatMemory {
 
     private final Object id;
-    private final Integer maxMessages;
     private final ChatMemoryStore store;
+    private final Function<Object,Integer> maxMessagesSupplier;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
-        this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
+        this.maxMessagesSupplier = ensureNotNull(builder.maxMessagesSupplier, "maxMessagesSupplier");
         this.store = ensureNotNull(builder.store(), "store");
+        ensureGreaterThanZero(this.maxMessagesSupplier.apply(this.id), "maxMessages");
     }
 
     @Override
@@ -51,6 +58,8 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
+        Integer maxMessages = this.maxMessagesSupplier.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = messages();
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
@@ -69,6 +78,8 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public List<ChatMessage> messages() {
+        Integer maxMessages = this.maxMessagesSupplier.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxMessages);
         return messages;
@@ -106,7 +117,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Object id = ChatMemoryService.DEFAULT;
-        private Integer maxMessages;
+        private Function<Object,Integer> maxMessagesSupplier;
         private ChatMemoryStore store;
 
         /**
@@ -125,7 +136,20 @@ public class MessageWindowChatMemory implements ChatMemory {
          * @return builder
          */
         public Builder maxMessages(Integer maxMessages) {
-            this.maxMessages = maxMessages;
+            this.maxMessagesSupplier = (id)-> maxMessages;
+            return this;
+        }
+
+
+        /**
+         * @param maxMessagesSupplier A supplier that provides the maximum number of messages to retain.
+         *                                   The returned value may change dynamically at runtime.
+         *                                   If there isn't enough space for a new message under the current limit,
+         *                                   the oldest one is evicted.
+         * @return builder
+         */
+        public Builder dynamicMaxMessages(Function<Object,Integer> maxMessagesSupplier) {
+            this.maxMessagesSupplier = maxMessagesSupplier;
             return this;
         }
 
