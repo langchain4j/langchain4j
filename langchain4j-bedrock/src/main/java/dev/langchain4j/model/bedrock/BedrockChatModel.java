@@ -14,6 +14,11 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.client.config.SdkClientConfiguration;
+import software.amazon.awssdk.core.client.config.SdkClientOption;
+import software.amazon.awssdk.http.SdkHttpConfigurationOption;
+import software.amazon.awssdk.utils.AttributeMap;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -36,9 +41,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         super(builder);
         this.client = isNull(builder.client)
                 ? createClient(
-                        getOrDefault(builder.logRequests, false),
-                        getOrDefault(builder.logResponses, false),
-                        builder.logger)
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger)
                 : builder.client;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
@@ -101,11 +106,20 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     }
 
     private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses, Logger logger) {
+        // Configure HTTP client with timeout settings as recommended by AWS support
+        AttributeMap timeoutConfig = AttributeMap.builder()
+                .put(SdkHttpConfigurationOption.READ_TIMEOUT, this.timeout)
+                .build();
+
         return BedrockRuntimeClient.builder()
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
+                .httpClient(ApacheHttpClient.builder()
+                        .socketTimeout(this.timeout)
+                        .buildWithDefaults(timeoutConfig))
                 .overrideConfiguration(config -> {
                     config.apiCallTimeout(this.timeout);
+                    config.apiCallAttemptTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                 })
