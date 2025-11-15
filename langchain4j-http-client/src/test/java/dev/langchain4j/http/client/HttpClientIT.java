@@ -282,8 +282,7 @@ public abstract class HttpClientIT {
                 private AtomicInteger counter = new AtomicInteger();
 
                 @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                }
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {}
 
                 @Override
                 public void onEvent(ServerSentEvent event) {

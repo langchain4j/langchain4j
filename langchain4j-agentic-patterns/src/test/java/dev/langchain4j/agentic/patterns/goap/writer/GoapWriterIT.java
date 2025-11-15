@@ -1,21 +1,19 @@
 package dev.langchain4j.agentic.patterns.goap.writer;
 
-import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleScorer;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.AudienceEditor;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleReviewLoop;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
-
-import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.AudienceEditor;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleReviewLoop;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleScorer;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
 
 public class GoapWriterIT {
 
@@ -31,7 +29,8 @@ public class GoapWriterIT {
         AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
                 .outputKey("finalStory")
-                .beforeAgentInvocation(agentResponse -> assertThat(styleEditorCalled.get()).isTrue()) // Ensure StyleEditor was called before AudienceEditor
+                .beforeAgentInvocation(agentResponse -> assertThat(styleEditorCalled.get())
+                        .isTrue()) // Ensure StyleEditor was called before AudienceEditor
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)

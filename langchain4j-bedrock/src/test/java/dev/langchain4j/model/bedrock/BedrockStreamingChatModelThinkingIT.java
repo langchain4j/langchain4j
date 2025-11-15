@@ -11,7 +11,6 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,6 +19,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -31,10 +31,11 @@ import org.mockito.InOrder;
 class BedrockStreamingChatModelThinkingIT {
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    })
+    @ValueSource(
+            strings = {
+                "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            })
     void should_return_and_send_thinking(String modelId) {
 
         // given
@@ -47,10 +48,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
-
                 .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -99,11 +98,12 @@ class BedrockStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            "us.deepseek.r1-v1:0"
-    })
+    @ValueSource(
+            strings = {
+                "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "us.deepseek.r1-v1:0"
+            })
     void should_return_and_NOT_send_thinking(String modelId) {
 
         // given
@@ -119,11 +119,9 @@ class BedrockStreamingChatModelThinkingIT {
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
-
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -137,9 +135,7 @@ class BedrockStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage1.thinking())
-                .containsIgnoringCase("Berlin")
-                .isEqualTo(spyHandler1.getThinking());
+        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin").isEqualTo(spyHandler1.getThinking());
         if (!modelId.contains("deepseek")) {
             assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         }
@@ -179,10 +175,11 @@ class BedrockStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    })
+    @ValueSource(
+            strings = {
+                "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            })
     void should_return_and_send_thinking_with_tools(String modelId) {
 
         // given
@@ -204,10 +201,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
-
                 .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -223,14 +218,16 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage1.thinking()).isNotBlank();
         assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
-        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
+        inOrder1.verify(spyHandler1, atLeast(0))
+                .onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
@@ -271,14 +268,16 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage3.thinking()).isNotBlank();
         assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
-        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
+        inOrder3.verify(spyHandler3, atLeast(0))
+                .onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
         inOrder3.verifyNoMoreInteractions();
@@ -290,7 +289,16 @@ class BedrockStreamingChatModelThinkingIT {
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
         TestStreamingChatResponseHandler spyHandler4 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2), spyHandler4);
+        model.chat(
+                List.of(
+                        userMessage1,
+                        aiMessage1,
+                        toolResultMessage1,
+                        aiMessage2,
+                        userMessage2,
+                        aiMessage3,
+                        toolResultMessage2),
+                spyHandler4);
 
         // then
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
@@ -332,11 +340,9 @@ class BedrockStreamingChatModelThinkingIT {
                 .build();
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
-
                 .modelId(modelId)
                 .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -354,7 +360,8 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage1.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -407,7 +414,8 @@ class BedrockStreamingChatModelThinkingIT {
         assertThat(aiMessage3.attribute("thinking_signature", String.class)).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -426,7 +434,16 @@ class BedrockStreamingChatModelThinkingIT {
         // when
         sleepIfNeeded(SLEEPING_TIME_MULTIPLIER);
         TestStreamingChatResponseHandler spyHandler4 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2), spyHandler4);
+        model.chat(
+                List.of(
+                        userMessage1,
+                        aiMessage1,
+                        toolResultMessage1,
+                        aiMessage2,
+                        userMessage2,
+                        aiMessage3,
+                        toolResultMessage2),
+                spyHandler4);
 
         // then
         AiMessage aiMessage4 = spyHandler4.get().aiMessage();
@@ -447,11 +464,12 @@ class BedrockStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            "us.deepseek.r1-v1:0"
-    })
+    @ValueSource(
+            strings = {
+                "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "us.deepseek.r1-v1:0"
+            })
     void should_NOT_return_thinking(String modelId) {
 
         // given
@@ -466,10 +484,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
-
                 .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -488,11 +504,12 @@ class BedrockStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            "us.deepseek.r1-v1:0"
-    })
+    @ValueSource(
+            strings = {
+                "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "us.deepseek.r1-v1:0"
+            })
     void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {
 
         // given
@@ -507,10 +524,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId(modelId)
-
                 .returnThinking(returnThinking)
                 .defaultRequestParameters(parameters)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();

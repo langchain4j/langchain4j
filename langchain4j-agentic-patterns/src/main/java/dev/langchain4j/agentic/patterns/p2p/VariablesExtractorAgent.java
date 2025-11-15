@@ -7,7 +7,8 @@ import java.util.Map;
 
 public interface VariablesExtractorAgent {
 
-    @UserMessage("""
+    @UserMessage(
+            """
             Extract the values of the given list of variables from the provided text,
             returning a map where the keys are the variable names and the values are the corresponding extracted values.
             If a variable is not found in the text, it should not be included in the map.

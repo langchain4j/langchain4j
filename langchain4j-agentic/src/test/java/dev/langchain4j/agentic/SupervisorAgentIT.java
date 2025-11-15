@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.offset;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -23,15 +22,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -567,7 +563,8 @@ public class SupervisorAgentIT {
         String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
         assertThat(lionJoke1).isNotNull().containsIgnoringCase("lion");
 
-        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be
+        // generated
         JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -588,7 +585,8 @@ public class SupervisorAgentIT {
         String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
         assertThat(lionJoke2).isNotNull().containsIgnoringCase("cheetah");
 
-        List<ChatMessage> supervisorMessages = supervisorAgent.getChatMemory("supervisor").messages();
+        List<ChatMessage> supervisorMessages =
+                supervisorAgent.getChatMemory("supervisor").messages();
 
         Set<String> agentNames = supervisorMessages.stream()
                 .filter(AiMessage.class::isInstance)
@@ -596,9 +594,10 @@ public class SupervisorAgentIT {
                 .map(AiMessage::text)
                 .map(text -> {
                     int start = text.indexOf("\"agentName\":") + "agentName:".length();
-                    int agentNameStart = text.indexOf('"', start + 1)+1;
+                    int agentNameStart = text.indexOf('"', start + 1) + 1;
                     return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
-                }).collect(Collectors.toSet());
+                })
+                .collect(Collectors.toSet());
 
         // only 2 agents, the jokester and done
         assertThat(agentNames).hasSize(2);

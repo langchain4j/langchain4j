@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.workflow;
 
-import java.util.List;
-import java.util.function.Predicate;
+import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.internal.AgentExecutor;
+import java.util.List;
+import java.util.function.Predicate;
 
 public interface ConditionalAgentService<T> extends AgenticService<ConditionalAgentService<T>, T> {
 

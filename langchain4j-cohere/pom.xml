@@ -34,7 +34,6 @@
             <artifactId>converter-jackson</artifactId>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>

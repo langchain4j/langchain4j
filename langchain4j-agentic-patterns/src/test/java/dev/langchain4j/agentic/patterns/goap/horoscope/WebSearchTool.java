@@ -2,8 +2,8 @@ package dev.langchain4j.agentic.patterns.goap.horoscope;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import org.jsoup.Jsoup;
 import java.io.IOException;
+import org.jsoup.Jsoup;
 
 public class WebSearchTool {
 

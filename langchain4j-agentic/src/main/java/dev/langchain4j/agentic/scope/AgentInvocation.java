@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.agentic.internal.AsyncResponse;
-
 import java.util.Map;
 
 public record AgentInvocation(String agentName, String agentId, Map<String, Object> input, Object output) {
@@ -13,10 +12,6 @@ public record AgentInvocation(String agentName, String agentId, Map<String, Obje
 
     @Override
     public String toString() {
-        return "AgentInvocation{" +
-                "agentName=" + agentName +
-                ", input=" + input +
-                ", output=" + output +
-                '}';
+        return "AgentInvocation{" + "agentName=" + agentName + ", input=" + input + ", output=" + output + '}';
     }
 }

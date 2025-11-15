@@ -43,7 +43,6 @@
             <version>${jspecify.version}</version>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
