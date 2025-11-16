@@ -29,7 +29,11 @@ import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import com.openai.models.responses.ResponseFormatTextConfig;
+import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig;
+import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ToolChoiceOptions;
+import com.openai.models.ResponseFormatJsonObject;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -47,7 +51,12 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -219,6 +228,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 // Add tool choice if specified
                 if (chatRequest.toolChoice() != null) {
                     paramsBuilder.toolChoice(toResponsesToolChoice(chatRequest.toolChoice()));
+                }
+            }
+
+            // Add response format if present
+            if (chatRequest.responseFormat() != null) {
+                ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strict);
+                if (textConfig != null) {
+                    paramsBuilder.text(textConfig);
                 }
             }
 
@@ -414,6 +431,47 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             case REQUIRED -> ToolChoiceOptions.REQUIRED;
             case NONE -> ToolChoiceOptions.NONE;
         };
+    }
+
+    private static ResponseTextConfig toResponseTextConfig(ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            // Simple JSON mode without schema
+            return ResponseTextConfig.builder()
+                    .format(ResponseFormatTextConfig.ofJsonObject(
+                            ResponseFormatJsonObject.builder().build()))
+                    .build();
+        } else {
+            // JSON schema mode
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
+                throw new IllegalArgumentException(
+                        "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                                + jsonSchema.rootElement().getClass());
+            }
+
+            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+            ResponseFormatTextJsonSchemaConfig.Schema.Builder schemaBuilder =
+                    ResponseFormatTextJsonSchemaConfig.Schema.builder();
+
+            for (Map.Entry<String, Object> entry : schemaMap.entrySet()) {
+                schemaBuilder.putAdditionalProperty(entry.getKey(), JsonValue.from(entry.getValue()));
+            }
+
+            ResponseFormatTextJsonSchemaConfig schemaConfig = ResponseFormatTextJsonSchemaConfig.builder()
+                    .name(jsonSchema.name())
+                    .schema(schemaBuilder.build())
+                    .strict(strict)
+                    .build();
+
+            return ResponseTextConfig.builder()
+                    .format(ResponseFormatTextConfig.ofJsonSchema(schemaConfig))
+                    .build();
+        }
     }
 
     public static class Builder {

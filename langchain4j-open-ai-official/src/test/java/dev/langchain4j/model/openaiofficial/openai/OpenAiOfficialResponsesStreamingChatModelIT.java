@@ -242,22 +242,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     @Disabled("Responses API does not support stop sequences")
     protected void should_respect_stopSequences_in_default_model_parameters() {}
 
-    @Override
-    @Disabled("Responses API does not support JSON response format")
-    protected void should_respect_JSON_response_format(StreamingChatModel model) {}
 
-    @Override
-    @Disabled("Responses API does not support JSON response format")
-    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API does not support JSON response format")
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API does not support JSON response format")
-    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
-            StreamingChatModel model) {}
 
 
 
