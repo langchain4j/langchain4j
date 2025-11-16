@@ -114,29 +114,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "city"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\":\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\"}"));
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "{\"ci"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "ty\": "));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "\"Munic"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "h\"}"));
-        io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
-
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"co"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "untry"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\": \"Fr"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "ance"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
-        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+        io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override
@@ -160,7 +144,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+            dev.langchain4j.model.output.TokenUsage tokenUsage =
+                    chatResponse.metadata().tokenUsage();
             assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
@@ -199,7 +184,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+            dev.langchain4j.model.output.TokenUsage tokenUsage =
+                    chatResponse.metadata().tokenUsage();
             assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
@@ -234,7 +220,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+            dev.langchain4j.model.output.TokenUsage tokenUsage =
+                    chatResponse.metadata().tokenUsage();
             assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
@@ -272,32 +259,11 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
             StreamingChatModel model) {}
 
-    @Override
-    @Disabled("Responses API handles tool execution differently")
-    protected void should_execute_a_tool_then_answer(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API handles tool execution differently")
-    protected void should_execute_a_tool_without_arguments_then_answer(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API handles tool execution differently")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
-
 
 
     @Override
-    @Disabled("Responses API handles tool execution differently")
-    protected void should_force_LLM_to_execute_any_tool(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API handles tool execution differently")
-    protected void should_force_LLM_to_execute_specific_tool(StreamingChatModel model) {}
-
-
-
-    @Override
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    protected void
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
         // Responses API requires minimum of 16 tokens, so we use 16 instead of 5
         int maxOutputTokens = 16;
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
@@ -319,7 +285,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+            dev.langchain4j.model.output.TokenUsage tokenUsage =
+                    chatResponse.metadata().tokenUsage();
             assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
@@ -449,30 +416,26 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     // Responses API does not support vision/images
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
-        return false;
+        return true;
     }
 
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false;
+        return true;
     }
 
     @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false;
+        return true;
     }
 
     @Override
     protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return false;
+        return true;
     }
 
-    // Image support failures - need to override to disable
     @Override
-    @Disabled("Responses API does not support images")
-    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(StreamingChatModel model) {}
-
-    @Override
-    @Disabled("Responses API does not support images")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {}
+    protected boolean supportsPartialToolStreaming(dev.langchain4j.model.chat.StreamingChatModel model) {
+        return false;
+    }
 }

@@ -21,15 +21,22 @@ import com.openai.models.responses.ResponseFunctionToolCall;
 import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
+import com.openai.models.responses.ResponseInputContent;
+import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputItem;
+import com.openai.models.responses.ResponseInputText;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import com.openai.models.responses.ToolChoiceOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -40,7 +47,9 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -206,6 +215,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 for (var toolSpec : chatRequest.toolSpecifications()) {
                     paramsBuilder.addTool(toResponsesTool(toolSpec, strict));
                 }
+
+                // Add tool choice if specified
+                if (chatRequest.toolChoice() != null) {
+                    paramsBuilder.toolChoice(toResponsesToolChoice(chatRequest.toolChoice()));
+                }
             }
 
             // Start background cancellation monitoring if handler is available
@@ -286,11 +300,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         if (msg instanceof SystemMessage systemMessage) {
             return List.of(createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text()));
         } else if (msg instanceof UserMessage userMessage) {
-            var text = userMessage.contents().stream()
-                    .filter(c -> c instanceof TextContent)
-                    .map(c -> ((TextContent) c).text())
-                    .reduce("", (a, b) -> a + b);
-            return List.of(createTextMessage(EasyInputMessage.Role.USER, text));
+            return List.of(createUserMessage(userMessage));
         } else if (msg instanceof AiMessage aiMessage) {
             var items = new ArrayList<ResponseInputItem>();
 
@@ -335,6 +345,42 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .build());
     }
 
+    private static ResponseInputItem createUserMessage(UserMessage userMessage) {
+        List<Content> contents = userMessage.contents();
+        var contentList = new ArrayList<ResponseInputContent>();
+
+        for (Content content : contents) {
+            if (content instanceof TextContent textContent) {
+                contentList.add(ResponseInputContent.ofInputText(
+                        ResponseInputText.builder().text(textContent.text()).build()));
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                String imageUrl = buildImageUrl(image);
+                contentList.add(ResponseInputContent.ofInputImage(
+                        ResponseInputImage.builder()
+                                .imageUrl(imageUrl)
+                                .detail(ResponseInputImage.Detail.AUTO)
+                                .build()));
+            }
+        }
+
+        return ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.USER)
+                .content(EasyInputMessage.Content.ofResponseInputMessageContentList(contentList))
+                .build());
+    }
+
+    private static String buildImageUrl(Image image) {
+        if (image.url() != null) {
+            return image.url().toString();
+        } else if (image.base64Data() != null) {
+            String mimeType = image.mimeType() != null ? image.mimeType() : "image/jpeg";
+            return "data:" + mimeType + ";base64," + image.base64Data();
+        } else {
+            throw new IllegalArgumentException("Image must have either url or base64Data");
+        }
+    }
+
     private static FunctionTool toResponsesTool(ToolSpecification toolSpec, boolean strict) {
         try {
             var parametersBuilder = FunctionTool.Parameters.builder();
@@ -357,6 +403,17 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             logger.error("Failed to convert tool specification: {}", toolSpec.name(), e);
             throw new RuntimeException("Failed to convert tool specification for tool: " + toolSpec.name(), e);
         }
+    }
+
+    private static ToolChoiceOptions toResponsesToolChoice(ToolChoice toolChoice) {
+        if (toolChoice == null) {
+            return null;
+        }
+        return switch (toolChoice) {
+            case AUTO -> ToolChoiceOptions.AUTO;
+            case REQUIRED -> ToolChoiceOptions.REQUIRED;
+            case NONE -> ToolChoiceOptions.NONE;
+        };
     }
 
     public static class Builder {
@@ -497,11 +554,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
+        private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
         private final StringBuilder textBuilder = new StringBuilder();
         private OpenAiOfficialTokenUsage tokenUsage;
         private String responseId;
         private String finishReason;
+        private int nextToolCallIndex = 0;
 
         ResponsesEventHandler(
                 StreamingChatResponseHandler handler,
@@ -552,7 +611,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 } else if (event.isIncomplete()) {
                     handleIncomplete(event.asIncomplete());
                 } else {
-                    logger.warn("Unhandled event type: {}, event details: {}", event.getClass().getName(), event);
+                    logger.warn(
+                            "Unhandled event type: {}, event details: {}",
+                            event.getClass().getName(),
+                            event);
                 }
             } catch (RuntimeException e) {
                 logger.error("Error handling event: {}", e.getMessage(), e);
@@ -611,6 +673,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                                     .id(functionCall.callId())
                                     .name(functionCall.name())
                                     .arguments(""));
+                    toolCallIndices.put(itemId, nextToolCallIndex++);
                 } else {
                     logger.warn("Function call missing item ID: {}", functionCall.callId());
                 }
@@ -622,12 +685,22 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleFunctionCallArgumentsDone(ResponseFunctionCallArgumentsDoneEvent event) {
-            var builder = toolCallBuilders.remove(event.itemId());
-            if (builder != null) {
+            var itemId = event.itemId();
+            var builder = toolCallBuilders.remove(itemId);
+            var index = toolCallIndices.remove(itemId);
+            if (builder != null && index != null) {
                 builder.arguments(event.arguments());
-                completedToolCalls.add(builder.build());
+                ToolExecutionRequest toolExecutionRequest = builder.build();
+                completedToolCalls.add(toolExecutionRequest);
+
+                try {
+                    handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
+                } catch (Exception e) {
+                    logger.debug("Exception from onCompleteToolCall, calling onError", e);
+                    safeOnError(handler, e);
+                }
             } else {
-                logger.warn("No builder for itemId in argumentsDone: {}", event.itemId());
+                logger.warn("No builder for itemId in argumentsDone: {}", itemId);
             }
         }
 
@@ -709,8 +782,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var aiMessage = !completedToolCalls.isEmpty() && text != null
                     ? new AiMessage(text, completedToolCalls)
                     : !completedToolCalls.isEmpty()
-                    ? AiMessage.from(completedToolCalls)
-                    : new AiMessage(textBuilder.toString());
+                            ? AiMessage.from(completedToolCalls)
+                            : new AiMessage(textBuilder.toString());
 
             // Build metadata
             var metadataBuilder =
