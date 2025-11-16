@@ -17,6 +17,7 @@ import com.openai.models.responses.ResponseErrorEvent;
 import com.openai.models.responses.ResponseFailedEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDeltaEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDoneEvent;
+import com.openai.models.responses.ResponseFunctionToolCall;
 import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
@@ -31,6 +32,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -134,10 +136,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             // Convert messages to ResponseInputItems
             var inputItems = new ArrayList<ResponseInputItem>();
             for (var msg : chatRequest.messages()) {
-                inputItems.add(toResponseInputItem(msg));
+                inputItems.addAll(toResponseInputItems(msg));
             }
             paramsBuilder.inputOfResponse(inputItems);
-            logger.debug("Converted {} messages to input items", inputItems.size());
+            logger.debug(
+                    "Converted {} messages to {} input items",
+                    chatRequest.messages().size(),
+                    inputItems.size());
 
             // Add optional parameters (request parameters override defaults)
             Double effectiveTemperature = chatRequest.temperature() != null ? chatRequest.temperature() : temperature;
@@ -154,7 +159,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             Long effectiveMaxOutputTokens =
                     requestMaxOutputTokens != null ? (Long) requestMaxOutputTokens.longValue() : maxOutputTokens;
             if (effectiveMaxOutputTokens != null) {
-                paramsBuilder.maxOutputTokens(Math.max(effectiveMaxOutputTokens, 16));
+                // Responses API requires minimum of 16 tokens
+                long finalMaxOutputTokens = Math.max(effectiveMaxOutputTokens, 16L);
+                paramsBuilder.maxOutputTokens(finalMaxOutputTokens);
             }
             if (maxToolCalls != null) {
                 paramsBuilder.maxToolCalls(maxToolCalls);
@@ -228,10 +235,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     streamResponse.stream().forEach(eventHandler::handleEvent);
                 } catch (CancellationException e) {
                     logger.debug("Stream cancelled by user");
-                    handler.onError(e);
+                    safeOnError(handler, e);
                 } catch (Exception e) {
                     logger.error("Exception in stream processing: {}", e.getMessage(), e);
-                    handler.onError(e);
+                    safeOnError(handler, e);
                 } finally {
                     if (finalCancellationMonitorFuture != null) {
                         finalCancellationMonitorFuture.cancel(false);
@@ -240,16 +247,29 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             });
         } catch (Exception e) {
             logger.error("Exception in doChat: {}", e.getMessage(), e);
-            handler.onError(e);
+            safeOnError(handler, e);
             if (cancellationMonitorFuture != null) {
                 cancellationMonitorFuture.cancel(false);
             }
         }
     }
 
+    private static void safeOnError(StreamingChatResponseHandler handler, Throwable error) {
+        try {
+            handler.onError(error);
+        } catch (Exception e) {
+            logger.warn("Exception thrown by onError handler, ignoring", e);
+        }
+    }
+
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return DefaultChatRequestParameters.builder().modelName(modelName).build();
+        return DefaultChatRequestParameters.builder()
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxOutputTokens(maxOutputTokens != null ? maxOutputTokens.intValue() : null)
+                .build();
     }
 
     @Override
@@ -262,20 +282,49 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return ModelProvider.OPEN_AI;
     }
 
-    private static ResponseInputItem toResponseInputItem(ChatMessage msg) {
+    private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
-            return createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text());
+            return List.of(createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text()));
         } else if (msg instanceof UserMessage userMessage) {
             var text = userMessage.contents().stream()
                     .filter(c -> c instanceof TextContent)
                     .map(c -> ((TextContent) c).text())
                     .reduce("", (a, b) -> a + b);
-            return createTextMessage(EasyInputMessage.Role.USER, text);
+            return List.of(createTextMessage(EasyInputMessage.Role.USER, text));
         } else if (msg instanceof AiMessage aiMessage) {
+            var items = new ArrayList<ResponseInputItem>();
+
+            // Add text message if present
             var text = aiMessage.text();
-            return createTextMessage(EasyInputMessage.Role.ASSISTANT, text != null ? text : "");
+            if (text != null && !text.isEmpty()) {
+                items.add(createTextMessage(EasyInputMessage.Role.ASSISTANT, text));
+            }
+
+            // Add function calls if present
+            if (aiMessage.hasToolExecutionRequests()) {
+                aiMessage.toolExecutionRequests().stream()
+                        .map(toolRequest -> ResponseInputItem.ofFunctionCall(ResponseFunctionToolCall.builder()
+                                .callId(toolRequest.id())
+                                .name(toolRequest.name())
+                                .arguments(toolRequest.arguments())
+                                .build()))
+                        .forEach(items::add);
+            }
+
+            // If no text and no tool calls, return empty assistant message
+            if (items.isEmpty()) {
+                items.add(createTextMessage(EasyInputMessage.Role.ASSISTANT, ""));
+            }
+
+            return items;
+        } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
+            // Tool execution result - convert to function call output
+            return List.of(ResponseInputItem.ofFunctionCallOutput(ResponseInputItem.FunctionCallOutput.builder()
+                    .callId(toolResultMessage.id())
+                    .output(toolResultMessage.text())
+                    .build()));
         } else {
-            return createTextMessage(EasyInputMessage.Role.USER, msg.toString());
+            return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
         }
     }
 
@@ -478,8 +527,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleCreated(event.asCreated());
                 } else if (event.isInProgress()) {
                     handleInProgress(event.asInProgress());
+                } else if (event.contentPartAdded().isPresent()) {
+                    handleContentPartAdded(event.contentPartAdded().get());
                 } else if (event.isOutputTextDelta()) {
                     handleOutputTextDelta(event.asOutputTextDelta());
+                } else if (event.outputTextDone().isPresent()) {
+                    handleOutputTextDone(event.outputTextDone().get());
+                } else if (event.contentPartDone().isPresent()) {
+                    handleContentPartDone(event.contentPartDone().get());
                 } else if (event.isOutputItemAdded()) {
                     handleOutputItemAdded(event.asOutputItemAdded());
                 } else if (event.isFunctionCallArgumentsDelta()) {
@@ -497,11 +552,15 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 } else if (event.isIncomplete()) {
                     handleIncomplete(event.asIncomplete());
                 } else {
-                    logger.debug("Unhandled event type: {}", event.getClass().getSimpleName());
+                    logger.warn("Unhandled event type: {}, event details: {}", event.getClass().getName(), event);
                 }
+            } catch (RuntimeException e) {
+                logger.error("Error handling event: {}", e.getMessage(), e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
+                throw e;
             } catch (Exception e) {
                 logger.error("Error handling event: {}", e.getMessage(), e);
-                handler.onError(e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
                 throw new RuntimeException(e);
             }
         }
@@ -515,12 +574,29 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             // No-op
         }
 
+        private void handleContentPartAdded(Object event) {
+            // No-op - just signals that a new content part is starting
+        }
+
         private void handleOutputTextDelta(ResponseTextDeltaEvent event) {
             var delta = event.delta();
             if (!delta.isEmpty()) {
                 textBuilder.append(delta);
-                handler.onPartialResponse(delta);
+                try {
+                    handler.onPartialResponse(delta);
+                } catch (Exception e) {
+                    logger.debug("Exception from onPartialResponse, calling onError and continuing", e);
+                    safeOnError(handler, e);
+                }
             }
+        }
+
+        private void handleOutputTextDone(Object event) {
+            // No-op - text is already accumulated in textBuilder
+        }
+
+        private void handleContentPartDone(Object event) {
+            // No-op - signals that a content part is complete
         }
 
         private void handleOutputItemAdded(ResponseOutputItemAddedEvent event) {
@@ -567,6 +643,50 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 this.finishReason = mapStatusToFinishReason(status.toString());
             });
 
+            // Extract token usage and complete
+            extractTokenUsageAndComplete(response);
+        }
+
+        private String mapStatusToFinishReason(String status) {
+            if (status == null) {
+                return null;
+            }
+            return switch (status) {
+                case "completed" -> !completedToolCalls.isEmpty() ? "TOOL_EXECUTION" : "STOP";
+                case "incomplete" -> "LENGTH";
+                case "failed" -> "OTHER";
+                default -> "OTHER";
+            };
+        }
+
+        private void handleError(ResponseErrorEvent event) {
+            var code = event.code().orElse("UNKNOWN");
+            var message = event.message();
+            logger.error("Response error: code={}, message={}", code, message);
+            safeOnError(handler, new RuntimeException("Response error: " + message));
+        }
+
+        private void handleFailed(ResponseFailedEvent event) {
+            var response = event.response();
+            var error = response.error();
+            logger.error("Response failed: {}", error);
+            safeOnError(handler, new RuntimeException("Response failed: " + error));
+        }
+
+        private void handleIncomplete(ResponseIncompleteEvent event) {
+            var response = event.response();
+            var incompleteDetails = response.incompleteDetails();
+            logger.debug("Response incomplete: {}", incompleteDetails);
+
+            // Incomplete is not an error - it just means the response was cut off due to token limits
+            // Treat it as a normal completion with finish reason LENGTH
+            finishReason = "LENGTH";
+
+            // Complete the response normally
+            extractTokenUsageAndComplete(response);
+        }
+
+        private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
             // Extract token usage
             response.usage().ifPresent(usage -> {
                 var builder = OpenAiOfficialTokenUsage.builder()
@@ -589,8 +709,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var aiMessage = !completedToolCalls.isEmpty() && text != null
                     ? new AiMessage(text, completedToolCalls)
                     : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+                    ? AiMessage.from(completedToolCalls)
+                    : new AiMessage(textBuilder.toString());
 
             // Build metadata
             var metadataBuilder =
@@ -609,40 +729,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     .metadata(metadataBuilder.build())
                     .build();
 
-            handler.onCompleteResponse(chatResponse);
-        }
-
-        private String mapStatusToFinishReason(String status) {
-            if (status == null) {
-                return null;
+            try {
+                handler.onCompleteResponse(chatResponse);
+            } catch (Exception e) {
+                logger.debug("Exception from onCompleteResponse, calling onError", e);
+                safeOnError(handler, e);
             }
-            return switch (status) {
-                case "completed" -> !completedToolCalls.isEmpty() ? "TOOL_EXECUTION" : "STOP";
-                case "incomplete" -> "LENGTH";
-                case "failed" -> "OTHER";
-                default -> "OTHER";
-            };
-        }
-
-        private void handleError(ResponseErrorEvent event) {
-            var code = event.code().orElse("UNKNOWN");
-            var message = event.message();
-            logger.error("Response error: code={}, message={}", code, message);
-            handler.onError(new RuntimeException("Response error: " + message));
-        }
-
-        private void handleFailed(ResponseFailedEvent event) {
-            var response = event.response();
-            var error = response.error();
-            logger.error("Response failed: {}", error);
-            handler.onError(new RuntimeException("Response failed: " + error));
-        }
-
-        private void handleIncomplete(ResponseIncompleteEvent event) {
-            var response = event.response();
-            var incompleteDetails = response.incompleteDetails();
-            logger.error("Response incomplete: {}", incompleteDetails);
-            handler.onError(new RuntimeException("Response incomplete: " + incompleteDetails));
         }
     }
 }
