@@ -42,7 +42,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     private final Object id;
     private final ChatMemoryStore store;
-    private final Function<Object,Integer> maxMessagesSupplier;
+    private final Function<Object, Integer> maxMessagesSupplier;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -117,7 +117,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Object id = ChatMemoryService.DEFAULT;
-        private Function<Object,Integer> maxMessagesSupplier;
+        private Function<Object, Integer> maxMessagesSupplier;
         private ChatMemoryStore store;
 
         /**
@@ -136,10 +136,9 @@ public class MessageWindowChatMemory implements ChatMemory {
          * @return builder
          */
         public Builder maxMessages(Integer maxMessages) {
-            this.maxMessagesSupplier = (id)-> maxMessages;
+            this.maxMessagesSupplier = (id) -> maxMessages;
             return this;
         }
-
 
         /**
          * @param maxMessagesSupplier A supplier that provides the maximum number of messages to retain.
@@ -148,7 +147,7 @@ public class MessageWindowChatMemory implements ChatMemory {
          *                                   the oldest one is evicted.
          * @return builder
          */
-        public Builder dynamicMaxMessages(Function<Object,Integer> maxMessagesSupplier) {
+        public Builder dynamicMaxMessages(Function<Object, Integer> maxMessagesSupplier) {
             this.maxMessagesSupplier = maxMessagesSupplier;
             return this;
         }

@@ -43,7 +43,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 public class TokenWindowChatMemory implements ChatMemory {
 
     private final Object id;
-    private final Function<Object,Integer> maxTokensProvider;
+    private final Function<Object, Integer> maxTokensProvider;
     private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
 
@@ -134,7 +134,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Object id = ChatMemoryService.DEFAULT;
-        private Function<Object,Integer> maxTokensProvider;
+        private Function<Object, Integer> maxTokensProvider;
         private TokenCountEstimator tokenCountEstimator;
         private ChatMemoryStore store;
 
@@ -156,7 +156,7 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @return builder
          */
         public Builder maxTokens(Integer maxTokens, TokenCountEstimator tokenCountEstimator) {
-            this.maxTokensProvider = (id)->maxTokens;
+            this.maxTokensProvider = (id) -> maxTokens;
             this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
