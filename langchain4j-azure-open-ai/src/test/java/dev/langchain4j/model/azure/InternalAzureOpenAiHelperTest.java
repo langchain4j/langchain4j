@@ -21,6 +21,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
@@ -202,5 +203,66 @@ class InternalAzureOpenAiHelperTest {
     void resolveRetryOptions_handlesZeroMaxRetries() {
         RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(0, null);
         assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isZero();
+    }
+
+    @Test
+    void toOpenAiMessages_shouldConvertBase64ImageToDataUri() {
+        // Given
+        String base64Data =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        String mimeType = "image/png";
+        ImageContent imageContent = ImageContent.from(base64Data, mimeType);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+
+        // Verify the content is not null
+        assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the expected data URI format in its string representation
+        // The Azure SDK serializes the content to BinaryData, so we check the JSON representation
+        String contentJson = requestMessage.getContent().toString();
+        String expectedDataUri = "data:" + mimeType + ";base64," + base64Data;
+
+        // The JSON should contain the image URL in data URI format
+        assertThat(contentJson).contains(expectedDataUri).contains("image_url").contains("url");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldKeepHttpUrlAsIs() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+
+        // Verify the content is not null
+        assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the HTTP URL as-is (not converted to data URI)
+        String contentJson = requestMessage.getContent().toString();
+
+        // The JSON should contain the image URL as provided (HTTP URL, not data URI)
+        assertThat(contentJson)
+                .contains(imageUrl)
+                .contains("image_url")
+                .contains("url")
+                .doesNotContain("data:image")
+                .doesNotContain("base64");
     }
 }

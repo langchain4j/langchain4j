@@ -59,4 +59,19 @@ public class McpEnvironmentVariable {
     public Map<String, McpVariable> getVariables() {
         return variables;
     }
+
+    @Override
+    public String toString() {
+        return "McpEnvironmentVariable{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", name='" + name + '\'' +
+                ", value='" + value + '\'' +
+                ", variables=" + variables +
+                '}';
+    }
 }

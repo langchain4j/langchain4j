@@ -14,4 +14,12 @@ public class McpServerList {
     public McpMetadata getMetadata() {
         return metadata;
     }
+
+    @Override
+    public String toString() {
+        return "McpServerList{" +
+                "servers=" + servers +
+                ", metadata=" + metadata +
+                '}';
+    }
 }

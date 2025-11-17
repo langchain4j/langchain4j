@@ -5,7 +5,14 @@ import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public record HumanInTheLoop(String inputName, String outputName, String description, Consumer<?> requestWriter, boolean async, Supplier<?> responseReader) implements AgentSpecsProvider {
+public record HumanInTheLoop(
+        String inputKey,
+        String outputKey,
+        String description,
+        Consumer<?> requestWriter,
+        boolean async,
+        Supplier<?> responseReader)
+        implements AgentSpecsProvider {
 
     @Agent("An agent that asks the user for missing information")
     public Object askUser(Object request) {
@@ -15,8 +22,8 @@ public record HumanInTheLoop(String inputName, String outputName, String descrip
 
     public static class HumanInTheLoopBuilder {
 
-        private String inputName = "request";
-        private String outputName = "response";
+        private String inputKey = "request";
+        private String outputKey = "response";
         private String description = "An agent that asks the user for missing information";
         private boolean async = false;
         private Consumer<?> requestWriter;
@@ -32,13 +39,13 @@ public record HumanInTheLoop(String inputName, String outputName, String descrip
             return this;
         }
 
-        public HumanInTheLoopBuilder inputName(String inputName) {
-            this.inputName = inputName;
+        public HumanInTheLoopBuilder inputKey(String inputKey) {
+            this.inputKey = inputKey;
             return this;
         }
 
-        public HumanInTheLoopBuilder outputName(String outputName) {
-            this.outputName = outputName;
+        public HumanInTheLoopBuilder outputKey(String outputKey) {
+            this.outputKey = outputKey;
             return this;
         }
 
@@ -53,7 +60,7 @@ public record HumanInTheLoop(String inputName, String outputName, String descrip
         }
 
         public HumanInTheLoop build() {
-            return new HumanInTheLoop(inputName, outputName, description, requestWriter, async, responseReader);
+            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader);
         }
     }
 }

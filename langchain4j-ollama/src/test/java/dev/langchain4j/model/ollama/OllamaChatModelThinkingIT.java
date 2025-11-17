@@ -134,16 +134,18 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
     }
 
     @Test
-    void should_answer_with_thinking_prepended_to_content_when_think_is_not_set() {
+    void should_think_and_return_thinking_when_think_is_not_set() {
 
         // given
         Boolean think = null;
+        boolean returnThinking = true;
 
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
                 .think(think)
+                .returnThinking(returnThinking)
 
                 .logRequests(true)
                 .logResponses(true)
@@ -158,7 +160,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
-                .contains("<think>", "</think>");
-        assertThat(aiMessage.thinking()).isNull();
+                .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNotEmpty();
     }
 }

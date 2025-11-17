@@ -1,11 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a parameter that will receive the current loop iteration count in a loop-based agent.
@@ -18,10 +17,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
- *                 outputName = "story", maxIterations = 5,
+ *                 outputKey = "story", maxIterations = 5,
  *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputName = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputName = "story")
+ *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
+ *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
  *             }
  *         )
  *         String write(@V("story") String story, @LoopCounter int iteration);
@@ -36,5 +35,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({PARAMETER})
-public @interface LoopCounter {
-}
+public @interface LoopCounter {}

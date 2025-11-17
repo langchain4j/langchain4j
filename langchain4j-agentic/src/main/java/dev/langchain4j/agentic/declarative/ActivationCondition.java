@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as an activation condition for one or more sub-agents of a conditional agent.
@@ -15,10 +15,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface ExpertsAgent {
  *
- *         @ConditionalAgent(outputName = "response", subAgents = {
- *                 @SubAgent(type = MedicalExpert.class, outputName = "response"),
- *                 @SubAgent(type = TechnicalExpert.class, outputName = "response"),
- *                 @SubAgent(type = LegalExpert.class, outputName = "response")
+ *         @ConditionalAgent(outputKey = "response", subAgents = {
+ *                 @SubAgent(type = MedicalExpert.class, outputKey = "response"),
+ *                 @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
+ *                 @SubAgent(type = LegalExpert.class, outputKey = "response")
  *         })
  *         String askExpert(@V("request") String request);
  *

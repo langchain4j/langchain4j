@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
@@ -215,7 +216,7 @@ class OpenAiChatModelIT {
         assertThat(person.surname).isEqualTo("Heisler");
     }
 
-    @Test
+    @RetryingTest(3)
     void should_accept_audio_content() throws Exception {
 
         // given

@@ -3,6 +3,8 @@ name: snapshot_release_core_and_parent
 # Only run on pushes to main:
 # Replace with 'on: [push]' if you need to run tests on your PR
 on:
+  repository_dispatch:
+    types: [ trigger-snapshot-release-core-and-parent ]
   workflow_dispatch:
   push:
     branches:
@@ -25,6 +27,7 @@ jobs:
           server-id: central
           server-username: MAVEN_CENTRAL_USERNAME
           server-password: MAVEN_CENTRAL_PASSWORD
+
       - name: snapshot_release_core_and_parent
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
@@ -38,6 +41,14 @@ jobs:
             -DskipVearchITs -DskipVertexAiGeminiITs \
             -pl langchain4j-core,langchain4j-parent \
             clean deploy
+
+      - name: Trigger SNAPSHOT release for langchain4j-embeddings repo
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
+          repository: langchain4j/langchain4j-embeddings
+          event-type: trigger-snapshot-release
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5

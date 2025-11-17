@@ -732,7 +732,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_a_tool_without_arguments_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the time now?");
+        UserMessage userMessage = UserMessage.from("What is the time now? Use the get_current_time tool.");
 
         ToolSpecification timeTool =
                 ToolSpecification.builder().name("get_current_time").build();
@@ -851,10 +851,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         if (supportsPartialToolStreaming(model)) {
-            io.verify(handler).onPartialToolCall(any());
+            io.verify(handler).onPartialToolCall(any(), any());
         }
         io.verify(handler).onCompleteToolCall(any());
     }
@@ -1753,7 +1753,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         if (maxOutputTokens != null) {
-            assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+            // Some providers (e.g., Gemini) produce one token less than expected (e.g., 4 instead of 5)
+            assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
         }
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

@@ -62,8 +62,8 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
@@ -121,7 +121,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         assertThat(aiMessage.thinking()).isNull();
 
         InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verifyNoMoreInteractions();
         verify(spyHandler).get();
@@ -160,7 +160,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         assertThat(aiMessage.thinking()).isNull();
 
         InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verifyNoMoreInteractions();
         verify(spyHandler).get();
@@ -170,16 +170,18 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
     }
 
     @Test
-    void should_answer_with_thinking_prepended_to_content_when_think_is_not_set() {
+    void should_think_and_return_thinking_when_think_is_not_set() {
 
         // given
         Boolean think = null;
+        boolean returnThinking = true;
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
                 .think(think)
+                .returnThinking(returnThinking)
 
                 .logRequests(true)
                 .logResponses(true)
@@ -195,11 +197,12 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
-                .contains("<think>", "</think>");
-        assertThat(aiMessage.thinking()).isNull();
+                .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.thinking()).isNotEmpty();
 
         InOrder inOrder = inOrder(spyHandler);
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verifyNoMoreInteractions();
         verify(spyHandler).get();

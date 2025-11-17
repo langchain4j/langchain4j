@@ -5,7 +5,7 @@ import io.a2a.spec.AgentCard;
 
 public interface A2AClientSpecification extends AgentSpecification {
 
-    String[] inputNames();
+    String[] inputKeys();
 
     AgentCard agentCard();
 }

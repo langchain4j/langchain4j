@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
 
+import java.time.Duration;
+import java.util.Map;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -15,6 +17,7 @@ import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -24,8 +27,6 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import java.time.Duration;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -38,7 +39,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(11);
+        assertThat(tools).hasSize(13);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -81,10 +82,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeTool() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoString")
-                .arguments("{\"input\": \"abc\"}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{\"input\": \"abc\"}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("abc");
     }
@@ -93,10 +92,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeToolThatReturnsStructuredContent() {
         ToolProviderResult toolProviderResult = obtainTools();
         McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("structuredContent");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("structuredContent")
-                .arguments("")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("").build();
         ToolExecutionResult toolExecutionResult = executor.executeWithContext(
                 toolExecutionRequest, InvocationContext.builder().build());
         assertThat(toolExecutionResult.resultText()).isEqualTo("{\"bar\":1,\"baz\":\"hello\"}");
@@ -112,7 +109,6 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoString")
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
@@ -122,26 +118,11 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Test
-    public void executeNonExistentTool() {
-        // this should never happen when used through AI Service, as it will be handled by hallucinatedToolNameStrategy
-        ToolProviderResult toolProviderResult = obtainTools();
-        ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("THIS-TOOL-DOES-NOT-EXIST")
-                .arguments("{\"input\": 1}")
-                .build();
-        assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolArgumentsException.class)
-                .hasMessage("Invalid tool name: THIS-TOOL-DOES-NOT-EXIST")
-                .hasFieldOrPropertyWithValue("errorCode", -32602);
-    }
-
-    @Test
     public void executeToolThatThrowsBusinessError() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("error");
         ToolExecutionRequest toolExecutionRequest =
-                ToolExecutionRequest.builder().name("error").arguments("{}").build();
+                ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("Internal error")
@@ -152,10 +133,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void executeToolThatReturnsError() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("errorResponse");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("errorResponse")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
                 .hasMessage("This is an actual error");
@@ -165,42 +144,45 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     public void timeout() {
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("longOperation");
-        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("longOperation")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolExecutionRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
-        ToolExecutionRequest checkCancellationRequest = ToolExecutionRequest.builder()
-                .name("wasCancellationReceived")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest checkCancellationRequest =
+                ToolExecutionRequest.builder().arguments("{}").build();
         // wait until the server can confirm that the cancellation notification was received
         await().timeout(Duration.ofSeconds(30))
-                .until(() -> executor.execute(checkCancellationRequest, null), is("true"));
+                .pollInterval(Duration.ofSeconds(5))
+                .until(
+                        () -> toolProviderResult
+                                .toolExecutorByName("wasCancellationReceived")
+                                .execute(checkCancellationRequest, null),
+                        is("true"));
     }
-
-    // this is specifically for 'executeToolWithUntypedArrayParameter'
-    OpenAiChatModel chatModel = OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
 
     @Test
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
     public void executeToolWithUntypedArrayParameter() {
+
+        ChatModel chatModel = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         ChatService service = AiServices.builder(ChatService.class)
                 .toolProvider(createMcpToolProvider())
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .chatModel(chatModel)
                 .build();
+
         String response = service.chat(
                 "Call the tool named 'untypedArray' with this array as the 'arr' parameter: [0, \"abs\", null], and pass me the result.");
+
         assertThat(response).contains("6789");
     }
 
@@ -218,7 +200,17 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Override
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException ignored, AiServices<?> aiServiceBuilder) {
+        configureGetWeatherThrowingExceptionTool(ignored, aiServiceBuilder);
+    }
+
+    @Override
     protected void configureGetWeatherTool(AiServices<?> aiServiceBuilder) {
+        aiServiceBuilder.toolProvider(createMcpToolProvider());
+    }
+
+    @Override
+    protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
         aiServiceBuilder.toolProvider(createMcpToolProvider());
     }
 

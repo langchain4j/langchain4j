@@ -43,7 +43,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "claude-3-5-sonnet-20241022";
+        return "claude-sonnet-4-5-20250929";
     }
 
     @Override

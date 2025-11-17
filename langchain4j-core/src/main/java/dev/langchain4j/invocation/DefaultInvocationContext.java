@@ -3,6 +3,7 @@ package dev.langchain4j.invocation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final List<Object> methodArguments = new ArrayList<>();
     private final Object chatMemoryId;
     private final InvocationParameters invocationParameters;
+    private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
@@ -26,6 +28,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.methodArguments.addAll(builder.methodArguments());
         this.chatMemoryId = builder.chatMemoryId();
         this.invocationParameters = builder.invocationParameters();
+        this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
     }
 
@@ -60,6 +63,11 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
+    public Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters() {
+        return managedParameters;
+    }
+
+    @Override
     public Instant timestamp() {
         return timestamp;
     }
@@ -75,6 +83,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(methodArguments, that.methodArguments)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(invocationParameters, that.invocationParameters)
+                && Objects.equals(managedParameters, that.managedParameters)
                 && Objects.equals(timestamp, that.timestamp);
     }
 
@@ -87,18 +96,21 @@ public class DefaultInvocationContext implements InvocationContext {
                 methodArguments,
                 chatMemoryId,
                 invocationParameters,
+                managedParameters,
                 timestamp);
     }
 
     @Override
     public String toString() {
-        return "DefaultInvocationContext{" + "invocationId="
-                + invocationId + ", interfaceName='"
-                + interfaceName + '\'' + ", methodName='"
-                + methodName + '\'' + ", methodArguments="
-                + methodArguments + ", chatMemoryId="
-                + chatMemoryId + ", invocationParameters="
-                + invocationParameters + ", timestamp="
-                + timestamp + '}';
+        return "DefaultInvocationContext{" +
+                "invocationId=" + invocationId +
+                ", interfaceName='" + interfaceName + '\'' +
+                ", methodName='" + methodName + '\'' +
+                ", methodArguments=" + methodArguments +
+                ", chatMemoryId=" + chatMemoryId +
+                ", invocationParameters=" + invocationParameters +
+                ", managedParameters=" + managedParameters +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }

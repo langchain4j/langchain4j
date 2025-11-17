@@ -65,4 +65,20 @@ public class McpPackage {
     public List<McpEnvironmentVariable> getEnvironmentVariables() {
         return environmentVariables;
     }
+
+    @Override
+    public String toString() {
+        return "McpPackage{" +
+                "fileSha256='" + fileSha256 + '\'' +
+                ", identifier='" + identifier + '\'' +
+                ", registryBaseUrl='" + registryBaseUrl + '\'' +
+                ", registryType='" + registryType + '\'' +
+                ", runtimeHint='" + runtimeHint + '\'' +
+                ", version='" + version + '\'' +
+                ", transport=" + transport +
+                ", runtimeArguments=" + runtimeArguments +
+                ", packageArguments=" + packageArguments +
+                ", environmentVariables=" + environmentVariables +
+                '}';
+    }
 }

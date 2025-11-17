@@ -80,4 +80,24 @@ public class McpPackageArgument {
     public String getValueHint() {
         return valueHint;
     }
+
+    @Override
+    public String toString() {
+        String maskedDefaultValue = isSecret ? "<redacted>" : defaultValue;
+        String maskedValue = isSecret ? "<redacted>" : value;
+
+        return "McpPackageArgument{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRepeated="
+                + isRepeated + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", type='"
+                + type + '\'' + ", value='"
+                + maskedValue + '\'' + ", valueHint='"
+                + valueHint + '\'' + ", variables="
+                + variables + '}';
+    }
 }

@@ -1,0 +1,154 @@
+name: Nightly Build JDK 17
+
+on:
+  schedule:
+    - cron: '0 22 * * *'  # daily at 22:00 UTC
+  workflow_dispatch:
+
+jobs:
+  discover-modules:
+    if: github.repository == 'langchain4j/langchain4j'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set-matrix
+        shell: bash
+        run: |
+          echo "Discovering Maven modules..."
+          modules=$(find . -type f -name pom.xml -exec dirname {} \; | sort | uniq | sed 's|^\./||' | grep -v '^$' | grep -v '^.$')
+          echo "Detected modules:"
+          echo "$modules"
+
+          # how many groups (jobs) to split into
+          N=5  # adjust this based on desired parallelism
+          count=$(echo "$modules" | wc -l)
+          group_size=$(( (count + N - 1) / N ))
+
+          # create JSON array of module groups
+          matrix=$(echo "$modules" | awk -v n="$group_size" '{
+              group = int((NR-1)/n);
+              arr[group] = (arr[group] ? arr[group] "," "\"" $0 "\"" : "\"" $0 "\"");
+          }
+          END {
+              printf("{\"modules\": [");
+              for (i=0; i in arr; i++) {
+                  printf("%s[%s]", (i>0?",":""), arr[i]);
+              }
+              print "]}";
+          }')
+
+          echo "Generated matrix: $matrix"
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  build:
+    needs: discover-modules
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-modules.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Authenticate to Google Cloud
+        # Required for Google modules
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
+
+      - name: Setup JBang
+        # Required for MCP module
+        uses: jbangdev/setup-jbang@main
+
+      - name: Build with JDK 17
+        run: |
+          modules="${{ join(matrix.modules, ',') }}"
+          exclude_modules="langchain4j-jlama,langchain4j-gpu-llama3"
+          for ex in ${exclude_modules//,/ }; do
+            modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+          done
+          echo "Building modules: $modules"
+          
+          ## compile and verify javadocs
+          mvn -B -U -T8C test javadoc:aggregate \
+            -pl "${modules}" -am \
+            --fail-at-end
+
+          ## run integration tests
+          mvn -B -U verify \
+            -pl "${modules}" -am \
+            --fail-at-end \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
+            -Dmaven.test.failure.ignore=true \
+            -Dtinylog.writer.level=info
+
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
+          AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
+          AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+          AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
+          AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ELASTICSEARCH_CLOUD_API_KEY: ${{ secrets.ELASTICSEARCH_CLOUD_API_KEY }}
+          ELASTICSEARCH_CLOUD_URL: ${{ secrets.ELASTICSEARCH_CLOUD_URL }}
+          GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
+          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_PROJECT_NUM: ${{ secrets.GCP_PROJECT_NUM }}
+          GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
+          GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
+          MILVUS_URI: ${{ secrets.MILVUS_URI }}
+          MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
+          NOMIC_API_KEY: ${{ secrets.NOMIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
+          WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
+          CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
+          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_BEDROCK: 3
+          CI_DELAY_SECONDS_GITHUB_MODELS: 7
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
+          CI_DELAY_SECONDS_VOYAGE_AI: 22
+
+      - name: Clean Docker
+        run: docker system prune -af || true
+
+      - name: Upload Test Reports
+        if: always() # always run even if the previous step failed or was cancelled
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test-Reports-${{ strategy.job-index }}
+          path: '**/target/*-reports/*'
+
+      - name: Publish Test Report
+        if: always() # always run even if the previous step failed or was cancelled
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: '**/target/*-reports/TEST-*.xml'
+          annotate_only: true

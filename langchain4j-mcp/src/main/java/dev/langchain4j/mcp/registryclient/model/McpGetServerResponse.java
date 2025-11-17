@@ -16,4 +16,12 @@ public class McpGetServerResponse {
     public McpServer getServer() {
         return server;
     }
+
+    @Override
+    public String toString() {
+        return "McpGetServerResponse{" +
+                "meta=" + meta +
+                ", server=" + server +
+                '}';
+    }
 }

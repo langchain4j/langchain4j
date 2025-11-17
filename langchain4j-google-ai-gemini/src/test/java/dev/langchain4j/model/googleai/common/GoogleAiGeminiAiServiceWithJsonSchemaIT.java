@@ -21,7 +21,7 @@ class GoogleAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
         return singletonList(
                 GoogleAiGeminiChatModel.builder()
                         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                        .modelName("gemini-2.5-flash-lite")
+                        .modelName("gemini-2.5-flash")
                         .responseFormat(JSON)
                         .temperature(0.0)
                         .logRequests(true)

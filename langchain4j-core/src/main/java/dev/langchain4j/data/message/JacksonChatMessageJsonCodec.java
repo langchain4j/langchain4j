@@ -1,6 +1,7 @@
 package dev.langchain4j.data.message;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
@@ -119,7 +120,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         public SystemMessageMixin(@JsonProperty("text") String text) {}
     }
 
-    @JsonInclude(NON_NULL)
+    @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = UserMessage.Builder.class)
     private abstract static class UserMessageMixin {}
 

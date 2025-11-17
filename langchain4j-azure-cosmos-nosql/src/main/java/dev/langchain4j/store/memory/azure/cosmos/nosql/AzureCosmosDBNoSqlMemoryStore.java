@@ -73,35 +73,24 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
             String containerName,
             Integer vectorStoreThroughput) {
         ensureNotNull(endpoint, "%s", "cosmosClient cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
-        try {
-            if (keyCredential != null) {
-                this.cosmosClient = new CosmosClientBuilder()
-                        .endpoint(endpoint)
-                        .credential(keyCredential)
-                        .userAgentSuffix(USER_AGENT)
-                        .buildAsyncClient();
-            } else {
-                this.cosmosClient = new CosmosClientBuilder()
-                        .endpoint(endpoint)
-                        .credential(tokenCredential)
-                        .userAgentSuffix(USER_AGENT)
-                        .buildAsyncClient();
-            }
-
-        } catch (Exception e) {
-            logger.error("Error creating cosmosClient: {}", e.getMessage());
+        if (keyCredential != null) {
+            this.cosmosClient = new CosmosClientBuilder()
+                    .endpoint(endpoint)
+                    .credential(keyCredential)
+                    .userAgentSuffix(USER_AGENT)
+                    .buildAsyncClient();
+        } else {
+            this.cosmosClient = new CosmosClientBuilder()
+                    .endpoint(endpoint)
+                    .credential(tokenCredential)
+                    .userAgentSuffix(USER_AGENT)
+                    .buildAsyncClient();
         }
 
         this.databaseName = getOrDefault(databaseName, DEFAULT_DATABASE_NAME);
         this.containerName = getOrDefault(containerName, DEFAULT_CONTAINER_NAME);
 
-        try {
-            this.cosmosClient.createDatabaseIfNotExists(this.databaseName).block();
-        } catch (Exception e) {
-            // likely failed due to RBAC, so database is assumed to be already created
-            // (and if not, it will fail later)
-            logger.error("Error creating database: {}", e.getMessage());
-        }
+        this.cosmosClient.createDatabaseIfNotExists(this.databaseName).block();
 
         this.partitionKeyPath = DEFAULT_PARTITION_KEY_PATH;
         this.vectorStoreThroughput = getOrDefault(vectorStoreThroughput, DEFAULT_THROUGHPUT);
@@ -207,7 +196,9 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
 
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
-         * @param tokenCredential the credentials to authenticate with Azure Active Directory
+         *
+         * @param tokenCredential the credentials to authenticate with Azure Active
+         *                        Directory
          * @return builder
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
