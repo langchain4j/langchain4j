@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic;
 
-import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.test.model.Models.baseModel;
+import static dev.langchain4j.test.model.Models.plannerModel;
 
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;

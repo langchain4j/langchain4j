@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.a2a;
 
-import static dev.langchain4j.agentic.a2a.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
+import static dev.langchain4j.test.model.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.Agent;
@@ -94,7 +95,7 @@ public class A2AAgentIT {
                 .build();
 
         SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
-                .chatModel(Models.plannerModel())
+                .chatModel(plannerModel())
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
                 .outputKey("story")

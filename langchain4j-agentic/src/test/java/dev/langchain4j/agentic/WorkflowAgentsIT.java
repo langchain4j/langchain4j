@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic;
 
-import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,9 +53,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import dev.langchain4j.test.model.Models;
 import org.junit.jupiter.api.Test;
 
 public class WorkflowAgentsIT {
+
+    static {
+        Models.modelProvider = Models.MODEL_PROVIDER.OLLAMA;
+    }
 
     public interface CreativeWriterWithModel extends CreativeWriter {
         @ChatModelSupplier

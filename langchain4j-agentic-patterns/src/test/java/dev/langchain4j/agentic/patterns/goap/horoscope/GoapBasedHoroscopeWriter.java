@@ -6,7 +6,7 @@ import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
 
 import java.util.Map;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
 
 public class GoapBasedHoroscopeWriter {
 

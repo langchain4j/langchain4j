@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.carrentalassistant;
 
-import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
 
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;

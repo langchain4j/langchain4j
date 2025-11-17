@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class GoapWriterIT {

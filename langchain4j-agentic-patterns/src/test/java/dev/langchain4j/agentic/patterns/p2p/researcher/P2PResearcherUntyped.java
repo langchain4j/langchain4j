@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.p2p.P2PAgent;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
+import static dev.langchain4j.test.model.Models.baseModel;
 
 public class P2PResearcherUntyped {
 

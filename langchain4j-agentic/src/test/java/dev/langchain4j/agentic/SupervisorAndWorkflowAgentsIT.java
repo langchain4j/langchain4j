@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic;
 
-import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.test.model.Models.baseModel;
+import static dev.langchain4j.test.model.Models.plannerModel;
 import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
