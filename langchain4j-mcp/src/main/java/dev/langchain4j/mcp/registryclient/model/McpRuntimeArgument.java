@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.registryclient.model;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 public class McpRuntimeArgument {
 
@@ -30,7 +31,7 @@ public class McpRuntimeArgument {
     @JsonAlias("value_hint")
     private String valueHint;
 
-    private List<McpVariable> variables;
+    private Map<String, McpVariable> variables;
 
     public List<String> getChoices() {
         return choices;
@@ -76,7 +77,7 @@ public class McpRuntimeArgument {
         return valueHint;
     }
 
-    public List<McpVariable> getVariables() {
+    public Map<String, McpVariable> getVariables() {
         return variables;
     }
 

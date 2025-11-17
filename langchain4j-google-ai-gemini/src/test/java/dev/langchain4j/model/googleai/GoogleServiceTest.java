@@ -21,7 +21,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -145,12 +144,13 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
-                    List.of(new GeminiContent(
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(List.of(new GeminiContent(
                             List.of(GeminiContent.GeminiPart.builder()
                                     .text("Count these tokens")
                                     .build()),
-                            "user")), null);
+                            "user"
+                    )
+            ), null);
 
             // When
             GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
@@ -162,7 +162,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectCountTokensHttpRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(10);
+            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -193,7 +193,7 @@ class GeminiServiceTest {
         void shouldSendEmbedRequest() {
             // Given
             var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f, 0.3f));
-            GeminiEmbeddingResponse expectedResponse = new GeminiEmbeddingResponse(embedding);
+            var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -203,7 +203,7 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiEmbeddingRequest request = createEmbeddingRequest(new GeminiContent(
+            var request = createEmbeddingRequest(new GeminiContent(
                     List.of(GeminiContent.GeminiPart.builder()
                             .text("Embed this")
                             .build()),
@@ -220,7 +220,7 @@ class GeminiServiceTest {
         void shouldSendCorrectEmbedHttpRequest() {
             // Given
             var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
-            GeminiEmbeddingResponse expectedResponse = new GeminiEmbeddingResponse(embedding);
+            var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -230,7 +230,7 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiEmbeddingRequest request = createEmbeddingRequest(new GeminiContent(
+            var request = createEmbeddingRequest(new GeminiContent(
                     List.of(GeminiContent.GeminiPart.builder().text("Test").build()), null));
 
             // When
@@ -252,8 +252,7 @@ class GeminiServiceTest {
             // Given
             var embedding1 = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
             var embedding2 = new GeminibeddingResponseValues(List.of(0.3f, 0.4f));
-
-            GeminiBatchEmbeddingResponse expectedResponse = new GeminiBatchEmbeddingResponse(List.of(embedding1, embedding2));
+            var expectedResponse = new GeminiBatchEmbeddingResponse(List.of(embedding1, embedding2));
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -263,16 +262,16 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiEmbeddingRequest request1 = createEmbeddingRequest(new GeminiContent(
+            var request1 = createEmbeddingRequest(new GeminiContent(
                     List.of(GeminiContent.GeminiPart.builder().text("First").build()), null));
 
-            GeminiEmbeddingRequest request2 = createEmbeddingRequest(new GeminiContent(
+            var request2 = createEmbeddingRequest(new GeminiContent(
                     List.of(GeminiContent.GeminiPart.builder().text("Second").build()), null));
 
-            GeminiBatchEmbeddingRequest batchRequest = new GeminiBatchEmbeddingRequest(List.of(request1, request2));
+            var batchRequest = new GeminiBatchEmbeddingRequest(List.of(request1, request2));
 
             // When
-            GeminiBatchEmbeddingResponse actualResponse = subject.batchEmbed(TEST_MODEL_NAME, batchRequest);
+            var actualResponse = subject.batchEmbed(TEST_MODEL_NAME, batchRequest);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -281,7 +280,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchEmbedHttpRequest() {
             // Given
-            GeminiBatchEmbeddingResponse expectedResponse = new GeminiBatchEmbeddingResponse(List.of());
+            var expectedResponse = new GeminiBatchEmbeddingResponse(List.of());
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -291,7 +290,7 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiBatchEmbeddingRequest request = new GeminiBatchEmbeddingRequest(List.of());
+            var request = new GeminiBatchEmbeddingRequest(List.of());
 
             // When
             subject.batchEmbed(TEST_MODEL_NAME, request);
@@ -378,6 +377,7 @@ class GeminiServiceTest {
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
+                    // Do nothing.
                 }
 
                 @Override
@@ -456,7 +456,7 @@ class GeminiServiceTest {
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
     }
 
-    private static GeminiEmbeddingRequest createEmbeddingRequest(@Nullable GeminiContent content) {
+    private static GeminiEmbeddingRequest createEmbeddingRequest(GeminiContent content) {
         return new GeminiEmbeddingRequest("modelName", content, null, null, 756);
     }
 }

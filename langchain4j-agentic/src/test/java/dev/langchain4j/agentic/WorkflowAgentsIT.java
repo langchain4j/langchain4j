@@ -32,13 +32,14 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
+import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.UserMessage;
@@ -65,15 +66,20 @@ public class WorkflowAgentsIT {
 
     @Test
     void sequential_agents_tests() {
-        check_sequential_agents(false);
+        check_sequential_agents(false, false);
     }
 
     @Test
     void sequential_agents_using_declarative_api_tests() {
-        check_sequential_agents(true);
+        check_sequential_agents(true, false);
     }
 
-    void check_sequential_agents(boolean useDeclarativeAPI) {
+    @Test
+    void sequential_agents_as_planner() {
+        check_sequential_agents(false, true);
+    }
+
+    void check_sequential_agents(boolean useDeclarativeAPI, boolean asPlanner) {
         CreativeWriter creativeWriter = useDeclarativeAPI
                 ? spy(AgenticServices.agentBuilder(CreativeWriterWithModel.class)
                         .outputKey("story")
@@ -93,10 +99,16 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
-        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                .subAgents(creativeWriter, audienceEditor, styleEditor)
-                .outputKey("story")
-                .build();
+        UntypedAgent novelCreator = asPlanner ?
+                AgenticServices.plannerBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .planner(SequentialPlanner::new)
+                        .build() :
+                AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
 
         Map<String, Object> input = Map.of(
                 "topic", "dragons and wizards",
@@ -516,18 +528,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
-                        medicalExpert)
-                .subAgents(
-                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
-                                == RequestCategory.TECHNICAL,
-                        technicalExpert)
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
-                        legalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(

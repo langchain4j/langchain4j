@@ -7,9 +7,6 @@ assignees: ''
 
 ---
 
-<!-- Please note that the maintainer of this repository (@dliubarskyi) will be offline from 25 October till 10 November.
-Please expect delays with processing. Thank you for your understanding. -->
-
 **Is your feature request related to a problem? Please describe.**
 <!-- A clear and concise description of what the problem is. Ex. I'm always frustrated when [...] -->
 

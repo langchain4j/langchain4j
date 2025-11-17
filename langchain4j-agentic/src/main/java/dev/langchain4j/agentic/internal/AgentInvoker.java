@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -24,21 +26,19 @@ public interface AgentInvoker extends AgentSpecification {
 
     Method method();
 
-    String toCard();
-
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
     default Object invoke(AgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         try {
-            beforeInvocation(new AgentRequest(agenticScope, name(), args.namedArgs()));
+            beforeInvocation(new AgentRequest(agenticScope, this, args.namedArgs()));
         } catch (Exception e) {
-            LOG.error("Before agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
+            LOG.error("Before agent invocation listener for agent " + agentId() + " failed: " + e.getMessage(), e);
         }
         LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
         Object result = internalInvoke(agent, args);
         try {
             LangChain4jManaged.removeCurrent();
-            afterInvocation(new AgentResponse(agenticScope, name(), args.namedArgs(), result));
+            afterInvocation(new AgentResponse(agenticScope, this, args.namedArgs(), result));
         } catch (Exception e) {
             LOG.error("After agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
         }
@@ -51,6 +51,14 @@ public interface AgentInvoker extends AgentSpecification {
         } catch (Exception e) {
             throw new AgentInvocationException("Failed to invoke agent method: " + method(), e);
         }
+    }
+
+    static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name, String agentId) {
+        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputKey()));
+        AgentSpecification agentSpecification = new AgentSpecificationImpl(
+                name, agentId, spec.description(), spec.outputKey(), spec.async(), arguments,
+                x -> { }, x -> { });
+        return new MethodAgentInvoker(agenticMethod, agentSpecification, arguments);
     }
 
     static AgentInvoker fromMethod(AgentSpecification spec, Method method) {

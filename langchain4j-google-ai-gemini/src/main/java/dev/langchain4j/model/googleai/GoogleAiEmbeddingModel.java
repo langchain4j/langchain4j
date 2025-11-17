@@ -13,12 +13,12 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatch
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
 
 public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
