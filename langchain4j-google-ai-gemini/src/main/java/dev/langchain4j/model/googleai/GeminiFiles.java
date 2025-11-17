@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>
  * Files are stored for 48 hours and can be referenced in content generation requests using their URI.
- * The API supports up to 20 GB of files per project, with a maximum of 2 GB per individual file.
+ * The API supporjava.net.http.HttpClien
  * During the retention period, you can retrieve file metadata but cannot download the files directly.
  */
 final class GeminiFiles {
@@ -50,10 +50,11 @@ final class GeminiFiles {
     /**
      * Uploads a file to Gemini using the resumable upload protocol.
      *
+     * <p><strong>Note:</strong> The Files API lets you store up to 20 GB of files per project, with a per-file
+     * maximum size of 2 GB. Files are stored for 48 hours.
+     *
      * @param filePath    path to the file to upload
      * @param displayName optional display name for the file
-     * @return the uploaded file information including the file URI
-     * @throws IOException if file cannot be read
      */
     GeminiFile uploadFile(Path filePath, @Nullable String displayName) throws IOException, InterruptedException {
         ensureNotNull(filePath, "filePath");
@@ -75,9 +76,6 @@ final class GeminiFiles {
      * Retrieves metadata for a specific uploaded file.
      *
      * @param name the name of the file to retrieve metadata for (e.g., "files/abc123")
-     * @return the metadata of the specified file
-     * @throws IOException          if an error occurs during the request
-     * @throws InterruptedException if the request is interrupted
      */
     GeminiFile getMetadata(String name) throws IOException, InterruptedException {
         ensureNotBlank(name, "name");
@@ -100,11 +98,10 @@ final class GeminiFiles {
     }
 
     /**
-     * Lists all uploaded files.
+     * Lists all uploaded files. Returns a list of uploaded files.
      *
-     * @return a list of uploaded files
-     * @throws IOException          if an error occurs during the request
-     * @throws InterruptedException if the request is interrupted
+     * <p><strong>Note:</strong> The Files API lets you store up to 20 GB of files per project, with a per-file
+     * maximum size of 2 GB. Files are stored for 48 hours.
      */
     List<GeminiFile> listFiles() throws IOException, InterruptedException {
         String url = baseUrl + LIST_FILES_PATH;
@@ -125,8 +122,6 @@ final class GeminiFiles {
      * Deletes an uploaded file by name.
      *
      * @param name the name of the file to delete (e.g., "files/abc123")
-     * @throws IOException          if an error occurs during the request
-     * @throws InterruptedException if the request is interrupted
      */
     void deleteFile(String name) throws IOException, InterruptedException {
         ensureNotBlank(name, "name");
@@ -244,7 +239,7 @@ final class GeminiFiles {
     }
 
     /**
-     * Represents a file uploaded to Google AI Gemini.
+     * Represents a file uploaded to the Gemini API, <a href="https://ai.google.dev/gemini-api/docs/files>documentation</a>
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiFile(
