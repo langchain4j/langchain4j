@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -104,6 +105,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                                  Bson filter,
                                  IndexMapping indexMapping,
                                  Boolean createIndex) {
+        mongoClient = ensureNotNull(mongoClient, "mongoClient");
         databaseName = ensureNotNull(databaseName, "databaseName");
         collectionName = ensureNotNull(collectionName, "collectionName");
         createIndex = getOrDefault(createIndex, false);
@@ -114,6 +116,13 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+
+        // append metadata to mongo client
+        mongoClient.appendMetadata(
+                MongoDriverInformation.builder()
+                        .driverName("langchain4j-mongodb-atlas")
+                        .build()
+        );
 
         // create collection if not exist
         MongoDatabase database = mongoClient.getDatabase(databaseName);

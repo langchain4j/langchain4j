@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.mongodb;
 
+import com.mongodb.client.internal.MongoClientImpl;
+import com.mongodb.connection.ClusterDescription;
+
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.EMBEDDING_MODEL;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.createDefaultClient;
@@ -18,6 +21,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
+import org.bson.BsonDocument;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +48,26 @@ class MongoDbEmbeddingStoreMiscIT {
         }
     }
 
+    @Test
+    void should_append_langchain_metadata_to_cluster() {
+        // given
+        final MongoClient client = createClient();
+
+        // when
+        fixture = new MongoDbTestFixture(client)
+                // initialization of EmbeddingStore happens here
+                .initialize(builder -> builder.filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
+
+        // then
+        assertThat(fixture.getEmbeddingStore()).isNotNull();
+        final BsonDocument clientMetadata = ((MongoClientImpl) client).getCluster().getClientMetadata().getBsonDocument();
+        assertThat(clientMetadata).withFailMessage("ClientMetadata must be present in MongoClient").isNotNull();
+
+        final String allDriverNames = clientMetadata.getDocument("driver").getString("name").getValue();
+        assertThat(allDriverNames).withFailMessage(String.format("driver name %s must contain langchain4j", allDriverNames)).contains("langchain4j");
+
+
+    }
     @Test
     void should_find_relevant_with_native_filter() {
         // given
@@ -93,4 +117,5 @@ class MongoDbEmbeddingStoreMiscIT {
             assertThat(r.getMessage()).contains("Search Index 'test_index' not found");
         }
     }
+
 }
