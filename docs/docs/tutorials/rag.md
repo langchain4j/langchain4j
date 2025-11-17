@@ -32,8 +32,8 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration,
-see `AzureAiSearchContentRetriever` for more details.
+Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
+see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -908,6 +908,13 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
 It can be found in the `langchain4j-community-neo4j-retriever` module.
+
+#### Elasticsearch Content Retriever
+`ElasticsearchContentRetriever` is an integration with
+[Elasticsearch](https://www.elastic.co/elasticsearch).
+It supports full-text, vector, and hybrid search.
+It can be found in the `langchain4j-elasticsearch` module.
+Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
