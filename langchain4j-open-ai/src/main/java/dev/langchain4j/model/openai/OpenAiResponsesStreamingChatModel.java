@@ -458,12 +458,18 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private Map<String, Object> createInputImageContent(Image image) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
-        content.put(FIELD_IMAGE_URL, buildImageUrl(image));
+        content.put(FIELD_IMAGE_URL, buildImageUrlPayload(image));
         content.put(FIELD_DETAIL, DETAIL_AUTO_VALUE);
         return content;
     }
 
-    private String buildImageUrl(Image image) {
+    private Map<String, Object> buildImageUrlPayload(Image image) {
+        var payload = new HashMap<String, Object>();
+        payload.put("url", resolveImageUrl(image));
+        return payload;
+    }
+
+    private String resolveImageUrl(Image image) {
         if (image.url() != null) {
             return image.url().toString();
         } else if (image.base64Data() != null) {
@@ -781,7 +787,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                     var item = node.path(FIELD_ITEM);
                     if (TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
                         var itemId = item.path(FIELD_ID).asText();
-                        var builder = toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
+                        var builder =
+                                toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
 
                         var callIdNode = item.get(FIELD_CALL_ID);
                         if (callIdNode != null && !callIdNode.isNull()) {

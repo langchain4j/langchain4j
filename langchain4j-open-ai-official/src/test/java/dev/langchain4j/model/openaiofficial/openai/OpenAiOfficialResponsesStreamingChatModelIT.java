@@ -2,9 +2,13 @@ package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.RecordingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -398,7 +402,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     // Responses API does not support vision/images
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
-        return true;
+        return false;
     }
 
     @Override
@@ -408,12 +412,25 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return true;
+        return false;
     }
 
     @Override
     protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
         return true;
+    }
+
+    @Override
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
+
+        // given
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+        dev.langchain4j.model.chat.request.ChatRequest chatRequest =
+                dev.langchain4j.model.chat.request.ChatRequest.builder().messages(userMessage).build();
+
+        // when-then
+        assertThatThrownBy(() -> chat(model, chatRequest));
     }
 
     @Override

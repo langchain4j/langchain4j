@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
 import com.openai.client.OpenAIClient;
@@ -60,6 +61,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +71,7 @@ import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,6 +154,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         AtomicReference<String> responseIdRef = new AtomicReference<>();
         Future<?> cancellationMonitorFuture = null;
+        Future<?> streamingFuture = null;
 
         try {
             logger.debug("Building ResponseCreateParams for model: {}", effectiveModelName);
@@ -252,9 +256,24 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 paramsBuilder.text(textConfig);
             }
 
+            var params = paramsBuilder.build();
+            var streamResponse = client.responses().createStreaming(params);
+
+            ResponsesStreamingHandle streamingHandle = new ResponsesStreamingHandle(() -> {
+                try {
+                    streamResponse.close();
+                } catch (Exception e) {
+                    logger.debug("Error closing response stream", e);
+                }
+            });
+
+            var eventHandler = new ResponsesEventHandler(
+                    handler, cancellationHandler, responseIdRef, effectiveModelName, streamingHandle);
+
             // Start background cancellation monitoring if handler is available
             if (cancellationHandler != null) {
                 cancellationMonitorFuture = cancellationHandler.startMonitoring(() -> {
+                    streamingHandle.cancel();
                     String responseId = responseIdRef.get();
                     if (responseId != null) {
                         try {
@@ -267,15 +286,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 });
             }
 
-            var params = paramsBuilder.build();
-            var eventHandler =
-                    new ResponsesEventHandler(handler, cancellationHandler, responseIdRef, effectiveModelName);
             final var finalCancellationMonitorFuture = cancellationMonitorFuture;
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously,
             // this is the only thread used.
-            executorService.submit(() -> {
-                try (var streamResponse = client.responses().createStreaming(params)) {
+            streamingFuture = executorService.submit(() -> {
+                try (streamResponse) {
                     streamResponse.stream().forEach(eventHandler::handleEvent);
                 } catch (CancellationException e) {
                     logger.debug("Stream cancelled by user");
@@ -287,13 +303,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     if (finalCancellationMonitorFuture != null) {
                         finalCancellationMonitorFuture.cancel(false);
                     }
+                    streamingHandle.markCompleted();
                 }
             });
+            streamingHandle.setStreamingFuture(streamingFuture);
         } catch (Exception e) {
             logger.error("Exception in doChat: {}", e.getMessage(), e);
             safeOnError(handler, e);
             if (cancellationMonitorFuture != null) {
                 cancellationMonitorFuture.cancel(false);
+            }
+            if (streamingFuture != null) {
+                streamingFuture.cancel(true);
             }
         }
     }
@@ -646,6 +667,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final ResponseCancellationHandler cancellationHandler;
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
+        private final StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
@@ -659,15 +681,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 StreamingChatResponseHandler handler,
                 ResponseCancellationHandler cancellationHandler,
                 AtomicReference<String> responseIdRef,
-                String modelName) {
+                String modelName,
+                StreamingHandle streamingHandle) {
             this.handler = handler;
             this.cancellationHandler = cancellationHandler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
+            this.streamingHandle = streamingHandle;
         }
 
         void handleEvent(ResponseStreamEvent event) {
-            if (cancellationHandler != null && cancellationHandler.isCancelled()) {
+            if ((cancellationHandler != null && cancellationHandler.isCancelled())
+                    || (streamingHandle != null && streamingHandle.isCancelled())) {
                 throw new CancellationException("Request cancelled by user");
             }
 
@@ -737,12 +762,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var delta = event.delta();
             if (!delta.isEmpty()) {
                 textBuilder.append(delta);
-                try {
-                    handler.onPartialResponse(delta);
-                } catch (Exception e) {
-                    logger.debug("Exception from onPartialResponse, calling onError and continuing", e);
-                    safeOnError(handler, e);
-                }
+                onPartialResponse(handler, delta, streamingHandle);
             }
         }
 
@@ -901,6 +921,49 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 logger.debug("Exception from onCompleteResponse, calling onError", e);
                 safeOnError(handler, e);
             }
+        }
+    }
+
+    private static class ResponsesStreamingHandle implements StreamingHandle {
+
+        private final Runnable cancelCallback;
+        private final AtomicBoolean cancelled = new AtomicBoolean(false);
+        private volatile Future<?> streamingFuture;
+        private volatile boolean completed;
+
+        ResponsesStreamingHandle(Runnable cancelCallback) {
+            this.cancelCallback = cancelCallback;
+        }
+
+        void setStreamingFuture(Future<?> streamingFuture) {
+            this.streamingFuture = streamingFuture;
+            if (cancelled.get() && streamingFuture != null) {
+                streamingFuture.cancel(true);
+            }
+        }
+
+        void markCompleted() {
+            this.completed = true;
+        }
+
+        @Override
+        public void cancel() {
+            if (cancelled.compareAndSet(false, true)) {
+                if (!completed && cancelCallback != null) {
+                    try {
+                        cancelCallback.run();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (streamingFuture != null) {
+                    streamingFuture.cancel(true);
+                }
+            }
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled.get();
         }
     }
 }

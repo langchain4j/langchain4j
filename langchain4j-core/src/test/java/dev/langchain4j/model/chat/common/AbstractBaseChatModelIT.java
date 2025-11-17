@@ -67,9 +67,9 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String CAT_IMAGE_URL =
-            "https://cdn.pixabay.com/photo/2017/11/09/21/41/cat-2934720_1280.jpg";
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
-            "https://cdn.pixabay.com/photo/2016/07/19/09/20/dice-1520616_1280.jpg";
+            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
