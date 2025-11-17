@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.8.0-beta15-TB</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -116,8 +116,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.8.0</langchain4j.stable.version>
-        <langchain4j.beta.version>1.8.0-beta15</langchain4j.beta.version>
+        <langchain4j.stable.version>1.8.0-TB</langchain4j.stable.version>
+        <langchain4j.beta.version>1.8.0-beta15-TB</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 

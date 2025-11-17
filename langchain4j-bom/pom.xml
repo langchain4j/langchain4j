@@ -5,20 +5,20 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15</version>
+        <version>1.8.0-beta15-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
-    <version>1.8.0</version>
+    <version>1.8.0-TB</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <properties>
-        <langchain4j.stable.version>1.8.0</langchain4j.stable.version>
-        <langchain4j.beta.version>1.8.0-beta15</langchain4j.beta.version>
+        <langchain4j.stable.version>1.8.0-TB</langchain4j.stable.version>
+        <langchain4j.beta.version>1.8.0-beta15-TB</langchain4j.beta.version>
     </properties>
 
     <dependencyManagement>
@@ -63,7 +63,7 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-reactor</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15-TB</version>
             </dependency>
 
             <dependency>
@@ -351,79 +351,79 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-en</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-en-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-en-v15</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-en-v15-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh-v15</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh-v15-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-e5-small-v2</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-e5-small-v2-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <!-- code execution engines -->
@@ -576,37 +576,37 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-ai-search-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-                <version>${langchain4j.beta.version}</version>
+                <version>1.8.0-beta15</version>
             </dependency>
 
         </dependencies>
