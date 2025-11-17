@@ -16,6 +16,7 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatch
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminibeddingResponseValues;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import java.time.Duration;
 import java.util.List;
@@ -32,7 +33,7 @@ class GeminiServiceTest {
     @Test
     void shouldThrownWhenApiKeyIsMissing() {
         assertThatThrownBy(() ->
-                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
+                new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("apiKey cannot be null or blank");
     }
@@ -53,10 +54,7 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiContent.GeminiPart.builder()
-                                    .text("Hi")
-                                    .build()),
-                            "user")))
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -80,10 +78,7 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiContent.GeminiPart.builder()
-                                    .text("Hi")
-                                    .build()),
-                            "user")))
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -113,10 +108,7 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiContent.GeminiPart.builder()
-                                    .text("Hi")
-                                    .build()),
-                            "user")))
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             // When
@@ -162,7 +154,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectCountTokensHttpRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
+            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(10);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -325,10 +317,7 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiContent.GeminiPart.builder()
-                                    .text("Hi")
-                                    .build()),
-                            "user")))
+                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
                     .build();
 
             CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -382,7 +371,6 @@ class GeminiServiceTest {
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
-                    // Do nothing.
                 }
 
                 @Override
@@ -437,6 +425,172 @@ class GeminiServiceTest {
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
+        }
+    }
+
+    @Nested
+    class BatchGenerateContentTest {
+        @Test
+        void shouldSendBatchGenerateContentRequest() {
+            // Given
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            GeminiGenerateContentRequest contentRequest = GeminiGenerateContentRequest.builder()
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Test").build()), "user")))
+                    .build();
+
+            BatchRequestResponse.BatchGenerateContentRequest request =
+                    new BatchRequestResponse.BatchGenerateContentRequest(
+                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
+                                    "test-batch",
+                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
+                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
+                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
+                                                            contentRequest, null)))),
+                                    1L));
+
+            // When
+            BatchRequestResponse.Operation actualResponse = subject.batchGenerateContent(TEST_MODEL_NAME, request);
+
+            // Then
+            assertThat(actualResponse).isEqualTo(expectedResponse);
+        }
+
+        @Test
+        void shouldSendCorrectBatchGenerateContentHttpRequest() {
+            // Given
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            GeminiGenerateContentRequest contentRequest = GeminiGenerateContentRequest.builder()
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiPart.builder().text("Test").build()), "user")))
+                    .build();
+
+            BatchRequestResponse.BatchGenerateContentRequest request =
+                    new BatchRequestResponse.BatchGenerateContentRequest(
+                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
+                                    "test-batch",
+                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
+                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
+                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
+                                                            contentRequest, null)))),
+                                    1L));
+
+            // When
+            subject.batchGenerateContent(TEST_MODEL_NAME, request);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.POST);
+            assertThat(sentRequest.url())
+                    .isEqualTo(TEST_BASE_URL + "/models/" + TEST_MODEL_NAME + ":batchGenerateContent");
+            assertThat(sentRequest.headers().get("Content-Type")).containsExactly("application/json");
+            assertThat(sentRequest.headers().get("User-Agent")).containsExactly("LangChain4j");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+            assertThat(sentRequest.body()).isEqualTo(Json.toJson(request));
+        }
+    }
+
+    @Nested
+    class BatchRetrieveBatchTest {
+        @Test
+        void shouldSendBatchRetrieveBatchRequest() {
+            // Given
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            BatchRequestResponse.Operation actualResponse = subject.batchRetrieveBatch(batchName);
+
+            // Then
+            assertThat(actualResponse).isEqualTo(expectedResponse);
+        }
+
+        @Test
+        void shouldSendCorrectBatchRetrieveBatchHttpRequest() {
+            // Given
+            BatchRequestResponse.Operation expectedResponse =
+                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            subject.batchRetrieveBatch(batchName);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/" + batchName);
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+    }
+
+    @Nested
+    class BatchCancelBatchTest {
+        @Test
+        void shouldSendBatchCancelBatchRequest() {
+            // Given
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            Void actualResponse = subject.batchCancelBatch(batchName);
+
+            // Then
+            assertThat(actualResponse).isNull();
+        }
+
+        @Test
+        void shouldSendCorrectBatchCancelBatchHttpRequest() {
+            // Given
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            subject.batchCancelBatch(batchName);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.POST);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/" + batchName + ":cancel");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
         }
     }
 
