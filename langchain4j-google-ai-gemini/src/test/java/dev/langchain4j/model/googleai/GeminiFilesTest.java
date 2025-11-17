@@ -8,6 +8,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiUploadFailureException;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,8 +17,6 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
-import dev.langchain4j.model.googleai.GeminiFiles.GeminiUploadFailureException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,18 +61,18 @@ class GeminiFilesTest {
             var uploadedFile = subject.uploadFile(testFile, "test.txt");
 
             // Then
-            assertThat(uploadedFile).isEqualTo(new GeminiFile(
-                    "files/test.txt",
-                    "test.txt",
-                    "text/plain",
-                    15L,
-                    "2025-01-01T10:00:00Z",
-                    "2025-01-01T10:00:00Z",
-                    "2025-01-03T10:00:00Z",
-                    "abc123def456",
-                    expectedFileUri,
-                    "ACTIVE"
-            ));
+            assertThat(uploadedFile)
+                    .isEqualTo(new GeminiFile(
+                            "files/test.txt",
+                            "test.txt",
+                            "text/plain",
+                            15L,
+                            "2025-01-01T10:00:00Z",
+                            "2025-01-01T10:00:00Z",
+                            "2025-01-03T10:00:00Z",
+                            "abc123def456",
+                            expectedFileUri,
+                            "ACTIVE"));
         }
 
         @Test
@@ -83,7 +83,8 @@ class GeminiFilesTest {
 
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createInitialUploadResponse(TEST_UPLOAD_URL))
-                    .thenAnswer(invocation -> createFileUploadResponse(expectedFileUri, "sample.mp3", "audio/mpeg", 13L));
+                    .thenAnswer(
+                            invocation -> createFileUploadResponse(expectedFileUri, "sample.mp3", "audio/mpeg", 13L));
 
             var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
 
@@ -91,18 +92,18 @@ class GeminiFilesTest {
             var uploadedFile = subject.uploadFile(testFile, null);
 
             // Then
-            assertThat(uploadedFile).isEqualTo(new GeminiFile(
-                    "files/sample.mp3",
-                    "sample.mp3",
-                    "audio/mpeg",
-                    13L,
-                    "2025-01-01T10:00:00Z",
-                    "2025-01-01T10:00:00Z",
-                    "2025-01-03T10:00:00Z",
-                    "abc123def456",
-                    expectedFileUri,
-                    "ACTIVE"
-            ));
+            assertThat(uploadedFile)
+                    .isEqualTo(new GeminiFile(
+                            "files/sample.mp3",
+                            "sample.mp3",
+                            "audio/mpeg",
+                            13L,
+                            "2025-01-01T10:00:00Z",
+                            "2025-01-01T10:00:00Z",
+                            "2025-01-03T10:00:00Z",
+                            "abc123def456",
+                            expectedFileUri,
+                            "ACTIVE"));
         }
 
         @Test
@@ -128,15 +129,16 @@ class GeminiFilesTest {
             var initialRequest = requestCaptor.getAllValues().get(0);
 
             assertThat(initialRequest.uri()).hasToString(TEST_BASE_URL + "/upload/v1beta/files");
-            assertThat(initialRequest.headers().map()).containsAllEntriesOf(java.util.Map.of(
-                    "x-goog-api-key", List.of(TEST_API_KEY),
-                    "content-type", List.of("application/json"),
-                    "user-agent", List.of("LangChain4j"),
-                    "x-goog-upload-protocol", List.of("resumable"),
-                    "x-goog-upload-command", List.of("start"),
-                    "x-goog-upload-header-content-length", List.of("16")
-            ));
-            assertThat(initialRequest.headers().firstValue("x-goog-upload-header-content-type")).isPresent();
+            assertThat(initialRequest.headers().map())
+                    .containsAllEntriesOf(java.util.Map.of(
+                            "x-goog-api-key", List.of(TEST_API_KEY),
+                            "content-type", List.of("application/json"),
+                            "user-agent", List.of("LangChain4j"),
+                            "x-goog-upload-protocol", List.of("resumable"),
+                            "x-goog-upload-command", List.of("start"),
+                            "x-goog-upload-header-content-length", List.of("16")));
+            assertThat(initialRequest.headers().firstValue("x-goog-upload-header-content-type"))
+                    .isPresent();
         }
 
         @Test
@@ -164,8 +166,10 @@ class GeminiFilesTest {
 
             var uploadRequest = requestCaptor.getAllValues().get(1);
             assertThat(uploadRequest.uri()).hasToString(uploadUrl);
-            assertThat(uploadRequest.headers().firstValue("x-goog-upload-offset")).contains("0");
-            assertThat(uploadRequest.headers().firstValue("x-goog-upload-command")).contains("upload, finalize");
+            assertThat(uploadRequest.headers().firstValue("x-goog-upload-offset"))
+                    .contains("0");
+            assertThat(uploadRequest.headers().firstValue("x-goog-upload-command"))
+                    .contains("upload, finalize");
 
             // Verify body publisher contains the correct bytes
             assertThat(uploadRequest.bodyPublisher()).isPresent();
@@ -236,7 +240,8 @@ class GeminiFilesTest {
         }
 
         @Test
-        void should_throwGeminiUploadFailureExceptionWhenHttpClientThrowsIOException() throws IOException, InterruptedException {
+        void should_throwGeminiUploadFailureExceptionWhenHttpClientThrowsIOException()
+                throws IOException, InterruptedException {
             // Given
             var testFile = createTestFile("test.txt", "content");
 
@@ -338,7 +343,8 @@ class GeminiFilesTest {
         }
 
         @Test
-        void should_throwGeminiUploadFailureExceptionWhenListFilesThrowsIOException() throws IOException, InterruptedException {
+        void should_throwGeminiUploadFailureExceptionWhenListFilesThrowsIOException()
+                throws IOException, InterruptedException {
             // Given
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenThrow(new IOException("Network error"));
@@ -414,7 +420,8 @@ class GeminiFilesTest {
         }
 
         @Test
-        void should_throwGeminiUploadFailureExceptionWhenDeleteThrowsIOException() throws IOException, InterruptedException {
+        void should_throwGeminiUploadFailureExceptionWhenDeleteThrowsIOException()
+                throws IOException, InterruptedException {
             // Given
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenThrow(new IOException("Network error"));
@@ -542,17 +549,15 @@ class GeminiFilesTest {
 
     private HttpResponse<String> createInitialUploadResponse(String uploadUrl) {
         HttpResponse<String> response = mock(HttpResponse.class);
-        when(response.headers()).thenReturn(java.net.http.HttpHeaders.of(
-                java.util.Map.of("x-goog-upload-url", List.of(uploadUrl)),
-                (a, b) -> true));
+        when(response.headers())
+                .thenReturn(java.net.http.HttpHeaders.of(
+                        java.util.Map.of("x-goog-upload-url", List.of(uploadUrl)), (a, b) -> true));
         return response;
     }
 
     private HttpResponse<String> createResponseWithoutUploadUrl() {
         HttpResponse<String> response = mock(HttpResponse.class);
-        when(response.headers()).thenReturn(java.net.http.HttpHeaders.of(
-                java.util.Map.of(),
-                (a, b) -> true));
+        when(response.headers()).thenReturn(java.net.http.HttpHeaders.of(java.util.Map.of(), (a, b) -> true));
         return response;
     }
 
@@ -587,7 +592,8 @@ class GeminiFilesTest {
     }
 
     private HttpResponse<String> createListFilesResponse() {
-        var json = """
+        var json =
+                """
                 {
                   "files": [
                     {

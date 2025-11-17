@@ -3,12 +3,11 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ class GeminiFilesIT {
 
     @TempDir
     Path tempDir;
-
 
     @Nested
     class UploadFileTest {
@@ -294,7 +292,6 @@ class GeminiFilesIT {
         }
     }
 
-
     @Nested
     class ListFilesTest {
 
@@ -311,9 +308,9 @@ class GeminiFilesIT {
             // Then
             assertThat(listedFiles).isNotNull();
             assertThat(listedFiles.isEmpty()).isFalse();
-            assertThat(listedFiles.stream().anyMatch(f -> f.name().equals(uploadedFile.name()))).isTrue();
+            assertThat(listedFiles.stream().anyMatch(f -> f.name().equals(uploadedFile.name())))
+                    .isTrue();
         }
-
 
         @Test
         void should_listFilesWithCorrectMetadata() throws Exception {
@@ -351,7 +348,8 @@ class GeminiFilesIT {
             List<GeminiFile> listedFiles = files.listFiles();
 
             // Then
-            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name()))).isTrue();
+            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name())))
+                    .isTrue();
         }
     }
 
@@ -370,7 +368,8 @@ class GeminiFilesIT {
 
             // Then
             List<GeminiFile> listedFiles = files.listFiles();
-            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name()))).isTrue();
+            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name())))
+                    .isTrue();
         }
 
         @Test
@@ -389,8 +388,10 @@ class GeminiFilesIT {
 
             // Then
             List<GeminiFile> listedFiles = files.listFiles();
-            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploaded1.name()))).isTrue();
-            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploaded2.name()))).isTrue();
+            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploaded1.name())))
+                    .isTrue();
+            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploaded2.name())))
+                    .isTrue();
         }
 
         @Test
@@ -405,7 +406,8 @@ class GeminiFilesIT {
 
             // Then
             List<GeminiFile> listedFiles = files.listFiles();
-            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name()))).isTrue();
+            assertThat(listedFiles.stream().noneMatch(f -> f.name().equals(uploadedFile.name())))
+                    .isTrue();
         }
     }
 

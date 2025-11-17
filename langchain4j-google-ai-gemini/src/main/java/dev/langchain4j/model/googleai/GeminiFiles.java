@@ -6,8 +6,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import org.jspecify.annotations.Nullable;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,6 +14,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Service for uploading and managing media files with Google AI Gemini.
@@ -151,7 +150,8 @@ final class GeminiFiles {
     /**
      * Initiates a resumable upload session and returns the upload URL.
      */
-    private String initiateResumableUpload(long contentLength, String mimeType, String displayName) throws InterruptedException {
+    private String initiateResumableUpload(long contentLength, String mimeType, String displayName)
+            throws InterruptedException {
         String url = baseUrl + UPLOAD_PATH;
 
         GeminiFileMetadata metadata = new GeminiFileMetadata(new GeminiFileMetadata.FileInfo(displayName));
@@ -172,7 +172,9 @@ final class GeminiFiles {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             List<String> uploadUrlList = response.headers().allValues(UPLOAD_URL_HEADER);
-            if (uploadUrlList.isEmpty() || uploadUrlList.get(0) == null || uploadUrlList.get(0).isEmpty()) {
+            if (uploadUrlList.isEmpty()
+                    || uploadUrlList.get(0) == null
+                    || uploadUrlList.get(0).isEmpty()) {
                 throw new IllegalStateException("Upload URL not found in response headers");
             }
 
@@ -217,22 +219,19 @@ final class GeminiFiles {
      * Request body for initiating a resumable upload.
      */
     private record GeminiFileMetadata(FileInfo file) {
-        record FileInfo(String display_name) {
-        }
+        record FileInfo(String display_name) {}
     }
 
     /**
      * Response from the file upload containing file information.
      */
-    record GeminiFileResponse(GeminiFile file) {
-    }
+    record GeminiFileResponse(GeminiFile file) {}
 
     /**
      * Response from listing files.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiFilesListResponse(List<GeminiFile> files) {
-    }
+    record GeminiFilesListResponse(List<GeminiFile> files) {}
 
     static class GeminiUploadFailureException extends RuntimeException {
         GeminiUploadFailureException(String message, Throwable cause) {
@@ -258,8 +257,7 @@ final class GeminiFiles {
             String expirationTime,
             String sha256Hash,
             String uri,
-            String state
-    ) {
+            String state) {
         /**
          * Returns whether the file is in ACTIVE state and ready to use.
          */
