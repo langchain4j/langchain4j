@@ -4,12 +4,12 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import java.io.IOException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,8 +42,7 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
 
     abstract ElasticsearchConfiguration withConfiguration();
 
-    void optionallyCreateIndex(String indexName) throws IOException {
-    }
+    void optionallyCreateIndex(String indexName) throws IOException {}
 
     @BeforeEach
     void createEmbeddingStore() throws IOException {
@@ -61,7 +60,6 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
                 .includeVectorResponse(includeVector)
                 .build();
     }
-
 
     @AfterEach
     void removeDataStore() throws IOException {

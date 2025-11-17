@@ -4,13 +4,13 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createContextFromCaCert;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createTrustAllCertsContext;
 
-import java.io.IOException;
-import java.util.Properties;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import java.io.IOException;
+import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -64,13 +64,12 @@ public class ElasticsearchClientHelper {
             // Start the container. This step might take some time...
             log.info("Starting testcontainers with Elasticsearch [{}].", version);
             elasticsearch = new ElasticsearchContainer(
-                    DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
-                            .withTag(version))
+                            DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
+                                    .withTag(version))
                     .withPassword(localPassword);
             elasticsearch.start();
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(
-                    "/usr/share/elasticsearch/config/certs/http_ca.crt",
-                    IOUtils::toByteArray);
+                    "/usr/share/elasticsearch/config/certs/http_ca.crt", IOUtils::toByteArray);
             restClient = getClient("https://" + elasticsearch.getHttpHostAddress(), null, localPassword, certAsBytes);
         }
     }
@@ -105,24 +104,26 @@ public class ElasticsearchClientHelper {
      */
     private RestClient getClient(String address, String cloudApiKey, String password, byte[] certificate) {
         try {
-            log.debug("Trying to connect to {} {}.", address,
+            log.debug(
+                    "Trying to connect to {} {}.",
+                    address,
                     certificate == null ? "with no ssl checks" : "using the provided SSL certificate");
 
             // Create the low-level client
             RestClientBuilder restClientBuilder = RestClient.builder(HttpHost.create(address));
 
             if (!isNullOrBlank(cloudApiKey)) {
-                restClientBuilder.setDefaultHeaders(new Header[]{
-                        new BasicHeader("Authorization", "Apikey " + cloudApiKey)
-                });
+                restClientBuilder.setDefaultHeaders(
+                        new Header[] {new BasicHeader("Authorization", "Apikey " + cloudApiKey)});
             } else {
                 final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(AuthScope.ANY,
-                        new UsernamePasswordCredentials("elastic", password));
-                restClientBuilder.setHttpClientConfigCallback(hcb -> hcb
-                        .setDefaultCredentialsProvider(credentialsProvider)
-                        .setSSLContext(certificate != null ?
-                                createContextFromCaCert(certificate) : createTrustAllCertsContext()));
+                credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials("elastic", password));
+                restClientBuilder.setHttpClientConfigCallback(
+                        hcb -> hcb.setDefaultCredentialsProvider(credentialsProvider)
+                                .setSSLContext(
+                                        certificate != null
+                                                ? createContextFromCaCert(certificate)
+                                                : createTrustAllCertsContext()));
             }
 
             restClient = restClientBuilder.build();
@@ -134,7 +135,10 @@ public class ElasticsearchClientHelper {
             client = new ElasticsearchClient(transport);
 
             InfoResponse info = client.info();
-            log.info("Found Elasticsearch cluster version [{}] running at [{}].", info.version().number(), address);
+            log.info(
+                    "Found Elasticsearch cluster version [{}] running at [{}].",
+                    info.version().number(),
+                    address);
             version = info.version().number();
 
             return restClient;

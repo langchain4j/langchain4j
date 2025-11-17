@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -15,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.io.IOException;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
@@ -38,27 +37,28 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
         return new ElasticsearchConfigurationScript.Builder();
     }
 
-    private ElasticsearchConfigurationScript() {
+    private ElasticsearchConfigurationScript() {}
 
+    @Override
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
+            throws ElasticsearchException, IOException {
+        return internalSearch(client, indexName, embeddingSearchRequest, false);
     }
 
     @Override
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                            String indexName,
-                                            EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
-        return internalSearch(client,indexName,embeddingSearchRequest,false);
-    }
-
-    @Override
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                            String indexName,
-                                            EmbeddingSearchRequest embeddingSearchRequest,
-                                            boolean includeVectorResponse) throws ElasticsearchException, IOException {
-        ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(embeddingSearchRequest.queryEmbedding().vector(),
-                (float) embeddingSearchRequest.minScore(), embeddingSearchRequest.filter());
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest,
+            boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
+        ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
+                embeddingSearchRequest.queryEmbedding().vector(),
+                (float) embeddingSearchRequest.minScore(),
+                embeddingSearchRequest.filter());
         return client.search(
-                SearchRequest.of(s -> s
-                        .source(sr -> {
+                SearchRequest.of(s -> s.source(sr -> {
                             if (includeVectorResponse) {
                                 return sr.filter(f -> f.excludeVectors(false));
                             }
@@ -66,24 +66,30 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
                         })
                         .index(indexName)
                         .query(n -> n.scriptScore(scriptScoreQuery))
-                        .size(embeddingSearchRequest.maxResults()))
-                ,
-                Document.class
-        );
+                        .size(embeddingSearchRequest.maxResults())),
+                Document.class);
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client, final String indexName, final String textQuery)
+            throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException("Script configuration does not support full text search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest,
+            final String textQuery,
+            final boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException("Script configuration does not support hybrid search");
     }
 
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore,
-                                                          Filter filter) throws JsonProcessingException {
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter)
+            throws JsonProcessingException {
         JsonData queryVector = toJsonData(vector);
         Query query;
         if (filter == null) {
@@ -91,12 +97,9 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
         } else {
             query = ElasticsearchMetadataFilterMapper.map(filter);
         }
-        return ScriptScoreQuery.of(q -> q
-                .minScore(minScore)
-                .query(query)
-                .script(s -> s
-                        .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                        .params("query_vector", queryVector)));
+        return ScriptScoreQuery.of(q -> q.minScore(minScore).query(query).script(s -> s.source(
+                        "(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
+                .params("query_vector", queryVector)));
     }
 
     private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {

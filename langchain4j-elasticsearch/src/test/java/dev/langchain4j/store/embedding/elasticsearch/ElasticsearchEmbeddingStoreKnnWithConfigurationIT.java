@@ -1,20 +1,19 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.junit.jupiter.api.*;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.*;
 
 class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
 
@@ -77,10 +76,13 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             elasticsearchClientHelper.refreshIndex(indexName);
 
             // then
-            assertThat(embeddingStore.search(EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embedding1)
-                    .maxResults(10)
-                    .build()).matches()).hasSize(3);
+            assertThat(embeddingStore
+                            .search(EmbeddingSearchRequest.builder()
+                                    .queryEmbedding(embedding1)
+                                    .maxResults(10)
+                                    .build())
+                            .matches())
+                    .hasSize(3);
         }
 
         // Remove the datastore between tests
@@ -103,10 +105,13 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             elasticsearchClientHelper.refreshIndex(indexName);
 
             // then
-            assertThat(embeddingStore.search(EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embedding1)
-                    .maxResults(10)
-                    .build()).matches()).hasSize(1);
+            assertThat(embeddingStore
+                            .search(EmbeddingSearchRequest.builder()
+                                    .queryEmbedding(embedding1)
+                                    .maxResults(10)
+                                    .build())
+                            .matches())
+                    .hasSize(1);
         }
     }
 }

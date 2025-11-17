@@ -6,8 +6,6 @@ import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientH
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.util.List;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorIndexOptionsType;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
 import dev.langchain4j.data.embedding.Embedding;
@@ -23,6 +21,8 @@ import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationFullText;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationHybrid;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
+import java.io.IOException;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,7 +98,6 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         optionallyCreateIndex(indexName);
     }
 
-
     @AfterEach
     void removeDataStore() throws IOException {
         // We remove the indices in case we were running with a local test instance
@@ -110,16 +109,13 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         BooleanResponse response = elasticsearchClientHelper.client.indices().exists(c -> c.index(indexName));
         if (!response.value()) {
             elasticsearchClientHelper.client.indices().create(c -> c.index(indexName)
-                    .mappings(m -> m
-                            .properties("text", p -> p.text(t -> t))
-                            .properties("vector", p -> p.denseVector(dv -> dv
-                                    .indexOptions(dvio -> dvio
+                    .mappings(m -> m.properties("text", p -> p.text(t -> t))
+                            .properties(
+                                    "vector",
+                                    p -> p.denseVector(dv -> dv.indexOptions(dvio -> dvio
                                             // We must use float instead of the int8_hnsw default
                                             // as the tests are failing otherwise due to the approximation
-                                            .type(DenseVectorIndexOptionsType.Hnsw)
-                                    )
-                            ))
-                    ));
+                                            .type(DenseVectorIndexOptionsType.Hnsw))))));
         }
     }
 
@@ -232,8 +228,6 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertContent(relevant2.get(0));
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
     }
-
-
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {

@@ -1,10 +1,10 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-import java.io.IOException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,34 +29,44 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest)
+            throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest,
+            final boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client, final String indexName, final String textQuery)
+            throws ElasticsearchException, IOException {
         log.trace("Searching for text matches in index [{}] with query [{}].", indexName, textQuery);
 
-        return client.search(s -> s
-                        .index(indexName)
-                        .query(q -> q
-                                .match(m -> m
-                                        .field(TEXT_FIELD)
-                                        .query(textQuery)
-                                )
-                        )
-                , Document.class);
+        return client.search(
+                s -> s.index(indexName)
+                        .query(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery))),
+                Document.class);
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest,
+            final String textQuery,
+            final boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
-
-
 }

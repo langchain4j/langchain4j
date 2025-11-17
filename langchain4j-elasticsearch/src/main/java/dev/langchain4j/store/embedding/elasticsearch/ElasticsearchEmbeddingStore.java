@@ -32,7 +32,8 @@ import org.slf4j.LoggerFactory;
  * Supports storing {@link Metadata} and filtering by it using {@link Filter}
  * (provided inside {@link EmbeddingSearchRequest}).
  */
-public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingStore
+        implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStore.class);
 
@@ -50,13 +51,14 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
     @Deprecated(forRemoval = true)
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
-                                       String serverUrl,
-                                       String apiKey,
-                                       String userName,
-                                       String password,
-                                       String indexName,
-                                       Integer dimension) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            String serverUrl,
+            String apiKey,
+            String userName,
+            String password,
+            String indexName,
+            Integer dimension) {
         this(configuration, serverUrl, apiKey, userName, password, indexName);
         log.warn("Setting the dimension is deprecated.");
     }
@@ -74,26 +76,26 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
     @Deprecated(forRemoval = true)
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
-                                       String serverUrl,
-                                       String apiKey,
-                                       String userName,
-                                       String password,
-                                       String indexName) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            String serverUrl,
+            String apiKey,
+            String userName,
+            String password,
+            String indexName) {
 
-        RestClientBuilder restClientBuilder = RestClient
-                .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
+        RestClientBuilder restClientBuilder =
+                RestClient.builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
 
         if (!isNullOrBlank(userName)) {
             CredentialsProvider provider = new BasicCredentialsProvider();
             provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
-            restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
+            restClientBuilder.setHttpClientConfigCallback(
+                    httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
         }
 
         if (!isNullOrBlank(apiKey)) {
-            restClientBuilder.setDefaultHeaders(new Header[]{
-                    new BasicHeader("Authorization", "Apikey " + apiKey)
-            });
+            restClientBuilder.setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "Apikey " + apiKey)});
         }
 
         ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
@@ -109,7 +111,8 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
      */
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         this.initialize(configuration, restClient, indexName, false);
     }
 
@@ -122,7 +125,11 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      *                              Index will be created automatically if not exists.
      * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
      */
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, boolean includeVectorResponse) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            boolean includeVectorResponse) {
         this.initialize(configuration, restClient, indexName, includeVectorResponse);
     }
 
@@ -138,7 +145,8 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         private String password;
         private RestClient restClient;
         private String indexName = "default";
-        private ElasticsearchConfiguration configuration = ElasticsearchConfigurationKnn.builder().build();
+        private ElasticsearchConfiguration configuration =
+                ElasticsearchConfigurationKnn.builder().build();
         private boolean includeVectorResponse = false;
 
         /**
@@ -237,7 +245,8 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             if (restClient != null) {
                 return new ElasticsearchEmbeddingStore(configuration, restClient, indexName, includeVectorResponse);
             } else {
-                log.warn("This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
+                log.warn(
+                        "This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
                 return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);
             }
         }

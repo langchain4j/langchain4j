@@ -1,36 +1,34 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-import java.io.IOException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import java.io.IOException;
 
 public abstract class ElasticsearchConfiguration {
     static final String VECTOR_FIELD = "vector";
     static final String TEXT_FIELD = "text";
 
-    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                     String indexName,
-                                                     EmbeddingSearchRequest embeddingSearchRequest)
+    abstract SearchResponse<Document> internalSearch(
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
 
-    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                     String indexName,
-                                                     EmbeddingSearchRequest embeddingSearchRequest,
-                                                     boolean includeVectorResponse)
+    abstract SearchResponse<Document> internalSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest,
+            boolean includeVectorResponse)
             throws ElasticsearchException, IOException;
 
-    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                     String indexName,
-                                                     String textQuery)
+    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client, String indexName, String textQuery)
             throws ElasticsearchException, IOException;
 
-    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                     String indexName,
-                                                     EmbeddingSearchRequest embeddingSearchRequest,
-                                                     String textQuery,
-                                                     boolean includeVectorResponse)
+    abstract SearchResponse<Document> internalSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest,
+            String textQuery,
+            boolean includeVectorResponse)
             throws ElasticsearchException, IOException;
-
 }

@@ -8,10 +8,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -35,6 +31,10 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +68,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      *                              Index will be created automatically if not exists.
      * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
      */
-    protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, boolean includeVectorResponse) {
+    protected void initialize(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            boolean includeVectorResponse) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -77,7 +81,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         this.indexName = ensureNotNull(indexName, "indexName");
         this.includeVectorResponse = includeVectorResponse;
     }
-
 
     @Override
     public String add(Embedding embedding) {
@@ -106,9 +109,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     public List<String> addAllText(List<String> texts) {
-        List<String> ids = texts.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = texts.stream().map(ignored -> randomUUID()).collect(toList());
         try {
             bulkIndexText(ids, texts.stream().map(TextSegment::from).toList());
         } catch (IOException e) {
@@ -126,27 +127,31 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAll(ids, embeddings, null);
         return ids;
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
-        log.debug("search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
-                embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
+        log.debug(
+                "search([...{}...], {}, {})",
+                embeddingSearchRequest.queryEmbedding().vector().length,
+                embeddingSearchRequest.maxResults(),
+                embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, embeddingSearchRequest, includeVectorResponse);
+            SearchResponse<Document> response =
+                    this.configuration.internalSearch(client, indexName, embeddingSearchRequest, includeVectorResponse);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
-            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]") && includeVectorResponse) {
-                log.warn("Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
+            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
+                    && includeVectorResponse) {
+                log.warn(
+                        "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
             throw new ElasticsearchRequestFailedException(e);
         } catch (IOException e) {
@@ -154,19 +159,26 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
-    public EmbeddingSearchResult<TextSegment> hybridSearch(EmbeddingSearchRequest embeddingSearchRequest, String textQuery) {
-        log.debug("hybrid search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
-                embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
+    public EmbeddingSearchResult<TextSegment> hybridSearch(
+            EmbeddingSearchRequest embeddingSearchRequest, String textQuery) {
+        log.debug(
+                "hybrid search([...{}...], {}, {})",
+                embeddingSearchRequest.queryEmbedding().vector().length,
+                embeddingSearchRequest.maxResults(),
+                embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, embeddingSearchRequest, textQuery, includeVectorResponse);
+            SearchResponse<Document> response = this.configuration.internalSearch(
+                    client, indexName, embeddingSearchRequest, textQuery, includeVectorResponse);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
-            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]") && includeVectorResponse) {
-                log.warn("Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
+            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
+                    && includeVectorResponse) {
+                log.warn(
+                        "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
             throw new ElasticsearchRequestFailedException(e);
         } catch (IOException e) {
@@ -230,7 +242,9 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+        ensureTrue(
+                embedded == null || embeddings.size() == embedded.size(),
+                "embeddings size is not equal to embedded size");
 
         try {
             bulkIndex(ids, embeddings, embedded);
@@ -239,7 +253,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
-    private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) throws IOException {
+    private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded)
+            throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
@@ -248,12 +263,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             Document document = Document.builder()
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
+                    .metadata(
+                            embedded == null ? null : embedded.get(i).metadata().toMap())
                     .build();
-            bulkBuilder.operations(op -> op.index(idx -> idx
-                    .index(indexName)
-                    .id(ids.get(finalI))
-                    .document(document)));
+            bulkBuilder.operations(op ->
+                    op.index(idx -> idx.index(indexName).id(ids.get(finalI)).document(document)));
         }
 
         BulkResponse response = client.bulk(bulkBuilder.build());
@@ -268,12 +282,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             int finalI = i;
             Document document = Document.builder()
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
+                    .metadata(
+                            embedded == null ? null : embedded.get(i).metadata().toMap())
                     .build();
-            bulkBuilder.operations(op -> op.index(idx -> idx
-                    .index(indexName)
-                    .id(ids.get(finalI))
-                    .document(document)));
+            bulkBuilder.operations(op ->
+                    op.index(idx -> idx.index(indexName).id(ids.get(finalI)).document(document)));
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
@@ -289,15 +302,15 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private void throwIfError(ErrorCause errorCause) {
         if (errorCause != null) {
-            throw new ElasticsearchRequestFailedException("type: " + errorCause.type() + ", reason: " + errorCause.reason());
+            throw new ElasticsearchRequestFailedException(
+                    "type: " + errorCause.type() + ", reason: " + errorCause.reason());
         }
     }
 
     private void removeByQuery(Query query) {
         try {
-            DeleteByQueryResponse response = client.deleteByQuery(delete -> delete
-                    .index(indexName)
-                    .query(query));
+            DeleteByQueryResponse response =
+                    client.deleteByQuery(delete -> delete.index(indexName).query(query));
             if (!response.failures().isEmpty()) {
                 for (BulkIndexByScrollFailure item : response.failures()) {
                     throwIfError(item.cause());
@@ -319,9 +332,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private void bulkRemove(Collection<String> ids) throws IOException {
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (String id : ids) {
-            bulkBuilder.operations(op -> op.delete(dlt -> dlt
-                    .index(indexName)
-                    .id(id)));
+            bulkBuilder.operations(op -> op.delete(dlt -> dlt.index(indexName).id(id)));
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
@@ -334,24 +345,25 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                 hit.score(),
                                 hit.id(),
                                 new Embedding(Optional.ofNullable(document.getVector())
-                                        .orElse(new float[]{})),
+                                        .orElse(new float[] {})),
                                 document.getText() == null
                                         ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
-                        )).orElse(null))
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
+                        .orElse(null))
                 .collect(toList());
     }
 
     private List<TextSegment> toTextList(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document ->
-                                document.getText() == null
-                                        ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata())
-                                        .put(ContentMetadata.SCORE.name(), hit.score())
-                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())
-                                )).orElse(null))
+                        .map(document -> document.getText() == null
+                                ? null
+                                : TextSegment.from(
+                                        document.getText(),
+                                        new Metadata(document.getMetadata())
+                                                .put(ContentMetadata.SCORE.name(), hit.score())
+                                                .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
+                        .orElse(null))
                 .collect(toList());
     }
 }

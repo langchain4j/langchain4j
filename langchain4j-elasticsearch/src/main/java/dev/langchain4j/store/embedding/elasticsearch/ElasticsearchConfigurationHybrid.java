@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-import java.io.IOException;
-import java.util.List;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnRetriever;
@@ -10,6 +8,8 @@ import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import java.io.IOException;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,6 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
 
     public static class Builder {
         private Integer numCandidates;
-
 
         public ElasticsearchConfigurationHybrid build() {
             return new ElasticsearchConfigurationHybrid(numCandidates);
@@ -53,34 +52,42 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
         return new Builder();
     }
 
-
     private ElasticsearchConfigurationHybrid(Integer numCandidates) {
         this.numCandidates = numCandidates;
     }
 
     @Override
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                            String indexName,
-                                            EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException {
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
+            throws ElasticsearchException {
         return internalSearch(client, indexName, embeddingSearchRequest, false);
     }
 
     @Override
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                            String indexName,
-                                            EmbeddingSearchRequest embeddingSearchRequest,
-                                            boolean includeVectorResponse) throws ElasticsearchException {
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest,
+            boolean includeVectorResponse)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException {
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client, final String indexName, final String textQuery)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Hybrid configuration does not support full text search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
-
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest,
+            final String textQuery,
+            final boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
 
         // Building KNN part of the hybrid query
         KnnRetriever.Builder krb = new KnnRetriever.Builder()
@@ -104,36 +111,24 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
         KnnRetriever knn = krb.build();
 
         // Building full text part of the hybrid query
-        MatchQuery matchQuery = new MatchQuery.Builder()
-                .field(TEXT_FIELD)
-                .query(textQuery)
-                .build();
-
+        MatchQuery matchQuery =
+                new MatchQuery.Builder().field(TEXT_FIELD).query(textQuery).build();
 
         log.trace("Searching for embeddings in index [{}] with hybrid query [{}], [{}].", indexName, knn, matchQuery);
 
-        return client.search(s -> s
-                        .source(sr -> {
+        return client.search(
+                s -> s.source(sr -> {
                             if (includeVectorResponse) {
                                 return sr.filter(f -> f.excludeVectors(false));
                             }
                             return new SourceConfig.Builder().filter(f -> f);
                         })
                         .index(indexName)
-                        .retriever(r -> r
-                                .rrf(rf -> rf
-                                        .retrievers(List.of(
-                                                Retriever.of(rt -> rt
-                                                        .standard(st -> st
-                                                                .query(matchQuery)
-                                                        )
-                                                ),
-                                                Retriever.of(rt -> rt.knn(knn))
-                                        ))
-                                )
-                        )
+                        .retriever(r -> r.rrf(rf -> rf.retrievers(List.of(
+                                Retriever.of(rt -> rt.standard(st -> st.query(matchQuery))),
+                                Retriever.of(rt -> rt.knn(knn))))))
                         .size(embeddingSearchRequest.maxResults())
-                        .minScore(embeddingSearchRequest.minScore())
-                , Document.class);
+                        .minScore(embeddingSearchRequest.minScore()),
+                Document.class);
     }
 }

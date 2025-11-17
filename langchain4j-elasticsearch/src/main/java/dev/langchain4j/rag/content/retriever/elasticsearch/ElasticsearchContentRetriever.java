@@ -1,7 +1,5 @@
 package dev.langchain4j.rag.content.retriever.elasticsearch;
 
-import java.util.List;
-import java.util.Map;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -19,6 +17,8 @@ import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationH
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationScript;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.List;
+import java.util.Map;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,14 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
      * @param minScore
      * @param filter
      */
-    public ElasticsearchContentRetriever(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, EmbeddingModel embeddingModel, final int maxResults, final double minScore, final Filter filter) {
+    public ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            final int maxResults,
+            final double minScore,
+            final Filter filter) {
         this.embeddingModel = embeddingModel;
         this.maxResults = maxResults;
         this.minScore = minScore;
@@ -71,7 +78,15 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
      * @param embeddingModel        Embedding model to be used by the retriever
      * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
      */
-    public ElasticsearchContentRetriever(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, EmbeddingModel embeddingModel, boolean includeVectorResponse, final int maxResults, final double minScore, final Filter filter) {
+    public ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            boolean includeVectorResponse,
+            final int maxResults,
+            final double minScore,
+            final Filter filter) {
         this.embeddingModel = embeddingModel;
         this.maxResults = maxResults;
         this.minScore = minScore;
@@ -82,9 +97,14 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     @Override
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
-            return this.fullTextSearch(query.text()).stream().map(t -> Content.from(t, Map.of(
-                    ContentMetadata.SCORE, t.metadata().getDouble(ContentMetadata.SCORE.name()),
-                    ContentMetadata.EMBEDDING_ID, t.metadata().getString(ContentMetadata.EMBEDDING_ID.name())))).toList();
+            return this.fullTextSearch(query.text()).stream()
+                    .map(t -> Content.from(
+                            t,
+                            Map.of(
+                                    ContentMetadata.SCORE, t.metadata().getDouble(ContentMetadata.SCORE.name()),
+                                    ContentMetadata.EMBEDDING_ID,
+                                            t.metadata().getString(ContentMetadata.EMBEDDING_ID.name()))))
+                    .toList();
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -104,11 +124,12 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     private List<Content> mapResultsToContentList(EmbeddingSearchResult<TextSegment> searchResult) {
         List<Content> result = searchResult.matches().stream()
                 .filter(f -> f.score() > minScore)
-                .map(m ->
-                        Content.from(m.embedded(), Map.of(
+                .map(m -> Content.from(
+                        m.embedded(),
+                        Map.of(
                                 ContentMetadata.SCORE, m.score(),
-                                ContentMetadata.EMBEDDING_ID, m.embeddingId()))
-                ).toList();
+                                ContentMetadata.EMBEDDING_ID, m.embeddingId())))
+                .toList();
         return result;
     }
 
@@ -120,7 +141,8 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
 
         private RestClient restClient;
         private String indexName = "default";
-        private ElasticsearchConfiguration configuration = ElasticsearchConfigurationKnn.builder().build();
+        private ElasticsearchConfiguration configuration =
+                ElasticsearchConfigurationKnn.builder().build();
         private boolean includeVectorResponse = false;
         private EmbeddingModel embeddingModel;
         private int maxResults;
@@ -144,7 +166,6 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
             this.indexName = indexName;
             return this;
         }
-
 
         /**
          * @param configuration the configuration to use
@@ -185,7 +206,15 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         }
 
         public ElasticsearchContentRetriever build() {
-            return new ElasticsearchContentRetriever(configuration, restClient, indexName, embeddingModel, includeVectorResponse, maxResults, minScore, filter);
+            return new ElasticsearchContentRetriever(
+                    configuration,
+                    restClient,
+                    indexName,
+                    embeddingModel,
+                    includeVectorResponse,
+                    maxResults,
+                    minScore,
+                    filter);
         }
     }
 }
