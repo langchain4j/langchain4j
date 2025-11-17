@@ -17,6 +17,7 @@ import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -38,7 +39,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(14);
+        assertThat(tools).hasSize(13);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -159,27 +160,29 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                         is("true"));
     }
 
-    // this is specifically for 'executeToolWithUntypedArrayParameter'
-    OpenAiChatModel chatModel = OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
     @Test
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
     public void executeToolWithUntypedArrayParameter() {
+
+        ChatModel chatModel = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         ChatService service = AiServices.builder(ChatService.class)
                 .toolProvider(createMcpToolProvider())
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .chatModel(chatModel)
                 .build();
+
         String response = service.chat(
                 "Call the tool named 'untypedArray' with this array as the 'arr' parameter: [0, \"abs\", null], and pass me the result.");
+
         assertThat(response).contains("6789");
     }
 
