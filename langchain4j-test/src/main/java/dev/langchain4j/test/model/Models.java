@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.patterns;
+package dev.langchain4j.test.model;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
