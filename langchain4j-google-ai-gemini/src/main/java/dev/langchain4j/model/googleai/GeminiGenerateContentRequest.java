@@ -1,18 +1,16 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
-        @JsonProperty List<GeminiContent> contents,
-        @JsonProperty GeminiTool tools,
-        @JsonProperty GeminiToolConfig toolConfig,
-        @JsonProperty List<GeminiSafetySetting> safetySettings,
-        @JsonProperty GeminiContent systemInstruction,
-        @JsonProperty GeminiGenerationConfig generationConfig,
-        @JsonProperty String cachedContent) {
+        List<GeminiContent> contents,
+        GeminiTool tools,
+        GeminiToolConfig toolConfig,
+        List<GeminiSafetySetting> safetySettings,
+        GeminiContent systemInstruction,
+        GeminiGenerationConfig generationConfig) {
 
     static GeminiGenerateContentRequestBuilder builder() {
         return new GeminiGenerateContentRequestBuilder();
@@ -25,7 +23,6 @@ record GeminiGenerateContentRequest(
         private List<GeminiSafetySetting> safetySettings;
         private GeminiContent systemInstruction;
         private GeminiGenerationConfig generationConfig;
-        private String cachedContent;
 
         GeminiGenerateContentRequestBuilder() {}
 
@@ -59,11 +56,6 @@ record GeminiGenerateContentRequest(
             return this;
         }
 
-        GeminiGenerateContentRequestBuilder cachedContent(String cachedContent) {
-            this.cachedContent = cachedContent;
-            return this;
-        }
-
         public GeminiGenerateContentRequest build() {
             return new GeminiGenerateContentRequest(
                     this.contents,
@@ -71,8 +63,7 @@ record GeminiGenerateContentRequest(
                     this.toolConfig,
                     this.safetySettings,
                     this.systemInstruction,
-                    this.generationConfig,
-                    this.cachedContent);
+                    this.generationConfig);
         }
     }
 
