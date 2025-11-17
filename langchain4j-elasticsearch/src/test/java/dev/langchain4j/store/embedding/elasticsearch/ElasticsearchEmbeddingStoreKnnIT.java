@@ -8,7 +8,7 @@ import java.io.IOException;
 class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingStoreIT {
 
     @Override
-    protected ElasticsearchConfiguration withConfiguration() {
+    ElasticsearchConfiguration withConfiguration() {
         return ElasticsearchConfigurationKnn.builder().build();
     }
 

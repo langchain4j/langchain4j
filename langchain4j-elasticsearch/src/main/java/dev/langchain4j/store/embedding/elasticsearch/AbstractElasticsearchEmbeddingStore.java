@@ -62,10 +62,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     /**
      * Initialize using a RestClient
      *
-     * @param configuration Elasticsearch configuration to use (Knn or Script)
-     * @param restClient    Elasticsearch Rest Client (mandatory)
-     * @param indexName     Elasticsearch index name (optional). Default value: "default".
-     *                      Index will be created automatically if not exists.
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param restClient            Elasticsearch Rest Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
      */
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName, boolean includeVectorResponse) {
         JsonpMapper mapper = new JacksonJsonpMapper();

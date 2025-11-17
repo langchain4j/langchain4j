@@ -40,7 +40,7 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
         elasticsearchClientHelper.stopServices();
     }
 
-    protected abstract ElasticsearchConfiguration withConfiguration();
+    abstract ElasticsearchConfiguration withConfiguration();
 
     void optionallyCreateIndex(String indexName) throws IOException {
     }
