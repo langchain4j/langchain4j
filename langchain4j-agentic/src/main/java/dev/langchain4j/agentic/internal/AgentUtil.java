@@ -148,15 +148,18 @@ public class AgentUtil {
         if (argValue == null) {
             throw new MissingArgumentException(argName);
         }
-        Object parsedArgument = parseArgument(argValue, argType);
+        Object parsedArgument = adaptValueToType(argValue, argType);
         if (argValue != parsedArgument) {
             agenticScope.writeState(argName, parsedArgument);
         }
         return parsedArgument;
     }
 
-    static Object parseArgument(Object argValue, Class<?> type) {
-        if (argValue instanceof String s) {
+    private static Object adaptValueToType(Object value, Class<?> type) {
+        if (type.isInstance(value)) {
+            return value;
+        }
+        if (value instanceof String s) {
             return switch (type.getName()) {
                 case "java.lang.String", "java.lang.Object" -> s;
                 case "int", "java.lang.Integer" -> Integer.parseInt(s);
@@ -167,7 +170,17 @@ public class AgentUtil {
                 default -> throw new IllegalArgumentException("Unsupported type: " + type);
             };
         }
-        return argValue;
+        if (value instanceof Number n) {
+            return switch (type.getName()) {
+                case "java.lang.String" -> "" + n;
+                case "int", "java.lang.Integer" -> n.intValue();
+                case "long", "java.lang.Long" -> n.longValue();
+                case "double", "java.lang.Double" -> n.doubleValue();
+                case "float", "java.lang.Float" -> n.floatValue();
+                default -> value;
+            };
+        }
+        return value;
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
