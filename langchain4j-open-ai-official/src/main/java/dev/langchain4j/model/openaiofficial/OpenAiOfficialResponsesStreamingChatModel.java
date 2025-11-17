@@ -7,6 +7,7 @@ import com.openai.core.JsonValue;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
+import com.openai.models.ResponseFormatJsonObject;
 import com.openai.models.ResponsesModel;
 import com.openai.models.responses.EasyInputMessage;
 import com.openai.models.responses.FunctionTool;
@@ -15,6 +16,8 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseCreatedEvent;
 import com.openai.models.responses.ResponseErrorEvent;
 import com.openai.models.responses.ResponseFailedEvent;
+import com.openai.models.responses.ResponseFormatTextConfig;
+import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDeltaEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDoneEvent;
 import com.openai.models.responses.ResponseFunctionToolCall;
@@ -28,12 +31,9 @@ import com.openai.models.responses.ResponseInputText;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
-import com.openai.models.responses.ResponseTextDeltaEvent;
-import com.openai.models.responses.ResponseFormatTextConfig;
-import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig;
 import com.openai.models.responses.ResponseTextConfig;
+import com.openai.models.responses.ResponseTextDeltaEvent;
 import com.openai.models.responses.ToolChoiceOptions;
-import com.openai.models.ResponseFormatJsonObject;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -79,6 +79,7 @@ import org.slf4j.LoggerFactory;
 public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
+    private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
 
     private final OpenAIClient client;
     private final ExecutorService executorService;
@@ -95,7 +96,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String serviceTier;
     private final String safetyIdentifier;
     private final String promptCacheKey;
+    private final String promptCacheRetention;
     private final String reasoningEffort;
+    private final String textVerbosity;
+    private final Boolean streamIncludeObfuscation;
     private final List<ChatModelListener> listeners;
     private final ResponseCancellationHandler cancellationHandler;
     private final Boolean strict;
@@ -116,7 +120,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.serviceTier = builder.serviceTier;
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
+        this.promptCacheRetention = builder.promptCacheRetention;
         this.reasoningEffort = builder.reasoningEffort;
+        this.textVerbosity = builder.textVerbosity;
+        this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.listeners = builder.listeners != null ? new ArrayList<>(builder.listeners) : new ArrayList<>();
         this.cancellationHandler = builder.cancellationHandler;
         this.strict = builder.strict != null ? builder.strict : true;
@@ -212,9 +219,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (promptCacheKey != null) {
                 paramsBuilder.promptCacheKey(promptCacheKey);
             }
+            if (promptCacheRetention != null) {
+                paramsBuilder.putAdditionalBodyProperty(
+                        PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(promptCacheRetention));
+            }
             if (reasoningEffort != null && !reasoningEffort.isEmpty()) {
                 paramsBuilder.reasoning(Reasoning.builder()
                         .effort(ReasoningEffort.of(reasoningEffort))
+                        .build());
+            }
+            if (streamIncludeObfuscation != null) {
+                paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
+                        .includeObfuscation(streamIncludeObfuscation)
                         .build());
             }
 
@@ -231,12 +247,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             }
 
-            // Add response format if present
-            if (chatRequest.responseFormat() != null) {
-                ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strict);
-                if (textConfig != null) {
-                    paramsBuilder.text(textConfig);
-                }
+            ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strict, textVerbosity);
+            if (textConfig != null) {
+                paramsBuilder.text(textConfig);
             }
 
             // Start background cancellation monitoring if handler is available
@@ -373,11 +386,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
                 String imageUrl = buildImageUrl(image);
-                contentList.add(ResponseInputContent.ofInputImage(
-                        ResponseInputImage.builder()
-                                .imageUrl(imageUrl)
-                                .detail(ResponseInputImage.Detail.AUTO)
-                                .build()));
+                contentList.add(ResponseInputContent.ofInputImage(ResponseInputImage.builder()
+                        .imageUrl(imageUrl)
+                        .detail(ResponseInputImage.Detail.AUTO)
+                        .build()));
             }
         }
 
@@ -433,45 +445,50 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         };
     }
 
-    private static ResponseTextConfig toResponseTextConfig(ResponseFormat responseFormat, Boolean strict) {
-        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
-            return null;
+    private static ResponseTextConfig toResponseTextConfig(
+            ResponseFormat responseFormat, Boolean strict, String textVerbosity) {
+        ResponseTextConfig.Builder builder = null;
+
+        if (responseFormat != null && responseFormat.type() != ResponseFormatType.TEXT) {
+            builder = ResponseTextConfig.builder();
+            JsonSchema jsonSchema = responseFormat.jsonSchema();
+            if (jsonSchema == null) {
+                builder.format(ResponseFormatTextConfig.ofJsonObject(
+                        ResponseFormatJsonObject.builder().build()));
+            } else {
+                if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                        || jsonSchema.rootElement() instanceof JsonRawSchema)) {
+                    throw new IllegalArgumentException(
+                            "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                                    + jsonSchema.rootElement().getClass());
+                }
+
+                Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+                ResponseFormatTextJsonSchemaConfig.Schema.Builder schemaBuilder =
+                        ResponseFormatTextJsonSchemaConfig.Schema.builder();
+
+                for (Map.Entry<String, Object> entry : schemaMap.entrySet()) {
+                    schemaBuilder.putAdditionalProperty(entry.getKey(), JsonValue.from(entry.getValue()));
+                }
+
+                ResponseFormatTextJsonSchemaConfig schemaConfig = ResponseFormatTextJsonSchemaConfig.builder()
+                        .name(jsonSchema.name())
+                        .schema(schemaBuilder.build())
+                        .strict(strict)
+                        .build();
+
+                builder.format(ResponseFormatTextConfig.ofJsonSchema(schemaConfig));
+            }
         }
 
-        JsonSchema jsonSchema = responseFormat.jsonSchema();
-        if (jsonSchema == null) {
-            // Simple JSON mode without schema
-            return ResponseTextConfig.builder()
-                    .format(ResponseFormatTextConfig.ofJsonObject(
-                            ResponseFormatJsonObject.builder().build()))
-                    .build();
-        } else {
-            // JSON schema mode
-            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
-                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
-                throw new IllegalArgumentException(
-                        "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
-                                + jsonSchema.rootElement().getClass());
+        if (textVerbosity != null && !textVerbosity.isEmpty()) {
+            if (builder == null) {
+                builder = ResponseTextConfig.builder();
             }
-
-            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
-            ResponseFormatTextJsonSchemaConfig.Schema.Builder schemaBuilder =
-                    ResponseFormatTextJsonSchemaConfig.Schema.builder();
-
-            for (Map.Entry<String, Object> entry : schemaMap.entrySet()) {
-                schemaBuilder.putAdditionalProperty(entry.getKey(), JsonValue.from(entry.getValue()));
-            }
-
-            ResponseFormatTextJsonSchemaConfig schemaConfig = ResponseFormatTextJsonSchemaConfig.builder()
-                    .name(jsonSchema.name())
-                    .schema(schemaBuilder.build())
-                    .strict(strict)
-                    .build();
-
-            return ResponseTextConfig.builder()
-                    .format(ResponseFormatTextConfig.ofJsonSchema(schemaConfig))
-                    .build();
+            builder.verbosity(com.openai.models.responses.ResponseTextConfig.Verbosity.Companion.of(textVerbosity));
         }
+
+        return builder != null ? builder.build() : null;
     }
 
     public static class Builder {
@@ -489,7 +506,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String serviceTier;
         private String safetyIdentifier;
         private String promptCacheKey;
+        private String promptCacheRetention;
         private String reasoningEffort;
+        private String textVerbosity;
+        private Boolean streamIncludeObfuscation;
         private List<ChatModelListener> listeners;
         private ResponseCancellationHandler cancellationHandler;
         private ExecutorService executorService;
@@ -569,8 +589,23 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
+        public Builder promptCacheRetention(String promptCacheRetention) {
+            this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public Builder textVerbosity(String textVerbosity) {
+            this.textVerbosity = textVerbosity;
+            return this;
+        }
+
+        public Builder streamIncludeObfuscation(Boolean streamIncludeObfuscation) {
+            this.streamIncludeObfuscation = streamIncludeObfuscation;
             return this;
         }
 

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import dev.langchain4j.model.chat.RecordingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
@@ -242,10 +243,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     @Disabled("Responses API does not support stop sequences")
     protected void should_respect_stopSequences_in_default_model_parameters() {}
 
-
-
-
-
     @Override
     protected void
             should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
@@ -299,7 +296,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
         model.chat("What is the capital of Germany?", handler);
 
         // then
@@ -322,7 +319,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
         model.chat("What is 2+2?", handler);
 
         // then
@@ -345,7 +342,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
         model.chat("What is the capital of France?", handler);
 
         // then
@@ -368,7 +365,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
         model.chat("What is the weather?", handler);
 
         // then
@@ -391,7 +388,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
         model.chat("Hello", handler);
 
         // then
