@@ -700,14 +700,14 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
-Additionally, we can pass a list of tool names that should immediately/directly return their results and not send them to the llm for reprocessing.
+Additionally, we can pass a list of tool names that should [immediately/directly return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) their results and not send them to the LLM for reprocessing.
 
 ```java
 Set<String> immediateReturnToolNames = new HashSet<>(Arrays.asList("get_booking_details"));
 
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(chatModel)
-    .tools(Map.of(toolSpecification, toolExecutor),immediateReturnToolNames)
+    .tools(Map.of(toolSpecification, toolExecutor), immediateReturnToolNames)
     .build();
 ```
 

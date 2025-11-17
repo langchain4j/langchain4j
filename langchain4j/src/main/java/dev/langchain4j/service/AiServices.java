@@ -414,7 +414,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
-        context.toolService.tools(tools,immediateReturnToolNames);
+        context.toolService.tools(tools, immediateReturnToolNames);
         return this;
     }
 
