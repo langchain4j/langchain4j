@@ -91,7 +91,7 @@ Just point to your document(s), and LangChain4j will do its magic.
 If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
-Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-easy-rag.html).
 
 :::note
 The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.5.0-beta11</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 
@@ -146,7 +146,7 @@ in glob: `glob:**.pdf`.
 
 3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
 This is necessary to quickly find relevant pieces of information when a user asks a question.
-We can use any of our 15+ [supported embedding stores](/integrations/embedding-stores),
+We can use any of our 30+ [supported embedding stores](/integrations/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
@@ -284,6 +284,10 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
+  which can parse files in markdown format
+- `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
+  which can parse files in yaml format
 
 Here is an example of how to load one or multiple `Document`s from the file system:
 ```java

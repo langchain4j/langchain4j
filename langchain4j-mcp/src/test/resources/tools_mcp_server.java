@@ -1,7 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.25.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.4.0
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.4.0
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.5.3
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.5.3
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,16 +9,29 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.ImageContent;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.ToolResponse;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
+import jakarta.inject.Inject;
 
 public class tools_mcp_server {
+
+    @Inject
+    private CurrentVertxRequest currentRequest;
 
     @Tool(description = "Echoes a string")
     public String echoString(@ToolArg(description = "The string to be echoed") String input) {
         return input;
+    }
+
+    public record Foo(Integer bar, String baz) {}
+
+    @Tool(description = "Returns structured content", structuredContent = true)
+    public Foo structuredContent() {
+        return new Foo(1, "hello");
     }
 
     @Tool(description = "Echoes an integer")
@@ -29,6 +42,11 @@ public class tools_mcp_server {
     @Tool(description = "Echoes a boolean")
     public String echoBoolean(@ToolArg(description = "The boolean to be echoed") Boolean input) {
         return Boolean.valueOf(input).toString();
+    }
+
+    @Tool(description = "Returns the value of the given HTTP header")
+    public String echoHeader(@ToolArg(description = "The name of the header to return") String headerName) {
+        return currentRequest.getCurrent().request().getHeader(headerName);
     }
 
     volatile boolean cancellationReceived = false;
@@ -80,7 +98,17 @@ public class tools_mcp_server {
     }
 
     @Tool
+    public ToolResponse getWeatherThrowingExceptionWithoutMessage(String arg0) {
+        return new ToolResponse(true, List.of());
+    }
+
+    @Tool
     public String getWeather(String arg0) {
         return "Sunny";
+    }
+
+    @Tool
+    public ToolResponse getImage() {
+        return new ToolResponse(false, List.of(new ImageContent("does not matter", "does not matter")));
     }
 }

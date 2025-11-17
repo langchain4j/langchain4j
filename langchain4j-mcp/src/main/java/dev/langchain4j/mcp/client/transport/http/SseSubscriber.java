@@ -6,19 +6,23 @@ import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class SseSubscriber implements Flow.Subscriber<String> {
     private final CompletableFuture<JsonNode> future;
-    private final Logger log = LoggerFactory.getLogger(SseSubscriber.class);
+    private final Logger logger;
     private final boolean logResponses;
     private final McpOperationHandler operationHandler;
     private Flow.Subscription subscription;
 
-    SseSubscriber(CompletableFuture<JsonNode> future, boolean logResponses, McpOperationHandler operationHandler) {
+    SseSubscriber(
+            CompletableFuture<JsonNode> future,
+            boolean logResponses,
+            McpOperationHandler operationHandler,
+            Logger logger) {
         this.future = future;
         this.logResponses = logResponses;
         this.operationHandler = operationHandler;
+        this.logger = logger;
     }
 
     @Override
@@ -30,14 +34,14 @@ class SseSubscriber implements Flow.Subscriber<String> {
     @Override
     public void onNext(String item) {
         if (logResponses) {
-            log.info("SSE event received: " + item);
+            logger.info("SSE event received: " + item);
         }
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
                 operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.substring(5)));
             } catch (JsonProcessingException e) {
-                log.warn("Failed to parse SSE event: " + item, e);
+                logger.warn("Failed to parse SSE event: " + item, e);
             }
         }
     }
@@ -49,6 +53,6 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onComplete() {
-        log.debug("SSE channel closed");
+        logger.debug("SSE channel closed");
     }
 }

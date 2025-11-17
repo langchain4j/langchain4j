@@ -50,7 +50,7 @@ public class WatsonxScoringModelTest {
     @BeforeEach
     void setUp() {
         when(mockRerankServiceBuilder.modelId(any())).thenReturn(mockRerankServiceBuilder);
-        when(mockRerankServiceBuilder.url(any(URI.class))).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.projectId(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.spaceId(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.timeout(any())).thenReturn(mockRerankServiceBuilder);
@@ -86,7 +86,7 @@ public class WatsonxScoringModelTest {
             httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
 
             var scoringModel = WatsonxScoringModel.builder()
-                    .url(CloudRegion.FRANKFURT)
+                    .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -106,7 +106,7 @@ public class WatsonxScoringModelTest {
             assertEquals("space-id", rerankRequest.spaceId());
 
             assertDoesNotThrow(() -> WatsonxScoringModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .authenticationProvider(
                             IAMAuthenticator.builder().apiKey("api-key").build())
@@ -114,7 +114,6 @@ public class WatsonxScoringModelTest {
                     .spaceId("space-id")
                     .build());
         }
-        ;
     }
 
     @Test
@@ -130,7 +129,7 @@ public class WatsonxScoringModelTest {
 
         withRerankServiceMock(() -> {
             ScoringModel scoringModel = WatsonxScoringModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -162,7 +161,7 @@ public class WatsonxScoringModelTest {
 
         withRerankServiceMock(() -> {
             WatsonxScoringModel scoringModel = WatsonxScoringModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")

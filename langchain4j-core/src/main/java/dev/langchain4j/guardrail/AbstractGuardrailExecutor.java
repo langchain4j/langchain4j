@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
+import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +22,7 @@ import java.util.Optional;
  *            The type of {@link GuardrailResult} to return
  * @param <G>
  *            The type of {@link Guardrail}s being executed
+ * @param <E> The type of {@link GuardrailExecutedEvent} to be fired
  * @param <F>
  *            The type of {@link Failure} to return
  */
@@ -28,8 +32,9 @@ public abstract sealed class AbstractGuardrailExecutor<
                 P extends GuardrailRequest<P>,
                 R extends GuardrailResult<R>,
                 G extends Guardrail<P, R>,
+                E extends GuardrailExecutedEvent<P, R, G>,
                 F extends Failure>
-        implements GuardrailExecutor<C, P, R, G> permits InputGuardrailExecutor, OutputGuardrailExecutor {
+        implements GuardrailExecutor<C, P, R, G, E> permits InputGuardrailExecutor, OutputGuardrailExecutor {
 
     private final C config;
     private final List<G> guardrails;
@@ -62,6 +67,13 @@ public abstract sealed class AbstractGuardrailExecutor<
      */
     protected abstract GuardrailException createGuardrailException(String message, Throwable cause);
 
+    /**
+     * Creates an empty instance of {@link GuardrailExecutedEventBuilder} used for constructing observability event objects.
+     *
+     * @return An initialized instance of {@link GuardrailExecutedEventBuilder} with the appropriate type parameters.
+     */
+    protected abstract GuardrailExecutedEventBuilder<P, R, G, E> createEmptyObservabilityEventBuilderInstance();
+
     @Override
     public C config() {
         return this.config;
@@ -73,21 +85,21 @@ public abstract sealed class AbstractGuardrailExecutor<
     }
 
     /**
-     * Validates a guardrail against a set of params.
+     * Validates a guardrail against a set of request.
      * <p>
      *     If any kind of {@link Exception} is thrown during validation, it will be wrapped in a {@link GuardrailException}.
      * </p>
-     * @param params The {@link GuardrailRequest} to validate
+     * @param request The {@link GuardrailRequest} to validate
      * @param guardrail The {@link Guardrail} to evaluate against
      * @throws GuardrailException If any kind of {@link Exception} is thrown during validation
      * @return The {@link GuardrailResult} of the validation
      */
-    protected R validate(P params, G guardrail) {
-        ensureNotNull(params, "params");
+    protected R validate(P request, G guardrail) {
+        ensureNotNull(request, "request");
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            return guardrail.validate(params).validatedBy(guardrail.getClass());
+            return guardrail.validate(request).validatedBy(guardrail.getClass());
         } catch (Exception e) {
             throw createGuardrailException(e.getMessage(), e);
         }
@@ -103,15 +115,28 @@ public abstract sealed class AbstractGuardrailExecutor<
         return result;
     }
 
-    protected R executeGuardrails(P params) {
-        ensureNotNull(params, "params");
+    protected void fireObservabilityEvent(InvocationContext invocationContext, P request, R result, G guardrail) {
+        request.requestParams()
+                .aiservicelistenerregistrar()
+                .fireEvent(createEmptyObservabilityEventBuilderInstance()
+                        .invocationContext(invocationContext)
+                        .request(request)
+                        .result(result)
+                        .guardrailClass((Class<G>) guardrail.getClass())
+                        .build());
+    }
 
+    protected R executeGuardrails(P request) {
+        ensureNotNull(request, "request");
+
+        var accumulatedRequest = request;
         var accumulatedResult = createSuccess();
-        var accumulatedParams = params;
 
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
-                var result = validate(accumulatedParams, guardrail);
+                var result = validate(accumulatedRequest, guardrail);
+                fireObservabilityEvent(
+                        request.requestParams().invocationContext(), accumulatedRequest, result, guardrail);
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing
@@ -119,7 +144,7 @@ public abstract sealed class AbstractGuardrailExecutor<
                 }
 
                 if (result.hasRewrittenResult()) {
-                    accumulatedParams = accumulatedParams.withText(result.successfulText());
+                    accumulatedRequest = accumulatedRequest.withText(result.successfulText());
                 }
 
                 accumulatedResult = composeResult(accumulatedResult, result);
@@ -155,6 +180,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      *            The type of {@link GuardrailResult} to return
      * @param <G>
      *            The type of {@link Guardrail}s being executed
+     * @param <E> The type of {@link GuardrailExecutedEvent} to be fired
      *
      * This class is sealed to restrict subclassing to only specific permitted classes, such as
      * {@link InputGuardrailExecutor.InputGuardrailExecutorBuilder} and
@@ -168,7 +194,8 @@ public abstract sealed class AbstractGuardrailExecutor<
                     R extends GuardrailResult<R>,
                     P extends GuardrailRequest<P>,
                     G extends Guardrail<P, R>,
-                    B extends GuardrailExecutorBuilder<C, R, P, G, B>>
+                    E extends GuardrailExecutedEvent<P, R, G>,
+                    B extends GuardrailExecutorBuilder<C, R, P, G, E, B>>
             permits InputGuardrailExecutor.InputGuardrailExecutorBuilder,
                     OutputGuardrailExecutor.OutputGuardrailExecutorBuilder {
 
@@ -190,7 +217,7 @@ public abstract sealed class AbstractGuardrailExecutor<
          * @return A fully initialized instance of {@link GuardrailExecutor}, ready to validate
          *         interactions based on the configured guardrails and parameters.
          */
-        public abstract GuardrailExecutor<C, P, R, G> build();
+        public abstract GuardrailExecutor<C, P, R, G, E> build();
 
         /**
          * Retrieves the current configuration instance used by this builder.

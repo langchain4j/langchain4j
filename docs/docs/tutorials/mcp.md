@@ -14,6 +14,9 @@ The protocol specifies two types of transport, both of these are supported:
   can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
 
+Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
+container image.
+
 LangChain4j also supports the legacy 
 [HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
 but this is deprecated and will be removed in the future.
@@ -59,6 +62,25 @@ McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
+    .build();
+```
+
+For the Docker stdio transport, you first need to add a module to your pom.xml:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-mcp-docker</artifactId>
+</dependency>
+```
+
+Then you need to create a Docker transport:
+
+```java
+McpTransport transport = new DockerMcpTransport.Builder()
+    .image("mcp/time")
+    .dockerHost("unix:///var/run/docker.sock")
+    .logEvents(true) // if you want to see the traffic in the log
     .build();
 ```
 
@@ -160,6 +182,42 @@ Bot bot = AiServices.builder(Bot.class)
 ```
 
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
+
+### MCP Tool Name Mapping
+
+If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
+adjust an inappropriately chosen name), it may be useful to apply a tool name mapping function.
+This can be done by specifying a `BiFunction<McpClient, ToolSpecification, String>` when creating the `McpToolProvider`.
+
+For example:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient1, mcpClient2)
+        .toolNameMapper((client, toolSpec) -> {
+            // Prefix all tool names with the name of the MCP client and an underscore
+            return client.key() + "_" + toolSpec.name();
+        })
+        .build();
+```
+
+After this, the `ToolSpecification` objects returned by the tool provider will contain the mapped (logical) names,
+but the generated `ToolExecutor` objects will be fixed to pass the original (physical) names to the server when invoking the tools.
+
+### MCP Tool Specification Mapping
+
+Similarly to MCP tool mapping (above), one can map complete `ToolSpecification`:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolSpecificationMapper((client, toolSpec) -> {
+            // Prefix all tool names with "myprefix_" and convert the description to uppercase
+            return toolSpec.toBuilder()
+                .name("myprefix_" + toolSpec.name())
+                .description(toolSpec.description().toUpperCase())
+                .build();
+        })
+        .build();
+```
 
 ## Logging
 

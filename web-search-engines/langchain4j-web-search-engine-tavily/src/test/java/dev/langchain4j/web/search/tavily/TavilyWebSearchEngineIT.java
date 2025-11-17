@@ -10,6 +10,7 @@ import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".+")
 class TavilyWebSearchEngineIT extends WebSearchEngineIT {
@@ -41,7 +42,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
-    @Test
+    @RetryingTest(3)
     void should_search_with_answer() {
 
         // given

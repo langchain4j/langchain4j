@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
@@ -11,17 +11,19 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.lang.reflect.Modifier.isStatic;
 
-import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -31,6 +33,10 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -44,18 +50,20 @@ import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -87,24 +95,29 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 if (invocationParametersExist) {
-                    throw illegalConfiguration("There can be at most one parameter of type %s",
-                            InvocationParameters.class.getName());
+                    throw illegalConfiguration(
+                            "There can be at most one parameter of type %s", InvocationParameters.class.getName());
                 }
                 invocationParametersExist = true;
                 continue;
             }
 
+            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
+                continue;
+            }
+
             if (userMessage == null && v == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either " +
-                                "%s, %s, %s, or %s, or it should be of type %s",
-                        parameter.getName(), method.getName(), aiServiceClass.getName(),
+                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
+                                + "%s, %s, %s, or %s, or it should be of type %s",
+                        parameter.getName(),
+                        method.getName(),
+                        aiServiceClass.getName(),
                         dev.langchain4j.service.UserMessage.class.getName(),
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
-                        InvocationParameters.class.getName()
-                );
+                        InvocationParameters.class.getName());
             }
         }
     }
@@ -118,6 +131,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private void validateMethods() {
+        if (!context.aiServiceClass.isInterface()) {
+            throw illegalConfiguration(
+                    "The type implemented by the AI Service must be an interface, found '%s'",
+                    context.aiServiceClass.getName());
+        }
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (isStatic(method.getModifiers())) {
@@ -132,10 +150,6 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
 
             Class<?> returnType = method.getReturnType();
-            if (returnType == void.class) {
-                throw illegalConfiguration(
-                        "'%s' is not a supported return type of an AI Service method", returnType.getName());
-            }
             if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
@@ -180,7 +194,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-
                         if (method.isDefault()) {
                             return InvocationHandler.invokeDefault(proxy, method, args);
                         }
@@ -192,8 +205,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 case "hashCode":
                                     return System.identityHashCode(proxy);
                                 case "toString":
-                                    return context.aiServiceClass.getName() + "@" +
-                                            Integer.toHexString(System.identityHashCode(proxy));
+                                    return context.aiServiceClass.getName() + "@"
+                                            + Integer.toHexString(System.identityHashCode(proxy));
                                 default:
                                     throw new IllegalStateException("Unexpected Object method: " + method);
                             }
@@ -206,7 +219,33 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
+                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
+                                .orElseGet(InvocationParameters::new);
+
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .invocationId(UUID.randomUUID())
+                                .interfaceName(context.aiServiceClass.getName())
+                                .methodName(method.getName())
+                                .methodArguments(args != null ? Arrays.asList(args) : List.of())
+                                .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
+                                .invocationParameters(invocationParameters)
+                                .managedParameters(LangChain4jManaged.current())
+                                .timestampNow()
+                                .build();
+                        try {
+                            return invoke(method, args, invocationContext);
+                        } catch (Exception ex) {
+                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                                    .invocationContext(invocationContext)
+                                    .error(ex)
+                                    .build());
+                            throw ex;
+                        }
+                    }
+
+                    public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
+
+                        Object memoryId = invocationContext.chatMemoryId();
                         ChatMemory chatMemory = context.hasChatMemory()
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
@@ -217,12 +256,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        InvocationParameters invocationParameters = findInvocationParameters(args, method.getParameters())
-                                .orElseGet(InvocationParameters::new);
-                        InvocationContext invocationContext = InvocationContext.builder()
-                                .chatMemoryId(memoryId)
-                                .invocationParameters(invocationParameters)
-                                .build();
+                        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .systemMessage(systemMessage)
+                                .userMessage(userMessage)
+                                .build());
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
@@ -241,6 +279,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
+                                .invocationContext(invocationContext)
+                                .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                 .variables(variables)
                                 .build();
 
@@ -327,17 +367,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .responseFormat(responseFormat)
                                 .build();
 
-                        ChatRequest chatRequest = context.chatRequestTransformer
-                                .apply(ChatRequest.builder()
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
-                                        .build(), memoryId);
+                                        .build(),
+                                memoryId);
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();
+
+                        context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .response(chatResponse)
+                                .build());
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -351,10 +397,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext.toolExecutors(),
-                                isReturnTypeResult);
+                                isReturnTypeResult,
+                                context.eventListenerRegistrar);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
-                            return Result.builder()
+                            var result = Result.builder()
                                     .content(null)
                                     .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
@@ -363,42 +410,64 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .intermediateResponses(toolServiceResult.intermediateResponses())
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
+
+                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
+                                    .invocationContext(invocationContext)
+                                    .result(result)
+                                    .build());
+
+                            return result;
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(),
+                                method,
+                                aggregateResponse,
+                                chatExecutor,
+                                commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
+                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
+                                    .invocationContext(invocationContext)
+                                    .result(response)
+                                    .build());
+
                             return response;
                         }
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
+                        var actualResponse = (isReturnTypeResult)
+                                ? Result.builder()
+                                        .content(parsedResponse)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(toolServiceResult
+                                                .finalResponse()
+                                                .finishReason())
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build()
+                                : parsedResponse;
 
-                        if (isReturnTypeResult) {
-                            return Result.builder()
-                                    .content(parsedResponse)
-                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(toolServiceResult.finalResponse().finishReason())
-                                    .toolExecutions(toolServiceResult.toolExecutions())
-                                    .intermediateResponses(toolServiceResult.intermediateResponses())
-                                    .finalResponse(toolServiceResult.finalResponse())
-                                    .build();
-                        } else {
-                            return parsedResponse;
-                        }
+                        context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .result(actualResponse)
+                                .build());
+
+                        return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParameters(Object[] arguments, Parameter[] parameters) {
-                        if (arguments == null) {
+                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                        if (args == null) {
                             return Optional.empty();
                         }
-                        for (int i = 0; i < parameters.length; i++) {
-                            Parameter parameter = parameters[i];
+                        for (int i = 0; i < params.length; i++) {
+                            Parameter parameter = params[i];
                             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) arguments[i];
+                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
                                 ensureNotNull(invocationParameters, "InvocationParameters");
                                 return Optional.of(invocationParameters);
                             }
@@ -431,13 +500,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {
                         String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
-                        String text = userMessage.singleText() + outputFormatInstructions;
-                        if (isNotNullOrBlank(userMessage.name())) {
-                            userMessage = UserMessage.from(userMessage.name(), text);
-                        } else {
-                            userMessage = UserMessage.from(text);
+                        if (isNullOrEmpty(outputFormatInstructions)) {
+                            return userMessage;
                         }
-                        return userMessage;
+
+                        String newText = userMessage.singleText() + outputFormatInstructions;
+                        return userMessage.toBuilder()
+                                .contents(List.of(TextContent.from(newText)))
+                                .build();
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -558,7 +628,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !(args[i] instanceof Content) && !isListOfContents(args[i])) {
+                    && !(args[i] instanceof Content)
+                    && !isListOfContents(args[i])) {
                 return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }

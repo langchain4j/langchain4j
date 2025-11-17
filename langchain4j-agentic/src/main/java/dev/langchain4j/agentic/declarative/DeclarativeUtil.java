@@ -107,7 +107,7 @@ public class DeclarativeUtil {
         agentConfigurator.accept(new AgenticServices.DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 
-    private static void checkArguments(Method method, Class<?>... expected) {
+    public static void checkArguments(Method method, Class<?>... expected) {
         Class<?>[] actual = method.getParameterTypes();
         if (actual.length != expected.length) {
             throw new IllegalArgumentException("Method " + method + " must have " + expected.length + " arguments: " + Arrays.toString(expected));
@@ -119,7 +119,7 @@ public class DeclarativeUtil {
         }
     }
 
-    private static void checkReturnType(Method method, Class<?> expected) {
+    public static void checkReturnType(Method method, Class<?> expected) {
         if (!method.getReturnType().isAssignableFrom(expected)) {
             throw new IllegalArgumentException("Method " + method + " must return " + expected.getName());
         }

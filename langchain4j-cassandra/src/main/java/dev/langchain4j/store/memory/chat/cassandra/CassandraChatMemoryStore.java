@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import org.jspecify.annotations.NonNull;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
@@ -93,7 +94,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * {@inheritDoc}
      */
     @Override
-    public List<ChatMessage> getMessages(Object memoryId) {
+    public List<ChatMessage> getMessages(@NonNull Object memoryId) {
         Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         /*
          * RATIONAL:
@@ -115,7 +116,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+    public void updateMessages(@NonNull Object memoryId, @NonNull List<ChatMessage> messages) {
         Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         Objects.requireNonNull(messages, "'messages' must not be null");
         deleteMessages(memoryId);
@@ -128,7 +129,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(Object memoryId) {
+    public void deleteMessages(@NonNull Object memoryId) {
         Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         messageTable.deletePartition(getMemoryId(memoryId));
     }
@@ -139,7 +140,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * @param record cassandra record
      * @return chat message
      */
-    private ChatMessage toChatMessage(ClusteredRecord record) {
+    private ChatMessage toChatMessage(@NonNull ClusteredRecord record) {
         Objects.requireNonNull(record, "'record' must not be null");
         try {
             return ChatMessageDeserializer.messageFromJson(record.getBody());
@@ -155,7 +156,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * @param chatMessage chat message
      * @return cassandra row.
      */
-    private ClusteredRecord fromChatMessage(String memoryId, ChatMessage chatMessage) {
+    private ClusteredRecord fromChatMessage(@NonNull String memoryId, @NonNull ChatMessage chatMessage) {
         Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         Objects.requireNonNull(chatMessage, "'chatMessage' must not be null");
         try {

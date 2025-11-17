@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.5.0</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -59,6 +59,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .listeners(...)
     .defaultRequestParameters(...)
     .userId(...)
+    .customParameters(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
@@ -154,6 +155,55 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
+## Setting custom chat request parameters
+
+When building `AnthropicChatModel` and `AnthropicStreamingChatModel`,
+you can configure custom parameters for the chat request within the HTTP request's JSON body.
+Here is an example of how to enable [context editing](https://docs.claude.com/en/docs/build-with-claude/context-editing):
+```java
+record Edit(String type) {}
+record ContextManagement(List<Edit> edits) { }
+Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_SONNET_4_5_20250929)
+    .beta("context-management-2025-06-27")
+    .customParameters(customParameters)
+    .logRequests(true)
+    .logResponses(true)
+    .build();
+
+String answer = model.chat("Hi");
+```
+
+This will produce an HTTP request with the following body:
+```json
+{
+    "model" : "claude-sonnet-4-5-20250929",
+    "messages" : [ {
+        "role" : "user",
+        "content" : [ {
+            "type" : "text",
+            "text" : "Hi"
+        } ]
+    } ],
+    "context_management" : {
+        "edits" : [ {
+            "type" : "clear_tool_uses_20250919"
+        } ]
+    }
+}
+```
+
+Alternatively, custom parameters can also be specified as a structure of nested maps:
+```java
+Map<String, Object> customParameters = Map.of(
+        "context_management",
+        Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919")))
+);
+```
+
 ## AnthropicTokenCountEstimator
 
 ```java
@@ -180,7 +230,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.5.0-beta11</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 

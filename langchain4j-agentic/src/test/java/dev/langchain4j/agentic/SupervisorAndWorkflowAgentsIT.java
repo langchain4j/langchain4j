@@ -2,14 +2,14 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
-import static dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl.SUPERVISOR_CONTEXT_KEY;
+import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.Agents.StyleScorer;
-import dev.langchain4j.agentic.internal.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -41,22 +41,22 @@ public class SupervisorAndWorkflowAgentsIT {
     void supervisor_context_seeded_via_invoke_test() {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
-                .outputName("story")
+                .outputKey("story")
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -68,7 +68,7 @@ public class SupervisorAndWorkflowAgentsIT {
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         ResultWithAgenticScope<String> result =
@@ -81,22 +81,22 @@ public class SupervisorAndWorkflowAgentsIT {
     void supervisor_context_seeded_via_builder_test() {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
-                .outputName("story")
+                .outputKey("story")
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -107,7 +107,7 @@ public class SupervisorAndWorkflowAgentsIT {
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         ResultWithAgenticScope<String> result =
@@ -119,22 +119,22 @@ public class SupervisorAndWorkflowAgentsIT {
     void supervisor_with_composite_agents(boolean typedSupervisor) {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
-                .outputName("story")
+                .outputKey("story")
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -149,7 +149,7 @@ public class SupervisorAndWorkflowAgentsIT {
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
                     .maxAgentsInvocations(5)
-                    .outputName("story")
+                    .outputKey("story")
                     .build();
 
             result = styledWriter.write("dragons and wizards", "comedy", "Audience: kids; Compliance: avoid violence");
@@ -160,7 +160,7 @@ public class SupervisorAndWorkflowAgentsIT {
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .subAgents(creativeWriter, styleReviewLoop)
                     .maxAgentsInvocations(5)
-                    .outputName("story")
+                    .outputKey("story")
                     .build();
 
             result = styledWriter.invokeWithAgenticScope(

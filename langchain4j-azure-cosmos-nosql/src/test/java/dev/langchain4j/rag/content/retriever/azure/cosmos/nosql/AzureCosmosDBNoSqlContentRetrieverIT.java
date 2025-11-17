@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.cosmos.nosql;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.azure.core.credential.AzureKeyCredential;
 import com.azure.cosmos.implementation.guava25.collect.ImmutableList;
 import com.azure.cosmos.models.CosmosFullTextIndex;
 import com.azure.cosmos.models.CosmosFullTextPath;
@@ -30,14 +29,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
-public class AzureCosmosDBNoSqlContentRetrieverIT {
-
-    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDBNoSqlContentRetrieverIT.class);
+class AzureCosmosDBNoSqlContentRetrieverIT {
 
     private static final String DATABASE_NAME = "test_database_langchain_java";
     private static final String VECTOR_CONTAINER = "test_container_vector";
@@ -70,48 +65,45 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
 
     private AzureCosmosDBNoSqlContentRetriever createContentRetriever(
             AzureCosmosDBSearchQueryType queryType, String containerName, Integer dimensions) {
-        IndexingPolicy indexingPolicy = getIndexingPolicy(queryType);
-        CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
-        CosmosFullTextPolicy cosmosFullTextPolicy = new CosmosFullTextPolicy();
+        AzureCosmosDBNoSqlContentRetriever.Builder builder = AzureCosmosDBNoSqlContentRetriever.builder()
+                .endpoint(System.getenv("AZURE_COSMOS_HOST"))
+                .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
+                .embeddingModel(embeddingModel)
+                .databaseName(DATABASE_NAME)
+                .containerName(containerName)
+                .partitionKeyPath("/id")
+                .indexingPolicy(getIndexingPolicy(queryType))
+                .searchQueryType(queryType)
+                .maxResults(3)
+                .minScore(0.0);
 
-        return new AzureCosmosDBNoSqlContentRetriever(
-                System.getenv("AZURE_COSMOS_HOST"),
-                new AzureKeyCredential(System.getenv("AZURE_COSMOS_MASTER_KEY")),
-                null, // tokenCredential
-                embeddingModel,
-                DATABASE_NAME,
-                containerName,
-                "/id",
-                indexingPolicy,
-                cosmosVectorEmbeddingPolicy,
-                cosmosFullTextPolicy,
-                null,
-                queryType,
-                3,
-                0.0,
-                null);
+        // Set policies based on query type
+        switch (queryType) {
+            case VECTOR -> builder.cosmosVectorEmbeddingPolicy(getVectorEmbeddingPolicy(dimensions));
+            case FULL_TEXT_SEARCH, FULL_TEXT_RANKING -> builder.cosmosFullTextPolicy(getFullTextPolicy());
+            case HYBRID ->
+                builder.cosmosVectorEmbeddingPolicy(getVectorEmbeddingPolicy(dimensions))
+                        .cosmosFullTextPolicy(getFullTextPolicy());
+        }
+
+        return builder.build();
     }
 
     private AzureCosmosDBNoSqlContentRetriever createFullTextSearchContentRetriever() {
-        IndexingPolicy indexingPolicy = getIndexingPolicy(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH);
-        CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
-        CosmosFullTextPolicy cosmosFullTextPolicy = new CosmosFullTextPolicy();
-        return new AzureCosmosDBNoSqlContentRetriever(
-                System.getenv("AZURE_COSMOS_HOST"),
-                new AzureKeyCredential(System.getenv("AZURE_COSMOS_MASTER_KEY")),
-                null,
-                null, // no embedding model for full-text
-                DATABASE_NAME,
-                TEXT_SEARCH_CONTAINER,
-                "/id",
-                indexingPolicy,
-                cosmosVectorEmbeddingPolicy,
-                cosmosFullTextPolicy,
-                null,
-                AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH,
-                3,
-                0.0,
-                new FullTextContains("text", "bicycle"));
+        return AzureCosmosDBNoSqlContentRetriever.builder()
+                .endpoint(System.getenv("AZURE_COSMOS_HOST"))
+                .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
+                // no embedding model for full-text
+                .databaseName(DATABASE_NAME)
+                .containerName(TEXT_SEARCH_CONTAINER)
+                .partitionKeyPath("/id")
+                .indexingPolicy(getIndexingPolicy(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH))
+                .cosmosFullTextPolicy(getFullTextPolicy())
+                .searchQueryType(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
+                .maxResults(3)
+                .minScore(0.0)
+                .filter(new FullTextContains("text", "bicycle"))
+                .build();
     }
 
     @AfterEach
@@ -256,7 +248,8 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         }
 
         if (searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
-                || searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
+                || searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)
+                || searchQueryType.equals(AzureCosmosDBSearchQueryType.HYBRID)) {
             CosmosFullTextIndex cosmosFullTextIndex = new CosmosFullTextIndex();
             cosmosFullTextIndex.setPath("/text");
             indexingPolicy.setCosmosFullTextIndexes(List.of(cosmosFullTextIndex));
@@ -265,26 +258,24 @@ public class AzureCosmosDBNoSqlContentRetrieverIT {
         return indexingPolicy;
     }
 
-    private CosmosVectorEmbeddingPolicy getCosmosVectorEmbeddingPolicy() {
-        // Set vector embedding policy
-        CosmosVectorEmbeddingPolicy embeddingPolicy = new CosmosVectorEmbeddingPolicy();
-        CosmosVectorEmbedding embedding = new CosmosVectorEmbedding();
-        embedding.setPath("/embedding");
-        embedding.setDataType(CosmosVectorDataType.FLOAT32);
-        embedding.setEmbeddingDimensions(1536);
-        embedding.setDistanceFunction(CosmosVectorDistanceFunction.COSINE);
-        embeddingPolicy.setCosmosVectorEmbeddings(singletonList(embedding));
-        return embeddingPolicy;
+    private CosmosVectorEmbeddingPolicy getVectorEmbeddingPolicy(Integer dimensions) {
+        CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
+        CosmosVectorEmbedding cosmosVectorEmbedding = new CosmosVectorEmbedding();
+        cosmosVectorEmbedding.setPath("/embedding");
+        cosmosVectorEmbedding.setDataType(CosmosVectorDataType.FLOAT32);
+        cosmosVectorEmbedding.setDistanceFunction(CosmosVectorDistanceFunction.COSINE);
+        cosmosVectorEmbedding.setEmbeddingDimensions(dimensions);
+        cosmosVectorEmbeddingPolicy.setCosmosVectorEmbeddings(singletonList(cosmosVectorEmbedding));
+        return cosmosVectorEmbeddingPolicy;
     }
 
-    private CosmosFullTextPolicy getCosmosFullTextPolicy() {
-        // Set full text policy
-        CosmosFullTextPolicy fullTextPolicy = new CosmosFullTextPolicy();
-        CosmosFullTextPath fullTextPath = new CosmosFullTextPath();
-        fullTextPath.setPath("/text");
-        fullTextPath.setLanguage("en-US");
-        fullTextPolicy.setPaths(singletonList(fullTextPath));
-        fullTextPolicy.setDefaultLanguage("en-US");
-        return fullTextPolicy;
+    private CosmosFullTextPolicy getFullTextPolicy() {
+        CosmosFullTextPolicy cosmosFullTextPolicy = new CosmosFullTextPolicy();
+        CosmosFullTextPath cosmosFullTextPath = new CosmosFullTextPath();
+        cosmosFullTextPath.setPath("/text");
+        cosmosFullTextPath.setLanguage("en-US");
+        cosmosFullTextPolicy.setPaths(singletonList(cosmosFullTextPath));
+        cosmosFullTextPolicy.setDefaultLanguage("en-US");
+        return cosmosFullTextPolicy;
     }
 }

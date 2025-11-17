@@ -2,10 +2,19 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import java.util.List;
 import java.util.function.Consumer;
 
-public record AgentSpecificationImpl(String name, String uniqueName, String description, String outputName, boolean async,
-                                     Consumer<AgentRequest> invocationListener, Consumer<AgentResponse> completionListener)
+public record AgentSpecificationImpl(
+        String name,
+        String agentId,
+        String description,
+        String outputKey,
+        boolean async,
+        List<AgentArgument> arguments,
+        Consumer<AgentRequest> invocationListener,
+        Consumer<AgentResponse> completionListener)
         implements AgentSpecification {
 
     @Override

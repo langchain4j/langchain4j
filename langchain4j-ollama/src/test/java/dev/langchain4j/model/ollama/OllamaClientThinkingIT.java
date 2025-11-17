@@ -57,9 +57,9 @@ class OllamaClientThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
                 .messages(List.of(whySkyIsBlueMessage))
                 .build());
 
-        assertThat(ollamaChatResponse.getMessage().getThinking()).isNullOrEmpty();
+        assertThat(ollamaChatResponse.getMessage().getThinking()).isNotEmpty();
         assertThat(ollamaChatResponse.getMessage().getContent()).isNotEmpty();
-        assertThat(ollamaChatResponse.getMessage().getContent()).contains("<think>");
-        assertThat(ollamaChatResponse.getMessage().getContent()).contains("</think>");
+        assertThat(ollamaChatResponse.getMessage().getContent()).doesNotContain("<think>");
+        assertThat(ollamaChatResponse.getMessage().getContent()).doesNotContain("</think>");
     }
 }

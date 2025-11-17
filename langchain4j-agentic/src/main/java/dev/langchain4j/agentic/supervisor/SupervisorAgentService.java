@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.List;
 import java.util.function.Consumer;
@@ -17,11 +18,13 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> chatModel(ChatModel chatModel);
 
-    SupervisorAgentService<T> name(String outputName);
+    SupervisorAgentService<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider);
 
-    SupervisorAgentService<T> description(String outputName);
+    SupervisorAgentService<T> name(String name);
 
-    SupervisorAgentService<T> outputName(String outputName);
+    SupervisorAgentService<T> description(String description);
+
+    SupervisorAgentService<T> outputKey(String outputKey);
 
     SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);
 
@@ -42,5 +45,6 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
     SupervisorAgentService<T> beforeAgentInvocation(Consumer<AgentRequest> invocationListener);
+
     SupervisorAgentService<T> afterAgentInvocation(Consumer<AgentResponse> completionListener);
 }

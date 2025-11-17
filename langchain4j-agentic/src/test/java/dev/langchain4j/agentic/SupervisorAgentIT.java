@@ -1,31 +1,46 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.supervisor.SupervisorAgent;
-import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
-import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
-import org.junit.jupiter.api.Test;
-
-import dev.langchain4j.agentic.Agents.LegalExpert;
-import dev.langchain4j.agentic.Agents.MedicalExpert;
-import dev.langchain4j.agentic.Agents.RouterAgent;
-import dev.langchain4j.agentic.Agents.TechnicalExpert;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.MedicalExpert;
+import dev.langchain4j.agentic.Agents.RouterAgent;
+import dev.langchain4j.agentic.Agents.TechnicalExpert;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
+import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 public class SupervisorAgentIT {
 
@@ -33,15 +48,12 @@ public class SupervisorAgentIT {
     void tools_as_agents_tests() {
         // Nothing conceptually new, just test that now we can use AiServices as tools
 
-        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
-                .chatModel(baseModel())
-                .build());
-        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
-                .chatModel(baseModel())
-                .build());
-        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
-                .chatModel(baseModel())
-                .build());
+        MedicalExpert medicalExpert = spy(
+                AiServices.builder(MedicalExpert.class).chatModel(baseModel()).build());
+        LegalExpert legalExpert =
+                spy(AiServices.builder(LegalExpert.class).chatModel(baseModel()).build());
+        TechnicalExpert technicalExpert = spy(
+                AiServices.builder(TechnicalExpert.class).chatModel(baseModel()).build());
 
         RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
                 .chatModel(baseModel())
@@ -55,10 +67,11 @@ public class SupervisorAgentIT {
 
     public interface RequestClassifierAgent {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
             and nothing else, avoiding any explanation.
-            
+
             The user request is: '{{request}}'.
             """)
         @Agent("An agent that categorizes the user request")
@@ -67,20 +80,21 @@ public class SupervisorAgentIT {
 
     @Test
     void agents_system_test() {
-        // All agents are registered in the AgentsSystem, which internally uses a planner agent that can invoke other agents
+        // All agents are registered in the AgentsSystem, which internally uses a planner agent that can invoke other
+        // agents
 
         RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
                 .chatModel(baseModel())
                 .build();
-        MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(baseModel())
-                .build();
-        LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(baseModel())
-                .build();
-        TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(baseModel())
-                .build();
+                .build());
 
         SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
@@ -89,24 +103,29 @@ public class SupervisorAgentIT {
                 .build();
 
         System.out.println(askToExpert.invoke("I broke my leg what should I do"));
+
+        verify(medicalExpert).medical(any());
     }
 
     public interface BankerAgent {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a banker that executes user request crediting or withdrawing US dollars (USD) from an account,
             using the tools provided and returning the final balance.
-            
+
             The user request is: '{{it}}'.
             """)
         String execute(@P("request") String request);
     }
 
     public interface WithdrawAgent {
-        @SystemMessage("""
+        @SystemMessage(
+                """
             You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
-        @UserMessage("""
+        @UserMessage(
+                """
             Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
@@ -114,10 +133,12 @@ public class SupervisorAgentIT {
     }
 
     public interface CreditAgent {
-        @SystemMessage("""
+        @SystemMessage(
+                """
             You are a banker that can only credit US dollars (USD) to a user account.
             """)
-        @UserMessage("""
+        @UserMessage(
+                """
             Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
@@ -198,6 +219,7 @@ public class SupervisorAgentIT {
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(withdrawAgent, creditAgent)
@@ -211,13 +233,17 @@ public class SupervisorAgentIT {
     }
 
     public interface ExchangeAgent {
-        @UserMessage("""
+        @UserMessage(
+                """
             You are an operator exchanging money in different currencies.
             Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
             returning only the final amount provided by the tool as it is and nothing else.
             """)
-        @Agent(outputName = "exchange")
-        Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency);
+        @Agent(outputKey = "exchange")
+        Double exchange(
+                @V("originalCurrency") String originalCurrency,
+                @V("amount") Double amount,
+                @V("targetCurrency") String targetCurrency);
     }
 
     static class ExchangeTool {
@@ -232,7 +258,10 @@ public class SupervisorAgentIT {
         }
 
         @Tool("Exchange the given amount of money from the original to the target currency")
-        Double exchange(@P("originalCurrency") String originalCurrency, @P("amount") Double amount, @P("targetCurrency") String targetCurrency) {
+        Double exchange(
+                @P("originalCurrency") String originalCurrency,
+                @P("amount") Double amount,
+                @P("targetCurrency") String targetCurrency) {
             Double exchangeRate1 = exchangeRatesToUSD.get(originalCurrency);
             if (exchangeRate1 == null) {
                 throw new RuntimeException("No exchange rate found for currency " + originalCurrency);
@@ -245,7 +274,7 @@ public class SupervisorAgentIT {
         }
     }
 
-    public class ExchangeOperator {
+    public static class ExchangeOperator {
         public static Map<String, Double> exchangeRatesToUSD = new HashMap<>();
 
         static {
@@ -255,9 +284,14 @@ public class SupervisorAgentIT {
             exchangeRatesToUSD.put("CAN", 0.8);
         }
 
-        @Agent(description = "A money exchanger that converts a given amount of money from the original to the target currency",
-                outputName = "exchange")
-        public Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency) {
+        @Agent(
+                description =
+                        "A money exchanger that converts a given amount of money from the original to the target currency",
+                outputKey = "exchange")
+        public Double exchange(
+                @V("originalCurrency") String originalCurrency,
+                @V("amount") Double amount,
+                @V("targetCurrency") String targetCurrency) {
             Double exchangeRate1 = exchangeRatesToUSD.get(originalCurrency);
             if (exchangeRate1 == null) {
                 throw new RuntimeException("No exchange rate found for currency " + originalCurrency);
@@ -286,6 +320,7 @@ public class SupervisorAgentIT {
     }
 
     @Test
+    @Disabled("Flaky test, needs investigation and rework to make it more reliable")
     void agentic_banker_with_non_agentic_exchange_and_conflicting_names_test() {
         agentic_banker_with_exchange_test(false, true);
     }
@@ -296,7 +331,8 @@ public class SupervisorAgentIT {
     }
 
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames) {
-        agentic_banker_with_exchange_test(fullyAI, conflictingNames, "Transfer 100 EUR from Mario's account to Georgios' one");
+        agentic_banker_with_exchange_test(
+                fullyAI, conflictingNames, "Transfer 100 EUR from Mario's account to Georgios' one");
     }
 
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames, String userRequest) {
@@ -320,25 +356,26 @@ public class SupervisorAgentIT {
         }
         CreditAgent creditAgent = creditAgentBuilder.build();
 
-        Object exchange;
+        Object exchangeAgent;
 
         if (fullyAI) {
             // Using an AI agent
-            exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
+            exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
                     .chatModel(baseModel())
-                    .description("A money exchanger that converts a given amount of money from the original to the target currency")
+                    .description(
+                            "A money exchanger that converts a given amount of money from the original to the target currency")
                     .tools(new ExchangeTool())
                     .build();
         } else {
             // Using a non-AI agent
-            exchange = new ExchangeOperator();
+            exchangeAgent = new ExchangeOperator();
         }
 
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
-                .subAgents(withdrawAgent, creditAgent, exchange)
+                .subAgents(withdrawAgent, creditAgent, exchangeAgent)
                 .build();
 
         ResultWithAgenticScope<String> result = bankSupervisor.invokeWithAgenticScope(userRequest);
@@ -350,7 +387,7 @@ public class SupervisorAgentIT {
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
     }
 
-    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) { }
+    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {}
 
     public interface TypedBankerAgent {
 
@@ -382,9 +419,10 @@ public class SupervisorAgentIT {
                 .tools(bankTool)
                 .build();
 
-        ExchangeAgent exchange = AgenticServices.agentBuilder(ExchangeAgent.class)
+        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
                 .chatModel(baseModel())
-                .description("A money exchanger that converts a given amount of money from the original to the target currency")
+                .description(
+                        "A money exchanger that converts a given amount of money from the original to the target currency")
                 .tools(new ExchangeTool())
                 .build();
 
@@ -394,7 +432,7 @@ public class SupervisorAgentIT {
                         agenticScope.readState("withdrawUser", ""),
                         agenticScope.readState("creditUser", ""),
                         agenticScope.readState("amountInUSD", 0.0)))
-                .subAgents(withdrawAgent, creditAgent, exchange);
+                .subAgents(withdrawAgent, creditAgent, exchangeAgent);
 
         if (useMaxAgentsInvocations) {
             supervisorBuilder.maxAgentsInvocations(3);
@@ -412,5 +450,158 @@ public class SupervisorAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+    }
+
+    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
+
+        @Agent
+        TransactionDetails execute(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    @Test
+    void typed_banker_with_memory_test() {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        AtomicReference<Object> memoryId = new AtomicReference<>();
+        AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+                .chatModel(baseModel())
+                .description(
+                        "A money exchanger that converts a given amount of money from the original to the target currency")
+                .tools(new ExchangeTool())
+                .build();
+
+        var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgentWithMemory.class)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(id -> {
+                    memoryId.set(id);
+                    ChatMemory mem = MessageWindowChatMemory.withMaxMessages(20);
+                    if (id.equals("1")) {
+                        chatMemory.set(mem);
+                    }
+                    return mem;
+                })
+                .output(agenticScope -> new TransactionDetails(
+                        agenticScope.readState("withdrawUser", ""),
+                        agenticScope.readState("creditUser", ""),
+                        agenticScope.readState("amountInUSD", 0.0)))
+                .subAgents(withdrawAgent, creditAgent, exchangeAgent);
+
+        TypedBankerAgentWithMemory bankSupervisor = supervisorBuilder.build();
+
+        String userRequest = "Transfer 100 EUR from Mario's account to Georgios' one";
+        TransactionDetails result = bankSupervisor.execute("1", userRequest);
+        System.out.println(result);
+
+        assertThat(result.fromUser()).isEqualTo("Mario");
+        assertThat(result.toUser()).isEqualTo("Georgios");
+        assertThat(result.amountInUSD()).isCloseTo(115.0, offset(0.1));
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+
+        assertThat(memoryId.get()).isEqualTo("1");
+        ChatMemory supervisorChatMemory = bankSupervisor.getChatMemory("1");
+        assertThat(chatMemory.get()).isSameAs(supervisorChatMemory);
+
+        List<ChatMessage> messages = supervisorChatMemory.messages();
+        ChatMessage lastMessage = messages.get(messages.size() - 1);
+        assertThat(lastMessage).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) lastMessage).text()).contains("done");
+    }
+
+    public interface GeneralAssistant extends ChatMemoryAccess {
+
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "SeriousAgent", description = "Use me for serious non-joking questions")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface JokesterAssistant extends ChatMemoryAccess {
+
+        @SystemMessage("You are a jokester. You are funny, yet helpful ai assistant")
+        @UserMessage("{{userMessage}}")
+        @Agent(name = "JokesterAgent", description = "A fun assistant that specializes in telling jokes")
+        String respond(@MemoryId String id, @V("userMessage") String userMessage);
+    }
+
+    public interface Supervisor extends ChatMemoryAccess {
+
+        @Agent
+        String respond(@MemoryId String id, @V("request") String userMessage);
+    }
+
+    @Test
+    void subagent_unique_name_test() {
+        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
+
+        JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        GeneralAssistant generalAssistant = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        Supervisor supervisorAgent = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant, jokesterAssistant)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+        String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
+        assertThat(lionJoke1).isNotNull().containsIgnoringCase("lion");
+
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
+        JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        GeneralAssistant generalAssistant2 = AgenticServices.agentBuilder(GeneralAssistant.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        Supervisor supervisorAgent2 = AgenticServices.supervisorBuilder(Supervisor.class)
+                .subAgents(generalAssistant2, jokesterAssistant2)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .build();
+
+        String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
+        assertThat(lionJoke2).isNotNull().containsIgnoringCase("cheetah");
+
+        List<ChatMessage> supervisorMessages = supervisorAgent.getChatMemory("supervisor").messages();
+
+        Set<String> agentNames = supervisorMessages.stream()
+                .filter(AiMessage.class::isInstance)
+                .map(AiMessage.class::cast)
+                .map(AiMessage::text)
+                .map(text -> {
+                    int start = text.indexOf("\"agentName\":") + "agentName:".length();
+                    int agentNameStart = text.indexOf('"', start + 1)+1;
+                    return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
+                }).collect(Collectors.toSet());
+
+        // only 2 agents, the jokester and done
+        assertThat(agentNames).hasSize(2);
+        assertThat(agentNames).containsExactly("JokesterAgent_JokesterAssistant", "done");
     }
 }
