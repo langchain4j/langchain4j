@@ -1,11 +1,11 @@
 package dev.langchain4j.service;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Specifies either a complete user message or a user message template to be used each time an AI service is invoked.
@@ -54,4 +54,13 @@ public @interface UserMessage {
      * on the AI Service class (interface).
      */
     String fromResource() default "";
+
+    /**
+     * Determines whether the original query should be stored in the
+     * service's {@link dev.langchain4j.memory.ChatMemory}.
+     * <p>
+     * When enabled, the original value is saved to memory, but the
+     * enhanced query is used when executing chat requests.
+     */
+    boolean storeOriginal() default false;
 }
