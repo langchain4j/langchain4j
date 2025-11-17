@@ -143,7 +143,12 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
-        } catch (ElasticsearchException | IOException e) {
+        } catch (ElasticsearchException e) {
+            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]") && includeVectorResponse) {
+                log.warn("Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
+            }
+            throw new ElasticsearchRequestFailedException(e);
+        } catch (IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
     }
@@ -158,7 +163,12 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
-        } catch (ElasticsearchException | IOException e) {
+        } catch (ElasticsearchException e) {
+            if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]") && includeVectorResponse) {
+                log.warn("Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
+            }
+            throw new ElasticsearchRequestFailedException(e);
+        } catch (IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
     }
@@ -338,7 +348,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata())
-                                        .put(ContentMetadata.SCORE.name(),hit.score())
+                                        .put(ContentMetadata.SCORE.name(), hit.score())
                                         .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())
                                 )).orElse(null))
                 .collect(toList());

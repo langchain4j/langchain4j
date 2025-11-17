@@ -18,6 +18,10 @@ import org.slf4j.LoggerFactory;
  * using rff to combine a kNN query and a full text search.
  *
  * @see <a href="https://www.elastic.co/search-labs/tutorials/search-tutorial/vector-search/hybrid-search">hybrid search</a>
+ * <br>
+ * Running hybrid search requires an elasticsearch paid license.
+ *
+ * @see <a href="https://www.elastic.co/subscriptions">subscriptions</a>
  */
 public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);

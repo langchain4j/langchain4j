@@ -54,6 +54,17 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
         .build();
 ```
 
+**Note:**
+
+> From version 9.2 of the elasticsearch server, vector fields are excluded from the response by default. To include vector fields in the responses, set the `includeVectorResponse` in the builder:
+```java
+ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
+        .restClient(restClient)
+        .includeVectorResponse(true)
+        .build();
+```
+
+
 ### ElasticsearchConfigurationKnn configuration (default)
 
 The previous is equivalent to:

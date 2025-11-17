@@ -56,13 +56,10 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             includeVector = true;
         }
 
-        // TODO consider filter
-
         contentRetrieverWithFullText = ElasticsearchContentRetriever.builder()
                 .configuration(ElasticsearchConfigurationFullText.builder().build())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
-                .includeVectorResponse(includeVector)
                 .maxResults(3)
                 .minScore(0.0)
                 .build();
