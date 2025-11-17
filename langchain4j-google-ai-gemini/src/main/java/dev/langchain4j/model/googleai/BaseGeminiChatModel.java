@@ -18,12 +18,12 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {

@@ -32,7 +32,7 @@ class GeminiServiceTest {
     @Test
     void shouldThrownWhenApiKeyIsMissing() {
         assertThatThrownBy(() ->
-                new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
+                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("apiKey cannot be null or blank");
     }
@@ -144,13 +144,13 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiCountTokensRequest request = new GeminiCountTokensRequest(List.of(new GeminiContent(
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
+                    List.of(new GeminiContent(
                             List.of(GeminiContent.GeminiPart.builder()
                                     .text("Count these tokens")
                                     .build()),
-                            "user"
-                    )
-            ), null);
+                            "user")),
+                    null);
 
             // When
             GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
@@ -172,8 +172,13 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiCountTokensRequest request = new GeminiCountTokensRequest(List.of(new GeminiContent(
-                    List.of(GeminiContent.GeminiPart.builder().text("Test").build()), "user")), null);
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
+                    List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Test")
+                                    .build()),
+                            "user")),
+                    null);
 
             // When
             subject.countTokens(TEST_MODEL_NAME, request);

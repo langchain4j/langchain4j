@@ -6,8 +6,7 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbed
 import java.util.List;
 
 public final class GeminiEmbeddingRequestResponse {
-    private GeminiEmbeddingRequestResponse() {
-    }
+    private GeminiEmbeddingRequestResponse() {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiEmbeddingRequest(
@@ -15,21 +14,17 @@ public final class GeminiEmbeddingRequestResponse {
             @JsonProperty("content") GeminiContent content,
             @JsonProperty("taskType") GoogleAiEmbeddingModel.TaskType taskType,
             @JsonProperty("title") String title,
-            @JsonProperty("outputDimensionality") Integer outputDimensionality) {
-    }
+            @JsonProperty("outputDimensionality") Integer outputDimensionality) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiEmbeddingResponse(GeminibeddingResponseValues embedding) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminibeddingResponseValues(List<Float> values) {
-        }
+        record GeminibeddingResponseValues(List<Float> values) {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiBatchEmbeddingRequest(List<GeminiEmbeddingRequest> requests) {
-    }
+    record GeminiBatchEmbeddingRequest(List<GeminiEmbeddingRequest> requests) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiBatchEmbeddingResponse(List<GeminibeddingResponseValues> embeddings) {
-    }
+    record GeminiBatchEmbeddingResponse(List<GeminibeddingResponseValues> embeddings) {}
 }

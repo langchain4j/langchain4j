@@ -3,10 +3,7 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-record GeminiFunctionDeclaration(
-        String name,
-        String description,
-        GeminiSchema parameters) {
+record GeminiFunctionDeclaration(String name, String description, GeminiSchema parameters) {
 
     static Builder builder() {
         return new Builder();
@@ -17,8 +14,7 @@ record GeminiFunctionDeclaration(
         private String description;
         private GeminiSchema parameters;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         Builder name(String name) {
             this.name = name;

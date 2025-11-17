@@ -114,8 +114,8 @@ class FunctionMapperTest {
         //        private final Address billingAddress;
 
         public Customer(String firstname, String lastname, Address shippingAddress
-                        //                        Address billingAddress
-        ) {
+                //                        Address billingAddress
+                ) {
             this.firstname = firstname;
             this.lastname = lastname;
             this.shippingAddress = shippingAddress;
