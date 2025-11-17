@@ -9,11 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO
- * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
- * using the approximate kNN query implementation.
+ * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as a text store
+ * using full text search.
  *
- * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
+ * @see <a href="https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-match-query">match query</a>
  */
 public class ElasticsearchConfigurationFullText extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationFullText.class);
@@ -31,17 +30,18 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException("Fulltext configuration does not support embedded search");
+        throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException("Fulltext configuration does not support embedded search");
+        throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final String textQuery) throws ElasticsearchException, IOException {
-        // TODO logs
+        log.trace("Searching for text matches in index [{}] with query [{}].", indexName, textQuery);
+
         return client.search(s -> s
                         .index(indexName)
                         .query(q -> q
@@ -55,7 +55,7 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException("Fulltext configuration does not support embedded search");
+        throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
 

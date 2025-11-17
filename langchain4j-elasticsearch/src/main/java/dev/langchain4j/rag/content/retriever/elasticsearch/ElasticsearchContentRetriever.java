@@ -2,6 +2,7 @@ package dev.langchain4j.rag.content.retriever.elasticsearch;
 
 import java.util.List;
 import java.util.Map;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -16,6 +17,7 @@ import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationFullText;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationHybrid;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
+import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationScript;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
@@ -23,7 +25,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as a {@link ContentRetriever}.
- * TODO descriptions
+ * @see ElasticsearchConfigurationScript for the exact brute force implementation (slower - 100% accurate)
+ * @see ElasticsearchConfigurationKnn for the knn search implementation (faster - approximative)
+ * @see ElasticsearchConfigurationFullText for full text search (non vector)
+ * @see ElasticsearchConfigurationHybrid for hybrid search (semantic and text search combined)
+ * <br>
+ * Supports storing {@link Metadata} and filtering by it using {@link Filter}
+ * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddingStore implements ContentRetriever {
 
@@ -120,8 +128,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         private Filter filter;
 
         /**
-         * @param restClient Elasticsearch RestClient (optional).
-         *                   Effectively overrides all other connection parameters like serverUrl, etc.
+         * @param restClient Elasticsearch RestClient.
          * @return builder
          */
         public Builder restClient(RestClient restClient) {

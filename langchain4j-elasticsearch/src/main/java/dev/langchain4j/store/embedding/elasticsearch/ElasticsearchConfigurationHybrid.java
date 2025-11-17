@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
- * using the approximate kNN query implementation.
+ * using rff to combine a kNN query and a full text search.
  *
- * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
+ * @see <a href="https://www.elastic.co/search-labs/tutorials/search-tutorial/vector-search/hybrid-search">hybrid search</a>
  */
 public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
@@ -76,10 +76,10 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
 
     @Override
     SearchResponse<Document> internalSearch(final ElasticsearchClient client, final String indexName, final EmbeddingSearchRequest embeddingSearchRequest, final String textQuery, final boolean includeVectorResponse) throws ElasticsearchException, IOException {
+
+
         // Building KNN part of the hybrid query
         KnnRetriever.Builder krb = new KnnRetriever.Builder()
-                // by default numCandidates needs to be 1.5x the number of k, but since k is
-                .k(numCandidates)
                 .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
@@ -87,8 +87,14 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
         }
 
+        // k and numCandidates are required in KnnRetriever, calculating default values similarly to how elasticsearch
+        // calculates them for KnnQuery
         if (numCandidates != null) {
             krb.numCandidates(numCandidates);
+            krb.k(Math.min(numCandidates, embeddingSearchRequest.maxResults()));
+        } else {
+            krb.numCandidates(embeddingSearchRequest.maxResults());
+            krb.k(embeddingSearchRequest.maxResults());
         }
 
         KnnRetriever knn = krb.build();
