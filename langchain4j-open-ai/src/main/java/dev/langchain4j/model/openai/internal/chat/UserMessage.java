@@ -135,6 +135,25 @@ public final class UserMessage implements Message {
             }
             return this;
         }
+
+        public Builder addVideoUrl(String videoUrl) {
+            initializeContent();
+            Content content = Content.builder()
+                    .type(VIDEO_URL)
+                    .videoUrl(VideoUrl.builder()
+                            .url(videoUrl)
+                            .build())
+                    .build();
+            this.content.add(content);
+            return this;
+        }
+
+        public Builder addVideoUrls(String... videoUrls) {
+            for (String videoUrl : videoUrls) {
+                addVideoUrl(videoUrl);
+            }
+            return this;
+        }
         
         public Builder addInputAudio(InputAudio inputAudio) {
             initializeContent();

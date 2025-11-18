@@ -22,6 +22,8 @@ public final class Content {
     @JsonProperty
     private final ImageUrl imageUrl;
     @JsonProperty
+    private final VideoUrl videoUrl;
+    @JsonProperty
     private final InputAudio inputAudio;
     @JsonProperty
     private final PdfFile file;
@@ -30,6 +32,7 @@ public final class Content {
         this.type = builder.type;
         this.text = builder.text;
         this.imageUrl = builder.imageUrl;
+        this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
         this.file = builder.file;
     }
@@ -44,6 +47,10 @@ public final class Content {
 
     public ImageUrl imageUrl() {
         return imageUrl;
+    }
+
+    public VideoUrl videoUrl() {
+        return videoUrl;
     }
 
     public InputAudio inputAudio() {
@@ -65,6 +72,7 @@ public final class Content {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
                 && Objects.equals(imageUrl, another.imageUrl)
+                && Objects.equals(videoUrl, another.videoUrl)
                 && Objects.equals(inputAudio, another.inputAudio)
                 && Objects.equals(file, another.file);
     }
@@ -75,6 +83,7 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(type);
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(imageUrl);
+        h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
         h += (h << 5) + Objects.hashCode(file);
         return h;
@@ -86,6 +95,7 @@ public final class Content {
                 "type=" + type +
                 ", text=" + text +
                 ", imageUrl=" + imageUrl +
+                ", videoUrl=" + videoUrl +
                 ", inputAudio=" + inputAudio +
                 ", file=" + file +
                 "}";
@@ -103,6 +113,7 @@ public final class Content {
         private ContentType type;
         private String text;
         private ImageUrl imageUrl;
+        private VideoUrl videoUrl;
         private InputAudio inputAudio;
         private PdfFile file;
 
@@ -118,6 +129,11 @@ public final class Content {
 
         public Builder imageUrl(ImageUrl imageUrl) {
             this.imageUrl = imageUrl;
+            return this;
+        }
+
+        public Builder videoUrl(VideoUrl videoUrl) {
+            this.videoUrl = videoUrl;
             return this;
         }
 

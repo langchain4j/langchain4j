@@ -31,8 +31,10 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -59,6 +61,7 @@ import dev.langchain4j.model.openai.internal.chat.ImageUrl;
 import dev.langchain4j.model.openai.internal.chat.InputAudio;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
+import dev.langchain4j.model.openai.internal.chat.VideoUrl;
 import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
@@ -158,6 +161,8 @@ public class OpenAiUtils {
             return toOpenAiContent((TextContent) content);
         } else if (content instanceof ImageContent) {
             return toOpenAiContent((ImageContent) content);
+        } else if (content instanceof VideoContent videoContent) {
+            return toOpenAiContent(videoContent);
         } else if (content instanceof AudioContent audioContent) {
             return toOpenAiContent(audioContent);
         } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -180,6 +185,15 @@ public class OpenAiUtils {
                 .imageUrl(ImageUrl.builder()
                         .url(toUrl(content.image()))
                         .detail(toDetail(content.detailLevel()))
+                        .build())
+                .build();
+    }
+
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(VideoContent content) {
+        return dev.langchain4j.model.openai.internal.chat.Content.builder()
+                .type(ContentType.VIDEO_URL)
+                .videoUrl(VideoUrl.builder()
+                        .url(toVideoUrl(content.video()))
                         .build())
                 .build();
     }
@@ -221,6 +235,13 @@ public class OpenAiUtils {
             return image.url().toString();
         }
         return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
+    private static String toVideoUrl(Video video) {
+        if (video.url() != null) {
+            return video.url().toString();
+        }
+        return format("data:%s;base64,%s", video.mimeType(), video.base64Data());
     }
 
     private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {

@@ -8,6 +8,8 @@ public enum ContentType {
     TEXT,
     @JsonProperty("image_url")
     IMAGE_URL,
+    @JsonProperty("video_url")
+    VIDEO_URL,
     @JsonProperty("input_audio")
     AUDIO,
     @JsonProperty("file")
