@@ -14,6 +14,17 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 
+/**
+ * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
+ * <pre>
+ * ChatModel model = OpenAiChatModel.builder()
+ *     .apiKey(System.getenv("HF_API_KEY"))
+ *     .baseUrl("https://router.huggingface.co/v1")
+ *     .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+ *     .build();
+ * </pre>
+ */
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 public class HuggingFaceLanguageModel implements LanguageModel {
 
     private final HuggingFaceClient client;

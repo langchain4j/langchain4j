@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import io.a2a.A2A;
 import io.a2a.client.Client;
 import io.a2a.client.ClientEvent;
@@ -45,9 +46,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private final Client a2aClient;
 
     private String name;
-    private String uniqueName;
-    private String[] inputNames;
-    private String outputName;
+    private String agentId;
+    private String[] inputKeys;
+    private String outputKey;
     private boolean async;
 
     private Consumer<AgentRequest> beforeListener = request -> {};
@@ -56,7 +57,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         try {
             this.a2aClient = Client.builder(agentCard)
                     .clientConfig(new ClientConfig.Builder()
@@ -80,7 +81,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
     @Override
     public T build() {
-        if (agentServiceClass == UntypedAgent.class && inputNames == null) {
+        if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
 
@@ -90,12 +91,20 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                 new InvocationHandler() {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-                        if (method.getDeclaringClass() == AgentSpecification.class) {
+                        if (method.getDeclaringClass() == AgentInstance.class) {
                             return switch (method.getName()) {
                                 case "name" -> name;
-                                case "uniqueName" -> uniqueName;
+                                case "agentId" -> agentId;
                                 case "description" -> agentCard.description();
-                                case "outputName" -> outputName;
+                                case "outputKey" -> outputKey;
+                                default ->
+                                        throw new UnsupportedOperationException(
+                                                "Unknown method on AgentInstance class : " + method.getName());
+                            };
+                        }
+
+                        if (method.getDeclaringClass() == AgentSpecification.class) {
+                            return switch (method.getName()) {
                                 case "async" -> async;
                                 case "beforeInvocation" -> {
                                     beforeListener.accept((AgentRequest) args[0]);
@@ -107,14 +116,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 }
                                 default ->
                                     throw new UnsupportedOperationException(
-                                            "Unknown method on AgentInstance class : " + method.getName());
+                                            "Unknown method on AgentSpecification class : " + method.getName());
                             };
                         }
 
                         if (method.getDeclaringClass() == A2AClientSpecification.class) {
                             return switch (method.getName()) {
                                 case "agentCard" -> agentCard;
-                                case "inputNames" -> inputNames;
+                                case "inputKeys" -> inputKeys;
                                 default ->
                                     throw new UnsupportedOperationException(
                                             "Unknown method on A2AClientInstance class : " + method.getName());
@@ -133,8 +142,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
-            for (String inputName : inputNames) {
-                parts.add(new TextPart(params.get(inputName).toString()));
+            for (String inputKey : inputKeys) {
+                parts.add(new TextPart(params.get(inputKey).toString()));
             }
         } else {
             for (Object arg : args) {
@@ -191,14 +200,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> inputNames(String... inputNames) {
-        this.inputNames = inputNames;
+    public DefaultA2AClientBuilder<T> inputKeys(String... inputKeys) {
+        this.inputKeys = inputKeys;
         return this;
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> outputName(String outputName) {
-        this.outputName = outputName;
+    public DefaultA2AClientBuilder<T> outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return this;
     }
 

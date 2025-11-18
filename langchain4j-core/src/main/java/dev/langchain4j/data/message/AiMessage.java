@@ -82,6 +82,22 @@ public class AiMessage implements ChatMessage {
     }
 
     /**
+     * Create a clone of this {@link AiMessage} with the given text.
+     *
+     * @param text the text of the message.
+     * @return the new {@link AiMessage}.
+     * @since 1.8.0
+     */
+    public AiMessage withText(String text) {
+        return builder()
+                .text(text)
+                .thinking(this.thinking)
+                .toolExecutionRequests(this.toolExecutionRequests)
+                .attributes(this.attributes)
+                .build();
+    }
+
+    /**
      * Get the text of the message.
      *
      * @return the text of the message.

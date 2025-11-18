@@ -13,7 +13,7 @@ https://opensearch.org/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-opensearch</artifactId>
-    <version>1.6.0-beta12</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 

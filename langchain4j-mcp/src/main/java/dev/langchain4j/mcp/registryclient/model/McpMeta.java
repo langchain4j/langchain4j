@@ -19,4 +19,12 @@ public class McpMeta {
     public Map<String, JsonNode> getPublisherProvided() {
         return publisherProvided;
     }
+
+    @Override
+    public String toString() {
+        return "McpMeta{" +
+                "official=" + official +
+                ", publisherProvided=" + publisherProvided +
+                '}';
+    }
 }

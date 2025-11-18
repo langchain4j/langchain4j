@@ -15,9 +15,9 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputName = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputName = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputName = "movies")
+ *         @ParallelAgent(outputKey = "plans", subAgents = {
+ *                 @SubAgent(type = FoodExpert.class, outputKey = "meals"),
+ *                 @SubAgent(type = MovieExpert.class, outputKey = "movies")
  *         })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *
@@ -31,5 +31,4 @@ import java.lang.annotation.Target;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface ParallelExecutor {
-}
+public @interface ParallelExecutor {}

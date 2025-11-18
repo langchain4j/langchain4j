@@ -48,6 +48,13 @@ public class ToolExecution {
         return result.result();
     }
 
+    /**
+     * Indicates whether the tool execution result represents an error.
+     */
+    public boolean hasFailed() {
+        return result.isError();
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;
@@ -98,7 +105,7 @@ public class ToolExecution {
         @Deprecated(since = "1.5.0")
         public Builder result(String result) {
             this.result = ToolExecutionResult.builder()
-                    .result(result)
+                    .resultText(result)
                     .build();
             return this;
         }

@@ -1,6 +1,8 @@
 package dev.langchain4j.model.azure.common;
 
 import static java.time.Duration.ofSeconds;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import dev.langchain4j.model.azure.AzureModelBuilders;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
@@ -60,6 +62,20 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return "gpt-4o-2024-11-20"; // requires a deployment with this name
     }
 
+    @Disabled("TODO fix: RateLimit Status code 429")
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
+    }
+
+    @Disabled("TODO fix: RateLimit Status code 429")
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
+    }
+
     @Override
     @Disabled
     @ParameterizedTest
@@ -77,11 +93,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
-    }
-
-    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -95,28 +106,28 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "city"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\":\""));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "ich"));
-        io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "\"}"));
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "{\"")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "city")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "\":\"")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "Mun")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "ich")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "\"}")), any());
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "{\"ci"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "ty\": "));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "\"Munic"));
-        io.verify(handler).onPartialToolCall(partial(0, id1, "getWeather", "h\"}"));
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "{\"ci")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "ty\": ")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "\"Munic")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(0, id1, "getWeather", "h\"}")), any());
         io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
 
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"co"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "untry"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\": \"Fr"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "ance"));
-        io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "\"}"));
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "{\"co")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "untry")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "\": \"Fr")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "ance")), any());
+        io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "\"}")), any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 

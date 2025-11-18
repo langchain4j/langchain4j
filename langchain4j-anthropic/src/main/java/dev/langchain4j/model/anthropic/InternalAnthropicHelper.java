@@ -5,6 +5,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -16,6 +17,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Internal
 class InternalAnthropicHelper {
@@ -24,7 +26,7 @@ class InternalAnthropicHelper {
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
-        if (parameters.responseFormat() != null) {
+        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON) {
             unsupportedFeatures.add("JSON response format");
         }
         if (parameters.frequencyPenalty() != null) {
@@ -52,7 +54,8 @@ class InternalAnthropicHelper {
             boolean stream,
             String toolChoiceName,
             Boolean disableParallelToolUse,
-            String userId) {
+            String userId,
+            Map<String, Object> customParameters) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -63,7 +66,8 @@ class InternalAnthropicHelper {
                 .temperature(chatRequest.temperature())
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
-                .thinking(thinking);
+                .thinking(thinking)
+                .customParameters(customParameters);
 
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));

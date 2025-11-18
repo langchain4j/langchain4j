@@ -1,13 +1,17 @@
 package dev.langchain4j.agentic.agent;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.internal.UserMessageRecorder;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
@@ -30,17 +34,13 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 public class AgentBuilder<T> {
-    private final Class<T> agentServiceClass;
+    final Class<T> agentServiceClass;
 
     String name;
-    String uniqueName;
+    String agentId;
     String description;
-    String outputName;
+    String outputKey;
     boolean async;
 
     Consumer<AgentRequest> beforeListener = request -> {};
@@ -82,15 +82,15 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputName())) {
-            this.outputName = agent.outputName();
+        if (!isNullOrBlank(agent.outputKey())) {
+            this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
     }
@@ -125,12 +125,16 @@ public class AgentBuilder<T> {
         setupTools(aiServices);
 
         UserMessageRecorder messageRecorder = new UserMessageRecorder();
-        boolean agenticScopeDependent = contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
+        boolean agenticScopeDependent =
+                contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider).andThen(messageRecorder));
+                aiServices.chatRequestTransformer(
+                        new Context.AgenticScopeContextGenerator(agenticScope, contextProvider)
+                                .andThen(messageRecorder));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
+                aiServices.chatRequestTransformer(
+                        new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
             }
         } else {
             aiServices.chatRequestTransformer(messageRecorder);
@@ -138,7 +142,13 @@ public class AgentBuilder<T> {
 
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class, ChatMessagesAccess.class},
+                new Class<?>[] {
+                    agentServiceClass,
+                    AgentSpecification.class,
+                    ChatMemoryAccess.class,
+                    AgenticScopeOwner.class,
+                    ChatMessagesAccess.class
+                },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
 
@@ -191,10 +201,6 @@ public class AgentBuilder<T> {
         }
     }
 
-    String agentId() {
-        return agentServiceClass.getName();
-    }
-
     public AgentBuilder<T> chatModel(ChatModel model) {
         this.model = model;
         return this;
@@ -225,7 +231,8 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> hallucinatedToolNameStrategy(Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
+    public AgentBuilder<T> hallucinatedToolNameStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         this.hallucinatedToolNameStrategy = hallucinatedToolNameStrategy;
         return this;
     }
@@ -250,12 +257,14 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrailClasses(Class<? extends I>... inputGuardrailClasses) {
+    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrailClasses(
+            Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
         return this;
     }
 
-    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrailClasses(Class<? extends O>... outputGuardrailClasses) {
+    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrailClasses(
+            Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
         return this;
     }
@@ -272,7 +281,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 
@@ -281,8 +290,8 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> outputName(String outputName) {
-        this.outputName = outputName;
+    public AgentBuilder<T> outputKey(String outputKey) {
+        this.outputKey = outputKey;
         return this;
     }
 
@@ -322,7 +331,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
         return this;
     }

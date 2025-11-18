@@ -1,11 +1,11 @@
 package dev.langchain4j.agentic.declarative;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as the output definition of a workflow agent,
@@ -17,9 +17,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputName = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputName = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputName = "movies")
+ *         @ParallelAgent(outputKey = "plans", subAgents = {
+ *                 @SubAgent(type = FoodExpert.class, outputKey = "meals"),
+ *                 @SubAgent(type = MovieExpert.class, outputKey = "movies")
  *         })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *
@@ -40,5 +40,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface Output {
-}
+public @interface Output {}

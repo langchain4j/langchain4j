@@ -567,6 +567,29 @@ tokenStream
 futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
 ```
 
+### Streaming Cancellation
+
+If you wish to cancel the streaming, you can do so from one of the following callbacks:
+- `onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext>)`
+- `onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext>)`
+
+For example:
+```java
+tokenStream
+    .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
+        process(partialResponse);
+        if (shouldCancel()) {
+            context.streamingHandle().cancel();
+        }
+    })
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+    .start();
+```
+
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
+Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
+
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
 For this, please import `langchain4j-reactor` module:
@@ -574,7 +597,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.6.0-beta12</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 ```java

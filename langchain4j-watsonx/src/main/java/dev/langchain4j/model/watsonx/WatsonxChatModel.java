@@ -10,6 +10,7 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -35,10 +36,10 @@ import java.util.Set;
  *
  * <pre>{@code
  * ChatModel chatModel = WatsonxChatModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
- *     .modelName("ibm/granite-3-8b-instruct")
+ *     .modelName("ibm/granite-3-3-8b-instruct")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
@@ -67,10 +68,12 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 : null;
 
         var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        ExtractionTags tags = null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
-            messages.add(THINKING);
-            watsonxChatRequest.thinking(tags);
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
+            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
+            watsonxChatRequest.thinking(wcrp.thinking());
+            tags = wcrp.thinking().getExtractionTags();
         }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
@@ -145,7 +148,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      *
      * <pre>{@code
      * ChatModel chatModel = WatsonxChatModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-3-8b-instruct")

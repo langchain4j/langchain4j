@@ -35,6 +35,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
@@ -118,6 +119,7 @@ abstract class AbstractBedrockChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
+                .promptCaching(bedrockParameters.cachePointPlacement())
                 .build();
     }
 
@@ -539,7 +541,7 @@ abstract class AbstractBedrockChatModel {
 
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code REASONING_CONTENT} block from the API response
          * and return it inside the {@link AiMessage}.

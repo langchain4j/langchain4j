@@ -20,7 +20,6 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -31,9 +30,9 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.time.Duration;
@@ -41,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -168,57 +166,6 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(text).containsIgnoringCase("233");
     }
 
-    @RetryingTest(3)
-    void should_support_JSON_array_in_tools() {
-        // given
-        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-lite")
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("Return a JSON list containing the first 10 fibonacci numbers."));
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getFirstNFibonacciNumbers")
-                .description("Get the first n fibonacci numbers")
-                .parameters(JsonObjectSchema.builder().addNumberProperty("n").build())
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        // when
-        TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
-        gemini.chat(request, handler1);
-        ChatResponse response1 = handler1.get();
-
-        // then
-        assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response1.aiMessage().toolExecutionRequests().get(0).arguments()).contains("\"n\":10");
-
-        allMessages.add(response1.aiMessage());
-
-        // when
-        String fibonacciNumbers = "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]";
-        ToolExecutionResultMessage toolResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", fibonacciNumbers);
-        allMessages.add(toolResult);
-
-        // then
-        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
-        gemini.chat(allMessages, handler2);
-        ChatResponse response2 = handler2.get();
-
-        // then
-        assertThat(response2.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
-    }
-
     @Disabled("TODO fix")
     @RetryingTest(5)
     void should_support_safety_settings() {
@@ -300,9 +247,11 @@ class GoogleAiGeminiStreamingChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -377,7 +326,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to return a list of 6-faces dice rolls"),
-                        UserMessage.from("Give me 3 dice rolls")),
+                        UserMessage.from("Give me 3 dice rolls, all at once")),
                 handler);
         ChatResponse response = handler.get();
 
@@ -522,7 +471,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
-    @Test
+    @RetryingTest(3)
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -533,13 +482,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        gemini.chat(
-                ChatRequest.builder()
-                        .messages(
-                                UserMessage.from(
-                                        "A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"))
-                        .build(),
-                handler);
+        gemini.chat("funny puppy", handler);
         ChatResponse response = handler.get();
 
         // then

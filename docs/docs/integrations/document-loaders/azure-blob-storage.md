@@ -11,7 +11,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
-    <version>1.6.0-beta12</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 

@@ -1,23 +1,27 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class AgentUtil {
 
@@ -25,14 +29,10 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
-    private static final AtomicInteger AGENT_COUNTER = new AtomicInteger(0);
+    private AgentUtil() {}
 
-    private AgentUtil() { }
-
-    public record AgentArgument(Class<?> type, String name) { }
-
-    public static String uniqueAgentName(String agentName) {
-        return agentName + "$" + AGENT_COUNTER.incrementAndGet();
+    public static String uniqueAgentName(Class<?> agentClass, String agentName) {
+        return agentName + "_" + agentClass.getSimpleName();
     }
 
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
@@ -40,30 +40,42 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
-        return agent instanceof AgentSpecification agentSpecification ? agentToExecutor(agentSpecification) : nonAiAgentToExecutor(agent);
+        if (agent instanceof Class c) {
+            agent = AgenticServices.agentBuilder(c).build();
+        }
+        return agent instanceof AgentSpecification agentSpecification
+                ? agentToExecutor(agentSpecification)
+                : nonAiAgentToExecutor(agent);
     }
 
     private static AgentExecutor nonAiAgentToExecutor(Object agent) {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
-        String uniqueName = uniqueAgentName(name);
+        String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        AgentInvoker agentInvoker = agent instanceof AgentSpecsProvider spec ?
-                new MethodAgentInvoker(agenticMethod, new AgentSpecificationImpl(name, uniqueName, spec.description(), spec.outputName(), spec.async(), x -> {}, x -> {}),
-                        List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputName()))) :
-                AgentInvoker.fromMethod(new AgentSpecificationImpl(name, uniqueName, description, annotation.outputName(), annotation.async(), x -> {}, x -> {}), agenticMethod);
-        return new AgentExecutor(agentInvoker, agent);
+        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+    }
+
+    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+        return agent instanceof AgentSpecsProvider spec
+                ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
+                : AgentInvoker.fromMethod(
+                        new AgentSpecificationImpl(
+                                name, agentId, description, annotation.outputKey(), annotation.async(),
+                                argumentsFromMethod(agenticMethod),
+                                x -> {},x -> {}),
+                agenticMethod);
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
-       for (Method method : agent.getClass().getMethods()) {
-           Optional<AgentExecutor> executor = A2AService.get().isPresent() ?
-                   A2AService.get().methodToAgentExecutor(agent, method) :
-                   methodToAgentExecutor(agent, method);
-           if (executor.isPresent()) {
+        for (Method method : agent.getClass().getMethods()) {
+            Optional<AgentExecutor> executor = A2AService.get().isPresent()
+                    ? A2AService.get().methodToAgentExecutor(agent, method)
+                    : methodToAgentExecutor(agent, method);
+            if (executor.isPresent()) {
                 return executor.get();
-           }
+            }
         }
         throw new IllegalArgumentException("Agent executor not found");
     }
@@ -98,11 +110,14 @@ public class AgentUtil {
         return AgentInvoker.parameterName(p);
     }
 
-    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
+    public static AgentInvocationArguments agentInvocationArguments(
+            AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
         return agentInvocationArguments(agenticScope, agentArguments, Map.of());
     }
 
-    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs) throws MissingArgumentException {
+    public static AgentInvocationArguments agentInvocationArguments(
+            AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs)
+            throws MissingArgumentException {
         Map<String, Object> namedArgs = new HashMap<>();
         Object[] positionalArgs = new Object[agentArguments.size()];
 
@@ -133,15 +148,18 @@ public class AgentUtil {
         if (argValue == null) {
             throw new MissingArgumentException(argName);
         }
-        Object parsedArgument = parseArgument(argValue, argType);
+        Object parsedArgument = adaptValueToType(argValue, argType);
         if (argValue != parsedArgument) {
             agenticScope.writeState(argName, parsedArgument);
         }
         return parsedArgument;
     }
 
-    static Object parseArgument(Object argValue, Class<?> type) {
-        if (argValue instanceof String s) {
+    private static Object adaptValueToType(Object value, Class<?> type) {
+        if (type.isInstance(value)) {
+            return value;
+        }
+        if (value instanceof String s) {
             return switch (type.getName()) {
                 case "java.lang.String", "java.lang.Object" -> s;
                 case "int", "java.lang.Integer" -> Integer.parseInt(s);
@@ -152,7 +170,17 @@ public class AgentUtil {
                 default -> throw new IllegalArgumentException("Unsupported type: " + type);
             };
         }
-        return argValue;
+        if (value instanceof Number n) {
+            return switch (type.getName()) {
+                case "java.lang.String" -> "" + n;
+                case "int", "java.lang.Integer" -> n.intValue();
+                case "long", "java.lang.Long" -> n.longValue();
+                case "double", "java.lang.Double" -> n.doubleValue();
+                case "float", "java.lang.Float" -> n.floatValue();
+                default -> value;
+            };
+        }
+        return value;
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
@@ -164,7 +192,8 @@ public class AgentUtil {
         for (Method method : agentServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Agent.class)) {
                 if (agentMethod != null) {
-                    throw new IllegalArgumentException("Multiple agent methods found in class: " + agentServiceClass.getName());
+                    throw new IllegalArgumentException(
+                            "Multiple agent methods found in class: " + agentServiceClass.getName());
                 }
                 agentMethod = method;
             }
@@ -173,5 +202,12 @@ public class AgentUtil {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;
+    }
+
+    public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
+        return (T) Proxy.newProxyInstance(
+                agentServiceClass.getClassLoader(),
+                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                invocationHandler);
     }
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -12,7 +13,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -20,11 +20,19 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
@@ -59,7 +67,11 @@ class GeminiService {
                 .build();
 
         if (logRequestsAndResponses || logResponses || logRequests) {
-            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
+            this.httpClient = new LoggingHttpClient(
+                    httpClient,
+                    logRequestsAndResponses || logRequests,
+                    logRequestsAndResponses || logResponses,
+                    logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -75,14 +87,14 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
     }
 
-    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+    GeminiEmbeddingResponse embed(String modelName, GeminiEmbeddingRequest request) {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiEmbeddingResponse.class);
     }
 
-    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+    GeminiBatchEmbeddingResponse batchEmbed(String modelName, GeminiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiBatchEmbeddingResponse.class);
     }
 
     void generateContentStream(
@@ -120,19 +132,29 @@ class GeminiService {
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
             AtomicInteger toolIndex = new AtomicInteger(0);
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
+
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
                 textAndTools.maybeText().ifPresent(text -> {
-                    onPartialResponse(handler, text);
+                    onPartialResponse(handler, text, streamingHandle);
                 });
                 textAndTools.maybeThought().ifPresent(thought -> {
                     if (Boolean.TRUE.equals(returnThinking)) {
-                        onPartialThinking(handler, thought);
+                        onPartialThinking(handler, thought, streamingHandle);
                     } else if (returnThinking == null) {
-                        onPartialResponse(handler, thought); // for backward compatibility
+                        onPartialResponse(handler, thought, streamingHandle); // for backward compatibility
                     }
                 });
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
@@ -144,8 +166,10 @@ class GeminiService {
 
             @Override
             public void onClose() {
-                ChatResponse completeResponse = responseBuilder.build();
-                onCompleteResponse(handler, completeResponse);
+                if (streamingHandle == null || !streamingHandle.isCancelled()) {
+                    ChatResponse completeResponse = responseBuilder.build();
+                    onCompleteResponse(handler, completeResponse);
+                }
             }
 
             @Override

@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementF
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,9 +12,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -35,6 +32,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiChatModelIT {
@@ -48,16 +46,13 @@ class AzureOpenAiChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        SystemMessage systemMessage =
-                SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents,last names only.");
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
 
-        ChatResponse response = model.chat(systemMessage, userMessage);
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-        final var jsonResponse = response.aiMessage().text();
-        assertThat(Json.fromJson(jsonResponse, Object.class)).isNotNull();
-        assertThat(jsonResponse).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        String answer = model.chat(userMessage);
+
+        assertThat(answer).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("requires deployment of all models")
@@ -194,6 +189,48 @@ class AzureOpenAiChatModelIT {
         // then
         assertThat(answer).contains("Berlin");
     }
+
+    @Test
+    void should_support_maxCompletionTokens() {
+
+        // given
+        int maxCompletionTokens = 200;
+
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .maxCompletionTokens(maxCompletionTokens)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
+    }
+
+    @Test
+    void should_support_ReasoningEffort() {
+
+        // given
+        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
+
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .reasoningEffort(reasoningEffort)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
+    }    
 
     @AfterEach
     void afterEach() throws InterruptedException {

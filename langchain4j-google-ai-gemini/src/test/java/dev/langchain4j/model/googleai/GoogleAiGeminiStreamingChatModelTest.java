@@ -31,6 +31,17 @@ class GoogleAiGeminiStreamingChatModelTest {
                 .hasMessage("messages cannot be null or empty");
     }
 
+    @Test
+    void should_fail_when_api_key_is_empty() {
+        // when/then
+        assertThatThrownBy(() -> GoogleAiGeminiStreamingChatModel.builder()
+                        .apiKey("")
+                        .modelName("ModelName")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("apiKey");
+    }
+
     @Nested
     class GoogleAiGeminiStreamingChatModelBuilder {
 
@@ -43,7 +54,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).contains("\"seed\" : 42");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).contains("\"seed\" : 42");
         }
 
         @Test
@@ -54,7 +65,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).doesNotContain("\"seed\"");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).doesNotContain("\"seed\"");
         }
     }
 }

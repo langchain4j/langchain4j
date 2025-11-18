@@ -37,9 +37,11 @@ class PojoOutputParser<T> implements OutputParser<T> {
             throw outputParsingException(text, type);
         }
 
-        return extractAndParseJson(text, type)
-                .map(JsonParsingUtils.ParsedJson::value)
-                .orElseThrow(() -> outputParsingException(text, type));
+        try {
+            return extractAndParseJson(text, type).value();
+        } catch (Exception e) {
+            throw outputParsingException(text, type.getTypeName(), e);
+        }
     }
 
     @Override

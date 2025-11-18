@@ -15,4 +15,12 @@ public class McpMetadata {
     public String getNextCursor() {
         return nextCursor;
     }
+
+    @Override
+    public String toString() {
+        return "McpMetadata{" +
+                "count=" + count +
+                ", nextCursor='" + nextCursor + '\'' +
+                '}';
+    }
 }

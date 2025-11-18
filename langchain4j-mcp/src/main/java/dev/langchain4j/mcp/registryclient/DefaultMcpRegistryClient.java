@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,32 +21,42 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.mcp.registryclient.model.McpGetServerResponse;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
-import dev.langchain4j.mcp.registryclient.model.McpServer;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
 import java.io.IOException;
-import java.time.ZonedDateTime;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DefaultMcpRegistryClient implements McpRegistryClient {
 
     private static final String OFFICIAL_REGISTRY_URL = "https://registry.modelcontextprotocol.io";
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(ISO_LOCAL_DATE_TIME)
+            .parseLenient()
+            .appendLiteral('Z') // we are using UTC time and the official registry requires the 'Z' to be present
+            .toFormatter();
+
     private static final SimpleModule JACKSON_MODULE = new SimpleModule("mcp-registry-client-module")
-            .addDeserializer(ZonedDateTime.class, new JsonDeserializer<>() {
+            .addDeserializer(LocalDateTime.class, new JsonDeserializer<>() {
                 @Override
-                public ZonedDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+                public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
                     JsonNode node = p.getCodec().readTree(p);
-                    return ZonedDateTime.parse(node.asText(), ISO_DATE_TIME);
+                    return LocalDateTime.parse(node.asText(), ISO_DATE_TIME);
                 }
             });
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -58,6 +69,9 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     private final String baseUrl;
     private final HttpClient httpClient;
     private final Supplier<Map<String, String>> headers;
+
+    // this is used to validate path parameters to prevent URL injection attacks
+    private static final Pattern ALLOWED_URL_CHARACTERS = Pattern.compile("[a-zA-Z0-9\\-_./]+");
 
     private DefaultMcpRegistryClient(
             String baseUrl,
@@ -90,14 +104,37 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     @Override
-    public McpServer getServerDetails(String id) {
-        Objects.requireNonNull(id, "id cannot be null");
+    public McpGetServerResponse getServerDetails(String serverName) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(HttpMethod.GET)
-                .url(baseUrl, "/v0/servers/" + id)
+                .url(baseUrl, "/v0/servers/" + URLEncoder.encode(serverName, StandardCharsets.UTF_8))
                 .addHeaders(currentHeaders())
                 .build();
-        return sendAndProcessResponse(httpRequest, McpServer.class);
+        return sendAndProcessResponse(httpRequest, McpGetServerResponse.class);
+    }
+
+    @Override
+    public McpGetServerResponse getSpecificServerVersion(String serverName, String version) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
+        Objects.requireNonNull(version, "version cannot be null");
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "/v0.1/servers/" + encode(serverName) + "/versions/" + encode(version))
+                .addHeaders(currentHeaders())
+                .build();
+        return sendAndProcessResponse(httpRequest, McpGetServerResponse.class);
+    }
+
+    @Override
+    public McpServerList getAllVersionsOfServer(String serverName) {
+        Objects.requireNonNull(serverName, "serverName cannot be null");
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "/v0.1/servers/" + encode(serverName) + "/versions")
+                .addHeaders(currentHeaders())
+                .build();
+        return sendAndProcessResponse(httpRequest, McpServerList.class);
     }
 
     @Override
@@ -127,6 +164,16 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
         return map;
     }
 
+    private String encode(String parameter) {
+        if (parameter == null || parameter.isEmpty()) {
+            throw new IllegalArgumentException("Parameter must not be null or empty");
+        }
+        if (!ALLOWED_URL_CHARACTERS.matcher(parameter).matches()) {
+            throw new IllegalArgumentException("Parameter contains unsafe characters");
+        }
+        return URLEncoder.encode(parameter, StandardCharsets.UTF_8);
+    }
+
     private String processServerListRequestPathParams(McpServerListRequest request) {
         List<String> params = new ArrayList<>();
         if (request.getCursor() != null) {
@@ -139,7 +186,7 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
             params.add("search=" + request.getSearch());
         }
         if (request.getUpdatedSince() != null) {
-            params.add("updatedSince=" + request.getUpdatedSince().format(DATE_TIME_FORMATTER));
+            params.add("updated_since=" + request.getUpdatedSince().format(DATE_TIME_FORMATTER));
         }
         if (request.getVersion() != null) {
             params.add("version=" + request.getVersion());

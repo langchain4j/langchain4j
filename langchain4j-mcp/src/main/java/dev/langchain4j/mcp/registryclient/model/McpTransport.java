@@ -19,4 +19,13 @@ public class McpTransport {
     public String getUrl() {
         return url;
     }
+
+    @Override
+    public String toString() {
+        return "McpTransport{" +
+                "headers=" + headers +
+                ", type='" + type + '\'' +
+                ", url='" + url + '\'' +
+                '}';
+    }
 }

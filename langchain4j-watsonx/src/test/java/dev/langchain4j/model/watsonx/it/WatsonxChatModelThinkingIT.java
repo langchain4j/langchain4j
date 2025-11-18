@@ -31,14 +31,16 @@ public class WatsonxChatModelThinkingIT {
         var chatResponse = chatModel.chat(UserMessage.from("Why the sky is blue?"));
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
+        assertThat(aiMessage.thinking()).doesNotContain("<think>", "</think>");
         assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.text()).doesNotContain("<response>", "</response>");
     }
 
     @Test
     void should_return_and_NOT_send_thinking() {
 
         ChatModel chatModel = WatsonxChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
@@ -76,7 +78,7 @@ public class WatsonxChatModelThinkingIT {
 
     private WatsonxChatModel.Builder createChatModel(String model) {
         return WatsonxChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
@@ -84,6 +86,6 @@ public class WatsonxChatModelThinkingIT {
                 .logRequests(true)
                 .logResponses(true)
                 .maxOutputTokens(0)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

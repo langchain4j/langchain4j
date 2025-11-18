@@ -5,7 +5,7 @@ import java.util.Map;
 public class AgentInvocation {
 
     private String agentName;
-    private Map<String, String> arguments;
+    private Map<String, Object> arguments;
 
     public String getAgentName() {
         return agentName;
@@ -15,11 +15,11 @@ public class AgentInvocation {
         this.agentName = agentName;
     }
 
-    public Map<String, String> getArguments() {
+    public Map<String, Object> getArguments() {
         return arguments;
     }
 
-    public void setArguments(final Map<String, String> arguments) {
+    public void setArguments(final Map<String, Object> arguments) {
         this.arguments = arguments;
     }
 

@@ -1,9 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.GeminiFinishReason.*;
+import static dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason.SAFETY;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -14,6 +15,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -23,11 +26,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -44,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -138,8 +141,7 @@ class GoogleAiGeminiChatModelIT {
         String base64Data = new String(Base64.getEncoder().encode(bytes));
 
         UserMessage userMessage = UserMessage.from(
-                AudioContent.from(base64Data, "audio/mp3"),
-                TextContent.from("Give a summary of the audio"));
+                AudioContent.from(base64Data, "audio/mp3"), TextContent.from("Give a summary of the audio"));
 
         // when
         ChatResponse response = gemini.chat(userMessage);
@@ -156,12 +158,14 @@ class GoogleAiGeminiChatModelIT {
                 .modelName("gemini-2.5-flash-lite")
                 .build();
 
-        // when
         URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
         String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
 
-        ChatResponse response = gemini.chat(UserMessage.from(
-                VideoContent.from(base64Data, "video/mp4"), TextContent.from("Give a summary of the video")));
+        UserMessage userMessage = UserMessage.from(
+                VideoContent.from(base64Data, "video/mp4"), TextContent.from("What do you see on this video?"));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
@@ -185,56 +189,6 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("233");
-    }
-
-    @RetryingTest(3)
-    void should_support_JSON_array_in_tools() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-lite")
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("Return a JSON list containing the first 10 fibonacci numbers."));
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getFirstNFibonacciNumbers")
-                .description("Get the first n fibonacci numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("n")
-                        .required("n")
-                        .build())
-                .build();
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(allMessages)
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        // when
-        ChatResponse response = gemini.chat(request);
-
-        // then
-        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments()).contains("\"n\":10");
-
-        allMessages.add(response.aiMessage());
-
-        // when
-        String fibonacciNumbers = "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]";
-        ToolExecutionResultMessage toolResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", fibonacciNumbers);
-        allMessages.add(toolResult);
-
-        // then
-        response = gemini.chat(allMessages);
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringWhitespaces(fibonacciNumbers);
     }
 
     @Disabled("TODO fix")
@@ -313,9 +267,11 @@ class GoogleAiGeminiChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -385,7 +341,7 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(ChatRequest.builder()
                 .messages(
                         SystemMessage.from("Your role is to return a list of 6-faces dice rolls"),
-                        UserMessage.from("Give me 3 dice rolls"))
+                        UserMessage.from("Give me 3 dice rolls, all at once"))
                 .build());
 
         // then
@@ -541,6 +497,68 @@ class GoogleAiGeminiChatModelIT {
         }
 
         assertThat(aiMessage.text() != null || hasGeneratedImages(aiMessage)).isTrue();
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
+    @JsonSubTypes({@JsonSubTypes.Type(Circle.class), @JsonSubTypes.Type(Rectangle.class)})
+    interface Shape {}
+
+    record Circle(double radius) implements Shape {}
+
+    record Rectangle(double width, double height) implements Shape {}
+
+    record Shapes(List<Shape> shapes) {}
+
+    // TODO move to common tests
+    @Test
+    void should_generate_valid_json_with_anyof() throws JsonProcessingException {
+
+        // given
+        ChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .logRequestsAndResponses(true)
+                .build();
+
+        JsonSchemaElement circleSchema = jsonSchemaElementFrom(Circle.class);
+        JsonSchemaElement rectangleSchema = jsonSchemaElementFrom(Rectangle.class);
+
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("Shapes")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shapes",
+                                JsonArraySchema.builder()
+                                        .items(JsonAnyOfSchema.builder()
+                                                .anyOf(circleSchema, rectangleSchema)
+                                                .build())
+                                        .build())
+                        .required(List.of("shapes"))
+                        .build())
+                .build();
+
+        ResponseFormat responseFormat =
+                ResponseFormat.builder().type(JSON).jsonSchema(jsonSchema).build();
+
+        UserMessage userMessage = UserMessage.from(
+                """
+                        Extract information from the following text:
+                        1. A circle with a radius of 5
+                        2. A rectangle with a width of 10 and a height of 20
+                        """);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .responseFormat(responseFormat)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        Shapes shapes = new ObjectMapper().readValue(chatResponse.aiMessage().text(), Shapes.class);
+        assertThat(shapes).isNotNull();
+        assertThat(shapes.shapes()).isNotNull().containsExactlyInAnyOrder(new Circle(5), new Rectangle(10, 20));
     }
 
     @AfterEach

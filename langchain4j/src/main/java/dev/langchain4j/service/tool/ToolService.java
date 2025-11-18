@@ -4,6 +4,7 @@ import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFro
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
@@ -52,8 +53,10 @@ public class ToolService {
             throw new RuntimeException(error);
         }
     };
-    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER =
-            (error, context) -> ToolErrorHandlerResult.text(error.getMessage());
+    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
+        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        return ToolErrorHandlerResult.text(errorMessage);
+    };
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -80,6 +83,11 @@ public class ToolService {
             toolSpecifications.add(toolSpecification);
             toolExecutors.put(toolSpecification.name(), toolExecutor);
         });
+    }
+
+    public void tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
+        this.tools(tools);
+        immediateReturnTools.addAll(immediateReturnToolNames);
     }
 
     public void tools(Collection<Object> objectsWithTools) {
@@ -409,9 +417,9 @@ public class ToolService {
 
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
-                errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
-                errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
             }
 
             return ToolExecutionResult.builder()
@@ -419,6 +427,11 @@ public class ToolService {
                     .resultText(errorHandlerResult.text())
                     .build();
         }
+    }
+
+    private static Throwable getCause(Exception e) {
+        Throwable cause = e.getCause();
+        return cause != null ? cause : e;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
