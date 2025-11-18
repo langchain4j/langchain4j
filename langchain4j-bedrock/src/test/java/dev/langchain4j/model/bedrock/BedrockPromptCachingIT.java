@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockCachePointPlacement.AFTER_SYSTEM;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.SystemMessage;
@@ -24,17 +25,21 @@ class BedrockPromptCachingIT {
     @Test
     void should_chat_with_prompt_caching_enabled() {
         // Given
+        BedrockCachePointPlacement cachePointPlacement = AFTER_SYSTEM;
+
         BedrockChatRequestParameters requestParams = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(cachePointPlacement)
                 .temperature(0.7)
                 .maxOutputTokens(200)
                 .build();
 
-        ChatModel model = BedrockChatModel.builder()
+        BedrockChatModel model = BedrockChatModel.builder()
                 .modelId(NOVA_MODEL)
                 .region(Region.US_EAST_1)
                 .defaultRequestParameters(requestParams)
                 .build();
+
+        assertThat(model.defaultRequestParameters().cachePointPlacement()).isEqualTo(cachePointPlacement);
 
         ChatRequest request = ChatRequest.builder()
                 .messages(Arrays.asList(
@@ -116,7 +121,7 @@ class BedrockPromptCachingIT {
     void should_override_prompt_caching_parameters() {
         // Given - default parameters with caching enabled
         BedrockChatRequestParameters defaultParams = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .temperature(0.5)
                 .build();
 
@@ -147,7 +152,7 @@ class BedrockPromptCachingIT {
     void should_handle_multiple_messages_with_caching() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
@@ -182,7 +187,7 @@ class BedrockPromptCachingIT {
     void should_combine_prompt_caching_with_other_parameters() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .temperature(0.3)
                 .maxOutputTokens(150)
                 .topP(0.9)

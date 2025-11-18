@@ -12,6 +12,11 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminibeddingResponseValues;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import java.time.Duration;
 import java.util.List;
@@ -121,8 +126,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCountTokensRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse();
-            expectedResponse.setTotalTokens(42);
+            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -131,10 +135,13 @@ class GeminiServiceTest {
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
 
             GeminiService subject = createService(mockHttpClient);
-
-            GeminiCountTokensRequest request = new GeminiCountTokensRequest();
-            request.setContents(List.of(new GeminiContent(
-                    List.of(GeminiPart.builder().text("Count these tokens").build()), "user")));
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
+                    List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Count these tokens")
+                                    .build()),
+                            "user")),
+                    null);
 
             // When
             GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
@@ -146,8 +153,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectCountTokensHttpRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse();
-            expectedResponse.setTotalTokens(10);
+            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -157,9 +163,13 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GeminiCountTokensRequest request = new GeminiCountTokensRequest();
-            request.setContents(List.of(
-                    new GeminiContent(List.of(GeminiPart.builder().text("Test").build()), "user")));
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
+                    List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Test")
+                                    .build()),
+                            "user")),
+                    null);
 
             // When
             subject.countTokens(TEST_MODEL_NAME, request);
@@ -178,11 +188,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendEmbedRequest() {
             // Given
-            var embedding = new GoogleAiEmbeddingResponseValues();
-            embedding.setValues(List.of(0.1f, 0.2f, 0.3f));
-
-            GoogleAiEmbeddingResponse expectedResponse = new GoogleAiEmbeddingResponse();
-            expectedResponse.setEmbedding(embedding);
+            var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f, 0.3f));
+            var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -192,12 +199,14 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(new GeminiContent(
-                    List.of(GeminiPart.builder().text("Embed this").build()), null));
+            var request = createEmbeddingRequest(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder()
+                            .text("Embed this")
+                            .build()),
+                    null));
 
             // When
-            GoogleAiEmbeddingResponse actualResponse = subject.embed(TEST_MODEL_NAME, request);
+            GeminiEmbeddingResponse actualResponse = subject.embed(TEST_MODEL_NAME, request);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -206,11 +215,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectEmbedHttpRequest() {
             // Given
-            var embedding = new GoogleAiEmbeddingResponseValues();
-            embedding.setValues(List.of(0.1f, 0.2f));
-
-            GoogleAiEmbeddingResponse expectedResponse = new GoogleAiEmbeddingResponse();
-            expectedResponse.setEmbedding(embedding);
+            var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
+            var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -220,9 +226,8 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GoogleAiEmbeddingRequest request = createEmptyEmbeddingRequest();
-            request.setContent(
-                    new GeminiContent(List.of(GeminiPart.builder().text("Test").build()), null));
+            var request = createEmbeddingRequest(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("Test").build()), null));
 
             // When
             subject.embed(TEST_MODEL_NAME, request);
@@ -241,13 +246,9 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchEmbedRequest() {
             // Given
-            var embedding1 = new GoogleAiEmbeddingResponseValues();
-            embedding1.setValues(List.of(0.1f, 0.2f));
-            var embedding2 = new GoogleAiEmbeddingResponseValues();
-            embedding2.setValues(List.of(0.3f, 0.4f));
-
-            GoogleAiBatchEmbeddingResponse expectedResponse = new GoogleAiBatchEmbeddingResponse();
-            expectedResponse.setEmbeddings(List.of(embedding1, embedding2));
+            var embedding1 = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
+            var embedding2 = new GeminibeddingResponseValues(List.of(0.3f, 0.4f));
+            var expectedResponse = new GeminiBatchEmbeddingResponse(List.of(embedding1, embedding2));
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -257,19 +258,16 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GoogleAiEmbeddingRequest request1 = createEmptyEmbeddingRequest();
-            request1.setContent(
-                    new GeminiContent(List.of(GeminiPart.builder().text("First").build()), null));
+            var request1 = createEmbeddingRequest(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("First").build()), null));
 
-            GoogleAiEmbeddingRequest request2 = createEmptyEmbeddingRequest();
-            request2.setContent(new GeminiContent(
-                    List.of(GeminiPart.builder().text("Second").build()), null));
+            var request2 = createEmbeddingRequest(new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder().text("Second").build()), null));
 
-            GoogleAiBatchEmbeddingRequest batchRequest = new GoogleAiBatchEmbeddingRequest();
-            batchRequest.setRequests(List.of(request1, request2));
+            var batchRequest = new GeminiBatchEmbeddingRequest(List.of(request1, request2));
 
             // When
-            GoogleAiBatchEmbeddingResponse actualResponse = subject.batchEmbed(TEST_MODEL_NAME, batchRequest);
+            var actualResponse = subject.batchEmbed(TEST_MODEL_NAME, batchRequest);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -278,8 +276,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchEmbedHttpRequest() {
             // Given
-            GoogleAiBatchEmbeddingResponse expectedResponse = new GoogleAiBatchEmbeddingResponse();
-            expectedResponse.setEmbeddings(List.of());
+            var expectedResponse = new GeminiBatchEmbeddingResponse(List.of());
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -289,8 +286,7 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-            GoogleAiBatchEmbeddingRequest request = new GoogleAiBatchEmbeddingRequest();
-            request.setRequests(List.of());
+            var request = new GeminiBatchEmbeddingRequest(List.of());
 
             // When
             subject.batchEmbed(TEST_MODEL_NAME, request);
@@ -370,7 +366,9 @@ class GeminiServiceTest {
             // When
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
-                public void onPartialResponse(String partialResponse) {}
+                public void onPartialResponse(String partialResponse) {
+                    // Do nothing.
+                }
 
                 @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
@@ -609,7 +607,7 @@ class GeminiServiceTest {
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
     }
 
-    private static GoogleAiEmbeddingRequest createEmptyEmbeddingRequest() {
-        return new GoogleAiEmbeddingRequest("modelName", null, null, null, 756);
+    private static GeminiEmbeddingRequest createEmbeddingRequest(GeminiContent content) {
+        return new GeminiEmbeddingRequest("modelName", content, null, null, 756);
     }
 }
