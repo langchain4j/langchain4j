@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -84,6 +87,16 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false;
+    }
+
+    @Override
+    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+        return false;
+    }
+
+    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return OpenAiResponsesStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -105,6 +118,11 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
+    }
+
+    @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
             ToolExecutionRequest request = toolCall.toolExecutionRequest();
@@ -119,7 +137,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
             return toolCall.index() == 1
                     && request.id().equals(id2)
                     && request.name().equals("getTime")
-                    && request.arguments().replace(" ", "").equals("{}");
+                    && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
         }));
     }
 
@@ -352,7 +370,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_send_tools_in_function_object_format() throws Exception {
+    void should_send_tools_in_responses_api_format() throws Exception {
         MockHttpClient mockHttpClient = new MockHttpClient();
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
@@ -386,13 +404,10 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         JsonNode toolNode = toolsNode.get(0);
         assertThat(toolNode.get("type").asText()).isEqualTo("function");
-
-        JsonNode functionNode = toolNode.get("function");
-        assertThat(functionNode).isNotNull();
-        assertThat(functionNode.get("name").asText()).isEqualTo("getWeather");
-        assertThat(functionNode.get("description").asText()).isEqualTo("Get weather data");
-        assertThat(functionNode.has("parameters")).isTrue();
-        assertThat(functionNode.get("strict").asBoolean()).isTrue();
+        assertThat(toolNode.get("name").asText()).isEqualTo("getWeather");
+        assertThat(toolNode.get("description").asText()).isEqualTo("Get weather data");
+        assertThat(toolNode.has("parameters")).isTrue();
+        assertThat(toolNode.get("strict").asBoolean()).isTrue();
 
         assertThat(payload.get("tool_choice").asText()).isEqualTo("auto");
     }
@@ -794,5 +809,33 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
             assertThat(tokenUsage.totalTokenCount())
                     .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
+    }
+
+    @Override
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
+
+        assertThatThrownBy(() -> chat(model, chatRequest));
+    }
+
+    @Override
+    protected void should_respect_modelName_in_chat_request(StreamingChatModel model) {
+        String modelName = customModelName();
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(16) // Responses API requires minimum of 16 tokens
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a story"))
+                .parameters(parameters)
+                .build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        assertThat(chatResponse.aiMessage().text()).isNotBlank();
     }
 }

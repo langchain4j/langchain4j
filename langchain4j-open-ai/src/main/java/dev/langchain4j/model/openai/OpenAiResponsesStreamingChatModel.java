@@ -34,6 +34,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -41,7 +42,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +91,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private static final String FIELD_ID = "id";
     private static final String FIELD_CALL_ID = "call_id";
     private static final String FIELD_ITEM_ID = "item_id";
+    private static final String FIELD_OUTPUT_INDEX = "output_index";
     private static final String FIELD_RESPONSE = "response";
     private static final String FIELD_OUTPUT = "output";
     private static final String FIELD_USAGE = "usage";
@@ -317,10 +322,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
                 var tools = new ArrayList<Map<String, Object>>();
                 for (var toolSpec : toolSpecifications) {
-                    Map<String, Object> function = new HashMap<>();
-                    function.put(FIELD_NAME, toolSpec.name());
+                    var tool = new HashMap<String, Object>();
+                    tool.put(FIELD_TYPE, TYPE_FUNCTION);
+                    tool.put(FIELD_NAME, toolSpec.name());
                     if (toolSpec.description() != null) {
-                        function.put(FIELD_DESCRIPTION, toolSpec.description());
+                        tool.put(FIELD_DESCRIPTION, toolSpec.description());
                     }
 
                     Map<String, Object> functionParameters = null;
@@ -334,16 +340,13 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                     }
 
                     if (functionParameters != null) {
-                        function.put(FIELD_PARAMETERS, functionParameters);
+                        tool.put(FIELD_PARAMETERS, functionParameters);
                     }
 
                     if (strict) {
-                        function.put(FIELD_STRICT, true);
+                        tool.put(FIELD_STRICT, true);
                     }
 
-                    var tool = new HashMap<String, Object>();
-                    tool.put(FIELD_TYPE, TYPE_FUNCTION);
-                    tool.put(FIELD_FUNCTION, function);
                     tools.add(tool);
                 }
                 payload.put(FIELD_TOOLS, tools);
@@ -378,15 +381,27 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             }
 
             String requestBody = OBJECT_MAPPER.writeValueAsString(payload);
-            logger.info("Sending OpenAI Responses payload: {}", requestBody);
+            logger.debug("Sending OpenAI Responses payload: {}", requestBody);
 
             var request = requestBuilder.body(requestBody).build();
 
-            httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
+            var streamingHandle = new ResponsesStreamingHandle();
+            httpClient.execute(
+                    request,
+                    new DefaultServerSentEventParser(),
+                    new ResponsesApiEventListener(handler, streamingHandle));
 
         } catch (Exception e) {
             logger.error("Exception in doChat", e);
-            handler.onError(e);
+            safeOnError(handler, e);
+        }
+    }
+
+    private static void safeOnError(StreamingChatResponseHandler handler, Throwable error) {
+        try {
+            handler.onError(error);
+        } catch (Exception e) {
+            logger.warn("Exception thrown by onError handler, ignoring", e);
         }
     }
 
@@ -458,18 +473,12 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private Map<String, Object> createInputImageContent(Image image) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
-        content.put(FIELD_IMAGE_URL, buildImageUrlPayload(image));
+        content.put(FIELD_IMAGE_URL, buildImageUrl(image));
         content.put(FIELD_DETAIL, DETAIL_AUTO_VALUE);
         return content;
     }
 
-    private Map<String, Object> buildImageUrlPayload(Image image) {
-        var payload = new HashMap<String, Object>();
-        payload.put("url", resolveImageUrl(image));
-        return payload;
-    }
-
-    private String resolveImageUrl(Image image) {
+    private String buildImageUrl(Image image) {
         if (image.url() != null) {
             return image.url().toString();
         } else if (image.base64Data() != null) {
@@ -534,7 +543,12 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return DefaultChatRequestParameters.builder().modelName(modelName).build();
+        return DefaultChatRequestParameters.builder()
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
@@ -695,15 +709,27 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
         private final StreamingChatResponseHandler handler;
+        private final ResponsesStreamingHandle streamingHandle;
         private int eventCount = 0;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
+        private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ResponsesApiEventListener(StreamingChatResponseHandler handler) {
+        ResponsesApiEventListener(
+                StreamingChatResponseHandler handler, ResponsesStreamingHandle streamingHandle) {
             this.handler = handler;
+            this.streamingHandle = streamingHandle;
+        }
+
+        private boolean isCancelled() {
+            return streamingHandle != null && streamingHandle.isCancelled();
+        }
+
+        private void assignIndexIfAbsent(String itemId, int index) {
+            toolCallIndices.putIfAbsent(itemId, index);
         }
 
         @Override
@@ -713,6 +739,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         @Override
         public void onEvent(ServerSentEvent event) {
+            if (isCancelled()) {
+                return;
+            }
             eventCount++;
             rawServerSentEvents.add(event);
             var data = event.data();
@@ -727,9 +756,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 }
 
                 handleDelta(data);
+            } catch (RuntimeException e) {
+                logger.error("Error processing event #{}", eventCount, e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
+                throw e;
             } catch (Exception e) {
                 logger.error("Error processing event #{}", eventCount, e);
-                handler.onError(e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
+                throw new RuntimeException(e);
             }
         }
 
@@ -740,7 +774,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         @Override
         public void onError(Throwable error) {
             logger.error("SSE stream error", error);
-            handler.onError(error);
+            safeOnError(handler, error);
         }
 
         private void handleDelta(String data) {
@@ -748,7 +782,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 return;
             }
 
-            logger.info("Received SSE event: {}", data);
+            logger.debug("Received SSE event: {}", data);
             try {
                 var node = OBJECT_MAPPER.readTree(data);
                 var type = node.has(FIELD_TYPE) ? node.get(FIELD_TYPE).asText() : "";
@@ -756,18 +790,21 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
-                        handler.onPartialResponse(text);
+                        InternalStreamingChatResponseHandlerUtils.onPartialResponse(
+                                handler, text, streamingHandle);
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
                     if (TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
                         var itemId = item.path(FIELD_ID).asText();
+                        int outputIndex = node.path(FIELD_OUTPUT_INDEX).asInt(0);
                         toolCallBuilders.put(
                                 itemId,
                                 ToolExecutionRequest.builder()
                                         .id(item.path(FIELD_CALL_ID).asText())
                                         .name(item.path(FIELD_NAME).asText())
                                         .arguments(""));
+                        assignIndexIfAbsent(itemId, outputIndex);
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DELTA.equals(type)) {
                     var itemId = node.path(FIELD_ITEM_ID).asText();
@@ -787,8 +824,10 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                     var item = node.path(FIELD_ITEM);
                     if (TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
                         var itemId = item.path(FIELD_ID).asText();
+                        int outputIndex = node.path(FIELD_OUTPUT_INDEX).asInt(0);
                         var builder =
                                 toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
+                        assignIndexIfAbsent(itemId, outputIndex);
 
                         var callIdNode = item.get(FIELD_CALL_ID);
                         if (callIdNode != null && !callIdNode.isNull()) {
@@ -892,12 +931,24 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                         }
 
                         responseBuilder.metadata(metadataBuilder.build());
-                        handler.onCompleteResponse(responseBuilder.build());
+                        if (!isCancelled()) {
+                            try {
+                                handler.onCompleteResponse(responseBuilder.build());
+                            } catch (Exception e) {
+                                logger.debug("Exception from onCompleteResponse, calling onError", e);
+                                safeOnError(handler, e);
+                            }
+                        }
                     }
                 }
+            } catch (RuntimeException e) {
+                logger.error("Error parsing JSON data: {}", data, e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
+                throw e;
             } catch (Exception e) {
                 logger.error("Error parsing JSON data: {}", data, e);
-                handler.onError(e);
+                // Re-throw without calling onError here - it will be called in the outer catch block
+                throw new RuntimeException(e);
             }
         }
 
@@ -917,9 +968,31 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             if (builder == null || completedToolCallItemIds.contains(itemId)) {
                 return;
             }
-            completedToolCalls.add(builder.build());
+            ToolExecutionRequest toolExecutionRequest = builder.build();
+            completedToolCalls.add(toolExecutionRequest);
             completedToolCallItemIds.add(itemId);
             toolCallBuilders.remove(itemId);
+            Integer index = toolCallIndices.remove(itemId);
+            int safeIndex = index != null ? index : completedToolCalls.size() - 1;
+            if (!isCancelled()) {
+                InternalStreamingChatResponseHandlerUtils.onCompleteToolCall(
+                        handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+            }
+        }
+    }
+
+    private static class ResponsesStreamingHandle implements StreamingHandle {
+
+        private final AtomicBoolean cancelled = new AtomicBoolean(false);
+
+        @Override
+        public void cancel() {
+            cancelled.compareAndSet(false, true);
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled.get();
         }
     }
 }
