@@ -718,8 +718,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ResponsesApiEventListener(
-                StreamingChatResponseHandler handler, ResponsesStreamingHandle streamingHandle) {
+        ResponsesApiEventListener(StreamingChatResponseHandler handler, ResponsesStreamingHandle streamingHandle) {
             this.handler = handler;
             this.streamingHandle = streamingHandle;
         }
@@ -790,8 +789,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
-                        InternalStreamingChatResponseHandlerUtils.onPartialResponse(
-                                handler, text, streamingHandle);
+                        InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);

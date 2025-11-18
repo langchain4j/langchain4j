@@ -144,7 +144,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         .parameters(parameters)
                         .build();
 
-        dev.langchain4j.model.chat.response.ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        dev.langchain4j.model.chat.response.ChatResponse chatResponse =
+                chat(model, chatRequest).chatResponse();
 
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
@@ -449,7 +450,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         UserMessage userMessage =
                 UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
         dev.langchain4j.model.chat.request.ChatRequest chatRequest =
-                dev.langchain4j.model.chat.request.ChatRequest.builder().messages(userMessage).build();
+                dev.langchain4j.model.chat.request.ChatRequest.builder()
+                        .messages(userMessage)
+                        .build();
 
         // when-then
         assertThatThrownBy(() -> chat(model, chatRequest));

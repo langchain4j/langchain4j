@@ -11,7 +11,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -23,6 +22,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
@@ -737,9 +737,8 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .modelName(TEST_MODEL_NAME)
                 .build();
 
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(10)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(10).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Hello"))
