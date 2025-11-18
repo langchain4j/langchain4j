@@ -98,8 +98,6 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             restClientBuilder.setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "Apikey " + apiKey)});
         }
 
-        ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
-
         this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"), false);
     }
 
