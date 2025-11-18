@@ -1,7 +1,7 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
@@ -24,7 +24,8 @@ record GeminiGenerateContentRequest(
         private GeminiContent systemInstruction;
         private GeminiGenerationConfig generationConfig;
 
-        GeminiGenerateContentRequestBuilder() {}
+        GeminiGenerateContentRequestBuilder() {
+        }
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -70,9 +71,11 @@ record GeminiGenerateContentRequest(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiTool(List<GeminiFunctionDeclaration> functionDeclarations, GeminiCodeExecution codeExecution) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiCodeExecution() {}
+        record GeminiCodeExecution() {
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {}
+    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {
+    }
 }

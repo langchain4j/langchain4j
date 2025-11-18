@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -47,7 +48,7 @@ final class BatchRequestResponse {
          * @param request  Required. The {@link GeminiGenerateContentRequest} to be processed in the batch.
          * @param metadata Optional. The metadata to be associated with the request.
          */
-        record InlinedRequest(GeminiGenerateContentRequest request, Map<String, String> metadata) {}
+        record InlinedRequest(Object request, Map<String, String> metadata) {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

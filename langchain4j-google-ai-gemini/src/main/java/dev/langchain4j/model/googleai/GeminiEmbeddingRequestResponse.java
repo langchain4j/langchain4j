@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchableRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminibeddingResponseValues;
 import java.util.List;
 
@@ -14,7 +15,7 @@ public final class GeminiEmbeddingRequestResponse {
             @JsonProperty("content") GeminiContent content,
             @JsonProperty("taskType") GoogleAiEmbeddingModel.TaskType taskType,
             @JsonProperty("title") String title,
-            @JsonProperty("outputDimensionality") Integer outputDimensionality) {}
+            @JsonProperty("outputDimensionality") Integer outputDimensionality) implements BatchableRequest {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiEmbeddingResponse(GeminibeddingResponseValues embedding) {
