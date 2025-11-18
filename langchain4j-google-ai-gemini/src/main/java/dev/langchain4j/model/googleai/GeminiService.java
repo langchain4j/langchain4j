@@ -29,12 +29,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
+
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
@@ -82,14 +87,14 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
     }
 
-    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+    GeminiEmbeddingResponse embed(String modelName, GeminiEmbeddingRequest request) {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiEmbeddingResponse.class);
     }
 
-    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+    GeminiBatchEmbeddingResponse batchEmbed(String modelName, GeminiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiBatchEmbeddingResponse.class);
     }
 
     void generateContentStream(
