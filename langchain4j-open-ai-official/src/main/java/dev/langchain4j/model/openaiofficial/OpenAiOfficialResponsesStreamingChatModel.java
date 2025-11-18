@@ -113,6 +113,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;
+        validateMaxOutputTokens(builder.maxOutputTokens);
         this.maxOutputTokens = builder.maxOutputTokens;
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
@@ -187,10 +188,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             Integer requestMaxOutputTokens = chatRequest.maxOutputTokens();
             Long effectiveMaxOutputTokens =
                     requestMaxOutputTokens != null ? (Long) requestMaxOutputTokens.longValue() : maxOutputTokens;
+            validateMaxOutputTokens(effectiveMaxOutputTokens);
             if (effectiveMaxOutputTokens != null) {
-                // Responses API requires minimum of 16 tokens
-                long finalMaxOutputTokens = Math.max(effectiveMaxOutputTokens, 16L);
-                paramsBuilder.maxOutputTokens(finalMaxOutputTokens);
+                paramsBuilder.maxOutputTokens(effectiveMaxOutputTokens);
             }
             if (maxToolCalls != null) {
                 paramsBuilder.maxToolCalls(maxToolCalls);
@@ -324,6 +324,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             handler.onError(error);
         } catch (Exception e) {
             logger.warn("Exception thrown by onError handler, ignoring", e);
+        }
+    }
+
+    private static void validateMaxOutputTokens(Long maxOutputTokens) {
+        if (maxOutputTokens != null && maxOutputTokens < 16) {
+            throw new IllegalArgumentException(
+                    "maxOutputTokens must be at least 16 for OpenAI Responses API, but was: " + maxOutputTokens);
         }
     }
 

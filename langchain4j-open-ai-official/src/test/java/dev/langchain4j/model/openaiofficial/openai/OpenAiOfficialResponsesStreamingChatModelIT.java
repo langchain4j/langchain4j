@@ -129,6 +129,28 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     }
 
     @Override
+    protected void should_respect_modelName_in_chat_request(StreamingChatModel model) {
+        // Responses API requires minimum of 16 tokens, override to use 16 instead of 1
+        String modelName = customModelName();
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(16)
+                .build();
+
+        dev.langchain4j.model.chat.request.ChatRequest chatRequest =
+                dev.langchain4j.model.chat.request.ChatRequest.builder()
+                        .messages(UserMessage.from("Tell me a story"))
+                        .parameters(parameters)
+                        .build();
+
+        dev.langchain4j.model.chat.response.ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        assertThat(chatResponse.aiMessage().text()).isNotBlank();
+        assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+    }
+
+    @Override
     protected void should_respect_maxOutputTokens_in_chat_request(StreamingChatModel model) {
         // Responses API requires minimum of 16 tokens, so we use 16 instead of 5
         int maxOutputTokens = 16;
