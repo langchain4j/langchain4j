@@ -25,10 +25,11 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-2.5-pro`
+* `gemini-2.5-flash`
+* `gemini-2.5-flash-lite`
 * `gemini-2.0-flash`
-* `gemini-1.5-flash`
-* `gemini-1.5-pro`
-* `gemini-1.0-pro`
+* `gemini-2.0-flash-lite`
 
 ## GoogleAiGeminiChatModel
 
@@ -37,7 +38,7 @@ The usual `chat(...)` methods are available:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     ...
     .build();
 
@@ -49,7 +50,7 @@ As well, as the `ChatResponse chat(ChatRequest req)` method:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .build();
 
 ChatResponse chatResponse = gemini.chat(ChatRequest.builder()
@@ -68,7 +69,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .defaultRequestParameters(...)
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .baseUrl(...)
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .maxRetries(...)
     .temperature(1.0)
     .topP(0.95)
@@ -103,7 +104,7 @@ The response must be handled by a `StreamingChatResponseHandler`.
 ```java
 StreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .build();
 
 CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -169,7 +170,7 @@ WeatherForecastService weatherForecastService =
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .temperature(0.0)
     .build();
 
@@ -217,7 +218,7 @@ interface WeatherForecastAssistant {
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // this is required to enable structured outputs feature
     .build();
 
@@ -270,7 +271,7 @@ ResponseFormat responseFormat = ResponseFormat.builder()
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .responseFormat(responseFormat)
         .build();
 
@@ -288,7 +289,7 @@ Let's have a look at an example to define a JSON schema for a recipe when callin
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .build();
 
 ResponseFormat responseFormat = ...;
@@ -310,7 +311,7 @@ You can force Gemini to reply in JSON:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .responseFormat(ResponseFormat.JSON)
     .build();
 
@@ -333,7 +334,7 @@ This is particularly interesting for situations where more advanced calculations
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .allowCodeExecution(true)
     .includeCodeExecutionOutput(true)
     .build();
@@ -382,9 +383,9 @@ print(fibonacci(22) - ackermann(3, 4))
 ```
 Output:
 ```
-17586
+2.586
 ```
-The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
+The result of `fibonacci(22) - ackermann(3, 4)` is **2.586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
 Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
@@ -393,7 +394,7 @@ Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
 If we hadn't asked for the code / output, we would have received only the following text:
 
 ```
-The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
+The result of `fibonacci(22) - ackermann(3, 4)` is **2.586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
 Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
@@ -420,7 +421,7 @@ String base64Img = b64encoder.encodeToString(readBytes(
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .build();
 
 ChatResponse response = gemini.chat(
@@ -504,6 +505,233 @@ ChatModel model = GoogleAiGeminiChatModel.builder()
         .sendThinking(true)
         .build();
 ```
+
+
+## GoogleAiBatchChatModel
+
+The `GoogleAiBatchChatModel` provides an interface for processing large volumes of chat requests asynchronously at a reduced cost [(50% of standard pricing)](https://ai.google.dev/gemini-api/docs/batch-api). It is ideal for non-urgent, large-scale tasks with a 24-hour turnaround SLO.
+
+### Basic Usage
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+// Create batch requests
+List<ChatRequest> requests = List.of(
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of France?"))
+        .build(),
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of Germany?"))
+        .build(),
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of Italy?"))
+        .build()
+);
+
+// Submit the batch
+BatchResponse response = batchModel.createBatchInline(
+    "Geography Questions Batch",  // display name
+    0L,                            // priority (optional, defaults to 0)
+    requests
+);
+```
+
+### Handling Batch Responses
+
+The `BatchResponse` is a sealed interface with three possible states:
+
+```java
+BatchResponse response = batchModel.createBatchInline("My Batch", null, requests);
+
+switch (response) {
+    case BatchIncomplete incomplete -> {
+        System.out.println("Batch is " + incomplete.state());
+        System.out.println("Batch name: " + incomplete.batchName().value());
+    }
+    case BatchSuccess success -> {
+        System.out.println("Batch completed successfully!");
+        for (ChatResponse chatResponse : success.responses()) {
+            System.out.println(chatResponse.aiMessage().text());
+        }
+    }
+    case BatchError error -> {
+        System.err.println("Batch failed: " + error.message());
+        System.err.println("Error code: " + error.code());
+        System.err.println("State: " + error.state());
+    }
+}
+```
+
+### Polling for Results
+
+Since batch processing is asynchronous, you need to poll for results (results might take up to 24 hours to process):
+
+```java
+BatchResponse initialResponse = batchModel.createBatchInline(
+    "My Batch",
+    null,
+    requests
+);
+
+// Extract the batch name for polling
+BatchName batchName = switch (initialResponse) {
+    case BatchIncomplete incomplete -> incomplete.batchName();
+    case BatchSuccess success -> success.batchName();
+    case BatchError error -> throw new RuntimeException("Batch creation failed");
+};
+
+// Poll until completion
+BatchResponse result;
+do {
+    Thread.sleep(5000); // Wait 5 seconds between polls
+    result = batchModel.retrieveBatchResults(batchName);
+} while (result instanceof BatchIncomplete);
+
+// Process final result
+if (result instanceof BatchSuccess success) {
+    for (ChatResponse chatResponse : success.responses()) {
+        System.out.println(chatResponse.aiMessage().text());
+    }
+} else if (result instanceof BatchError error) {
+    System.err.println("Batch failed: " + error.message());
+}
+```
+
+### Batch Job States
+
+The `BatchJobState` enum represents the possible states of a batch job:
+
+- `BATCH_STATE_PENDING`: Batch is queued and waiting to be processed
+- `BATCH_STATE_RUNNING`: Batch is currently being processed
+- `BATCH_STATE_SUCCEEDED`: Batch completed successfully
+- `BATCH_STATE_FAILED`: Batch processing failed
+- `BATCH_STATE_CANCELLED`: Batch was cancelled by the user
+- `BATCH_STATE_EXPIRED`: Batch expired before completion
+- `UNSPECIFIED`: State is unknown or not provided
+
+### Cancelling a Batch Job
+
+You can cancel a batch that is pending or running:
+
+```java
+BatchName batchName = // ... obtained from createBatchInline
+
+try {
+    batchModel.cancelBatchJob(batchName);
+    System.out.println("Batch cancelled successfully");
+} catch (HttpException e) {
+    System.err.println("Failed to cancel batch: " + e.getMessage());
+}
+```
+
+### Setting Batch Priority
+
+Higher priority batches are processed before lower priority ones:
+
+```java
+// High priority batch
+BatchResponse highPriorityResponse = batchModel.createBatchInline(
+    "Urgent Batch",
+    100L,  // high priority
+    urgentRequests
+);
+
+// Low priority batch
+BatchResponse lowPriorityResponse = batchModel.createBatchInline(
+    "Background Batch",
+    -50L,  // low priority
+    backgroundRequests
+);
+```
+
+### Configuration
+
+The `GoogleAiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .temperature(0.7)
+    .topP(0.95)
+    .topK(40)
+    .maxOutputTokens(2048)
+    .maxRetries(3)
+    .timeout(Duration.ofMinutes(5))
+    .logRequestsAndResponses(true)
+    .build();
+```
+
+### Important Constraints
+
+- **Model Consistency**: All requests in a batch must use the same model
+- **Size Limit**: The inline API supports a total request size of 20MB or under
+- **Cost**: Batch processing offers 50% cost reduction compared to real-time requests
+- **Turnaround**: 24-hour SLO, though completion is often much quicker
+- **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
+
+### Example: Complete Workflow
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+// Prepare batch requests
+List<ChatRequest> requests = new ArrayList<>();
+for (int i = 0; i < 50; i++) {
+    requests.add(ChatRequest.builder()
+        .messages(UserMessage.from("Generate a creative story idea #" + i))
+        .build());
+}
+
+// Submit batch
+BatchResponse response = batchModel.createBatchInline(
+    "Story Ideas Batch",
+    0L,
+    requests
+);
+
+// Get batch name
+BatchName batchName = switch (response) {
+    case BatchIncomplete incomplete -> incomplete.batchName();
+    case BatchSuccess success -> success.batchName();
+    case BatchError error -> throw new RuntimeException("Failed: " + error.message());
+};
+
+// Poll for completion
+BatchResponse finalResult;
+int attempts = 0;
+int maxAttempts = 720; // 1 hour with 5-second intervals
+
+do {
+    if (attempts++ >= maxAttempts) {
+        throw new RuntimeException("Batch processing timeout");
+    }
+    Thread.sleep(5000);
+    finalResult = batchModel.retrieveBatchResults(batchName);
+    
+    if (finalResult instanceof BatchIncomplete incomplete) {
+        System.out.println("Status: " + incomplete.state());
+    }
+} while (finalResult instanceof BatchIncomplete);
+
+// Process results
+if (finalResult instanceof BatchSuccess success) {
+    System.out.println("Generated " + success.responses().size() + " stories");
+    for (int i = 0; i < success.responses().size(); i++) {
+        ChatResponse chatResponse = success.responses().get(i);
+        System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
+    }
+} else if (finalResult instanceof BatchError error) {
+    System.err.println("Batch failed: " + error.message());
+}
+``` 
 
 ## Learn more
 

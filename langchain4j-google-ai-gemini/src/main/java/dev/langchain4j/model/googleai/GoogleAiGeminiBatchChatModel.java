@@ -39,7 +39,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * This interface is sealed, allowing only specific implementations:
      * {@link BatchIncomplete}, {@link BatchSuccess}, and {@link BatchError}.
      */
-    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {}
+    public sealed interface BatchResponse permits BatchIncomplete, BatchSuccess, BatchError {
+    }
 
     /**
      * Represents a batch operation that is currently pending or in progress.
@@ -47,7 +48,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param state     the current state of the batch job
      */
-    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {}
+    public record BatchIncomplete(BatchName batchName, BatchJobState state) implements BatchResponse {
+    }
 
     /**
      * Represents a successful batch operation.
@@ -55,7 +57,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param batchName the name of the batch operation
      * @param responses a list of chat responses from the batch operation
      */
-    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {}
+    public record BatchSuccess(BatchName batchName, List<ChatResponse> responses) implements BatchResponse {
+    }
 
     /**
      * Represents an error that occurred during a batch operation.
@@ -65,7 +68,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @param details additional details about the error, if available
      */
     public record BatchError(int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse {}
+            implements BatchResponse {
+    }
 
     /**
      * Represents the name of a batch operation.
@@ -182,16 +186,6 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
         geminiService.batchCancelBatch(name.value());
     }
 
-    public void deleteBatchJob(BatchName name) {
-        // TODO(issues/3916): Implement deletion of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    public void listBatchJobs(BatchName name) {
-        // TODO(issues/3916): Implement listing of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
     private ChatRequest applyDefaultParameters(ChatRequest chatRequest) {
         return ChatRequest.builder()
                 .messages(chatRequest.messages())
@@ -262,7 +256,8 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
 
     public static final class Builder extends GoogleAiGeminiChatModelBaseBuilder<Builder> {
 
-        private Builder() {}
+        private Builder() {
+        }
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
