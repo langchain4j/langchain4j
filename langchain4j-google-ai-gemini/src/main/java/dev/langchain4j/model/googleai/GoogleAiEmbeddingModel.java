@@ -8,6 +8,10 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -51,12 +55,12 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
-        GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
+        GeminiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        GoogleAiEmbeddingResponse geminiResponse =
+        GeminiEmbeddingResponse geminiResponse =
                 withRetryMappingExceptions(() -> geminiService.embed(modelName, embeddingRequest), maxRetries);
 
-        return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
+        return Response.from(Embedding.from(geminiResponse.embedding().values()));
     }
 
     @Override
@@ -66,7 +70,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<GoogleAiEmbeddingRequest> embeddingRequests =
+        List<GeminiEmbeddingRequest> embeddingRequests =
                 textSegments.stream().map(this::getGoogleAiEmbeddingRequest).collect(Collectors.toList());
 
         List<Embedding> allEmbeddings = new ArrayList<>();
@@ -79,14 +83,14 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
             if (startIndex >= numberOfEmbeddings) break;
 
-            GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
-            batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
+            GeminiBatchEmbeddingRequest batchEmbeddingRequest =
+                    new GeminiBatchEmbeddingRequest(embeddingRequests.subList(startIndex, lastIndex));
 
-            GoogleAiBatchEmbeddingResponse geminiResponse =
+            GeminiBatchEmbeddingResponse geminiResponse =
                     withRetryMappingExceptions(() -> geminiService.batchEmbed(modelName, batchEmbeddingRequest));
 
-            allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
-                    .map(values -> Embedding.from(values.getValues()))
+            allEmbeddings.addAll(geminiResponse.embeddings().stream()
+                    .map(values -> Embedding.from(values.values()))
                     .toList());
         }
 
@@ -97,8 +101,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     public String modelName() {
         return this.modelName;
     }
-    
-    private GoogleAiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
+
+    private GeminiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
         GeminiContent.GeminiPart geminiPart =
                 GeminiContent.GeminiPart.builder().text(textSegment.text()).build();
 
@@ -111,7 +115,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             }
         }
 
-        return new GoogleAiEmbeddingRequest(
+        return new GeminiEmbeddingRequest(
                 "models/" + this.modelName, content, this.taskType, title, this.outputDimensionality);
     }
 
