@@ -130,20 +130,19 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class GoogleAiEmbeddingModelBuilder {
-
-        private HttpClientBuilder httpClientBuilder;
-        private String modelName;
-        private String apiKey;
-        private String baseUrl;
-        private Integer maxRetries;
-        private TaskType taskType;
-        private String titleMetadataKey;
-        private Integer outputDimensionality;
-        private Duration timeout;
-        private Boolean logRequestsAndResponses;
-        private Boolean logRequests;
-        private Boolean logResponses;
-        private Logger logger;
+        HttpClientBuilder httpClientBuilder;
+        String modelName;
+        String apiKey;
+        String baseUrl;
+        Integer maxRetries;
+        TaskType taskType;
+        String titleMetadataKey;
+        Integer outputDimensionality;
+        Duration timeout;
+        Boolean logRequestsAndResponses;
+        Boolean logRequests;
+        Boolean logResponses;
+        Logger logger;
 
         GoogleAiEmbeddingModelBuilder() {}
 

@@ -3,10 +3,6 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -15,13 +11,18 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
-import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminibeddingResponseValues;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminiEmbeddingResponseValues;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -198,7 +199,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendEmbedRequest() {
             // Given
-            var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f, 0.3f));
+            var embedding = new GeminiEmbeddingResponseValues(List.of(0.1f, 0.2f, 0.3f));
             var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
@@ -225,7 +226,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectEmbedHttpRequest() {
             // Given
-            var embedding = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
+            var embedding = new GeminiEmbeddingResponseValues(List.of(0.1f, 0.2f));
             var expectedResponse = new GeminiEmbeddingResponse(embedding);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
@@ -256,8 +257,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchEmbedRequest() {
             // Given
-            var embedding1 = new GeminibeddingResponseValues(List.of(0.1f, 0.2f));
-            var embedding2 = new GeminibeddingResponseValues(List.of(0.3f, 0.4f));
+            var embedding1 = new GeminiEmbeddingResponseValues(List.of(0.1f, 0.2f));
+            var embedding2 = new GeminiEmbeddingResponseValues(List.of(0.3f, 0.4f));
             var expectedResponse = new GeminiBatchEmbeddingResponse(List.of(embedding1, embedding2));
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
@@ -382,10 +383,6 @@ class GeminiServiceTest {
             // When
             subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
                 @Override
-                public void onPartialResponse(String partialResponse) {
-                }
-
-                @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
                     futureComplete.complete(null);
                 }
@@ -445,8 +442,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchGenerateContentRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse =
-                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
+            BatchRequestResponse.Operation<?> expectedResponse =
+                    new BatchRequestResponse.Operation<>("operations/test-123", null, false, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -459,18 +456,16 @@ class GeminiServiceTest {
                             List.of(GeminiPart.builder().text("Test").build()), "user")))
                     .build();
 
-            BatchRequestResponse.BatchGenerateContentRequest request =
-                    new BatchRequestResponse.BatchGenerateContentRequest(
-                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
-                                    "test-batch",
-                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
-                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
-                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
-                                                            contentRequest, null)))),
-                                    1L));
+            BatchCreateRequest<?> request = new BatchCreateRequest<>(new BatchCreateRequest.Batch<>(
+                    "test-batch",
+                    new BatchRequestResponse.BatchCreateRequest.InputConfig<>(
+                            new BatchRequestResponse.BatchCreateRequest.Requests<>(
+                                    List.of(new BatchRequestResponse.BatchCreateRequest.InlinedRequest<>(
+                                            contentRequest, null)))),
+                    1L));
 
             // When
-            BatchRequestResponse.Operation actualResponse = subject.batchGenerateContent(TEST_MODEL_NAME, request);
+            BatchRequestResponse.Operation<?> actualResponse = subject.batchCreate(TEST_MODEL_NAME, request);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -479,8 +474,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchGenerateContentHttpRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse =
-                    new BatchRequestResponse.Operation("operations/test-123", null, false, null, null);
+            BatchRequestResponse.Operation<?> expectedResponse =
+                    new BatchRequestResponse.Operation<>("operations/test-123", null, false, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -493,18 +488,16 @@ class GeminiServiceTest {
                             List.of(GeminiPart.builder().text("Test").build()), "user")))
                     .build();
 
-            BatchRequestResponse.BatchGenerateContentRequest request =
-                    new BatchRequestResponse.BatchGenerateContentRequest(
-                            new BatchRequestResponse.BatchGenerateContentRequest.Batch(
-                                    "test-batch",
-                                    new BatchRequestResponse.BatchGenerateContentRequest.InputConfig(
-                                            new BatchRequestResponse.BatchGenerateContentRequest.Requests(List.of(
-                                                    new BatchRequestResponse.BatchGenerateContentRequest.InlinedRequest(
-                                                            contentRequest, null)))),
-                                    1L));
+            BatchCreateRequest<Object> request = new BatchCreateRequest<>(new BatchCreateRequest.Batch<>(
+                    "test-batch",
+                    new BatchRequestResponse.BatchCreateRequest.InputConfig<>(
+                            new BatchRequestResponse.BatchCreateRequest.Requests<>(
+                                    List.of(new BatchRequestResponse.BatchCreateRequest.InlinedRequest<>(
+                                            contentRequest, null)))),
+                    1L));
 
             // When
-            subject.batchGenerateContent(TEST_MODEL_NAME, request);
+            subject.batchCreate(TEST_MODEL_NAME, request);
 
             // Then
             HttpRequest sentRequest = mockHttpClient.request();
@@ -523,8 +516,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendBatchRetrieveBatchRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse =
-                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
+            BatchRequestResponse.Operation<?> expectedResponse =
+                    new BatchRequestResponse.Operation<>("batches/test-batch", null, true, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))
@@ -535,7 +528,7 @@ class GeminiServiceTest {
             String batchName = "batches/test-batch";
 
             // When
-            BatchRequestResponse.Operation actualResponse = subject.batchRetrieveBatch(batchName);
+            BatchRequestResponse.Operation<?> actualResponse = subject.batchRetrieveBatch(batchName);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -544,8 +537,8 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectBatchRetrieveBatchHttpRequest() {
             // Given
-            BatchRequestResponse.Operation expectedResponse =
-                    new BatchRequestResponse.Operation("batches/test-batch", null, true, null, null);
+            BatchRequestResponse.Operation<?> expectedResponse =
+                    new BatchRequestResponse.Operation<>("batches/test-batch", null, true, null, null);
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
                     .body(Json.toJson(expectedResponse))

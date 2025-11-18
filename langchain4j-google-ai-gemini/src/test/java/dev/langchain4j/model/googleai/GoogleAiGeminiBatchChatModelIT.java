@@ -1,16 +1,16 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_CANCELLED;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_PENDING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchError;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchIncomplete;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchName;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchError;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchIncomplete;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchName;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,12 +41,14 @@ class GoogleAiGeminiBatchChatModelIT {
                     createChatRequest("What is the capital of Germany?"));
 
             // when
+            //            var response = subject.createBatchInline(displayName, priority, requests);
+            //
             var response = subject.createBatchInline(displayName, priority, requests);
 
             // then
             assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete) response).batchName().value()).startsWith("batches/");
-            assertThat(((BatchIncomplete) response).state()).isEqualTo(BATCH_STATE_PENDING);
+            assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
+            assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
         }
     }
 
@@ -67,7 +69,8 @@ class GoogleAiGeminiBatchChatModelIT {
             var requests = List.of(
                     createChatRequest("What is the capital of France?"),
                     createChatRequest("What is the capital of Germany?"));
-            BatchIncomplete response = (BatchIncomplete) subject.createBatchInline(displayName, priority, requests);
+            BatchIncomplete<?> response =
+                    (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, requests);
 
             // when
             subject.cancelBatchJob(response.batchName());
@@ -76,8 +79,8 @@ class GoogleAiGeminiBatchChatModelIT {
             var retrieveResponse = subject.retrieveBatchResults(
                     response.batchName()); // Retrieve the results to check cancelled state.
             assertThat(retrieveResponse).isInstanceOf(BatchError.class);
-            assertThat(((BatchError) retrieveResponse).state()).isEqualTo(BATCH_STATE_CANCELLED);
-            assertThat(((BatchError) retrieveResponse).code()).isEqualTo(13);
+            assertThat(((BatchError<?>) retrieveResponse).state()).isEqualTo(BATCH_STATE_CANCELLED);
+            assertThat(((BatchError<?>) retrieveResponse).code()).isEqualTo(13);
         }
 
         @Test

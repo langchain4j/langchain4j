@@ -83,15 +83,24 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
 
-    BatchRequestResponse.Operation batchGenerateContent(
-            String modelName, BatchRequestResponse.BatchGenerateContentRequest request) {
-        String url = String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, BatchRequestResponse.Operation.class);
+    @SuppressWarnings("unchecked")
+    <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
+            String modelName, BatchRequestResponse.BatchCreateRequest<REQ> request) {
+        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+                String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName),
+                apiKey,
+                request,
+                BatchRequestResponse.Operation.class);
     }
 
-    BatchRequestResponse.Operation batchRetrieveBatch(String operationName) {
-        String url = String.format("%s/%s", baseUrl, operationName);
-        return sendRequest(url, apiKey, null, BatchRequestResponse.Operation.class, GET);
+    @SuppressWarnings("unchecked")
+    <RESP> BatchRequestResponse.Operation<RESP> batchRetrieveBatch(String operationName) {
+        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+                String.format("%s/%s", baseUrl, operationName),
+                apiKey,
+                null,
+                BatchRequestResponse.Operation.class,
+                GET);
     }
 
     Void batchCancelBatch(String operationName) {

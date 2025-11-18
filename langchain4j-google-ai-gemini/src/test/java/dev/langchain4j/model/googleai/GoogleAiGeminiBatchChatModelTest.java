@@ -1,10 +1,10 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_FAILED;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_PENDING;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_RUNNING;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState.BATCH_STATE_SUCCEEDED;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_CANCELLED;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_FAILED;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_RUNNING;
+import static dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState.BATCH_STATE_SUCCEEDED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,16 +17,17 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchGenerateContentResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchError;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchIncomplete;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchJobState;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchName;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.BatchSuccess;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchError;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchIncomplete;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchJobState;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchName;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel.BatchSuccess;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
@@ -48,7 +49,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private GeminiService mockGeminiService;
 
     @Captor
-    private ArgumentCaptor<BatchRequestResponse.BatchGenerateContentRequest> batchRequestCaptor;
+    private ArgumentCaptor<BatchCreateRequest<GeminiGenerateContentRequest>> batchRequestCaptor;
 
     private GoogleAiGeminiBatchChatModel subject;
 
@@ -69,7 +70,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-flash-lite", "What is the capital of France?"),
                     createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -77,9 +80,9 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(new BatchName("batches/test-123"), BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-123"), BATCH_STATE_PENDING));
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
@@ -94,7 +97,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var displayName = "Test Batch";
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is the capital of Italy?"));
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, null, requests);
@@ -102,9 +107,9 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(new BatchName("batches/test-456"), BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-456"), BATCH_STATE_PENDING));
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
@@ -118,7 +123,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 5L;
             var requests = List.of(createChatRequest("gemini-2.5-pro", "Explain quantum computing"));
             var expectedOperation = createPendingOperation("batches/test-789", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -126,9 +133,9 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(new BatchName("batches/test-789"), BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-789"), BATCH_STATE_PENDING));
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-pro"), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-pro"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
@@ -157,7 +164,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = -10L;
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is AI?"));
             var expectedOperation = createPendingOperation("batches/test-negative", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -165,9 +174,9 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(new BatchName("batches/test-negative"), BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-negative"), BATCH_STATE_PENDING));
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().priority()).isEqualTo(-10L);
@@ -183,7 +192,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-pro", "Question 2"),
                     createChatRequest("gemini-2.5-pro", "Question 3"));
             var expectedOperation = createPendingOperation("batches/test-model", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -191,7 +202,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isInstanceOf(BatchIncomplete.class);
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-pro"), any());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-pro"), any());
         }
 
         @Test
@@ -201,7 +212,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "Test message"));
             var expectedOperation = createPendingOperation("batches/test-metadata", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -209,7 +222,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isInstanceOf(BatchIncomplete.class);
 
-            verify(mockGeminiService).batchGenerateContent(any(), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(any(), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             var inlinedRequests =
@@ -230,7 +243,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-flash-lite", "Question 4"),
                     createChatRequest("gemini-2.5-flash-lite", "Question 5"));
             var expectedOperation = createPendingOperation("batches/test-multiple", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchGenerateContent(any(), any())).thenReturn(expectedOperation);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(), any()))
+                    .thenReturn(expectedOperation);
 
             // when
             var result = subject.createBatchInline(displayName, priority, requests);
@@ -238,9 +253,9 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(new BatchName("batches/test-multiple"), BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-multiple"), BATCH_STATE_PENDING));
 
-            verify(mockGeminiService).batchGenerateContent(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture());
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
@@ -263,7 +278,8 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var batchName = new BatchName("batches/test-pending");
             var pendingOperation = createPendingOperation("batches/test-pending", BATCH_STATE_PENDING);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(pendingOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(pendingOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -271,7 +287,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(batchName, BATCH_STATE_PENDING));
+                    .isEqualTo(new BatchIncomplete<>(batchName, BATCH_STATE_PENDING));
         }
 
         @Test
@@ -279,7 +295,8 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var batchName = new BatchName("batches/test-running");
             var runningOperation = createPendingOperation("batches/test-running", BATCH_STATE_RUNNING);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(runningOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(runningOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -287,7 +304,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(batchName, BATCH_STATE_RUNNING));
+                    .isEqualTo(new BatchIncomplete<>(batchName, BATCH_STATE_RUNNING));
         }
 
         @Test
@@ -296,13 +313,17 @@ class GoogleAiGeminiBatchChatModelTest {
             var batchName = new BatchName("batches/test-success");
             var chatResponses = List.of(createChatResponse("Response 1"), createChatResponse("Response 2"));
             var successOperation = createSuccessOperation("batches/test-success", chatResponses);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(successOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class).isEqualTo(new BatchSuccess(batchName, chatResponses));
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var successResult = (BatchSuccess<ChatResponse>) result;
+            assertThat(successResult.batchName()).isEqualTo(batchName);
+            assertThat(successResult.responses()).isEqualTo(chatResponses);
         }
 
         @Test
@@ -310,13 +331,17 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var batchName = new BatchName("batches/test-empty");
             var successOperation = createSuccessOperationWithNullResponse("batches/test-empty");
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(successOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class).isEqualTo(new BatchSuccess(batchName, List.of()));
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var successResult = (BatchSuccess<ChatResponse>) result;
+            assertThat(successResult.batchName()).isEqualTo(batchName);
+            assertThat(successResult.responses()).isEmpty();
         }
 
         @Test
@@ -325,7 +350,8 @@ class GoogleAiGeminiBatchChatModelTest {
             var batchName = new BatchName("batches/test-error");
             var errorOperation =
                     createCancelledOperation("batches/test-error", "batches/test-error failed without error");
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(errorOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -333,7 +359,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(
+                    .isEqualTo(new BatchError<>(
                             13, "batches/test-error failed without error", BATCH_STATE_CANCELLED, List.of()));
         }
 
@@ -342,7 +368,8 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var batchName = new BatchName("batches/test-error");
             var errorOperation = createErrorOperation("batches/test-error", 404, "Not Found", List.of());
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(errorOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -350,7 +377,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(404, "Not Found", BatchJobState.BATCH_STATE_FAILED, List.of()));
+                    .isEqualTo(new BatchError<>(404, "Not Found", BATCH_STATE_FAILED, List.of()));
         }
 
         @Test
@@ -361,7 +388,8 @@ class GoogleAiGeminiBatchChatModelTest {
                     Map.of("@type", "type.googleapis.com/google.rpc.ErrorInfo", "reason", "INVALID_ARGUMENT"),
                     Map.of("@type", "type.googleapis.com/google.rpc.BadRequest", "field", "model"));
             var errorOperation = createErrorOperation("batches/test-error-details", 400, "Bad Request", errorDetails);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(errorOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -369,15 +397,17 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError(400, "Bad Request", BATCH_STATE_FAILED, errorDetails));
+                    .isEqualTo(new BatchError<>(400, "Bad Request", BATCH_STATE_FAILED, errorDetails));
         }
 
         @Test
         void should_return_pending_with_unspecified_state_when_metadata_is_null() {
             // given
             var batchName = new BatchName("batches/test-no-metadata");
-            var operation = new BatchRequestResponse.Operation("batches/test-no-metadata", null, false, null, null);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(operation);
+            var operation = new BatchRequestResponse.Operation<GeminiGenerateContentResponse>(
+                    "batches/test-no-metadata", null, false, null, null);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(operation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -385,16 +415,17 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(batchName, BatchJobState.UNSPECIFIED));
+                    .isEqualTo(new BatchIncomplete<>(batchName, BatchJobState.UNSPECIFIED));
         }
 
         @Test
         void should_return_pending_with_unspecified_state_when_state_is_missing_from_metadata() {
             // given
             var batchName = new BatchName("batches/test-no-state");
-            var operation = new BatchRequestResponse.Operation(
+            var operation = new BatchRequestResponse.Operation<GeminiGenerateContentResponse>(
                     "batches/test-no-state", Map.of("createTime", "2025-10-23T09:26:30Z"), false, null, null);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(operation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(operation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
@@ -402,7 +433,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result)
                     .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete(batchName, BatchJobState.UNSPECIFIED));
+                    .isEqualTo(new BatchIncomplete<>(batchName, BatchJobState.UNSPECIFIED));
         }
 
         @Test
@@ -411,13 +442,17 @@ class GoogleAiGeminiBatchChatModelTest {
             var batchName = new BatchName("batches/test-single");
             var chatResponses = List.of(createChatResponse("Single response"));
             var successOperation = createSuccessOperation("batches/test-single", chatResponses);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(successOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class).isEqualTo(new BatchSuccess(batchName, chatResponses));
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var successResult = (BatchSuccess<ChatResponse>) result;
+            assertThat(successResult.batchName()).isEqualTo(batchName);
+            assertThat(successResult.responses()).isEqualTo(chatResponses);
         }
 
         @Test
@@ -431,13 +466,17 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatResponse("Response 4"),
                     createChatResponse("Response 5"));
             var successOperation = createSuccessOperation("batches/test-multiple", chatResponses);
-            when(mockGeminiService.batchRetrieveBatch(batchName.value())).thenReturn(successOperation);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
 
             // when
             var result = subject.retrieveBatchResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class).isEqualTo(new BatchSuccess(batchName, chatResponses));
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var successResult = (BatchSuccess<ChatResponse>) result;
+            assertThat(successResult.batchName()).isEqualTo(batchName);
+            assertThat(successResult.responses()).isEqualTo(chatResponses);
         }
     }
 
@@ -485,36 +524,38 @@ class GoogleAiGeminiBatchChatModelTest {
         }
     }
 
-    private static BatchRequestResponse.Operation createSuccessOperation(
+    private static BatchRequestResponse.Operation<GeminiGenerateContentResponse> createSuccessOperation(
             String operationName, List<ChatResponse> chatResponses) {
         var inlinedResponses = chatResponses.stream()
                 .map(GoogleAiGeminiBatchChatModelTest::toGeminiResponse)
-                .map(BatchGenerateContentResponse.InlinedResponseWrapper::new)
+                .map(BatchCreateResponse.InlinedResponseWrapper::new)
                 .toList();
 
-        var response = new BatchGenerateContentResponse.Response(
+        var response = new BatchCreateResponse<>(
                 "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
-                new BatchGenerateContentResponse.InlinedResponses(inlinedResponses));
+                new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
 
-        return new BatchRequestResponse.Operation(
+        return new BatchRequestResponse.Operation<>(
                 operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
     }
 
-    private static BatchRequestResponse.Operation createSuccessOperationWithNullResponse(String operationName) {
-        return new BatchRequestResponse.Operation(
+    private static BatchRequestResponse.Operation<GeminiGenerateContentResponse> createSuccessOperationWithNullResponse(
+            String operationName) {
+        return new BatchRequestResponse.Operation<>(
                 operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
     }
 
-    private static BatchRequestResponse.Operation createErrorOperation(
+    private static BatchRequestResponse.Operation<GeminiGenerateContentResponse> createErrorOperation(
             String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
         var errorStatus = new BatchRequestResponse.Operation.Status(errorCode, errorMessage, errorDetails);
-        return new BatchRequestResponse.Operation(
+        return new BatchRequestResponse.Operation<>(
                 operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
     }
 
-    private static BatchRequestResponse.Operation createCancelledOperation(String operationName, String errorMessage) {
+    private static BatchRequestResponse.Operation<GeminiGenerateContentResponse> createCancelledOperation(
+            String operationName, String errorMessage) {
         var errorStatus = new BatchRequestResponse.Operation.Status(13, errorMessage, List.of());
-        return new BatchRequestResponse.Operation(
+        return new BatchRequestResponse.Operation<>(
                 operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
     }
 
@@ -556,7 +597,8 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
     }
 
-    private static BatchRequestResponse.Operation createPendingOperation(String operationName, BatchJobState state) {
-        return new BatchRequestResponse.Operation(operationName, Map.of("state", state.name()), false, null, null);
+    private static BatchRequestResponse.Operation<GeminiGenerateContentResponse> createPendingOperation(
+            String operationName, BatchJobState state) {
+        return new BatchRequestResponse.Operation<>(operationName, Map.of("state", state.name()), false, null, null);
     }
 }
