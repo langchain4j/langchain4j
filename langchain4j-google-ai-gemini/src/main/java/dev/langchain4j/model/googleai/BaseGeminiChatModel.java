@@ -372,7 +372,7 @@ class BaseGeminiChatModel {
 
         /**
          * Frequency penalty applied to the next token's {@code logprobs}, multiplied by the number of times each token
-         * has been seen in the respponse so far.
+         * has been seen in the response so far.
          *
          * <p>A positive penalty will discourage the use of tokens that have already been used, proportional to the
          * number of times the token has been used: The more a token is used, the more difficult it is for the model
