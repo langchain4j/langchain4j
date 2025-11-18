@@ -88,9 +88,9 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = AudienceEditor.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
@@ -108,9 +108,9 @@ public class DeclarativeAgentIT {
         @PlannerAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = AudienceEditor.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
@@ -133,8 +133,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "styledStory",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = AudienceEditor.class),
                     @SubAgent(type = StyleEditor.class)
                 })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
@@ -192,9 +192,9 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = AudienceEditor.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
@@ -226,8 +226,8 @@ public class DeclarativeAgentIT {
                 outputKey = "story",
                 maxIterations = 5,
                 subAgents = {
-                    @SubAgent(type = StyleScorer.class, outputKey = "score"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = StyleScorer.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String reviewAndScore(@V("story") String story);
 
@@ -242,8 +242,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = StyleReviewLoopAgent.class)
                 })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
@@ -273,8 +273,8 @@ public class DeclarativeAgentIT {
                 outputKey = "story",
                 maxIterations = 5,
                 subAgents = {
-                    @SubAgent(type = StyleScorer.class, outputKey = "score"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = StyleScorer.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String write(@V("story") String story);
 
@@ -290,8 +290,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = StyleReviewLoopAgentWithCounter.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = StyleReviewLoopAgentWithCounter.class)
                 })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
@@ -340,8 +340,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = CreativeWriterWithListener.class, outputKey = "story"),
-                    @SubAgent(type = StyleReviewLoopAgentWithListener.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriterWithListener.class),
+                    @SubAgent(type = StyleReviewLoopAgentWithListener.class)
                 })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
@@ -379,9 +379,9 @@ public class DeclarativeAgentIT {
         @ConditionalAgent(
                 outputKey = "response",
                 subAgents = {
-                    @SubAgent(type = MedicalExpert.class, outputKey = "response"),
-                    @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
-                    @SubAgent(type = LegalExpert.class, outputKey = "response")
+                    @SubAgent(type = MedicalExpert.class),
+                    @SubAgent(type = TechnicalExpert.class),
+                    @SubAgent(type = LegalExpert.class)
                 })
         String askExpert(@V("request") String request);
 
@@ -406,8 +406,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "response",
                 subAgents = {
-                    @SubAgent(type = CategoryRouter.class, outputKey = "category"),
-                    @SubAgent(type = ExpertsAgent.class, outputKey = "response")
+                    @SubAgent(type = CategoryRouter.class),
+                    @SubAgent(type = ExpertsAgent.class)
                 })
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
@@ -429,8 +429,8 @@ public class DeclarativeAgentIT {
         @ParallelAgent(
                 outputKey = "plans",
                 subAgents = {
-                    @SubAgent(type = FoodExpert.class, outputKey = "meals"),
-                    @SubAgent(type = MovieExpert.class, outputKey = "movies")
+                    @SubAgent(type = FoodExpert.class),
+                    @SubAgent(type = MovieExpert.class)
                 })
         List<EveningPlan> plan(@V("mood") String mood);
 
@@ -466,8 +466,8 @@ public class DeclarativeAgentIT {
                 outputKey = "story",
                 responseStrategy = SupervisorResponseStrategy.LAST,
                 subAgents = {
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
+                    @SubAgent(type = CreativeWriter.class),
+                    @SubAgent(type = StyleReviewLoopAgent.class)
                 })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
@@ -518,7 +518,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent("A medical expert")
+        @Agent(description = "A medical expert", outputKey = "response")
         String medical(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -540,7 +540,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent("A legal expert")
+        @Agent(description = "A legal expert", outputKey = "response")
         String legal(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -562,7 +562,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent("A technical expert")
+        @Agent(description = "A technical expert", outputKey = "response")
         String technical(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -581,11 +581,10 @@ public class DeclarativeAgentIT {
         @ConditionalAgent(
                 outputKey = "response",
                 subAgents = {
-                    @SubAgent(type = MedicalExpertWithMemory.class, outputKey = "response"),
-                    @SubAgent(type = TechnicalExpertWithMemory.class, outputKey = "response"),
+                    @SubAgent(type = MedicalExpertWithMemory.class),
+                    @SubAgent(type = TechnicalExpertWithMemory.class),
                     @SubAgent(
                             type = LegalExpertWithMemory.class,
-                            outputKey = "response",
                             summarizedContext = {"medical", "technical"})
                 })
         String askExpert(@V("request") String request);
@@ -619,8 +618,8 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "response",
                 subAgents = {
-                    @SubAgent(type = CategoryRouterWithModel.class, outputKey = "category"),
-                    @SubAgent(type = ExpertsAgentWithMemory.class, outputKey = "response")
+                    @SubAgent(type = CategoryRouterWithModel.class),
+                    @SubAgent(type = ExpertsAgentWithMemory.class)
                 })
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
@@ -787,10 +786,10 @@ public class DeclarativeAgentIT {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = AudienceRetriever.class, outputKey = "audience"),
-                    @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+                    @SubAgent(type = AudienceRetriever.class),
+                    @SubAgent(type = CreativeWriter.class),
                     @SubAgent(type = BarrierAwaiter.class),
-                    @SubAgent(type = AudienceEditor.class, outputKey = "story"),
+                    @SubAgent(type = AudienceEditor.class),
                     @SubAgent(type = AudienceReader.class)
                 })
         String write(@V("topic") String topic);

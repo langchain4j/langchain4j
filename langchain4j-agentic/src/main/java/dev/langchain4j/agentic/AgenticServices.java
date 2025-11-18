@@ -707,7 +707,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type()).outputKey(subagent.outputKey());
+        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type());
         configureAgent(subagent.type(), chatModel, agentBuilder, agentConfigurator);
 
         if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {

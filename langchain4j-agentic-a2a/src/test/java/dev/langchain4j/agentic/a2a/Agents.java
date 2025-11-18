@@ -24,7 +24,7 @@ public class Agents {
                 Return only the story and nothing else.
                 The story is "{{story}}".
                 """)
-        @Agent("Edit a story to better fit a given style")
+        @Agent(description = "Edit a story to better fit a given style", outputKey = "story")
         String editStory(@V("story") String story, @V("style") String style);
     }
 
@@ -38,7 +38,7 @@ public class Agents {
 
                 The story is: "{{story}}"
                 """)
-        @Agent("Score a story based on how well it aligns with a given style")
+        @Agent(description = "Score a story based on how well it aligns with a given style", outputKey = "score")
         double scoreStyle(@V("story") String story, @V("style") String style);
     }
 
@@ -67,8 +67,8 @@ public class Agents {
                 outputKey = "story",
                 maxIterations = 5,
                 subAgents = {
-                    @SubAgent(type = StyleScorer.class, outputKey = "score"),
-                    @SubAgent(type = StyleEditor.class, outputKey = "story")
+                    @SubAgent(type = StyleScorer.class),
+                    @SubAgent(type = StyleEditor.class)
                 })
         String reviewAndScore(@V("story") String story);
 
@@ -83,8 +83,8 @@ public class Agents {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = {
-                    @SubAgent(type = DeclarativeA2ACreativeWriter.class, outputKey = "story"),
-                    @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
+                    @SubAgent(type = DeclarativeA2ACreativeWriter.class),
+                    @SubAgent(type = StyleReviewLoopAgent.class)
                 })
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }

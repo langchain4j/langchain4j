@@ -21,13 +21,6 @@ public @interface SubAgent {
     Class<?> type() default Object.class;
 
     /**
-     * Key of the output variable that will be used to store the result of the agent's invocation.
-     *
-     * @return name of the output variable.
-     */
-    String outputKey() default "";
-
-    /**
      * Names of other agents participating in the definition of the context of this agent.
      *
      * @return array of names of other agents participating in the definition of the context of this agent.
