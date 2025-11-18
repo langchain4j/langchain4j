@@ -63,6 +63,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private static final Logger logger = LoggerFactory.getLogger(OpenAiResponsesStreamingChatModel.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
     private static final String STREAM_DONE_MARKER = "[DONE]";
 
@@ -179,7 +180,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         this.httpClient = httpClientBuilder.build();
 
-        this.baseUrl = getOrDefault(builder.baseUrl, "https://api.openai.com/v1");
+        this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = Objects.requireNonNull(builder.apiKey, "apiKey");
         this.organizationId = builder.organizationId;
         this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
@@ -262,8 +263,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             Integer effectiveMaxOutputTokens =
                     requestMaxOutputTokens != null ? requestMaxOutputTokens : maxOutputTokens;
             if (effectiveMaxOutputTokens != null) {
-                int finalMaxOutputTokens = Math.max(effectiveMaxOutputTokens, 16);
-                payload.put(FIELD_MAX_OUTPUT_TOKENS, finalMaxOutputTokens);
+                payload.put(FIELD_MAX_OUTPUT_TOKENS, effectiveMaxOutputTokens);
             }
 
             if (maxToolCalls != null) {

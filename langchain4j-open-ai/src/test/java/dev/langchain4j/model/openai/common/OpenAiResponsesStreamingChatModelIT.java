@@ -38,6 +38,8 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
+    private static final String TEST_MODEL_NAME = "gpt-4";
+
     @Override
     protected List<StreamingChatModel> models() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
@@ -537,7 +539,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_service_tier_values() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .serviceTier("invalid")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -545,22 +547,22 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .serviceTier("auto")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .serviceTier("default")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .serviceTier("priority")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .serviceTier("flex")
                 .build();
     }
@@ -569,7 +571,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_reasoning_effort_values() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .reasoningEffort("invalid")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -577,27 +579,27 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .reasoningEffort("none")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .reasoningEffort("minimal")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .reasoningEffort("low")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .reasoningEffort("medium")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .reasoningEffort("high")
                 .build();
     }
@@ -606,7 +608,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_truncation_values() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .truncation("invalid")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -614,12 +616,12 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .truncation("auto")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .truncation("disabled")
                 .build();
     }
@@ -628,7 +630,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_text_verbosity_values() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .textVerbosity("invalid")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -636,17 +638,17 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .textVerbosity("low")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .textVerbosity("medium")
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .textVerbosity("high")
                 .build();
     }
@@ -655,7 +657,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_include_values() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .include(List.of("invalid_value"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -663,42 +665,42 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("input", "output", "usage"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("web_search_call.action.sources"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("code_interpreter_call.outputs"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("computer_call_output.output.image_url"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("file_search_call.results"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("message.input_image.image_url"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("message.output_text.logprobs"))
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .include(List.of("reasoning.encrypted_content"))
                 .build();
     }
@@ -707,7 +709,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     void should_validate_max_output_tokens_minimum() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .maxOutputTokens(10)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -715,21 +717,49 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .maxOutputTokens(16)
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .maxOutputTokens(100)
                 .build();
+    }
+
+    @Test
+    void should_validate_max_output_tokens_in_request_parameters() {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(TEST_MODEL_NAME)
+                .build();
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .maxOutputTokens(10)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .parameters(parameters)
+                .build();
+
+        RecordingStreamingChatResponseHandler handler = new RecordingStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+
+        assertThatThrownBy(handler::get)
+                .isInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(IllegalArgumentException.class)
+                .hasRootCauseMessage("maxOutputTokens must be at least 16 for Responses API, but was: 10");
     }
 
     @Test
     void should_validate_top_logprobs_range() {
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .topLogprobs(-1)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -737,7 +767,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         assertThatThrownBy(() -> OpenAiResponsesStreamingChatModel.builder()
                         .apiKey("test")
-                        .modelName("gpt-4")
+                        .modelName(TEST_MODEL_NAME)
                         .topLogprobs(21)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -745,17 +775,17 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .topLogprobs(0)
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .topLogprobs(10)
                 .build();
         OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test")
-                .modelName("gpt-4")
+                .modelName(TEST_MODEL_NAME)
                 .topLogprobs(20)
                 .build();
     }

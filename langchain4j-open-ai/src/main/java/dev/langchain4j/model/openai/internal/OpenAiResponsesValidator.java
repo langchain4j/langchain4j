@@ -57,6 +57,8 @@ public class OpenAiResponsesValidator {
         if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
         }
+
+        validateMaxOutputTokens(parameters.maxOutputTokens());
     }
 
     public static void validateTruncation(String truncation) {
