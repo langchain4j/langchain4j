@@ -65,7 +65,8 @@ class QdrantFilterConverter {
         } else if (filter instanceof IsNotIn isNotIn) {
             return buildNInCondition(isNotIn);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
