@@ -383,9 +383,9 @@ print(fibonacci(22) - ackermann(3, 4))
 ```
 Output:
 ```
-2.586
+17586
 ```
-The result of `fibonacci(22) - ackermann(3, 4)` is **2.586**.
+The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
 Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
@@ -394,7 +394,7 @@ Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
 If we hadn't asked for the code / output, we would have received only the following text:
 
 ```
-The result of `fibonacci(22) - ackermann(3, 4)` is **2.586**.
+The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
 Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
