@@ -21,6 +21,7 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.Version;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -77,7 +78,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
         this.configuration = configuration;
-        this.client = new ElasticsearchClient(transport);
+        String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
+        this.client = new ElasticsearchClient(transport).withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
         this.includeVectorResponse = includeVectorResponse;
     }
