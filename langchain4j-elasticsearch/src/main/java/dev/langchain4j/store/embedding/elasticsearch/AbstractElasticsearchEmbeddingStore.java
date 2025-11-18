@@ -79,7 +79,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
         this.configuration = configuration;
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
-        this.client = new ElasticsearchClient(transport).withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
+        this.client = new ElasticsearchClient(transport)
+                .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
         this.includeVectorResponse = includeVectorResponse;
     }
