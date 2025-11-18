@@ -1,5 +1,9 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.model.openai.internal.chat.ContentType.*;
+import static dev.langchain4j.model.openai.internal.chat.Role.USER;
+import static java.util.Collections.unmodifiableList;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,14 +11,9 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.model.openai.internal.chat.ContentType.*;
-import static dev.langchain4j.model.openai.internal.chat.Role.USER;
-import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = UserMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -23,8 +22,10 @@ public final class UserMessage implements Message {
 
     @JsonProperty
     private final Role role = USER;
+
     @JsonProperty
     private final Object content;
+
     @JsonProperty
     private final String name;
 
@@ -48,8 +49,7 @@ public final class UserMessage implements Message {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof UserMessage
-                && equalTo((UserMessage) another);
+        return another instanceof UserMessage && equalTo((UserMessage) another);
     }
 
     private boolean equalTo(UserMessage another) {
@@ -69,24 +69,15 @@ public final class UserMessage implements Message {
 
     @Override
     public String toString() {
-        return "UserMessage{"
-                + "role=" + role
-                + ", content=" + content
-                + ", name=" + name
-                + "}";
+        return "UserMessage{" + "role=" + role + ", content=" + content + ", name=" + name + "}";
     }
 
     public static UserMessage from(String text) {
-        return UserMessage.builder()
-                .content(text)
-                .build();
+        return UserMessage.builder().content(text).build();
     }
 
     public static UserMessage from(String text, String... imageUrls) {
-        return UserMessage.builder()
-                .addText(text)
-                .addImageUrls(imageUrls)
-                .build();
+        return UserMessage.builder().addText(text).addImageUrls(imageUrls).build();
     }
 
     public static Builder builder() {
@@ -104,10 +95,7 @@ public final class UserMessage implements Message {
 
         public Builder addText(String text) {
             initializeContent();
-            Content content = Content.builder()
-                    .type(TEXT)
-                    .text(text)
-                    .build();
+            Content content = Content.builder().type(TEXT).text(text).build();
             this.content.add(content);
             return this;
         }
@@ -120,10 +108,8 @@ public final class UserMessage implements Message {
             initializeContent();
             Content content = Content.builder()
                     .type(IMAGE_URL)
-                    .imageUrl(ImageUrl.builder()
-                            .url(imageUrl)
-                            .detail(imageDetail)
-                            .build())
+                    .imageUrl(
+                            ImageUrl.builder().url(imageUrl).detail(imageDetail).build())
                     .build();
             this.content.add(content);
             return this;
@@ -140,9 +126,7 @@ public final class UserMessage implements Message {
             initializeContent();
             Content content = Content.builder()
                     .type(VIDEO_URL)
-                    .videoUrl(VideoUrl.builder()
-                            .url(videoUrl)
-                            .build())
+                    .videoUrl(VideoUrl.builder().url(videoUrl).build())
                     .build();
             this.content.add(content);
             return this;
@@ -154,27 +138,18 @@ public final class UserMessage implements Message {
             }
             return this;
         }
-        
+
         public Builder addInputAudio(InputAudio inputAudio) {
             initializeContent();
             this.content.add(
-                Content.builder()
-                    .type(AUDIO)
-                    .inputAudio(inputAudio)
-                .build()
-            );
-            
+                    Content.builder().type(AUDIO).inputAudio(inputAudio).build());
+
             return this;
         }
 
         public Builder addPdfFile(PdfFile pdfFile) {
             initializeContent();
-            this.content.add(
-                    Content.builder()
-                            .type(FILE)
-                            .file(pdfFile)
-                            .build()
-            );
+            this.content.add(Content.builder().type(FILE).file(pdfFile).build());
 
             return this;
         }

@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
@@ -17,14 +16,19 @@ public final class Content {
 
     @JsonProperty
     private final ContentType type;
+
     @JsonProperty
     private final String text;
+
     @JsonProperty
     private final ImageUrl imageUrl;
+
     @JsonProperty
     private final VideoUrl videoUrl;
+
     @JsonProperty
     private final InputAudio inputAudio;
+
     @JsonProperty
     private final PdfFile file;
 
@@ -64,8 +68,7 @@ public final class Content {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Content
-                && equalTo((Content) another);
+        return another instanceof Content && equalTo((Content) another);
     }
 
     private boolean equalTo(Content another) {
@@ -91,14 +94,13 @@ public final class Content {
 
     @Override
     public String toString() {
-        return "Content{" +
-                "type=" + type +
-                ", text=" + text +
-                ", imageUrl=" + imageUrl +
-                ", videoUrl=" + videoUrl +
-                ", inputAudio=" + inputAudio +
-                ", file=" + file +
-                "}";
+        return "Content{" + "type="
+                + type + ", text="
+                + text + ", imageUrl="
+                + imageUrl + ", videoUrl="
+                + videoUrl + ", inputAudio="
+                + inputAudio + ", file="
+                + file + "}";
     }
 
     public static Builder builder() {

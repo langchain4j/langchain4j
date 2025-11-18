@@ -31,9 +31,9 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -61,11 +61,11 @@ import dev.langchain4j.model.openai.internal.chat.ImageUrl;
 import dev.langchain4j.model.openai.internal.chat.InputAudio;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
-import dev.langchain4j.model.openai.internal.chat.VideoUrl;
 import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import dev.langchain4j.model.openai.internal.chat.ToolMessage;
+import dev.langchain4j.model.openai.internal.chat.VideoUrl;
 import dev.langchain4j.model.openai.internal.shared.CompletionTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
@@ -192,9 +192,7 @@ public class OpenAiUtils {
     private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(VideoContent content) {
         return dev.langchain4j.model.openai.internal.chat.Content.builder()
                 .type(ContentType.VIDEO_URL)
-                .videoUrl(VideoUrl.builder()
-                        .url(toVideoUrl(content.video()))
-                        .build())
+                .videoUrl(VideoUrl.builder().url(toVideoUrl(content.video())).build())
                 .build();
     }
 

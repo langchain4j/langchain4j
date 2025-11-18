@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = VideoUrl.Builder.class)
@@ -29,8 +28,7 @@ public class VideoUrl {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof VideoUrl
-                && equalTo((VideoUrl) another);
+        return another instanceof VideoUrl && equalTo((VideoUrl) another);
     }
 
     private boolean equalTo(VideoUrl another) {
@@ -46,9 +44,7 @@ public class VideoUrl {
 
     @Override
     public String toString() {
-        return "VideoUrl{" +
-                "url=" + url +
-                "}";
+        return "VideoUrl{" + "url=" + url + "}";
     }
 
     public static Builder builder() {
@@ -72,4 +68,3 @@ public class VideoUrl {
         }
     }
 }
-
