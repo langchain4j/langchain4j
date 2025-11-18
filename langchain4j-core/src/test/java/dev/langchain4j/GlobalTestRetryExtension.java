@@ -1,13 +1,18 @@
 package dev.langchain4j;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-
-import java.lang.reflect.Method;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class GlobalTestRetryExtension implements InvocationInterceptor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(GlobalTestRetryExtension.class);
+    private static final int MAX_ATTEMPTS = 3;
 
     @Override
     public void interceptTestMethod(Invocation<Void> invocation,
@@ -31,11 +36,32 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
         Object testObject = invocationContext.getTarget().orElseThrow();
         Object[] arguments = invocationContext.getArguments().toArray(new Object[0]);
 
-        withRetry(() -> {
-            testMethod.setAccessible(true);
-            testMethod.invoke(testObject, arguments);
-            invocation.skip(); // to avoid failing because invocation.proceed() was not called
-            return null;
-        });
+        int attempt = 0;
+        Throwable lastThrowable;
+
+        do {
+            try {
+                testMethod.setAccessible(true);
+                testMethod.invoke(testObject, arguments);
+                invocation.skip(); // to avoid failing because invocation.proceed() was not called
+                return;
+            } catch (Throwable t) {
+                lastThrowable = getActualCause(t);
+                attempt++;
+                LOG.warn("Attempt {}/{} for test '{}' failed because of",
+                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
+                Thread.sleep(attempt * 1000L);
+            }
+        } while (attempt < MAX_ATTEMPTS);
+
+        throw lastThrowable;
+    }
+
+    private static Throwable getActualCause(Throwable t) {
+        if (t instanceof InvocationTargetException ite && ite.getCause() != null) {
+            return t.getCause();
+        } else {
+            return t;
+        }
     }
 }

@@ -3,6 +3,10 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -11,17 +15,13 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminibeddingResponseValues;
-import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +33,7 @@ class GeminiServiceTest {
     @Test
     void shouldThrownWhenApiKeyIsMissing() {
         assertThatThrownBy(() ->
-                new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
+                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("apiKey cannot be null or blank");
     }
@@ -54,7 +54,10 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -78,7 +81,10 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -108,7 +114,10 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             // When
@@ -154,7 +163,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectCountTokensHttpRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(10);
+            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -317,7 +326,10 @@ class GeminiServiceTest {
 
             GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
                     .contents(List.of(new GeminiContent(
-                            List.of(GeminiPart.builder().text("Hi").build()), "user")))
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
                     .build();
 
             CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();

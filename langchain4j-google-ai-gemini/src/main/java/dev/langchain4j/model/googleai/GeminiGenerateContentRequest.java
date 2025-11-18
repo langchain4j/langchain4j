@@ -78,4 +78,7 @@ record GeminiGenerateContentRequest(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {}
 }

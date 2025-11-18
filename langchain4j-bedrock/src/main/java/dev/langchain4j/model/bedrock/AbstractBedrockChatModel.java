@@ -119,6 +119,7 @@ abstract class AbstractBedrockChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
+                .promptCaching(bedrockParameters.cachePointPlacement())
                 .build();
     }
 
