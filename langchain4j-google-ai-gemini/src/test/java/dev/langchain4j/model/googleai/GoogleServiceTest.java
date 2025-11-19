@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -465,7 +466,7 @@ class GeminiServiceTest {
                     1L));
 
             // When
-            BatchRequestResponse.Operation<?> actualResponse = subject.batchCreate(TEST_MODEL_NAME, request);
+            BatchRequestResponse.Operation<?> actualResponse = subject.batchCreate(TEST_MODEL_NAME, request, BATCH_GENERATE_CONTENT);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -497,7 +498,7 @@ class GeminiServiceTest {
                     1L));
 
             // When
-            subject.batchCreate(TEST_MODEL_NAME, request);
+            subject.batchCreate(TEST_MODEL_NAME, request, BATCH_GENERATE_CONTENT);
 
             // Then
             HttpRequest sentRequest = mockHttpClient.request();

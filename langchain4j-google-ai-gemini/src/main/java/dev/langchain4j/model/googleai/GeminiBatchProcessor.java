@@ -9,6 +9,11 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.In
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Requests;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
@@ -26,60 +31,12 @@ import org.jspecify.annotations.Nullable;
 @Experimental
 final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     private final GeminiService geminiService;
+    private final RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer;
 
-    GeminiBatchProcessor(GeminiService geminiService) {
+    GeminiBatchProcessor(GeminiService geminiService,
+                         RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
         this.geminiService = geminiService;
-    }
-
-    /**
-     * Represents the response of a batch operation.
-     */
-    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {}
-
-    /**
-     * Represents a batch operation that is currently pending or in progress.
-     */
-    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {}
-
-    /**
-     * Represents a successful batch operation.
-     */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses) implements BatchResponse<T> {}
-
-    /**
-     * Represents an error that occurred during a batch operation.
-     */
-    public record BatchError<T>(int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse<T> {}
-
-    /**
-     * Represents the name of a batch operation.
-     */
-    public record BatchName(String value) {
-        public BatchName {
-            ensureOperationNameFormat(value);
-        }
-
-        private static void ensureOperationNameFormat(String operationName) {
-            if (!operationName.startsWith("batches/")) {
-                throw new IllegalArgumentException(
-                        "Batch name must start with 'batches/'. This name is returned when creating "
-                                + "the batch with #createBatchInline.");
-            }
-        }
-    }
-
-    /**
-     * Represents the possible states of a batch job.
-     */
-    public enum BatchJobState {
-        BATCH_STATE_PENDING,
-        BATCH_STATE_RUNNING,
-        BATCH_STATE_SUCCEEDED,
-        BATCH_STATE_FAILED,
-        BATCH_STATE_CANCELLED,
-        BATCH_STATE_EXPIRED,
-        UNSPECIFIED
+        this.preparer = preparer;
     }
 
     /**
@@ -90,8 +47,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             @Nullable Long priority,
             List<REQUEST> requests,
             String modelName,
-            RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
-
+            GeminiService.BatchOperationType operationType) {
         var inlineRequests = requests.stream()
                 .map(preparer::prepareRequest)
                 .map(preparer::createInlinedRequest)
@@ -101,15 +57,14 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var request = new BatchCreateRequest<>(new Batch<>(
                 displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
 
-        return processResponse(geminiService.batchCreate(modelName, request), preparer);
+        return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
     }
 
     /**
      * Retrieves the current state and results of a batch operation.
      */
     @SuppressWarnings("unchecked")
-    BatchResponse<RESPONSE> retrieveBatchResults(
-            BatchName name, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
+    BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
         var operation = geminiService.batchRetrieveBatch(name.value());
         return processResponse((Operation<API_RESPONSE>) operation, preparer);
     }
@@ -125,16 +80,17 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      * Deletes a batch job.
      */
     void deleteBatchJob(BatchName name) {
-        // TODO(issues/3916): Implement deletion of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
+        geminiService.batchDeleteBatch(name.value());
     }
 
     /**
      * Lists batch jobs.
      */
-    void listBatchJobs() {
-        // TODO(issues/3916): Implement listing of batch jobs.
-        throw new UnsupportedOperationException("Not implemented");
+    @SuppressWarnings("unchecked")
+    BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+        var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
+
+        return new BatchList<>(response.nextPageToken(), response.operations().stream().map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer)).toList());
     }
 
     /**
@@ -144,7 +100,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             Operation<API_RESPONSE> operation, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
         if (operation.done()) {
             if (operation.error() != null) {
-                return new BatchError<>(
+                return new BatchRequestResponse.BatchError<>(
+                        new BatchName(operation.name()),
                         operation.error().code(),
                         operation.error().message(),
                         extractBatchState(operation.metadata()),
@@ -154,7 +111,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                         new BatchName(operation.name()), preparer.extractResponses(operation.response()));
             }
         } else {
-            return new BatchIncomplete<>(new BatchName(operation.name()), extractBatchState(operation.metadata()));
+            return new BatchRequestResponse.BatchIncomplete<>(new BatchName(operation.name()), extractBatchState(operation.metadata()));
         }
     }
 

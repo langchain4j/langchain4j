@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
@@ -14,6 +15,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -30,12 +37,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -49,6 +55,20 @@ class GeminiService {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String apiKey;
+    enum BatchOperationType {
+        BATCH_GENERATE_CONTENT("batchGenerateContent"),
+        ASYNC_BATCH_EMBED_CONTENT("asyncBatchEmbedContent");
+
+        private final String value;
+
+        BatchOperationType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
 
     GeminiService(
             final @Nullable HttpClientBuilder httpClientBuilder,
@@ -85,9 +105,9 @@ class GeminiService {
 
     @SuppressWarnings("unchecked")
     <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
-            String modelName, BatchRequestResponse.BatchCreateRequest<REQ> request) {
+            String modelName, BatchRequestResponse.BatchCreateRequest<REQ> request, BatchOperationType operationType) {
         return (BatchRequestResponse.Operation<RESP>) sendRequest(
-                String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName),
+                String.format("%s/models/%s:%s", baseUrl, modelName, operationType.value),
                 apiKey,
                 request,
                 BatchRequestResponse.Operation.class);
@@ -106,6 +126,20 @@ class GeminiService {
     Void batchCancelBatch(String operationName) {
         String url = String.format("%s/%s:cancel", baseUrl, operationName);
         return sendRequest(url, apiKey, null, Void.class);
+    }
+
+    Void batchDeleteBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    @SuppressWarnings("unchecked")
+    <RESP> ListOperationsResponse<RESP> batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/batches",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, ListOperationsResponse.class, GET);
     }
 
     GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
@@ -218,4 +252,15 @@ class GeminiService {
         }
         return builder.build();
     }
+
+    private static String buildUrl(String baseUrl, StringPair... pairs) {
+        var queryParams = Stream.of(pairs)
+                .filter(pair -> pair.value != null)
+                .map(entry -> entry.key() + "=" + URLEncoder.encode(entry.value(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+
+        return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
+    }
+
+    private record StringPair(String key, @Nullable String value) {}
 }
