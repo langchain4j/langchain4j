@@ -5,9 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.Map;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import dev.langchain4j.data.message.AiMessage;
@@ -15,6 +12,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class OpenAiOfficialSetupTests {
@@ -35,16 +35,16 @@ public class OpenAiOfficialSetupTests {
 
     @Test
     void detectModelProvider_returnsAzureOpenAI_whenBaseUrlMatchesAzure() {
-        ModelProvider result = OpenAiOfficialSetup.detectModelProvider(false, false,
-                "https://example.openai.azure.com", null, null);
+        ModelProvider result =
+                OpenAiOfficialSetup.detectModelProvider(false, false, "https://example.openai.azure.com", null, null);
 
         assertEquals(ModelProvider.AZURE_OPEN_AI, result);
     }
 
     @Test
     void detectModelProvider_returnsGitHubModels_whenBaseUrlMatchesGitHub() {
-        ModelProvider result = OpenAiOfficialSetup.detectModelProvider(false, false,
-                "https://models.inference.ai.azure.com", null, null);
+        ModelProvider result = OpenAiOfficialSetup.detectModelProvider(
+                false, false, "https://models.inference.ai.azure.com", null, null);
 
         assertEquals(ModelProvider.GITHUB_MODELS, result);
     }
@@ -58,8 +58,20 @@ public class OpenAiOfficialSetupTests {
 
     @Test
     void setupSyncClient_returnsClient_whenValidApiKeyProvided() {
-        OpenAIClient client = OpenAiOfficialSetup.setupSyncClient(null, "valid-api-key", null, null, null, null, false,
-                false, null, Duration.ofSeconds(30), 2, null, null);
+        OpenAIClient client = OpenAiOfficialSetup.setupSyncClient(
+                null,
+                "valid-api-key",
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                null,
+                Duration.ofSeconds(30),
+                2,
+                null,
+                null);
 
         assertNotNull(client);
     }
@@ -68,8 +80,20 @@ public class OpenAiOfficialSetupTests {
     void setupSyncClient_appliesCustomHeaders_whenProvided() {
         Map<String, String> customHeaders = Collections.singletonMap("X-Custom-Header", "value");
 
-        OpenAIClient client = OpenAiOfficialSetup.setupSyncClient(null, "valid-api-key", null, null, null, null, false,
-                false, null, Duration.ofSeconds(30), 2, null, customHeaders);
+        OpenAIClient client = OpenAiOfficialSetup.setupSyncClient(
+                null,
+                "valid-api-key",
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                null,
+                Duration.ofSeconds(30),
+                2,
+                null,
+                customHeaders);
 
         assertNotNull(client);
     }
@@ -83,8 +107,7 @@ public class OpenAiOfficialSetupTests {
 
     @Test
     void calculateBaseUrl_returnsGitHubUrl_whenModelHostIsGitHub() {
-        String result = OpenAiOfficialSetup.calculateBaseUrl(null, ModelProvider.GITHUB_MODELS, null,
-                null);
+        String result = OpenAiOfficialSetup.calculateBaseUrl(null, ModelProvider.GITHUB_MODELS, null, null);
 
         assertEquals(OpenAiOfficialSetup.GITHUB_MODELS_URL, result);
     }
@@ -98,18 +121,13 @@ public class OpenAiOfficialSetupTests {
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
-        String calculatedUrl = OpenAiOfficialSetup.calculateBaseUrl(
-                baseUrl,
-                modelProvider,
-                modelName,
-                azureDeploymentName
-        );
+        String calculatedUrl =
+                OpenAiOfficialSetup.calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName);
 
         assertThat(calculatedUrl)
-                 .as("URL should NOT contain ?api-version= - it should be added only by SDK")
-                 .doesNotContain("?api-version=");
-         assertThat(calculatedUrl)
-                 .isEqualTo("https://test.openai.azure.com");
+                .as("URL should NOT contain ?api-version= - it should be added only by SDK")
+                .doesNotContain("?api-version=");
+        assertThat(calculatedUrl).isEqualTo("https://test.openai.azure.com");
     }
 
     @Test
@@ -121,17 +139,13 @@ public class OpenAiOfficialSetupTests {
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
-        String calculatedUrl = OpenAiOfficialSetup.calculateBaseUrl(
-                baseUrl,
-                modelProvider,
-                modelName,
-                azureDeploymentName
-        );
+        String calculatedUrl =
+                OpenAiOfficialSetup.calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName);
 
         assertThat(calculatedUrl)
-                 .as("URL should contain deployment path but NOT ?api-version=")
-                 .isEqualTo("https://test.openai.azure.com/openai/deployments/my-deployment")
-                 .doesNotContain("?api-version=");
+                .as("URL should contain deployment path but NOT ?api-version=")
+                .isEqualTo("https://test.openai.azure.com/openai/deployments/my-deployment")
+                .doesNotContain("?api-version=");
     }
 
     @Test
@@ -143,12 +157,8 @@ public class OpenAiOfficialSetupTests {
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
-        String calculatedUrl = OpenAiOfficialSetup.calculateBaseUrl(
-                baseUrl,
-                modelProvider,
-                modelName,
-                azureDeploymentName
-        );
+        String calculatedUrl =
+                OpenAiOfficialSetup.calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName);
 
         // Then: The trailing slash should be removed
         assertThat(calculatedUrl)
@@ -168,12 +178,7 @@ public class OpenAiOfficialSetupTests {
 
         // When: Detect model host
         ModelProvider modelProvider = OpenAiOfficialSetup.detectModelProvider(
-                isAzure,
-                isGitHubModels,
-                baseUrl,
-                azureDeploymentName,
-                azureOpenAIServiceVersion
-        );
+                isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
         // Then: Should detect Azure OpenAI
         assertThat(modelProvider).isEqualTo(ModelProvider.AZURE_OPEN_AI);
@@ -183,21 +188,15 @@ public class OpenAiOfficialSetupTests {
     void should_detect_azure_openai_from_baseUrl() {
         // Given: Azure OpenAI base URLs
         String[] azureUrls = {
-                "https://test.openai.azure.com",
-                "https://test.openai.azure.com/",
-                "https://test.cognitiveservices.azure.com",
-                "https://test.cognitiveservices.azure.com/"
+            "https://test.openai.azure.com",
+            "https://test.openai.azure.com/",
+            "https://test.cognitiveservices.azure.com",
+            "https://test.cognitiveservices.azure.com/"
         };
 
         for (String azureUrl : azureUrls) {
             // When: Detect model host
-            ModelProvider modelProvider = OpenAiOfficialSetup.detectModelProvider(
-                    false,
-                    false,
-                    azureUrl,
-                    null,
-                    null
-            );
+            ModelProvider modelProvider = OpenAiOfficialSetup.detectModelProvider(false, false, azureUrl, null, null);
 
             // Then: Should detect Azure OpenAI
             assertThat(modelProvider)

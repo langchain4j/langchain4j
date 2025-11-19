@@ -4,7 +4,6 @@ import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpen
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
-import java.util.List;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -16,6 +15,7 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -104,35 +104,35 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
-    @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+    @Disabled(
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
-    }
+    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {}
 
-    @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+    @Disabled(
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
-    }
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {}
 
-    @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+    @Disabled(
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {
-    }
+    protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {}
 
-    @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+    @Disabled(
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
-    }
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {}
 }

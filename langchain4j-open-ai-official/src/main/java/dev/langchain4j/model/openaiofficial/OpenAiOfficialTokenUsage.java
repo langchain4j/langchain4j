@@ -1,7 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
-import java.util.Objects;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Objects;
 
 public class OpenAiOfficialTokenUsage extends TokenUsage {
 
@@ -45,7 +45,9 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
                 return this.inputTokensDetails;
             } else {
                 return InputTokensDetails.builder()
-                        .cachedTokens(sum(this.inputTokensDetails.cachedTokens, thatOpenAiTokenUsage.inputTokensDetails.cachedTokens))
+                        .cachedTokens(sum(
+                                this.inputTokensDetails.cachedTokens,
+                                thatOpenAiTokenUsage.inputTokensDetails.cachedTokens))
                         .build();
             }
         } else {
@@ -61,7 +63,9 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
                 return this.outputTokensDetails;
             } else {
                 return OutputTokensDetails.builder()
-                        .reasoningTokens(sum(this.outputTokensDetails.reasoningTokens, thatOpenAiTokenUsage.outputTokensDetails.reasoningTokens))
+                        .reasoningTokens(sum(
+                                this.outputTokensDetails.reasoningTokens,
+                                thatOpenAiTokenUsage.outputTokensDetails.reasoningTokens))
                         .build();
             }
         } else {
@@ -199,9 +203,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
 
         @Override
         public String toString() {
-            return "OpenAiOfficialTokenUsage.InputTokensDetails {" +
-                    " cachedTokens = " + cachedTokens +
-                    " }";
+            return "OpenAiOfficialTokenUsage.InputTokensDetails {" + " cachedTokens = " + cachedTokens + " }";
         }
     }
 
@@ -257,9 +259,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
 
         @Override
         public String toString() {
-            return "OpenAiOfficialTokenUsage.OutputTokensDetails {" +
-                    " reasoningTokens = " + reasoningTokens +
-                    " }";
+            return "OpenAiOfficialTokenUsage.OutputTokensDetails {" + " reasoningTokens = " + reasoningTokens + " }";
         }
     }
 }

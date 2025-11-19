@@ -8,11 +8,6 @@ import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.det
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupAsyncClient;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientAsync;
@@ -24,6 +19,11 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 abstract class OpenAiOfficialBaseChatModel {
 
@@ -133,7 +133,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .stopSequences(getOrDefault(stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .responseFormat(
+                        getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, openAiParameters.logitBias()))
@@ -146,12 +147,13 @@ abstract class OpenAiOfficialBaseChatModel {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 
-        this.modelProvider = detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName,
-                azureOpenAIServiceVersion);
+        this.modelProvider =
+                detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
         if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
-            if (this.defaultRequestParameters.modelName() != null && !this.defaultRequestParameters.modelName().equals(modelName)) {
+            if (this.defaultRequestParameters.modelName() != null
+                    && !this.defaultRequestParameters.modelName().equals(modelName)) {
                 // The model name can't be changed in Azure OpenAI, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
             }

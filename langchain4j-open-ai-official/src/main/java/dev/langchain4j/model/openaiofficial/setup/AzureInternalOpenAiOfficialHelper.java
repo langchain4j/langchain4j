@@ -16,5 +16,4 @@ class AzureInternalOpenAiOfficialHelper {
         return BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
                 new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default"));
     }
-
 }

@@ -8,13 +8,6 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.core.http.AsyncStreamResponse;
@@ -37,9 +30,15 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatModel {
+public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
@@ -197,9 +196,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 onPartialResponse(handler, partialResponse, streamingHandle);
             }
             if (choice.delta().toolCalls().isPresent()) {
-                for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall : choice.delta().toolCalls().get()) {
+                for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall :
+                        choice.delta().toolCalls().get()) {
                     if (toolCall.function().isPresent()) {
-                        ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
+                        ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
+                                toolCall.function().get();
                         int index = (int) toolCall.index();
                         if (toolCallBuilder.index() != index) {
                             onCompleteToolCall(handler, toolCallBuilder.buildAndReset());

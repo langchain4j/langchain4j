@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openaiofficial;
 
-import java.util.Objects;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import java.util.Objects;
 
 @Experimental
 public class OpenAiOfficialChatResponseMetadata extends ChatResponseMetadata {

@@ -2,10 +2,6 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.RequestOptions;
@@ -15,6 +11,10 @@ import com.openai.models.images.ImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 public class OpenAiOfficialImageModel implements ImageModel {
 

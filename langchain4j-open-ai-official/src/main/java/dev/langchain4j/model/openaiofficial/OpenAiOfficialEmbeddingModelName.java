@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openaiofficial;
 
+import com.openai.models.embeddings.EmbeddingModel;
 import java.util.HashMap;
 import java.util.Map;
-import com.openai.models.embeddings.EmbeddingModel;
 
 enum OpenAiOfficialEmbeddingModelName {
     TEXT_EMBEDDING_3_SMALL(EmbeddingModel.TEXT_EMBEDDING_3_SMALL.value().toString(), 1536),
