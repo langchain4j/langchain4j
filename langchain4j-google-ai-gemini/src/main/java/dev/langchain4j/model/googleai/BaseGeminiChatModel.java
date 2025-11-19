@@ -4,9 +4,12 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -18,7 +21,13 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -184,6 +193,39 @@ class BaseGeminiChatModel {
             case ANY -> ToolChoice.REQUIRED;
             case NONE -> null;
         };
+    }
+
+    protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
+        AiMessage aiMessage = createAiMessage(firstCandidate);
+
+        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.finishReason());
+        if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
+            finishReason = TOOL_EXECUTION;
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder()
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
+                        .finishReason(finishReason)
+                        .build())
+                .build();
+    }
+
+    protected AiMessage createAiMessage(GeminiCandidate candidate) {
+        if (candidate == null || candidate.content() == null) {
+            return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
+        }
+
+        return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
+    }
+
+    protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
+        return new TokenUsage(
+                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
     }
 
     /**

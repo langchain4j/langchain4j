@@ -31,7 +31,7 @@ public class Agents {
             Reply with only one of those words and nothing else.
             The user request is: '{{request}}'.
             """)
-        @Agent("Categorize a user request")
+        @Agent(description = "Categorize a user request", outputKey = "category")
         RequestCategory classify(@V("request") String request);
     }
 
@@ -60,7 +60,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A medical expert")
-        @Agent("A medical expert")
+        @Agent(description = "A medical expert", outputKey = "response")
         String medical(@V("request") String request);
     }
 
@@ -72,7 +72,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A medical expert")
-        @Agent("A medical expert")
+        @Agent(description = "A medical expert", outputKey = "response")
         String medical(@MemoryId String memoryId, @V("request") String request);
     }
 
@@ -84,7 +84,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A legal expert")
-        @Agent("A legal expert")
+        @Agent(description = "A legal expert", outputKey = "response")
         String legal(@V("request") String request);
     }
 
@@ -132,7 +132,7 @@ public class Agents {
                 Return only the story and nothing else.
                 The topic is {{topic}}.
                 """)
-        @Agent("Generate a story based on the given topic")
+        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
         String generateStory(@V("topic") String topic);
     }
 
@@ -144,7 +144,7 @@ public class Agents {
             Return only the story and nothing else.
             The story is "{{story}}".
             """)
-        @Agent("Edit a story to better fit a given audience")
+        @Agent(description = "Edit a story to better fit a given audience", outputKey = "story")
         String editStory(@V("story") String story, @V("audience") String audience);
     }
 
@@ -156,7 +156,7 @@ public class Agents {
                 Return only the story and nothing else.
                 The story is "{{story}}".
                 """)
-        @Agent("Edit a story to better fit a given style")
+        @Agent(description = "Edit a story to better fit a given style", outputKey = "story")
         String editStory(@V("story") String story, @V("style") String style);
     }
 
@@ -169,7 +169,7 @@ public class Agents {
                 
                 The story is: "{{story}}"
                 """)
-        @Agent("Score a story based on how well it aligns with a given style")
+        @Agent(description = "Score a story based on how well it aligns with a given style", outputKey = "score")
         double scoreStyle(@V("story") String story, @V("style") String style);
     }
 
@@ -194,7 +194,7 @@ public class Agents {
             For each meal, just give the name of the meal.
             Provide a list with the 3 items and nothing else.
             """)
-        @Agent
+        @Agent(outputKey = "meals")
         List<String> findMeal(@V("mood") String mood);
     }
 
@@ -206,7 +206,7 @@ public class Agents {
             The mood is {{mood}}.
             Provide a list with the 3 items and nothing else.
             """)
-        @Agent
+        @Agent(outputKey = "movies")
         List<String> findMovie(@V("mood") String mood);
     }
 
