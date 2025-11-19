@@ -775,9 +775,7 @@ class GeminiServiceTest {
 
     private static GeminiGenerateContentResponse createGenerateContentResponse(String text) {
         var candidate = new GeminiCandidate(
-                new GeminiContent(
-                        List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
-                null);
+                new GeminiContent(List.of(GeminiPart.builder().text(text).build()), "model"), null);
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
     }
 

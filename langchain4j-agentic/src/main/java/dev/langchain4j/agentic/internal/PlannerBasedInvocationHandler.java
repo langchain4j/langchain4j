@@ -81,7 +81,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         this.executor = service.executor;
         this.agentInstances = service.agentExecutors().stream().map(AgentInstance.class::cast).toList();
         this.name = service.name;
-        this.agentId = uniqueAgentName(plannerSupplier.getClass(), this.name);
+        this.agentId = uniqueAgentName(service.agentServiceClass, this.name);
         this.description = service.description;
         this.outputKey = service.outputKey;
         this.beforeCall = service.beforeCall;

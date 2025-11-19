@@ -21,6 +21,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -46,6 +47,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class GeminiService {
+
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
@@ -237,5 +239,5 @@ class GeminiService {
         return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
     }
 
-    private static record StringPair(String key, @Nullable String value) {}
+    private record StringPair(String key, @Nullable String value) {}
 }
