@@ -136,7 +136,7 @@ class GeminiServiceTest {
 
             GeminiService subject = createService(mockHttpClient);
 
-         GeminiCountTokensRequest request = new GeminiCountTokensRequest(
+            GeminiCountTokensRequest request = new GeminiCountTokensRequest(
                     List.of(new GeminiContent(
                             List.of(GeminiContent.GeminiPart.builder()
                                     .text("Count these tokens")
