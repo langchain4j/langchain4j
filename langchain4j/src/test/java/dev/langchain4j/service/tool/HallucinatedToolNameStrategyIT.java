@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -38,11 +39,13 @@ public class HallucinatedToolNameStrategyIT {
                 .streamingChatModel(model)
                 .tools(new Calculator())
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                // Use the `LET_LLM_TRY` strategy let the LLM try to solve hallucination issues itself, instead of
+                // Use the custom HallucinatedToolNameStrategy let the LLM try to solve hallucination issues itself, instead of
                 // throwing a RuntimeException.
                 // Due to the uncertainty of the LLM hallucination, it may occur randomly.
                 // To trigger hallucinations, you can try some more complex tools.
-                .hallucinatedToolNameStrategy(HallucinatedToolNameStrategy.LET_LLM_TRY)
+                .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
+                        toolExecutionRequest, toolExecutionRequest.name()
+                                + "' is not a tool. please check the tool specifications again and use available tools."))
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
@@ -61,8 +64,8 @@ public class HallucinatedToolNameStrategyIT {
                 .onError(futureAnswer::completeExceptionally)
                 .start();
 
-        String answer = futureAnswer.get(60, SECONDS);
-        ChatResponse response = futureResponse.get(60, SECONDS);
+        String answer = futureAnswer.get(120, SECONDS);
+        ChatResponse response = futureResponse.get(120, SECONDS);
 
         assertThat(answer).contains("6.97");
         assertThat(response.aiMessage().text()).contains("6.97");

@@ -7,8 +7,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import java.util.function.Function;
 
 public enum HallucinatedToolNameStrategy implements Function<ToolExecutionRequest, ToolExecutionResultMessage> {
-    THROW_EXCEPTION,
-    LET_LLM_TRY;
+    THROW_EXCEPTION;
 
     public ToolExecutionResultMessage apply(ToolExecutionRequest toolExecutionRequest) {
         switch (this) {
@@ -17,11 +16,6 @@ public enum HallucinatedToolNameStrategy implements Function<ToolExecutionReques
                         "The LLM is trying to execute the '%s' tool, but no such tool exists. Most likely, it is a "
                                 + "hallucination. You can override this default strategy by setting the hallucinatedToolNameStrategy on the AiService",
                         toolExecutionRequest.name());
-            }
-            case LET_LLM_TRY -> {
-                String s = toolExecutionRequest.name()
-                        + "' is not a tool. please check the tool specifications again and use available tools.";
-                return ToolExecutionResultMessage.from(null, toolExecutionRequest.name(), s);
             }
         }
         throw new UnsupportedOperationException();
