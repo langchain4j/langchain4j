@@ -2,16 +2,6 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validate;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateInclude;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateMaxOutputTokens;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateReasoningEffort;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateServiceTier;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateTemperature;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateTextVerbosity;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateTopLogprobs;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateTopP;
-import static dev.langchain4j.model.openai.internal.OpenAiResponsesValidator.validateTruncation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -25,6 +15,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -185,39 +176,20 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.organizationId = builder.organizationId;
         this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
 
-        validateTemperature(builder.temperature);
         this.temperature = builder.temperature;
-
-        validateTopP(builder.topP);
         this.topP = builder.topP;
-
-        validateMaxOutputTokens(builder.maxOutputTokens);
         this.maxOutputTokens = builder.maxOutputTokens;
-
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
         this.previousResponseId = builder.previousResponseId;
-
-        validateTopLogprobs(builder.topLogprobs);
         this.topLogprobs = builder.topLogprobs;
-
-        validateTruncation(builder.truncation);
         this.truncation = builder.truncation;
-
-        validateInclude(builder.include);
         this.include = builder.include != null ? new ArrayList<>(builder.include) : null;
-
-        validateServiceTier(builder.serviceTier);
         this.serviceTier = builder.serviceTier;
-
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
-
-        validateReasoningEffort(builder.reasoningEffort);
         this.reasoningEffort = builder.reasoningEffort;
-
-        validateTextVerbosity(builder.textVerbosity);
         this.textVerbosity = builder.textVerbosity;
 
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
@@ -233,7 +205,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         try {
             ChatRequestParameters parameters = chatRequest.parameters();
-            validate(parameters);
 
             var input = new ArrayList<Map<String, Object>>();
             for (var msg : chatRequest.messages()) {
@@ -415,6 +386,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                     contentEntries.add(createInputTextContent(textContent.text()));
                 } else if (content instanceof ImageContent imageContent) {
                     contentEntries.add(createInputImageContent(imageContent.image()));
+                } else {
+                    throw new UnsupportedFeatureException("Unsupported content type: "
+                            + content.getClass().getName() + ". Only TextContent and ImageContent are supported.");
                 }
             }
             if (contentEntries.isEmpty()) {
@@ -451,7 +425,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
             return List.of(outputEntry);
         } else {
-            return List.of(createMessageEntry(ROLE_USER, List.of(createInputTextContent(msg.toString()))));
+            throw new UnsupportedFeatureException(
+                    "Unsupported message type: " + msg.getClass().getName()
+                            + ". Only SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage are supported.");
         }
     }
 

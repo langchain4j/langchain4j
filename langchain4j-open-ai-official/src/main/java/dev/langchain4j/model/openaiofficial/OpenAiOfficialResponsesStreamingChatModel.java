@@ -104,7 +104,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final List<ChatModelListener> listeners;
-    private final ResponseCancellationHandler cancellationHandler;
     private final Boolean strict;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
@@ -113,7 +112,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;
-        validateMaxOutputTokens(builder.maxOutputTokens);
         this.maxOutputTokens = builder.maxOutputTokens;
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
@@ -129,7 +127,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.listeners = builder.listeners != null ? new ArrayList<>(builder.listeners) : new ArrayList<>();
-        this.cancellationHandler = builder.cancellationHandler;
         this.strict = builder.strict != null ? builder.strict : true;
     }
 
@@ -188,7 +185,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             Integer requestMaxOutputTokens = chatRequest.maxOutputTokens();
             Long effectiveMaxOutputTokens =
                     requestMaxOutputTokens != null ? (Long) requestMaxOutputTokens.longValue() : maxOutputTokens;
-            validateMaxOutputTokens(effectiveMaxOutputTokens);
             if (effectiveMaxOutputTokens != null) {
                 paramsBuilder.maxOutputTokens(effectiveMaxOutputTokens);
             }
@@ -267,26 +263,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(
-                    handler, cancellationHandler, responseIdRef, effectiveModelName, streamingHandle);
-
-            // Start background cancellation monitoring if handler is available
-            if (cancellationHandler != null) {
-                cancellationMonitorFuture = cancellationHandler.startMonitoring(() -> {
-                    streamingHandle.cancel();
-                    String responseId = responseIdRef.get();
-                    if (responseId != null) {
-                        try {
-                            logger.debug("Cancelling response: {}", responseId);
-                            client.responses().cancel(responseId);
-                        } catch (Exception e) {
-                            logger.warn("Error cancelling response", e);
-                        }
-                    }
-                });
-            }
-
-            final var finalCancellationMonitorFuture = cancellationMonitorFuture;
+            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, effectiveModelName, streamingHandle);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously,
             // this is the only thread used.
@@ -300,9 +277,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     logger.error("Exception in stream processing: {}", e.getMessage(), e);
                     safeOnError(handler, e);
                 } finally {
-                    if (finalCancellationMonitorFuture != null) {
-                        finalCancellationMonitorFuture.cancel(false);
-                    }
                     streamingHandle.markCompleted();
                 }
             });
@@ -310,9 +284,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } catch (Exception e) {
             logger.error("Exception in doChat: {}", e.getMessage(), e);
             safeOnError(handler, e);
-            if (cancellationMonitorFuture != null) {
-                cancellationMonitorFuture.cancel(false);
-            }
             if (streamingFuture != null) {
                 streamingFuture.cancel(true);
             }
@@ -324,13 +295,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             handler.onError(error);
         } catch (Exception e) {
             logger.warn("Exception thrown by onError handler, ignoring", e);
-        }
-    }
-
-    private static void validateMaxOutputTokens(Long maxOutputTokens) {
-        if (maxOutputTokens != null && maxOutputTokens < 16) {
-            throw new IllegalArgumentException(
-                    "maxOutputTokens must be at least 16 for OpenAI Responses API, but was: " + maxOutputTokens);
         }
     }
 
@@ -539,7 +503,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private List<ChatModelListener> listeners;
-        private ResponseCancellationHandler cancellationHandler;
         private ExecutorService executorService;
         private Boolean strict;
 
@@ -642,11 +605,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
-        public Builder cancellationHandler(ResponseCancellationHandler cancellationHandler) {
-            this.cancellationHandler = cancellationHandler;
-            return this;
-        }
-
         public Builder executorService(ExecutorService executorService) {
             this.executorService = executorService;
             return this;
@@ -671,7 +629,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     /** Event handler for Responses API streaming. */
     private static class ResponsesEventHandler {
         private final StreamingChatResponseHandler handler;
-        private final ResponseCancellationHandler cancellationHandler;
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
         private final StreamingHandle streamingHandle;
@@ -686,20 +643,17 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         ResponsesEventHandler(
                 StreamingChatResponseHandler handler,
-                ResponseCancellationHandler cancellationHandler,
                 AtomicReference<String> responseIdRef,
                 String modelName,
                 StreamingHandle streamingHandle) {
             this.handler = handler;
-            this.cancellationHandler = cancellationHandler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
         }
 
         void handleEvent(ResponseStreamEvent event) {
-            if ((cancellationHandler != null && cancellationHandler.isCancelled())
-                    || (streamingHandle != null && streamingHandle.isCancelled())) {
+            if (streamingHandle != null && streamingHandle.isCancelled()) {
                 throw new CancellationException("Request cancelled by user");
             }
 
