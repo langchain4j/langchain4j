@@ -22,7 +22,7 @@ public interface PlannerAgent extends ChatMemoryAccess {
             written in the same language as the user request.
 
             Agents are provided with their name and description together with a list of applicable arguments
-            in the format {name: description, [argument1, argument2]}.
+            in the format {'name', 'description', [argument1: type1, argument2: type2]}.
 
             Decide which agent to invoke next, doing things in small steps and
             never taking any shortcuts or relying on your own knowledge.

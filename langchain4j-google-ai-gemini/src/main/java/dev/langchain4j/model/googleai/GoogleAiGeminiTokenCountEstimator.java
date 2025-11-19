@@ -65,9 +65,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         messages.forEach(allMessages::add);
 
         List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null, false);
-
-        GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest();
-        countTokensRequest.setContents(geminiContentList);
+        GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest(geminiContentList, null);
 
         return estimateTokenCount(countTokensRequest);
     }
@@ -82,11 +80,12 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                         GeminiContent.GeminiPart.builder().text("Dummy content").build()),
                 null);
 
-        GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest();
-        countTokensRequestWithDummyContent.setGenerateContentRequest(GeminiGenerateContentRequest.builder()
-                .contents(singletonList(dummyContent))
-                .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false))
-                .build());
+        GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest(
+                null,
+                GeminiGenerateContentRequest.builder()
+                        .contents(singletonList(dummyContent))
+                        .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false))
+                        .build());
 
         // The API doesn't allow us to make a request to count the tokens of the tool specifications only.
         // Instead, we take the approach of adding a dummy content in the request, and subtract the tokens for the dummy
@@ -98,7 +97,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
     private int estimateTokenCount(GeminiCountTokensRequest countTokensRequest) {
         GeminiCountTokensResponse countTokensResponse = withRetryMappingExceptions(
                 () -> this.geminiService.countTokens(this.modelName, countTokensRequest), this.maxRetries);
-        return countTokensResponse.getTotalTokens();
+        return countTokensResponse.totalTokens();
     }
 
     public static class Builder {
