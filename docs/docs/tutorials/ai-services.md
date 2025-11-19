@@ -744,6 +744,22 @@ More details about RAG can be found [here](/tutorials/rag).
 
 More RAG examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
 
+### Storing original query in memory.
+By default, augmented queries are persisted to the underlying memory. If you want to store the original,
+pre-augmented version instead — while still using the augmented one for the request — you can enable this
+behavior using an optional parameter on `@UserMessage`
+
+```java
+
+    interface GeographyExpert {
+        
+        @UserMessage("What is the capital of {{country}}?", storeOriginal = true)
+        String chat(@V("country") String country);
+    }
+```
+
+When `storeOriginal = true`, and the AI service uses a `ChatMemory`, the original user query will be saved
+to memory rather than the augmented message.
 
 ## Auto-Moderation
 
