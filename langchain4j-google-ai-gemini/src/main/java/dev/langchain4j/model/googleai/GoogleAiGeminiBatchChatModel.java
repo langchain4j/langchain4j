@@ -215,6 +215,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
      * @throws RuntimeException if the server does not support this operation
      */
     public BatchList listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+        // TODO: Add `filter` and `returnPartialSuccess` -> https://ai.google.dev/api/batch-api#method:-batches.list
         var response = geminiService.batchListBatches(pageSize, pageToken);
         return new BatchList(
                 response.nextPageToken(),
