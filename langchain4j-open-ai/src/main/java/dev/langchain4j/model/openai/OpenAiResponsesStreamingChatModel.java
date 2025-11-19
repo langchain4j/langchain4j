@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -163,6 +165,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private final String reasoningEffort;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
+    private final Boolean store;
     private final Boolean strict;
     private final List<ChatModelListener> listeners;
 
@@ -184,7 +187,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.previousResponseId = builder.previousResponseId;
         this.topLogprobs = builder.topLogprobs;
         this.truncation = builder.truncation;
-        this.include = builder.include != null ? new ArrayList<>(builder.include) : null;
+        this.include = copyIfNotNull(builder.include);
         this.serviceTier = builder.serviceTier;
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
@@ -193,8 +196,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.textVerbosity = builder.textVerbosity;
 
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
+        this.store = builder.store != null ? builder.store : false;
         this.strict = builder.strict != null ? builder.strict : true;
-        this.listeners = builder.listeners != null ? new ArrayList<>(builder.listeners) : new ArrayList<>();
+        this.listeners = copy(builder.listeners);
     }
 
     public static Builder builder() {
@@ -217,7 +221,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             payload.put(FIELD_MODEL, effectiveModelName);
             payload.put(FIELD_INPUT, input);
             payload.put(FIELD_STREAM, true);
-            payload.put(FIELD_STORE, false);
+            payload.put(FIELD_STORE, store);
 
             Double effectiveTemperature =
                     parameters != null && parameters.temperature() != null ? parameters.temperature() : temperature;
@@ -352,8 +356,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             }
 
             String requestBody = OBJECT_MAPPER.writeValueAsString(payload);
-            logger.debug("Sending OpenAI Responses payload: {}", requestBody);
-
             var request = requestBuilder.body(requestBody).build();
 
             var streamingHandle = new ResponsesStreamingHandle();
@@ -553,6 +555,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String reasoningEffort;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
+        private Boolean store;
         private Boolean strict;
         private List<ChatModelListener> listeners;
 
@@ -661,6 +664,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder store(Boolean store) {
+            this.store = store;
+            return this;
+        }
+
         public Builder strict(Boolean strict) {
             this.strict = strict;
             return this;
@@ -751,7 +759,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 return;
             }
 
-            logger.debug("Received SSE event: {}", data);
             try {
                 var node = OBJECT_MAPPER.readTree(data);
                 var type = node.has(FIELD_TYPE) ? node.get(FIELD_TYPE).asText() : "";
@@ -903,7 +910,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                             try {
                                 handler.onCompleteResponse(responseBuilder.build());
                             } catch (Exception e) {
-                                logger.debug("Exception from onCompleteResponse, calling onError", e);
                                 safeOnError(handler, e);
                             }
                         }

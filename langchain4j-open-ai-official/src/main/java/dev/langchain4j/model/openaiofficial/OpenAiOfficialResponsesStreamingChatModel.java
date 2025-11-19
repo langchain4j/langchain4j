@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
@@ -103,6 +105,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String reasoningEffort;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
+    private final Boolean store;
     private final List<ChatModelListener> listeners;
     private final Boolean strict;
 
@@ -118,7 +121,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.previousResponseId = builder.previousResponseId;
         this.topLogprobs = builder.topLogprobs;
         this.truncation = builder.truncation;
-        this.include = builder.include != null ? new ArrayList<>(builder.include) : null;
+        this.include = copyIfNotNull(builder.include);
         this.serviceTier = builder.serviceTier;
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
@@ -126,7 +129,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.reasoningEffort = builder.reasoningEffort;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
-        this.listeners = builder.listeners != null ? new ArrayList<>(builder.listeners) : new ArrayList<>();
+        this.store = builder.store != null ? builder.store : false;
+        this.listeners = copy(builder.listeners);
         this.strict = builder.strict != null ? builder.strict : true;
     }
 
@@ -142,23 +146,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         ? chatRequest.parameters().modelName()
                         : modelName;
 
-        logger.debug(
-                "Starting doChat with model: {}, messages: {}, tools: {}",
-                effectiveModelName,
-                chatRequest.messages().size(),
-                chatRequest.toolSpecifications() != null
-                        ? chatRequest.toolSpecifications().size()
-                        : 0);
-
         AtomicReference<String> responseIdRef = new AtomicReference<>();
         Future<?> cancellationMonitorFuture = null;
         Future<?> streamingFuture = null;
 
         try {
-            logger.debug("Building ResponseCreateParams for model: {}", effectiveModelName);
             var paramsBuilder = ResponseCreateParams.builder()
                     .model(ResponsesModel.ofChat(ChatModel.of(effectiveModelName)))
-                    .store(false);
+                    .store(store);
 
             // Convert messages to ResponseInputItems
             var inputItems = new ArrayList<ResponseInputItem>();
@@ -166,10 +161,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 inputItems.addAll(toResponseInputItems(msg));
             }
             paramsBuilder.inputOfResponse(inputItems);
-            logger.debug(
-                    "Converted {} messages to {} input items",
-                    chatRequest.messages().size(),
-                    inputItems.size());
 
             // Add optional parameters (request parameters override defaults)
             Double effectiveTemperature = chatRequest.temperature() != null ? chatRequest.temperature() : temperature;
@@ -259,7 +250,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 try {
                     streamResponse.close();
                 } catch (Exception e) {
-                    logger.debug("Error closing response stream", e);
+                    // Ignore close errors
                 }
             });
 
@@ -271,7 +262,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 try (streamResponse) {
                     streamResponse.stream().forEach(eventHandler::handleEvent);
                 } catch (CancellationException e) {
-                    logger.debug("Stream cancelled by user");
                     safeOnError(handler, e);
                 } catch (Exception e) {
                     logger.error("Exception in stream processing: {}", e.getMessage(), e);
@@ -502,6 +492,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String reasoningEffort;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
+        private Boolean store;
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
         private Boolean strict;
@@ -597,6 +588,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder streamIncludeObfuscation(Boolean streamIncludeObfuscation) {
             this.streamIncludeObfuscation = streamIncludeObfuscation;
+            return this;
+        }
+
+        public Builder store(Boolean store) {
+            this.store = store;
             return this;
         }
 
@@ -770,7 +766,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 try {
                     handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
                 } catch (Exception e) {
-                    logger.debug("Exception from onCompleteToolCall, calling onError", e);
                     safeOnError(handler, e);
                 }
             } else {
@@ -821,15 +816,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
-            var response = event.response();
-            var incompleteDetails = response.incompleteDetails();
-            logger.debug("Response incomplete: {}", incompleteDetails);
-
             // Incomplete is not an error - it just means the response was cut off due to token limits
             // Treat it as a normal completion with finish reason LENGTH
             finishReason = "LENGTH";
 
             // Complete the response normally
+            var response = event.response();
             extractTokenUsageAndComplete(response);
         }
 
@@ -879,7 +871,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             try {
                 handler.onCompleteResponse(chatResponse);
             } catch (Exception e) {
-                logger.debug("Exception from onCompleteResponse, calling onError", e);
                 safeOnError(handler, e);
             }
         }
