@@ -53,7 +53,8 @@ public class HallucinatedToolNameStrategyTest {
 
         CompletableFuture<Throwable> futureError = new CompletableFuture<>();
         tokenStream
-                .onCompleteResponse(r -> futureError.completeExceptionally(new IllegalStateException("onCompleteResponse should not be called")))
+                .onCompleteResponse(r -> futureError.completeExceptionally(
+                        new IllegalStateException("onCompleteResponse should not be called")))
                 .onError(futureError::complete)
                 .start();
         Throwable error = futureError.get(30, SECONDS);
@@ -91,9 +92,11 @@ public class HallucinatedToolNameStrategyTest {
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 // Use the custom HallucinatedToolNameStrategy let the LLM try to solve hallucination issues itself,
                 // instead of throwing a RuntimeException.
-                .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                        toolExecutionRequest, toolExecutionRequest.name()
-                                + "' is not a tool. please check the tool specifications again and use available tools."))
+                .hallucinatedToolNameStrategy(
+                        toolExecutionRequest -> ToolExecutionResultMessage.from(
+                                toolExecutionRequest,
+                                toolExecutionRequest.name()
+                                        + "' is not a tool. please check the tool specifications again and use available tools."))
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();

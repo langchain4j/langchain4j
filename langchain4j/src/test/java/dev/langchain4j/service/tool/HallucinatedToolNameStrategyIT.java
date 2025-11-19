@@ -39,13 +39,15 @@ public class HallucinatedToolNameStrategyIT {
                 .streamingChatModel(model)
                 .tools(new Calculator())
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                // Use the custom HallucinatedToolNameStrategy let the LLM try to solve hallucination issues itself, instead of
-                // throwing a RuntimeException.
+                // Use the custom HallucinatedToolNameStrategy let the LLM try to solve hallucination issues itself,
+                // instead of throwing a RuntimeException.
                 // Due to the uncertainty of the LLM hallucination, it may occur randomly.
                 // To trigger hallucinations, you can try some more complex tools.
-                .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                        toolExecutionRequest, toolExecutionRequest.name()
-                                + "' is not a tool. please check the tool specifications again and use available tools."))
+                .hallucinatedToolNameStrategy(
+                        toolExecutionRequest -> ToolExecutionResultMessage.from(
+                                toolExecutionRequest,
+                                toolExecutionRequest.name()
+                                        + "' is not a tool. please check the tool specifications again and use available tools."))
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
