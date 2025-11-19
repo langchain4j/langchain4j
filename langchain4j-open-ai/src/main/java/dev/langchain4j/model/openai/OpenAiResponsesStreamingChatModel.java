@@ -391,9 +391,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                             + content.getClass().getName() + ". Only TextContent and ImageContent are supported.");
                 }
             }
-            if (contentEntries.isEmpty()) {
-                contentEntries.add(createInputTextContent(""));
-            }
             return List.of(createMessageEntry(ROLE_USER, contentEntries));
         } else if (msg instanceof AiMessage aiMessage) {
             List<Map<String, Object>> items = new ArrayList<>();
@@ -414,9 +411,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 }
             }
 
-            if (items.isEmpty()) {
-                items.add(createMessageEntry(ROLE_ASSISTANT, List.of(createInputTextContent(""))));
-            }
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             var outputEntry = new HashMap<String, Object>();
