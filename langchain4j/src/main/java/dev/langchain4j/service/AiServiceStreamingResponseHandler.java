@@ -361,7 +361,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult;
-
         handleBeforeTool(toolRequest);
         if (toolExecutor == null) {
             toolResult = context.toolService.applyToolHallucinationStrategy(toolRequest);
