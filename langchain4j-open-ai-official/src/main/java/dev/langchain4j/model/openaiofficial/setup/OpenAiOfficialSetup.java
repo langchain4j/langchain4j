@@ -51,7 +51,7 @@ public class OpenAiOfficialSetup {
         }
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
         builder
-            .baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName, azureOpenAiServiceVersion));
+            .baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName));
 
         String calculatedApiKey = apiKey != null ? apiKey : detectApiKey(modelProvider);
         if (calculatedApiKey != null) {
@@ -109,7 +109,7 @@ public class OpenAiOfficialSetup {
         }
         OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
         builder
-            .baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName, azureOpenAiServiceVersion));
+            .baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, azureDeploymentName));
 
         String calculatedApiKey = apiKey != null ? apiKey : detectApiKey(modelProvider);
         if (calculatedApiKey != null) {
@@ -188,8 +188,7 @@ public class OpenAiOfficialSetup {
         return ModelProvider.OPEN_AI;
     }
 
-    static String calculateBaseUrl(String baseUrl, ModelProvider modelProvider, String modelName, String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAiServiceVersion) {
+    static String calculateBaseUrl(String baseUrl, ModelProvider modelProvider, String modelName, String azureDeploymentName) {
 
         if (modelProvider == ModelProvider.OPEN_AI) {
             if (baseUrl == null || baseUrl.isBlank()) {
@@ -201,16 +200,15 @@ public class OpenAiOfficialSetup {
             return GITHUB_MODELS_URL;
         }
         else if (modelProvider == ModelProvider.AZURE_OPEN_AI) {
-            // Using Azure OpenAI
-            String tmpUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+            String tmpUrl = baseUrl;
+            if (baseUrl.endsWith("/") || baseUrl.endsWith("?")) {
+                tmpUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
             // If the Azure deployment name is not configured, the model name will be used
             // by default by the OpenAI Java
             // SDK
             if (azureDeploymentName != null && !azureDeploymentName.equals(modelName)) {
                 tmpUrl += "/openai/deployments/" + azureDeploymentName;
-            }
-            if (azureOpenAiServiceVersion != null) {
-                tmpUrl += "?api-version=" + azureOpenAiServiceVersion.value();
             }
             return tmpUrl;
         }

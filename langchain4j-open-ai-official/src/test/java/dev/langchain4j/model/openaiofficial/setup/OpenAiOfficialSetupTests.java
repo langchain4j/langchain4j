@@ -76,8 +76,7 @@ public class OpenAiOfficialSetupTests {
 
     @Test
     void calculateBaseUrl_returnsDefaultOpenAIUrl_whenBaseUrlIsNull() {
-        String result = OpenAiOfficialSetup.calculateBaseUrl(null, ModelProvider.OPEN_AI, null, null,
-                null);
+        String result = OpenAiOfficialSetup.calculateBaseUrl(null, ModelProvider.OPEN_AI, null, null);
 
         assertEquals(OpenAiOfficialSetup.OPENAI_URL, result);
     }
@@ -85,7 +84,7 @@ public class OpenAiOfficialSetupTests {
     @Test
     void calculateBaseUrl_returnsGitHubUrl_whenModelHostIsGitHub() {
         String result = OpenAiOfficialSetup.calculateBaseUrl(null, ModelProvider.GITHUB_MODELS, null,
-                null, null);
+                null);
 
         assertEquals(OpenAiOfficialSetup.GITHUB_MODELS_URL, result);
     }
@@ -96,7 +95,6 @@ public class OpenAiOfficialSetupTests {
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
-        AzureOpenAIServiceVersion azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2024_10_21();
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
@@ -104,8 +102,7 @@ public class OpenAiOfficialSetupTests {
                 baseUrl,
                 modelProvider,
                 modelName,
-                azureDeploymentName,
-                azureOpenAiServiceVersion
+                azureDeploymentName
         );
 
         assertThat(calculatedUrl)
@@ -121,7 +118,6 @@ public class OpenAiOfficialSetupTests {
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = "my-deployment";
-        AzureOpenAIServiceVersion azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2024_10_21();
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
@@ -129,8 +125,7 @@ public class OpenAiOfficialSetupTests {
                 baseUrl,
                 modelProvider,
                 modelName,
-                azureDeploymentName,
-                azureOpenAiServiceVersion
+                azureDeploymentName
         );
 
         assertThat(calculatedUrl)
@@ -145,7 +140,6 @@ public class OpenAiOfficialSetupTests {
         String baseUrl = "https://test.openai.azure.com/";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
-        AzureOpenAIServiceVersion azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2024_10_21();
         ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
 
         // When: Calculate base URL
@@ -153,14 +147,12 @@ public class OpenAiOfficialSetupTests {
                 baseUrl,
                 modelProvider,
                 modelName,
-                azureDeploymentName,
-                azureOpenAiServiceVersion
+                azureDeploymentName
         );
 
         // Then: The trailing slash should be removed
         assertThat(calculatedUrl)
                 .startsWith("https://test.openai.azure.com")
-                .contains("?api-version=2024-10-21")
                 .doesNotContain("openai.azure.com//")
                 .doesNotContain("openai.azure.com/?");
     }
