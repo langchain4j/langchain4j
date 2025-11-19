@@ -34,7 +34,7 @@ The `GoogleAiEmbeddingModel` allows you to generate embeddings from text using G
 ```java
 EmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("text-embedding-001")
+    .modelName("gemini-embedding-001")
     .build();
 
 Response<Embedding> response = embeddingModel.embed("Hello, world!");
@@ -59,7 +59,7 @@ List<Embedding> embeddings = response.content();
 ```java
 EmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("text-embedding-001")
+    .modelName("gemini-embedding-001")
     .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
     .outputDimensionality(768)
     .titleMetadataKey("title")
@@ -88,7 +88,7 @@ When using `TaskType.RETRIEVAL_DOCUMENT`, you can provide document titles via me
 ```java
 EmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("text-embedding-001")
+    .modelName("gemini-embedding-001")
     .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
     .titleMetadataKey("title") // defaults to "title"
     .build();
@@ -108,7 +108,7 @@ You can specify the output dimensionality to reduce the embedding size:
 ```java
 EmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("text-embedding-001")
+    .modelName("gemini-embedding-001")
     .outputDimensionality(256) // Reduce from default 768 dimensions
     .build();
 ```
