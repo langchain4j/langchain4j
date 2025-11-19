@@ -59,6 +59,16 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return OpenAiOfficialTokenUsage.class;
     }
 
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
     @Test
     void should_work_with_o_models() {
 

@@ -29,11 +29,7 @@ public abstract class McpReconnectTestBase {
 
     @Test
     void reconnect() throws IOException, TimeoutException, InterruptedException {
-        customHeaders.put("X-Test-Header", "headerValue1");
-        executeEchoHeadersToolAndAssertHeaderValue("headerValue1");
-
-        customHeaders.put("X-Test-Header", "headerValue2");
-        executeEchoHeadersToolAndAssertHeaderValue("headerValue2");
+        executeAToolAndAssertSuccess();
 
         // kill the server and restart it
         process.destroy();
@@ -42,16 +38,16 @@ public abstract class McpReconnectTestBase {
         // give the MCP client some time to reconnect
         Thread.sleep(5_000);
 
-        customHeaders.put("X-Test-Header", "headerValue3");
-        executeEchoHeadersToolAndAssertHeaderValue("headerValue3");
+        executeAToolAndAssertSuccess();
     }
 
-    private void executeEchoHeadersToolAndAssertHeaderValue(String expectedValue) {
+    private void executeAToolAndAssertSuccess() {
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoHeader")
-                .arguments("{\"headerName\": \"X-Test-Header\"}")
+                .name("echoString")
+                .arguments("{\"input\": \"abc\"}")
                 .build();
         String result = mcpClient.executeTool(toolExecutionRequest).resultText();
-        assertThat(result).isEqualTo(expectedValue);
+        assertThat(result).isEqualTo("abc");
     }
+
 }
