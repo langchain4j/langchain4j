@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
@@ -30,12 +31,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -89,14 +95,27 @@ class GeminiService {
         return sendRequest(url, apiKey, request, BatchRequestResponse.Operation.class);
     }
 
-    BatchRequestResponse.Operation batchRetrieveBatch(String operationName) {
-        String url = String.format("%s/%s", baseUrl, operationName);
+    BatchRequestResponse.Operation batchRetrieveBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
         return sendRequest(url, apiKey, null, BatchRequestResponse.Operation.class, GET);
     }
 
-    Void batchCancelBatch(String operationName) {
-        String url = String.format("%s/%s:cancel", baseUrl, operationName);
+    Void batchCancelBatch(String batchName) {
+        String url = String.format("%s/%s:cancel", baseUrl, batchName);
         return sendRequest(url, apiKey, null, Void.class);
+    }
+
+    Void batchDeleteBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    ListOperationsResponse batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/batches",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, ListOperationsResponse.class, GET);
     }
 
     GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
@@ -209,4 +228,15 @@ class GeminiService {
         }
         return builder.build();
     }
+
+    private static String buildUrl(String baseUrl, StringPair... pairs) {
+        var queryParams = Stream.of(pairs)
+                .filter(pair -> pair.value != null)
+                .map(entry -> entry.key() + "=" + URLEncoder.encode(entry.value(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+
+        return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
+    }
+
+    private record StringPair(String key, @Nullable String value) {}
 }

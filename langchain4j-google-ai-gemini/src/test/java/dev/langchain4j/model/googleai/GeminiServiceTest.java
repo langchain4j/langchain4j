@@ -588,6 +588,177 @@ class GeminiServiceTest {
         }
     }
 
+    @Nested
+    class BatchDeleteBatchTest {
+        @Test
+        void shouldSendBatchDeleteBatchRequest() {
+            // Given
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            Void actualResponse = subject.batchDeleteBatch(batchName);
+
+            // Then
+            assertThat(actualResponse).isNull();
+        }
+
+        @Test
+        void shouldSendCorrectBatchDeleteBatchHttpRequest() {
+            // Given
+            SuccessfulHttpResponse httpResponse =
+                    SuccessfulHttpResponse.builder().statusCode(200).body("{}").build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            String batchName = "batches/test-batch";
+
+            // When
+            subject.batchDeleteBatch(batchName);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.DELETE);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/" + batchName);
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+    }
+
+    @Nested
+    class BatchListBatchesTest {
+        @Test
+        void shouldSendBatchListBatchesRequestWithNoParameters() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            BatchRequestResponse.ListOperationsResponse actualResponse = subject.batchListBatches(null, null);
+
+            // Then
+            assertThat(actualResponse).isEqualTo(expectedResponse);
+        }
+
+        @Test
+        void shouldSendBatchListBatchesRequestWithAllParameters() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(
+                            List.of(new BatchRequestResponse.Operation("batches/test-batch", null, false, null, null)),
+                            "nextToken");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            BatchRequestResponse.ListOperationsResponse actualResponse = subject.batchListBatches(10, "token123");
+
+            // Then
+            assertThat(actualResponse).isEqualTo(expectedResponse);
+        }
+
+        @Test
+        void shouldSendCorrectBatchListBatchesHttpRequestWithNoParameters() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            subject.batchListBatches(null, null);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/batches");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+
+        @Test
+        void shouldSendCorrectBatchListBatchesHttpRequestWithPageSize() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            subject.batchListBatches(10, null);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/batches?pageSize=10");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+
+        @Test
+        void shouldSendCorrectBatchListBatchesHttpRequestWithPageToken() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            subject.batchListBatches(null, "token123");
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/batches?pageToken=token123");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+
+        @Test
+        void shouldSendCorrectBatchListBatchesHttpRequestWithAllParameters() {
+            // Given
+            BatchRequestResponse.ListOperationsResponse expectedResponse =
+                    new BatchRequestResponse.ListOperationsResponse(List.of(), null);
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            GeminiService subject = createService(mockHttpClient);
+
+            // When
+            subject.batchListBatches(10, "token123");
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/batches?pageSize=10&pageToken=token123");
+            assertThat(sentRequest.headers().get("x-goog-api-key")).containsExactly(TEST_API_KEY);
+        }
+    }
+
     private static GeminiService createService(MockHttpClient mockHttpClient) {
         return createService(mockHttpClient, null);
     }

@@ -117,4 +117,7 @@ final class BatchRequestResponse {
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record Status(int code, String message, List<Map<String, Object>> details) {}
     }
+
+    /** Represents a list of long-running operations returned when listing all batch jobs. */
+    public record ListOperationsResponse(List<Operation> operations, String nextPageToken) {}
 }
