@@ -2,6 +2,9 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.output.TokenUsage;
 
+/**
+ * @since 1.9.0
+ */
 public class BedrockTokenUsage extends TokenUsage {
 
     private final Integer cacheWriteInputTokens;
