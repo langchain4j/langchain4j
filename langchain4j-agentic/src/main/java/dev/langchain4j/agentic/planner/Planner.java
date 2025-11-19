@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface Planner {
 
-    default void init(InitPlanningContext initPlanningContext) {}
+    default void init(InitPlanningContext initPlanningContext) { }
 
     default Action firstAction(PlanningContext planningContext) {
         return nextAction(planningContext);
@@ -31,4 +31,5 @@ public interface Planner {
     default Action done(Object result) {
         return new Action.DoneWithResultAction(result);
     }
+
 }

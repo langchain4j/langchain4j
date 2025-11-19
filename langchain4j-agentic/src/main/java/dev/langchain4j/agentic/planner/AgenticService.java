@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.scope.AgenticScope;
+
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;

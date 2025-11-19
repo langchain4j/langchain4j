@@ -1,12 +1,12 @@
 package dev.langchain4j.agentic.patterns.p2p.researcher;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import static dev.langchain4j.agentic.patterns.Models.baseModel;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class P2PResearcherIT {
 

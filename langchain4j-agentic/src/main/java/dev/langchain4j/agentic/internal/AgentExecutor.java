@@ -7,9 +7,9 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.List;
 
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance {
 
@@ -32,10 +32,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     private Object handleAgentFailure(
-            AgentInvocationException e,
-            DefaultAgenticScope agenticScope,
-            Object invokedAgent,
-            AgentInvocationListener listener) {
+            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, AgentInvocationListener listener) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
@@ -44,8 +41,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         };
     }
 
-    private Object internalExecute(
-            DefaultAgenticScope agenticScope, Object invokedAgent, AgentInvocationListener listener, boolean async) {
+    private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, AgentInvocationListener listener, boolean async) {
         try {
             AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
             Object response = async

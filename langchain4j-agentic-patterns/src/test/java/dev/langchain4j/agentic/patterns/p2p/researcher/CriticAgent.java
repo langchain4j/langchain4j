@@ -7,10 +7,8 @@ import dev.langchain4j.service.V;
 
 public interface CriticAgent {
 
-    @SystemMessage(
-            "Critically evaluate the given hypothesis related to the specified topic. Provide constructive feedback and suggest improvements if necessary.")
-    @UserMessage(
-            """
+    @SystemMessage("Critically evaluate the given hypothesis related to the specified topic. Provide constructive feedback and suggest improvements if necessary.")
+    @UserMessage("""
             You are a critical evaluation agent.
             Your task is to critically evaluate the hypothesis provided by the user in relation to the specified topic.
             Provide constructive feedback and suggest improvements if necessary.

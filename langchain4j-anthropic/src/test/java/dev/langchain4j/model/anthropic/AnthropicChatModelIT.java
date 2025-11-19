@@ -548,12 +548,10 @@ class AnthropicChatModelIT {
 
         // given
         record Edit(String type) {}
-        record ContextManagement(List<Edit> edits) {}
-        Map<String, Object> customParameters =
-                Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+        record ContextManagement(List<Edit> edits) { }
+        Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

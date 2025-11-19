@@ -12,10 +12,10 @@ class CancellationUnsupportedStreamingHandle implements StreamingHandle {
 
     @Override
     public void cancel() {
-        throw new UnsupportedFeatureException("Streaming cancellation is not supported by this "
-                + "StreamingChatModel implementation. It should invoke "
-                + "StreamingChatResponseHandler.onPartialResponse(PartialResponse, PartialResponseContext) "
-                + "instead of StreamingChatResponseHandler.onPartialResponse(String).");
+        throw new UnsupportedFeatureException("Streaming cancellation is not supported by this " +
+                "StreamingChatModel implementation. It should invoke " +
+                "StreamingChatResponseHandler.onPartialResponse(PartialResponse, PartialResponseContext) " +
+                "instead of StreamingChatResponseHandler.onPartialResponse(String).");
     }
 
     @Override

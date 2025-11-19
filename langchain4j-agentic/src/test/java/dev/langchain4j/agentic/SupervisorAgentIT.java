@@ -565,8 +565,7 @@ public class SupervisorAgentIT {
         String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
         assertThat(lionJoke1).isNotNull().containsIgnoringCase("lion");
 
-        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be
-        // generated
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
         JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -587,8 +586,7 @@ public class SupervisorAgentIT {
         String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
         assertThat(lionJoke2).isNotNull().containsIgnoringCase("cheetah");
 
-        List<ChatMessage> supervisorMessages =
-                supervisorAgent.getChatMemory("supervisor").messages();
+        List<ChatMessage> supervisorMessages = supervisorAgent.getChatMemory("supervisor").messages();
 
         Set<String> agentNames = supervisorMessages.stream()
                 .filter(AiMessage.class::isInstance)
@@ -596,10 +594,9 @@ public class SupervisorAgentIT {
                 .map(AiMessage::text)
                 .map(text -> {
                     int start = text.indexOf("\"agentName\":") + "agentName:".length();
-                    int agentNameStart = text.indexOf('"', start + 1) + 1;
+                    int agentNameStart = text.indexOf('"', start + 1)+1;
                     return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
-                })
-                .collect(Collectors.toSet());
+                }).collect(Collectors.toSet());
 
         // only 2 agents, the jokester and done
         assertThat(agentNames)

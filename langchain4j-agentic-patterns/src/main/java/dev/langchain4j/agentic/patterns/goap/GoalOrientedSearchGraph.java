@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.patterns.goap;
 
-import dev.langchain4j.agentic.patterns.goap.DependencyGraphSearch.Node;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import dev.langchain4j.agentic.patterns.goap.DependencyGraphSearch.Node;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +15,7 @@ public class GoalOrientedSearchGraph {
 
     private static final Logger LOG = LoggerFactory.getLogger(GoalOrientedSearchGraph.class);
 
-    private record NodePair(Node input, Node output) {}
+    private record NodePair(Node input, Node output) { }
 
     private final Map<String, Node> nodes = new HashMap<>();
     private final Map<NodePair, AgentInstance> edges = new HashMap<>();
@@ -40,8 +40,7 @@ public class GoalOrientedSearchGraph {
     }
 
     public List<AgentInstance> search(Collection<String> preconditions, String goal) {
-        List<Node> nodesPath = DependencyGraphSearch.search(
-                nodes.get(goal), preconditions.stream().map(nodes::get).toList());
+        List<Node> nodesPath = DependencyGraphSearch.search(nodes.get(goal), preconditions.stream().map(nodes::get).toList());
 
         if (nodesPath == null) {
             return List.of();
@@ -55,7 +54,7 @@ public class GoalOrientedSearchGraph {
                 preconditionsCounter++;
                 continue;
             }
-            for (int j = i - 1; j >= 0; j--) {
+            for (int j = i -1; j >= 0; j--) {
                 AgentInstance agent = edges.get(new NodePair(nodesPath.get(j), output));
                 if (agent != null) {
                     agentsPath.add(agent);
@@ -67,9 +66,7 @@ public class GoalOrientedSearchGraph {
             }
         }
 
-        LOG.info(
-                "Agents path sequence: {}",
-                agentsPath.stream().map(AgentInstance::name).toList());
+        LOG.info("Agents path sequence: {}", agentsPath.stream().map(AgentInstance::name).toList());
 
         return agentsPath;
     }

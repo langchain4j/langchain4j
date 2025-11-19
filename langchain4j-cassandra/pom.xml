@@ -42,6 +42,7 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+
         <!-- test dependencies -->
 
         <!-- Visibility for EmbeddingStoreIT -->

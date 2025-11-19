@@ -1,11 +1,12 @@
 package dev.langchain4j.agentic.patterns.goap.horoscope;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
-
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
+
 import java.util.Map;
+
+import static dev.langchain4j.agentic.patterns.Models.baseModel;
 
 public class GoapBasedHoroscopeWriter {
 

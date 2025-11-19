@@ -1,19 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -32,6 +18,12 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -40,11 +32,20 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InOrder;
+
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesIT {
@@ -60,7 +61,7 @@ class StreamingAiServicesIT {
                         .logResponses(true)
                         .build()
                 // TODO add more models
-                );
+        );
     }
 
     interface Assistant {
@@ -79,8 +80,7 @@ class StreamingAiServicesIT {
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        assistant
-                .chat("What is the capital of Germany?")
+        assistant.chat("What is the capital of Germany?")
                 .onPartialResponse(answerBuilder::append)
                 .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
@@ -130,8 +130,7 @@ class StreamingAiServicesIT {
 
         CompletableFuture<List<Content>> futureContent = new CompletableFuture<>();
 
-        assistant
-                .chat("What is the capital of Germany?")
+        assistant.chat("What is the capital of Germany?")
                 .onPartialResponse(ignored -> {})
                 .onRetrieved(futureContent::complete)
                 .ignoreErrors()
@@ -155,11 +154,11 @@ class StreamingAiServicesIT {
                 .chatMemory(chatMemory)
                 .build();
 
+
         String firstUserMessage = "Hi, my name is Klaus";
         CompletableFuture<ChatResponse> firstResponseFuture = new CompletableFuture<>();
 
-        assistant
-                .chat(firstUserMessage)
+        assistant.chat(firstUserMessage)
                 .onPartialResponse(System.out::println)
                 .onCompleteResponse(firstResponseFuture::complete)
                 .onError(firstResponseFuture::completeExceptionally)
@@ -168,11 +167,11 @@ class StreamingAiServicesIT {
         ChatResponse firstResponse = firstResponseFuture.get(30, SECONDS);
         assertThat(firstResponse.aiMessage().text()).contains("Klaus");
 
+
         String secondUserMessage = "What is my name?";
         CompletableFuture<ChatResponse> secondResponseFuture = new CompletableFuture<>();
 
-        assistant
-                .chat(secondUserMessage)
+        assistant.chat(secondUserMessage)
                 .onPartialResponse(System.out::println)
                 .onCompleteResponse(secondResponseFuture::complete)
                 .onError(secondResponseFuture::completeExceptionally)
@@ -180,6 +179,7 @@ class StreamingAiServicesIT {
 
         ChatResponse secondResponse = secondResponseFuture.get(30, SECONDS);
         assertThat(secondResponse.aiMessage().text()).contains("Klaus");
+
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
@@ -226,8 +226,7 @@ class StreamingAiServicesIT {
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
-        assistant
-                .chat(userMessage)
+        assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
                 .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
@@ -251,8 +250,10 @@ class StreamingAiServicesIT {
 
         assertThat(response.finishReason()).isEqualTo(STOP);
 
+
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
+
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
@@ -263,12 +264,12 @@ class StreamingAiServicesIT {
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
 
         assertThat(toolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
 
         ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
@@ -314,8 +315,7 @@ class StreamingAiServicesIT {
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
-        assistant
-                .chat(userMessage)
+        assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
                 .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
@@ -339,9 +339,11 @@ class StreamingAiServicesIT {
 
         assertThat(response.finishReason()).isEqualTo(STOP);
 
+
         verify(calculator).squareRoot(485906798473894056.0);
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
+
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
@@ -352,11 +354,11 @@ class StreamingAiServicesIT {
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
 
         ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
@@ -366,11 +368,11 @@ class StreamingAiServicesIT {
         AiMessage secondAiMessage = (AiMessage) messages.get(3);
         assertThat(secondAiMessage.text()).isNull();
         assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest secondToolExecutionRequest =
-                secondAiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest secondToolExecutionRequest = secondAiMessage.toolExecutionRequests().get(0);
         assertThat(secondToolExecutionRequest.id()).isNotBlank();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
+        assertThat(secondToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
 
         ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(4);
         assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
@@ -415,8 +417,7 @@ class StreamingAiServicesIT {
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
-        assistant
-                .chat(userMessage)
+        assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
@@ -439,9 +440,11 @@ class StreamingAiServicesIT {
 
         assertThat(response.finishReason()).isEqualTo(STOP);
 
+
         verify(calculator).squareRoot(485906798473894056.0);
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
+
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(5);
@@ -453,17 +456,17 @@ class StreamingAiServicesIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest firstToolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(firstToolExecutionRequest.id()).isNotBlank();
         assertThat(firstToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
+        assertThat(firstToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
 
-        ToolExecutionRequest secondToolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
         assertThat(secondToolExecutionRequest.id()).isNotBlank();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
+        assertThat(secondToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
 
         ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(firstToolExecutionResultMessage.id()).isEqualTo(firstToolExecutionRequest.id());
@@ -499,11 +502,8 @@ class StreamingAiServicesIT {
 
         interface TokenStreamHandler {
             void onPartialThinking(PartialThinking partialThinking);
-
             void onPartialResponse(String partialResponse);
-
             void onError(Throwable error);
-
             void onCompleteResponse(ChatResponse completeResponse);
         }
 
@@ -511,8 +511,7 @@ class StreamingAiServicesIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant
-                .chat("What is the capital of Germany?")
+        assistant.chat("What is the capital of Germany?")
                 .onPartialThinking(partialThinking -> tokenStreamHandler.onPartialThinking(partialThinking))
                 .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
                 .onError(error -> {
@@ -549,8 +548,7 @@ class StreamingAiServicesIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         Assistant assistant = AiServices.create(Assistant.class, model);
-        assistant
-                .chat("What is the capital of Germany?")
+        assistant.chat("What is the capital of Germany?")
                 .onPartialResponseWithContext((partialResponse, context) -> {
                     partialResponsesBuilder.append(partialResponse);
                     if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
@@ -607,8 +605,7 @@ class StreamingAiServicesIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant
-                .chat("What is the capital of Germany?")
+        assistant.chat("What is the capital of Germany?")
                 .onPartialThinkingWithContext((partialThinking, context) -> {
                     tokenStreamHandler.onPartialThinking(partialThinking, context);
                     if (partialThoughtsCounter.incrementAndGet() >= partialThoughtsBeforeCancellation) {
@@ -637,8 +634,7 @@ class StreamingAiServicesIT {
         assertThat(chatResponse).isNull();
 
         InOrder inOrder = inOrder(tokenStreamHandler);
-        inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation))
-                .onPartialThinking(any(), any());
+        inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation)).onPartialThinking(any(), any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(tokenStreamHandler);
     }

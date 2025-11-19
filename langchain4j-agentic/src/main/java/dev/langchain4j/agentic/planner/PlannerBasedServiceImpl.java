@@ -2,12 +2,11 @@ package dev.langchain4j.agentic.planner;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
-import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import java.lang.reflect.Method;
 import java.util.function.Supplier;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 
-public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>>
-        implements PlannerBasedService<T> {
+public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>> implements PlannerBasedService<T> {
 
     private Supplier<Planner> plannerSupplier;
 

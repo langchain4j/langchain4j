@@ -9,8 +9,7 @@ public class WriterAgents {
 
     public interface StoryGenerator {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a creative writer.
                 Generate a draft of a story long no more than 3 sentence around the given topic.
                 Return only the story and nothing else.
@@ -22,8 +21,7 @@ public class WriterAgents {
 
     public interface AudienceEditor {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a professional editor.
             Analyze and rewrite the following story to better align with the target audience of {{audience}}.
             Return only the story and nothing else.
@@ -35,8 +33,7 @@ public class WriterAgents {
 
     public interface StyleEditor {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a professional editor.
                 Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
                 Return only the story and nothing else.
@@ -48,12 +45,11 @@ public class WriterAgents {
 
     public interface StyleScorer {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a critical reviewer.
                 Give a review score between 0.0 and 1.0 for the following story based on how well it aligns with the style '{{style}}'.
                 Return only the score and nothing else.
-
+                
                 The story is: "{{styledStory}}"
                 """)
         @Agent("Score a story based on how well it aligns with a given style")
@@ -69,7 +65,6 @@ public class WriterAgents {
     public interface Writer {
 
         @Agent
-        ResultWithAgenticScope<String> write(
-                @V("topic") String topic, @V("style") String style, @V("audience") String audience);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 }

@@ -10,11 +10,12 @@ import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import java.util.List;
+
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -33,6 +34,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected List<StreamingChatModel> models() {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
     }
+
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
@@ -56,7 +58,9 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
@@ -96,16 +100,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
-        io.verify(handler, atLeast(1))
-                .onPartialToolCall(
-                        argThat(toolCall ->
-                                // Anthropic does not output same tokens consistently, so we can't easily assert
-                                // partialArguments
-                                toolCall.index() == 0
-                                        && toolCall.id().equals(id)
-                                        && toolCall.name().equals("getWeather")
-                                        && !toolCall.partialArguments().isBlank()),
-                        any());
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
@@ -113,16 +114,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler, atLeast(1))
-                .onPartialToolCall(
-                        argThat(toolCall ->
-                                // Anthropic does not output same tokens consistently, so we can't easily assert
-                                // partialArguments
-                                toolCall.index() == 1
-                                        && toolCall.id().equals(id2)
-                                        && toolCall.name().equals("getTime")
-                                        && !toolCall.partialArguments().isBlank()),
-                        any());
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 }

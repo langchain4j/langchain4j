@@ -1,15 +1,16 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
+
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT extends AbstractChatModelIT {
@@ -47,7 +48,9 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override

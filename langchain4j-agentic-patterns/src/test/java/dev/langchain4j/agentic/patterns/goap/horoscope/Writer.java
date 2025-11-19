@@ -5,8 +5,7 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 public interface Writer {
-    @UserMessage(
-            """
+    @UserMessage("""
                 Create an amusing writeup for {{person}} based on the following:
                 - their horoscope: {{horoscope}}
                 - a current news story: {{story}}

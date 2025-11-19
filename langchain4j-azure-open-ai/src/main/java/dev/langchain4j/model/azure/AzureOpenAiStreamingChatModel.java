@@ -279,11 +279,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
     }
 
-    private static void handle(
-            ChatCompletions chatCompletions,
-            ToolCallBuilder toolCallBuilder,
-            StreamingChatResponseHandler handler,
-            StreamingHandle streamingHandle) {
+    private static void handle(ChatCompletions chatCompletions,
+                               ToolCallBuilder toolCallBuilder,
+                               StreamingChatResponseHandler handler,
+                               StreamingHandle streamingHandle) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;

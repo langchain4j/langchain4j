@@ -98,8 +98,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "description" -> agentCard.description();
                                 case "outputKey" -> outputKey;
                                 default ->
-                                    throw new UnsupportedOperationException(
-                                            "Unknown method on AgentInstance class : " + method.getName());
+                                        throw new UnsupportedOperationException(
+                                                "Unknown method on AgentInstance class : " + method.getName());
                             };
                         }
 

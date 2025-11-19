@@ -1,11 +1,11 @@
 package dev.langchain4j.agentic.patterns.goap;
 
+import java.util.List;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
-import java.util.List;
+import dev.langchain4j.agentic.planner.Planner;
 
 public class GoalOrientedPlanner implements Planner {
 

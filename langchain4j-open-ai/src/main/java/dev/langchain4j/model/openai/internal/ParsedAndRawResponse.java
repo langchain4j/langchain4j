@@ -37,8 +37,9 @@ public class ParsedAndRawResponse<R> {
         this.streamingHandle = null;
     }
 
-    protected ParsedAndRawResponse(
-            R parsedResponse, SuccessfulHttpResponse rawHttpResponse, ServerSentEvent rawServerSentEvent) {
+    protected ParsedAndRawResponse(R parsedResponse,
+                                   SuccessfulHttpResponse rawHttpResponse,
+                                   ServerSentEvent rawServerSentEvent) {
         this.parsedResponse = parsedResponse;
         this.rawHttpResponse = rawHttpResponse;
         this.rawServerSentEvent = rawServerSentEvent;

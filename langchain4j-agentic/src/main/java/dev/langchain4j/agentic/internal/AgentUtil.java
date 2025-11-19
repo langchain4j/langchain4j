@@ -54,25 +54,18 @@ public class AgentUtil {
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        return new AgentExecutor(
-                nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
     }
 
-    private static AgentInvoker nonAiAgentInvoker(
-            Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
                         new AgentSpecificationImpl(
-                                name,
-                                agentId,
-                                description,
-                                annotation.outputKey(),
-                                annotation.async(),
+                                name, agentId, description, annotation.outputKey(), annotation.async(),
                                 argumentsFromMethod(agenticMethod),
-                                x -> {},
-                                x -> {}),
-                        agenticMethod);
+                                x -> {},x -> {}),
+                agenticMethod);
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
@@ -214,9 +207,7 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {
-                    agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class
-                },
+                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
                 invocationHandler);
     }
 }

@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.patterns.p2p.researcher;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.util.concurrent.atomic.AtomicInteger;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -23,11 +23,9 @@ public class ArxivCrawler {
 
     AtomicInteger counter = new AtomicInteger(0);
 
-    @Tool(
-            "Search the most relevant scientific paper on the given topic and return its title, summary, link, and full content.")
+    @Tool("Search the most relevant scientific paper on the given topic and return its title, summary, link, and full content.")
     public ArxivSearchResult search(@P("topic") String topic) {
-        String webUrl = "http://export.arxiv.org/api/query?search_query=ti:\\\"" + topic
-                + "\\\"&sortBy=relevance&start=" + counter.getAndIncrement() + "&max_results=1";
+        String webUrl = "http://export.arxiv.org/api/query?search_query=ti:\\\"" + topic + "\\\"&sortBy=relevance&start=" + counter.getAndIncrement() + "&max_results=1";
         try {
             LOGGER.info("Querying Arxiv: " + webUrl);
             Document doc = Jsoup.connect(webUrl).get();
@@ -41,11 +39,7 @@ public class ArxivCrawler {
     private static ArxivSearchResult entryToSearchResult(Element entry) {
         String title = entry.getElementsByTag("title").get(0).text();
         String summary = entry.getElementsByTag("summary").get(0).text();
-        String link = entry.getElementsByTag("id")
-                .get(0)
-                .text()
-                .replace("http:", "https:")
-                .replace("abs", "pdf");
+        String link = entry.getElementsByTag("id").get(0).text().replace("http:", "https:").replace("abs", "pdf");
         LOGGER.info("Downloading " + title + " from " + link);
         String content = parse(link);
         return new ArxivSearchResult(title, summary, link, content);

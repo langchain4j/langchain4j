@@ -2,8 +2,8 @@ package dev.langchain4j.model.chat.response;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-import dev.langchain4j.Experimental;
 import java.util.Objects;
+import dev.langchain4j.Experimental;
 
 /**
  * @since 1.8.0

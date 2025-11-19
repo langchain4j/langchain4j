@@ -8,7 +8,8 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 
-public record MethodAgentInvoker(Method method, AgentSpecification agentSpecification, List<AgentArgument> arguments)
+public record MethodAgentInvoker(
+        Method method, AgentSpecification agentSpecification, List<AgentArgument> arguments)
         implements AgentInvoker {
 
     @Override

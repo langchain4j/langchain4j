@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>dev.langchain4j</groupId>
@@ -11,6 +13,11 @@
     <artifactId>langchain4j-agentic-patterns</artifactId>
     <name>LangChain4j :: Agentic Framework :: Agentic Patterns</name>
 
+    <properties>
+        <jsoup.version>1.18.3</jsoup.version>
+        <pdfbox.version>3.0.5</pdfbox.version>
+    </properties>
+
     <developers>
         <developer>
             <id>mariofusco</id>
@@ -18,11 +25,6 @@
             <url>https://github.com/mariofusco</url>
         </developer>
     </developers>
-
-    <properties>
-        <jsoup.version>1.18.3</jsoup.version>
-        <pdfbox.version>3.0.5</pdfbox.version>
-    </properties>
 
     <dependencies>
         <dependency>

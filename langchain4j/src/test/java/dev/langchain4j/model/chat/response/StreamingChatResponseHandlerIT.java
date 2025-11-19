@@ -10,9 +10,9 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 public class StreamingChatResponseHandlerIT {
@@ -57,8 +57,7 @@ public class StreamingChatResponseHandlerIT {
         ChatResponse chatResponse = completableFuture.get(30, SECONDS);
 
         // then
-        assertThat(responseBuilder.toString())
-                .isEqualTo(chatResponse.aiMessage().text());
+        assertThat(responseBuilder.toString()).isEqualTo(chatResponse.aiMessage().text());
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any()); // LC4j will always call this callback
         verify(handler, atLeastOnce()).onPartialResponse(any());
@@ -96,8 +95,7 @@ public class StreamingChatResponseHandlerIT {
         ChatResponse chatResponse = completableFuture.get(30, SECONDS);
 
         // then
-        assertThat(responseBuilder.toString())
-                .isEqualTo(chatResponse.aiMessage().text());
+        assertThat(responseBuilder.toString()).isEqualTo(chatResponse.aiMessage().text());
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
@@ -116,8 +114,8 @@ public class StreamingChatResponseHandlerIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                throw new IllegalStateException("onPartialResponse(String) should never be called "
-                        + "if onPartialResponse(PartialResponse, PartialResponseContext) is defined");
+                throw new IllegalStateException("onPartialResponse(String) should never be called " +
+                        "if onPartialResponse(PartialResponse, PartialResponseContext) is defined");
             }
 
             @Override
@@ -141,8 +139,7 @@ public class StreamingChatResponseHandlerIT {
         ChatResponse chatResponse = completableFuture.get(30, SECONDS);
 
         // then
-        assertThat(responseBuilder.toString())
-                .isEqualTo(chatResponse.aiMessage().text());
+        assertThat(responseBuilder.toString()).isEqualTo(chatResponse.aiMessage().text());
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());

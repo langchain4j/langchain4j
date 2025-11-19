@@ -26,8 +26,8 @@ public class DependencyGraphSearch {
      */
     public static class Node {
         private final String id;
-        private final Set<Node> inputNodes = new HashSet<>(); // Required input nodes
-        private final List<Node> outputNodes = new ArrayList<>(); // Nodes this feeds into
+        private final Set<Node> inputNodes = new HashSet<>();      // Required input nodes
+        private final List<Node> outputNodes = new ArrayList<>();  // Nodes this feeds into
 
         public Node(String id) {
             this.id = id;
@@ -39,7 +39,7 @@ public class DependencyGraphSearch {
 
         public void addOutput(Node output) {
             outputNodes.add(output);
-            output.addInput(this); // Automatically set up bidirectional relationship
+            output.addInput(this);  // Automatically set up bidirectional relationship
         }
 
         public Set<Node> getInputNodes() {
@@ -150,8 +150,7 @@ public class DependencyGraphSearch {
         // Initial state: all start nodes are already activated
         Set<Node> initialActivated = new HashSet<>(startNodes);
         // Use first start node as current (arbitrary choice since all are active)
-        SearchState initialState =
-                new SearchState(initialActivated, startNodes.iterator().next(), 0);
+        SearchState initialState = new SearchState(initialActivated, startNodes.iterator().next(), 0);
 
         PriorityQueue<StateScore> openSet = new PriorityQueue<>();
         Set<SearchState> visited = new HashSet<>();

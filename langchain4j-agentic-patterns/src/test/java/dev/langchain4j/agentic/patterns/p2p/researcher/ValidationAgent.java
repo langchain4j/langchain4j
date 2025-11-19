@@ -8,8 +8,7 @@ import dev.langchain4j.service.V;
 public interface ValidationAgent {
 
     @SystemMessage("Validate the provided hypothesis on the given topic based on the critique provided.")
-    @UserMessage(
-            """
+    @UserMessage("""
             You are a validation agent.
             Your task is to validate the hypothesis provided by the user in relation to the specified topic based on the critique provided.
             Validate the provided hypothesis, either confirming it or reformulating a different hypothesis based on the critique.
@@ -18,6 +17,5 @@ public interface ValidationAgent {
             The critique is: {{critique}}
             """)
     @Agent("Validate a hypothesis based on a given topic and critique")
-    String validateHypothesis(
-            @V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
+    String validateHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
 }

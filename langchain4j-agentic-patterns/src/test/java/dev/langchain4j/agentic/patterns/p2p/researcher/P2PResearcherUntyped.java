@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.patterns.p2p.researcher;
 
-import static dev.langchain4j.agentic.patterns.Models.baseModel;
-
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.p2p.P2PAgent;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
+
+import static dev.langchain4j.agentic.patterns.Models.baseModel;
 
 public class P2PResearcherUntyped {
 

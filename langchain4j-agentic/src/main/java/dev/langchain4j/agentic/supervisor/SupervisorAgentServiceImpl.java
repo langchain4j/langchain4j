@@ -37,15 +37,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
             });
         }
 
-        return build(() -> new SupervisorPlanner(
-                chatModel,
-                chatMemoryProvider,
-                maxAgentsInvocations,
-                contextStrategy,
-                responseStrategy,
-                requestGenerator,
-                outputKey,
-                output));
+        return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,
+                contextStrategy, responseStrategy, requestGenerator,
+                outputKey, output));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {

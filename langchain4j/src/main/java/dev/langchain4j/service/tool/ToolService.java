@@ -54,8 +54,7 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 

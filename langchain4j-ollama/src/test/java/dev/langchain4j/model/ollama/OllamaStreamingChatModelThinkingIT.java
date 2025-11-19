@@ -10,6 +10,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.util.List;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
@@ -18,14 +19,12 @@ import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
 
-    private final SpyingHttpClient spyingHttpClient =
-            new SpyingHttpClient(JdkHttpClient.builder().build());
+    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
     void should_think_and_return_thinking() {
@@ -38,8 +37,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .think(think)
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -52,8 +53,12 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
 
         // then
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
-        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin").doesNotContain("<think>", "</think>");
-        assertThat(aiMessage1.thinking()).isNotBlank().isEqualTo(spyHandler1.getThinking());
+        assertThat(aiMessage1.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
+        assertThat(aiMessage1.thinking())
+                .isNotBlank()
+                .isEqualTo(spyHandler1.getThinking());
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
@@ -94,8 +99,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .think(think)
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -108,7 +115,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
 
         // then
         AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin").doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
         InOrder inOrder = inOrder(spyHandler);
@@ -118,8 +127,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         verify(spyHandler).get();
         verifyNoMoreInteractions(spyHandler);
 
-        // TODO verify that raw SSE events contain "thinking" field and that it is not sent back on the follow-up
-        // request
+        // TODO verify that raw SSE events contain "thinking" field and that it is not sent back on the follow-up request
     }
 
     @Test
@@ -131,7 +139,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .think(think)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -144,7 +154,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
 
         // then
         AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin").doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
         InOrder inOrder = inOrder(spyHandler);
@@ -167,8 +179,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
+
                 .think(think)
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -181,7 +195,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
 
         // then
         AiMessage aiMessage = spyHandler.get().aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin").doesNotContain("<think>", "</think>");
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNotEmpty();
 
         InOrder inOrder = inOrder(spyHandler);

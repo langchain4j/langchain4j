@@ -24,11 +24,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
-    protected abstract void configureGetWeatherThrowingExceptionTool(
-            RuntimeException e, AiServices<?> aiServiceBuilder);
+    protected abstract void configureGetWeatherThrowingExceptionTool(RuntimeException e, AiServices<?> aiServiceBuilder);
 
-    protected abstract void configureGetWeatherThrowingExceptionWithoutMessageTool(
-            RuntimeException e, AiServices<?> aiServiceBuilder);
+    protected abstract void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException e, AiServices<?> aiServiceBuilder);
 
     protected abstract void configureGetWeatherTool(AiServices<?> aiServiceBuilder);
 
@@ -50,10 +48,12 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .build();
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the weather")
+        ));
 
-        AiServices<Assistant> assistantBuilder =
-                AiServices.builder(Assistant.class).chatModel(spyModel);
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
 
         String toolErrorMessage = "Weather service is unavailable";
         configureGetWeatherThrowingExceptionTool(new RuntimeException(toolErrorMessage), assistantBuilder);
@@ -67,22 +67,17 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         assistant.chat("What is the weather in Munich?");
 
         // then
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                                && toolResult.text().equals(toolErrorMessage)));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(toolErrorMessage)));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(
-            boolean executeToolsConcurrently) {
+    void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(boolean executeToolsConcurrently) {
 
         // given
         RuntimeException exceptionWithoutMessage = new RuntimeException();
@@ -93,10 +88,12 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .build();
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the weather")
+        ));
 
-        AiServices<Assistant> assistantBuilder =
-                AiServices.builder(Assistant.class).chatModel(spyModel);
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
 
         configureGetWeatherThrowingExceptionWithoutMessageTool(exceptionWithoutMessage, assistantBuilder);
 
@@ -109,32 +106,30 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         assistant.chat("What is the weather in Munich?");
 
         // then
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                                && toolResult.text().equals("java.lang.RuntimeException")));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals("java.lang.RuntimeException")));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(
-            boolean executeToolsConcurrently) {
+    void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(boolean executeToolsConcurrently) {
 
         // given
-        ToolExecutionRequest toolExecutionRequest =
-                ToolExecutionRequest.builder().name("getImage").build();
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getImage")
+                .build();
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the image")));
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the image")
+        ));
 
-        AiServices<Assistant> assistantBuilder =
-                AiServices.builder(Assistant.class).chatModel(spyModel);
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
 
         configureGetImageTool(assistantBuilder);
 
@@ -147,14 +142,10 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         assistant.chat("Get me an image");
 
         // then
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                                && toolResult.text().equals("Unsupported content type: \"image\"")));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals("Unsupported content type: \"image\"")));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
@@ -183,7 +174,9 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .build();
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the weather")
+        ));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -200,14 +193,10 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         assistant.chat("What is the weather in Munich?");
 
         // then
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                                && toolResult.text().equals(customizedErrorMessage)));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
@@ -257,7 +246,8 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         String userMessage = "What is the weather in Munich and Paris?";
 
         // when
-        assertThatThrownBy(() -> assistant.chat(userMessage)).isSameAs(toolError);
+        assertThatThrownBy(() -> assistant.chat(userMessage))
+                .isSameAs(toolError);
 
         // then
         verify(spyModel).chat(any(ChatRequest.class));
@@ -277,8 +267,8 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
 
-        AiServices<Assistant> assistantBuilder =
-                AiServices.builder(Assistant.class).chatModel(spyModel);
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
 
         configureGetWeatherTool(assistantBuilder);
 
@@ -315,7 +305,10 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .build();
 
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolExecutionRequest1), AiMessage.from(toolExecutionRequest2), AiMessage.from("sunny")));
+                AiMessage.from(toolExecutionRequest1),
+                AiMessage.from(toolExecutionRequest2),
+                AiMessage.from("sunny")
+        ));
 
         String customizedErrorMessage = "Invalid JSON, try again";
 
@@ -345,17 +338,11 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         assistant.chat("What is the weather in Munich?");
 
         // then
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 3
-                                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                                && toolResult.text().equals(customizedErrorMessage)));
-        verify(spyModel)
-                .chat(argThat(
-                        (ChatRequest chatRequest) -> chatRequest.messages().size() == 5));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(customizedErrorMessage)));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }

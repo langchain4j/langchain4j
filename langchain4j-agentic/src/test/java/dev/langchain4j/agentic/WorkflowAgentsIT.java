@@ -32,8 +32,8 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
@@ -99,13 +99,13 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
-        UntypedAgent novelCreator = asPlanner
-                ? AgenticServices.plannerBuilder()
+        UntypedAgent novelCreator = asPlanner ?
+                AgenticServices.plannerBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .planner(SequentialPlanner::new)
-                        .build()
-                : AgenticServices.sequenceBuilder()
+                        .build() :
+                AgenticServices.sequenceBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .build();
@@ -528,18 +528,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
-                        medicalExpert)
-                .subAgents(
-                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
-                                == RequestCategory.TECHNICAL,
-                        technicalExpert)
-                .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
-                        legalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(

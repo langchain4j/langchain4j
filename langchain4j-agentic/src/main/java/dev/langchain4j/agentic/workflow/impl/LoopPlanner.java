@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import java.util.List;
+import java.util.function.BiPredicate;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import java.util.List;
-import java.util.function.BiPredicate;
 
 public class LoopPlanner implements Planner {
 
@@ -39,10 +39,9 @@ public class LoopPlanner implements Planner {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
-        agentCursor = (agentCursor + 1) % agents.size();
+        agentCursor = (agentCursor+1) % agents.size();
         if (agentCursor == 0) {
-            if (iterationsCounter > maxIterations
-                    || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
+            if (iterationsCounter > maxIterations || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
                 return done();
             }
             iterationsCounter++;

@@ -11,9 +11,9 @@ public class CancellationUnsupportedHandle implements ServerSentEventParsingHand
 
     @Override
     public void cancel() {
-        throw new UnsupportedFeatureException("Streaming cancellation is not supported when calling "
-                + "ServerSentEventListener.onEvent(ServerSentEvent). Please call "
-                + "ServerSentEventListener.onEvent(ServerSentEvent, ServerSentEventContext) instead.");
+        throw new UnsupportedFeatureException("Streaming cancellation is not supported when calling " +
+                "ServerSentEventListener.onEvent(ServerSentEvent). Please call " +
+                "ServerSentEventListener.onEvent(ServerSentEvent, ServerSentEventContext) instead.");
     }
 
     @Override

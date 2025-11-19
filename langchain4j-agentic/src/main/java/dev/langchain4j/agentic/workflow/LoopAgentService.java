@@ -10,8 +10,6 @@ public interface LoopAgentService<T> extends AgenticService<LoopAgentService<T>,
     LoopAgentService<T> maxIterations(int maxIterations);
 
     LoopAgentService<T> exitCondition(Predicate<AgenticScope> exitCondition);
-
     LoopAgentService<T> exitCondition(BiPredicate<AgenticScope, Integer> exitCondition);
-
     LoopAgentService<T> testExitAtLoopEnd(boolean checkExitConditionAtLoopEnd);
 }

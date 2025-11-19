@@ -1,16 +1,16 @@
 package dev.langchain4j.agentic;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CustomPlannerIT {
 
@@ -66,28 +66,21 @@ public class CustomPlannerIT {
         List<Integer> invocations = new ArrayList<>();
 
         MathAgent mathAgent = AgenticServices.plannerBuilder(MathAgent.class)
-                .subAgents(
-                        AgenticServices.agentAction(agenticScope -> {
-                            Thread.sleep(4);
-                            agenticScope.writeState("threadA", 5);
-                        }),
-                        AgenticServices.agentAction(agenticScope -> {
-                            Thread.sleep(2);
-                            agenticScope.writeState("threadB", 10);
-                        }),
-                        AgenticServices.agentAction(agenticScope -> {
-                            Thread.sleep(1);
-                            agenticScope.writeState("threadA", agenticScope.readState("threadA", 0) * 2);
-                        }),
-                        AgenticServices.agentAction(agenticScope -> {
-                            Thread.sleep(3);
-                            agenticScope.writeState("threadB", agenticScope.readState("threadB", 0) * 2);
-                        }),
-                        AgenticServices.agentAction(agenticScope -> {
-                            agenticScope.writeState(
-                                    "result",
-                                    agenticScope.readState("threadA", 0) + agenticScope.readState("threadB", 0));
-                        }))
+                .subAgents(AgenticServices.agentAction( agenticScope -> {
+                    Thread.sleep(4);
+                    agenticScope.writeState("threadA", 5);
+                }), AgenticServices.agentAction( agenticScope -> {
+                    Thread.sleep(2);
+                    agenticScope.writeState("threadB", 10);
+                }), AgenticServices.agentAction( agenticScope -> {
+                    Thread.sleep(1);
+                    agenticScope.writeState("threadA", agenticScope.readState("threadA", 0) * 2);
+                }), AgenticServices.agentAction( agenticScope -> {
+                    Thread.sleep(3);
+                    agenticScope.writeState("threadB", agenticScope.readState("threadB", 0) * 2);
+                }), AgenticServices.agentAction( agenticScope -> {
+                    agenticScope.writeState("result", agenticScope.readState("threadA", 0) + agenticScope.readState("threadB", 0));
+                }))
                 .outputKey("result")
                 .planner(() -> new ParallelInPairsPlanner(invocations))
                 .build();

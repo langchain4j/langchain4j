@@ -76,8 +76,8 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "description" -> builder.description;
                 case "outputKey" -> builder.outputKey;
                 default ->
-                    throw new UnsupportedOperationException(
-                            "Unknown method on AgentInstance class : " + method.getName());
+                        throw new UnsupportedOperationException(
+                                "Unknown method on AgentInstance class : " + method.getName());
             };
         }
 
@@ -103,7 +103,8 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(agent);
                 default ->
-                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
+                        throw new UnsupportedOperationException(
+                                "Unknown method on Object class : " + method.getName());
             };
         }
 
