@@ -7,7 +7,6 @@ import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
@@ -66,10 +65,8 @@ public class Agents {
                 description = "Review and score the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = {
-                    @SubAgent(type = StyleScorer.class),
-                    @SubAgent(type = StyleEditor.class)
-                })
+                subAgents = { StyleScorer.class, StyleEditor.class }
+        )
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -82,10 +79,8 @@ public class Agents {
 
         @SequenceAgent(
                 outputKey = "story",
-                subAgents = {
-                    @SubAgent(type = DeclarativeA2ACreativeWriter.class),
-                    @SubAgent(type = StyleReviewLoopAgent.class)
-                })
+                subAgents = { DeclarativeA2ACreativeWriter.class, StyleReviewLoopAgent.class }
+    )
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 }

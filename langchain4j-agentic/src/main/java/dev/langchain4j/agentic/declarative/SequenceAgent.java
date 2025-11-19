@@ -9,19 +9,14 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a definition of a sequence agent, used to orchestrate the agentic workflow
  * by invoking a series of sub-agents in a predefined order.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
  * {@code
  *     public interface StoryCreatorWithConfigurableStyleEditor {
  *
- *         @SequenceAgent(outputKey = "styledStory", subAgents = {
- *                 @SubAgent(type = CreativeWriter.class, outputKey = "story"),
- *                 @SubAgent(type = AudienceEditor.class, outputKey = "story"),
- *                 @SubAgent(type = StyleEditor.class)
- *         })
+ *         @SequenceAgent(outputKey = "styledStory",
+ *                        subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *     }
  * }
@@ -58,5 +53,5 @@ public @interface SequenceAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }
