@@ -453,9 +453,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class CancelBatchJob {
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
-                "batches/test-already-cancelled, Batch is already in CANCELLED state",
-                "batches/non-existent, Batch not found"
+            "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
+            "batches/test-already-cancelled, Batch is already in CANCELLED state",
+            "batches/non-existent, Batch not found"
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchNameValue, String errorMessage) {
             // given
@@ -497,9 +497,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class DeleteBatchJob {
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-delete, Batch cannot be deleted due to server error",
-                "batches/non-existent, Batch not found",
-                "batches/invalid-name, Invalid batch name format"
+            "batches/test-cannot-delete, Batch cannot be deleted due to server error",
+            "batches/non-existent, Batch not found",
+            "batches/invalid-name, Invalid batch name format"
         })
         void should_throw_exception_when_batch_deletion_fails(String batchNameValue, String errorMessage) {
             // given
@@ -535,8 +535,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var operation2 = createMockOperation("batches/batch-2", BatchJobState.BATCH_STATE_RUNNING);
             var listResponse = new ListOperationsResponse(List.of(operation1, operation2), null);
 
-            when(mockGeminiService.batchListBatches(null, null))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(null, null)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(null, null);
@@ -553,8 +552,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var operation = createMockOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
             var listResponse = new ListOperationsResponse(List.of(operation), "next-page-token");
 
-            when(mockGeminiService.batchListBatches(pageSize, null))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(pageSize, null)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(pageSize, null);
@@ -571,8 +569,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var operation = createMockOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
             var listResponse = new ListOperationsResponse(List.of(operation), null);
 
-            when(mockGeminiService.batchListBatches(null, pageToken))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(null, pageToken)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(null, pageToken);
@@ -590,8 +587,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var operation = createMockOperation("batches/batch-1", BatchJobState.BATCH_STATE_PENDING);
             var listResponse = new ListOperationsResponse(List.of(operation), "next-token");
 
-            when(mockGeminiService.batchListBatches(pageSize, pageToken))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(pageSize, pageToken)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(pageSize, pageToken);
@@ -606,8 +602,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var listResponse = new ListOperationsResponse(List.of(), null);
 
-            when(mockGeminiService.batchListBatches(null, null))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(null, null)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(null, null);
@@ -625,8 +620,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var operation3 = createMockOperation("batches/batch-3", BatchJobState.BATCH_STATE_CANCELLED);
             var listResponse = new ListOperationsResponse(List.of(operation1, operation2, operation3), null);
 
-            when(mockGeminiService.batchListBatches(null, null))
-                    .thenReturn(listResponse);
+            when(mockGeminiService.batchListBatches(null, null)).thenReturn(listResponse);
 
             // when
             BatchList result = subject.listBatchJobs(null, null);
@@ -639,8 +633,7 @@ class GoogleAiGeminiBatchChatModelTest {
         @Test
         void should_throw_exception_when_listing_fails() {
             // given
-            when(mockGeminiService.batchListBatches(null, null))
-                    .thenThrow(new RuntimeException("Server error"));
+            when(mockGeminiService.batchListBatches(null, null)).thenThrow(new RuntimeException("Server error"));
 
             // when & then
             assertThatThrownBy(() -> subject.listBatchJobs(null, null))
@@ -652,8 +645,7 @@ class GoogleAiGeminiBatchChatModelTest {
         @CsvSource({"1, Invalid page size", "100, Invalid page size", "1000, Invalid page size"})
         void should_throw_exception_when_invalid_page_size(Integer pageSize, String errorMessage) {
             // given
-            when(mockGeminiService.batchListBatches(pageSize, null))
-                    .thenThrow(new RuntimeException(errorMessage));
+            when(mockGeminiService.batchListBatches(pageSize, null)).thenThrow(new RuntimeException(errorMessage));
 
             // when & then
             assertThatThrownBy(() -> subject.listBatchJobs(pageSize, null))
@@ -679,8 +671,7 @@ class GoogleAiGeminiBatchChatModelTest {
         }
     }
 
-    private static Operation createSuccessOperation(
-            String operationName, List<ChatResponse> chatResponses) {
+    private static Operation createSuccessOperation(String operationName, List<ChatResponse> chatResponses) {
         var inlinedResponses = chatResponses.stream()
                 .map(GoogleAiGeminiBatchChatModelTest::toGeminiResponse)
                 .map(BatchGenerateContentResponse.InlinedResponseWrapper::new)
@@ -690,26 +681,22 @@ class GoogleAiGeminiBatchChatModelTest {
                 "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
                 new BatchGenerateContentResponse.InlinedResponses(inlinedResponses));
 
-        return new Operation(
-                operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+        return new Operation(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
     }
 
     private static Operation createSuccessOperationWithNullResponse(String operationName) {
-        return new Operation(
-                operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
+        return new Operation(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
     }
 
     private static Operation createErrorOperation(
             String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
         var errorStatus = new Operation.Status(errorCode, errorMessage, errorDetails);
-        return new Operation(
-                operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
+        return new Operation(operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
     }
 
     private static Operation createCancelledOperation(String operationName, String errorMessage) {
         var errorStatus = new Operation.Status(13, errorMessage, List.of());
-        return new Operation(
-                operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
+        return new Operation(operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
     }
 
     private static ChatResponse createChatResponse(String content) {

@@ -70,7 +70,7 @@ public final class GoogleAiGeminiBatchChatModel extends BaseGeminiChatModel {
             implements BatchResponse {}
 
     /**
-     * Represents a List of Batches, returned from {@link GoogleAiGeminiBatchChatModel#listBatchJobs(String, Integer, String)}
+     * Represents a List of Batches, returned from {@link GoogleAiGeminiBatchChatModel#listBatchJobs(Integer, String)}}
      *
      * @param pageToken Token used to paginate to the next page.
      * @param responses List of batch responses.
