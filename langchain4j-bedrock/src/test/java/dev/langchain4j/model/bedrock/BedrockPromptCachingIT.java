@@ -55,6 +55,7 @@ class BedrockPromptCachingIT {
         assertThat(response.aiMessage()).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.metadata().tokenUsage()).isNotNull();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
@@ -80,6 +81,7 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterUser).isNotNull();
         assertThat(responseAfterUser.aiMessage().text()).isNotBlank();
         assertThat(responseAfterUser.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
 
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
@@ -102,6 +104,7 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterTools).isNotNull();
         assertThat(responseAfterTools.aiMessage().text()).isNotBlank();
         assertThat(responseAfterTools.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterTools.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
@@ -180,7 +183,9 @@ class BedrockPromptCachingIT {
 
         // Verify both responses are valid
         assertThat(response1.metadata().tokenUsage()).isNotNull();
+        assertThat(response1.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
         assertThat(response2.metadata().tokenUsage()).isNotNull();
+        assertThat(response2.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
@@ -206,5 +211,6 @@ class BedrockPromptCachingIT {
         assertThat(response).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.metadata().tokenUsage()).isNotNull();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 }
