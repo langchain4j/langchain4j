@@ -1,5 +1,8 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,14 +13,9 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddingModelBuilder;
-import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.GoogleAiEmbeddingModelBuilder;
 import java.util.Collections;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
 /**
  * Batch embedding model for Google AI Gemini.
@@ -32,15 +30,17 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private final Integer outputDimensionality;
 
     GoogleAiGeminiBatchEmbeddingModel(final Builder builder) {
-        this(builder, new GeminiService(
-                builder.httpClientBuilder,
-                builder.apiKey,
-                builder.baseUrl,
-                getOrDefault(builder.logRequestsAndResponses, false),
-                getOrDefault(builder.logRequests, false),
-                getOrDefault(builder.logResponses, false),
-                builder.logger,
-                builder.timeout));
+        this(
+                builder,
+                new GeminiService(
+                        builder.httpClientBuilder,
+                        builder.apiKey,
+                        builder.baseUrl,
+                        getOrDefault(builder.logRequestsAndResponses, false),
+                        getOrDefault(builder.logRequests, false),
+                        getOrDefault(builder.logResponses, false),
+                        builder.logger,
+                        builder.timeout));
     }
 
     GoogleAiGeminiBatchEmbeddingModel(Builder builder, final GeminiService geminiService) {
@@ -56,8 +56,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
      */
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
-        return batchProcessor.createBatchInline(
-                displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
+        return batchProcessor.createBatchInline(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
     /**
@@ -81,14 +80,12 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
         batchProcessor.deleteBatchJob(name);
     }
 
-
     /**
      * Lists batch jobs.
      */
     public BatchList<Embedding> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
-
 
     public static Builder builder() {
         return new Builder();
@@ -102,7 +99,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
 
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+                    TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -118,10 +115,11 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
             GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
 
             String title = null;
-            if (GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT.equals(taskType) && textSegment.metadata() != null && textSegment.metadata().getString(titleMetadataKey) != null) {
+            if (GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT.equals(taskType)
+                    && textSegment.metadata() != null
+                    && textSegment.metadata().getString(titleMetadataKey) != null) {
                 title = textSegment.metadata().getString(titleMetadataKey);
             }
-
 
             return new GeminiEmbeddingRequest("models/" + modelName, content, taskType, title, outputDimensionality);
         }

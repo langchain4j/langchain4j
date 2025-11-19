@@ -12,9 +12,9 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
+import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
 import java.util.List;
 import java.util.Objects;
-import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -143,9 +143,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var displayName = "Test Batch - To Cancel";
             var priority = 1L;
-            var textSegments = List.of(
-                    TextSegment.from("Text to embed 1"),
-                    TextSegment.from("Text to embed 2"));
+            var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
             BatchIncomplete<?> response =
                     (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
 
@@ -192,9 +190,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var displayName = "Test Batch - To Delete";
             var priority = 1L;
-            var textSegments = List.of(
-                    TextSegment.from("Text to embed 1"),
-                    TextSegment.from("Text to embed 2"));
+            var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
             var response = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
 
             // when
@@ -242,9 +238,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var displayName = "Test Batch - To List";
             var priority = 1L;
-            var textSegments = List.of(
-                    TextSegment.from("Text to embed 1"),
-                    TextSegment.from("Text to embed 2"));
+            var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
             var createOperation = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
 
             // when
@@ -268,9 +262,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var displayName = "Test Batch - Pagination ";
             var priority = 1L;
-            var textSegments = List.of(
-                    TextSegment.from("Text to embed 1"),
-                    TextSegment.from("Text to embed 2"));
+            var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
             subject.createBatchInline(displayName + "1", priority, textSegments);
             subject.createBatchInline(displayName + "2", priority, textSegments);
 
@@ -315,9 +307,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var displayName = "Test Batch - Retrieve Status";
             var priority = 1L;
-            var textSegments = List.of(
-                    TextSegment.from("Text to embed 1"),
-                    TextSegment.from("Text to embed 2"));
+            var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
             var createResponse = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
 
             // when

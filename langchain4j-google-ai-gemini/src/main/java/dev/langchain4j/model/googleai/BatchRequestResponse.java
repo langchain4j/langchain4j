@@ -11,27 +11,24 @@ public final class BatchRequestResponse {
     /**
      * Represents the response of a batch operation.
      */
-    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {
-    }
+    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {}
 
     /**
      * Represents a batch operation that is currently pending or in progress.
      */
-    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {
-    }
+    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {}
 
     /**
      * Represents a successful batch operation.
      */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses) implements BatchResponse<T> {
-    }
+    public record BatchSuccess<T>(BatchName batchName, List<T> responses) implements BatchResponse<T> {}
 
     /**
      * Represents an error that occurred during a batch operation.
      */
-    public record BatchError<T>(BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse<T> {
-    }
+    public record BatchError<T>(
+            BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
+            implements BatchResponse<T> {}
 
     /**
      * Represents a List of Batches.
@@ -70,7 +67,6 @@ public final class BatchRequestResponse {
         BATCH_STATE_EXPIRED,
         UNSPECIFIED
     }
-
 
     /**
      * Represents a batch request for the Gemini API.
@@ -113,8 +109,7 @@ public final class BatchRequestResponse {
      * @param <RESP> The type of response (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record BatchCreateResponse<RESP>(
-            @JsonProperty("@type") String type, InlinedResponses<RESP> inlinedResponses) {
+    record BatchCreateResponse<RESP>(@JsonProperty("@type") String type, InlinedResponses<RESP> inlinedResponses) {
 
         /**
          * Wrapper for the list of inlined responses.

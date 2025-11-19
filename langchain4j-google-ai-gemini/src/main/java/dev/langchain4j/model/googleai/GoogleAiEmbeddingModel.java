@@ -129,7 +129,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         FACT_VERIFICATION
     }
 
-    public static class GoogleAiEmbeddingModelBuilder extends BaseGoogleAiEmbeddingModelBuilder<GoogleAiEmbeddingModelBuilder> {
+    public static class GoogleAiEmbeddingModelBuilder
+            extends BaseGoogleAiEmbeddingModelBuilder<GoogleAiEmbeddingModelBuilder> {
         public GoogleAiEmbeddingModel build() {
             return new GoogleAiEmbeddingModel(this);
         }

@@ -466,7 +466,8 @@ class GeminiServiceTest {
                     1L));
 
             // When
-            BatchRequestResponse.Operation<?> actualResponse = subject.batchCreate(TEST_MODEL_NAME, request, BATCH_GENERATE_CONTENT);
+            BatchRequestResponse.Operation<?> actualResponse =
+                    subject.batchCreate(TEST_MODEL_NAME, request, BATCH_GENERATE_CONTENT);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);

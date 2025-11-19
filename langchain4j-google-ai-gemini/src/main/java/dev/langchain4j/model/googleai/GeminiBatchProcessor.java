@@ -33,8 +33,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     private final GeminiService geminiService;
     private final RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer;
 
-    GeminiBatchProcessor(GeminiService geminiService,
-                         RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
+    GeminiBatchProcessor(
+            GeminiService geminiService, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
         this.geminiService = geminiService;
         this.preparer = preparer;
     }
@@ -90,7 +90,11 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
-        return new BatchList<>(response.nextPageToken(), response.operations().stream().map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer)).toList());
+        return new BatchList<>(
+                response.nextPageToken(),
+                response.operations().stream()
+                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
+                        .toList());
     }
 
     /**
@@ -111,7 +115,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                         new BatchName(operation.name()), preparer.extractResponses(operation.response()));
             }
         } else {
-            return new BatchRequestResponse.BatchIncomplete<>(new BatchName(operation.name()), extractBatchState(operation.metadata()));
+            return new BatchRequestResponse.BatchIncomplete<>(
+                    new BatchName(operation.name()), extractBatchState(operation.metadata()));
         }
     }
 
