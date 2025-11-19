@@ -24,10 +24,12 @@ import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
@@ -83,6 +85,8 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
     private final Boolean strictJsonSchema;
+    private final Integer maxCompletionTokens;
+    private final ReasoningEffortValue reasoningEffort;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -96,6 +100,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -109,6 +114,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -121,6 +127,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -158,6 +165,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.enhancements = builder.enhancements;
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
+        this.reasoningEffort = builder.reasoningEffort;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -185,13 +194,15 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
+                .setMaxCompletionTokens(maxCompletionTokens)
                 .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias.isEmpty() ? null : logitBias)
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setSeed(seed);
+                .setSeed(seed)
+                .setReasoningEffort(reasoningEffort);
 
         if (!parameters.toolSpecifications().isEmpty()) {
             options.setTools(toToolDefinitions(parameters.toolSpecifications()));
@@ -255,6 +266,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
+        private Integer maxCompletionTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
@@ -269,6 +281,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Boolean strictJsonSchema;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -276,6 +289,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
+        private ReasoningEffortValue reasoningEffort;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -366,6 +380,11 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
+            return this;
+        }
+
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
@@ -436,6 +455,11 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
+            return this;
+        }
+
         public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
@@ -479,6 +503,11 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
+        public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
         }
 
         public AzureOpenAiChatModel build() {

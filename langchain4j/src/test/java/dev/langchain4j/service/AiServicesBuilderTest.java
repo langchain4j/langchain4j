@@ -1,5 +1,9 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -7,15 +11,15 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-
 /**
- * Verify that the AIServices builder doesn't allow setting more than out of
+ * Verify that the AIServices builder doesn't allow setting more than one of
  * (retriever, contentRetriever, retrievalAugmentor).
  */
 class AiServicesBuilderTest {
+
+    interface TestService {
+        String chat(String userMessage);
+    }
 
     @Test
     void contentRetrieverAndRetrievalAugmentor() {
@@ -23,7 +27,7 @@ class AiServicesBuilderTest {
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
         assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
+            AiServices.builder(TestService.class)
                     .contentRetriever(contentRetriever)
                     .retrievalAugmentor(retrievalAugmentor)
                     .build();
@@ -36,7 +40,7 @@ class AiServicesBuilderTest {
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
         assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
+            AiServices.builder(TestService.class)
                     .retrievalAugmentor(retrievalAugmentor)
                     .contentRetriever(contentRetriever)
                     .build();
@@ -45,15 +49,7 @@ class AiServicesBuilderTest {
 
     @Test
     void should_raise_an_error_when_tools_are_classes() {
-
-        // given
-        interface Assistant {
-
-            String chat(String userMessage);
-        }
-
         class HelloWorld {
-
             @Tool("Say hello")
             void add(String name) {
                 System.out.printf("Hello %s!", name);
@@ -63,26 +59,39 @@ class AiServicesBuilderTest {
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
-                .isThrownBy(() -> AiServices.builder(Assistant.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
                         .chatModel(chatModel)
                         .tools(HelloWorld.class)
                         .build());
     }
 
     @Test
-    void should_fail_when_return_type_is_void() {
+    void should_throw_when_chat_model_is_null() {
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() ->
+                        AiServices.builder(TestService.class).chatModel(null).build())
+                .withMessageContaining("chatModel");
+    }
 
-        // given
-        interface Assistant {
+    @Test
+    void should_throw_when_multiple_retrievers_set() {
+        ContentRetriever contentRetriever1 = mock(ContentRetriever.class);
+        ContentRetriever contentRetriever2 = mock(ContentRetriever.class);
 
-            void chat(String userMessage);
-        }
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .contentRetriever(contentRetriever1)
+                        .contentRetriever(contentRetriever2)
+                        .build());
+    }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+    @Test
+    void should_allow_building_with_only_chat_model() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
 
-        // when - then
-        assertThatThrownBy(() -> AiServices.create(Assistant.class, chatModel))
-                .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("'void' is not a supported return type of an AI Service method");
+        TestService service =
+                AiServices.builder(TestService.class).chatModel(chatModel).build();
+
+        assertThat(service).isNotNull();
     }
 }

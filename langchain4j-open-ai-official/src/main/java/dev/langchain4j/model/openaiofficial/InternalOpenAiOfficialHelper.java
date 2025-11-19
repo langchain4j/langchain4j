@@ -574,7 +574,7 @@ class InternalOpenAiOfficialHelper {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             Map<String, JsonValue> properties = new HashMap<>();
@@ -597,6 +597,7 @@ class InternalOpenAiOfficialHelper {
         return switch (toolChoice) {
             case AUTO -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.AUTO);
             case REQUIRED -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.REQUIRED);
+            case NONE -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.NONE);
         };
     }
 

@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.carrentalassistant;
 
+import static dev.langchain4j.agentic.Models.baseModel;
+
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.carrentalassistant.domain.CustomerInfo;
@@ -16,8 +18,6 @@ import dev.langchain4j.agentic.carrentalassistant.services.TowingAgentService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-
-import static dev.langchain4j.agentic.Models.baseModel;
 
 public class AssistantMain {
 
@@ -41,21 +41,22 @@ public class AssistantMain {
     }
 
     private static CarRentalAssistant createAssistant() {
-        CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(CustomerInfoExtractionService.class)
+        CustomerInfoExtractionService customerInfoExtraction = AgenticServices.agentBuilder(
+                        CustomerInfoExtractionService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("customerInfo")
+                .outputKey("customerInfo")
                 .build();
 
         TowingAgentService towingAgentService = AgenticServices.agentBuilder(TowingAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("towingResponse")
+                .outputKey("towingResponse")
                 .build();
 
         ResponseGeneratorService responseGeneratorService = AgenticServices.agentBuilder(ResponseGeneratorService.class)
                 .chatModel(baseModel())
-                .outputName("response")
+                .outputKey("response")
                 .build();
 
         return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
@@ -65,35 +66,35 @@ public class AssistantMain {
                     }
                 })
                 .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
-                .outputName("response")
+                .outputKey("response")
                 .build();
     }
 
     private static UntypedAgent emergencyService() {
         EmergencyExtractorService emergencyExtractor = AgenticServices.agentBuilder(EmergencyExtractorService.class)
                 .chatModel(baseModel())
-                .outputName("emergencies")
+                .outputKey("emergencies")
                 .build();
 
         EmergencyResponseService emergencyResponseService = AgenticServices.agentBuilder(EmergencyResponseService.class)
                 .chatModel(baseModel())
-                .outputName("emergencyResponse")
+                .outputKey("emergencyResponse")
                 .build();
 
         FireAgentService fireAgent = AgenticServices.agentBuilder(FireAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("fireResponse")
+                .outputKey("fireResponse")
                 .build();
         MedicalAgentService medicalAgent = AgenticServices.agentBuilder(MedicalAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("medicalResponse")
+                .outputKey("medicalResponse")
                 .build();
         PoliceAgentService policeAgent = AgenticServices.agentBuilder(PoliceAgentService.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputName("policeResponse")
+                .outputKey("policeResponse")
                 .build();
 
         UntypedAgent emergencyExperts = AgenticServices.conditionalBuilder()
@@ -103,14 +104,14 @@ public class AssistantMain {
                     writeEmergency(agenticScope, emergencies.getMedical(), "medical");
                     writeEmergency(agenticScope, emergencies.getPolice(), "police");
                 })
-                .subAgents( agenticScope -> agenticScope.hasState("fireEmergency"), fireAgent)
-                .subAgents( agenticScope -> agenticScope.hasState("medicalEmergency"), medicalAgent)
-                .subAgents( agenticScope -> agenticScope.hasState("policeEmergency"), policeAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("fireEmergency"), fireAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("medicalEmergency"), medicalAgent)
+                .subAgents(agenticScope -> agenticScope.hasState("policeEmergency"), policeAgent)
                 .build();
 
         return AgenticServices.sequenceBuilder()
                 .subAgents(emergencyExtractor, emergencyExperts, emergencyResponseService)
-                .outputName("emergencyResponse")
+                .outputKey("emergencyResponse")
                 .build();
     }
 

@@ -14,6 +14,15 @@ The protocol specifies two types of transport, both of these are supported:
   can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
 
+On top of the spec, LangChain4j implements the `WebSocket` transport. This transport is not
+standardized and currently, the client side is developed in a way that it is compatible
+with the WebSocket transport as implemented by the 
+[Quarkus MCP Server extension](https://docs.quarkiverse.io/quarkus-mcp-server/dev). For MCP servers exposing WebSockets but
+built using other frameworks, compatibility is not guaranteed.
+
+Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
+container image.
+
 LangChain4j also supports the legacy 
 [HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
 but this is deprecated and will be removed in the future.
@@ -30,7 +39,7 @@ First, you need an instance of an MCP Transport.
 For stdio - this example shows how to start a server from a NPM package as a subprocess:
 
 ```java
-McpTransport transport = new StdioMcpTransport.Builder()
+McpTransport transport = StdioMcpTransport.builder()
     .command(List.of("/usr/bin/npm", "exec", "@modelcontextprotocol/server-everything@0.6.2"))
     .logEvents(true) // only if you want to see the traffic in the log
     .build();
@@ -39,7 +48,7 @@ McpTransport transport = new StdioMcpTransport.Builder()
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
 ```java
-McpTransport transport = new StreamableHttpMcpTransport.Builder()
+McpTransport transport = StreamableHttpMcpTransport.builder()
         .url("http://localhost:3001/mcp")
         .logRequests(true) // if you want to see the traffic in the log
         .logResponses(true)
@@ -49,16 +58,44 @@ McpTransport transport = new StreamableHttpMcpTransport.Builder()
 **_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
 (as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
 Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
-If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work. 
+If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
+
+For the WebSocket transport:
+```java
+McpTransport transport = WebSocketMcpTransport.builder()
+        .url("ws://localhost:3001/mcp/ws")
+        .logResponses(true)
+        .logRequests(true)
+        .build();
+```
 
 For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
 The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
 
 ```java
-McpTransport transport = new HttpMcpTransport.Builder()
+McpTransport transport = HttpMcpTransport.builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
+    .build();
+```
+
+For the Docker stdio transport, you first need to add a module to your pom.xml:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-mcp-docker</artifactId>
+</dependency>
+```
+
+Then you need to create a Docker transport:
+
+```java
+McpTransport transport = DockerMcpTransport.builder()
+    .image("mcp/time")
+    .dockerHost("unix:///var/run/docker.sock")
+    .logEvents(true) // if you want to see the traffic in the log
     .build();
 ```
 
@@ -67,7 +104,7 @@ McpTransport transport = new HttpMcpTransport.Builder()
 To create an MCP client from the transport:
 
 ```java
-McpClient mcpClient = new DefaultMcpClient.Builder()
+McpClient mcpClient = DefaultMcpClient.builder()
     .key("MyMCPClient")
     .transport(transport)
     .build();
@@ -160,6 +197,42 @@ Bot bot = AiServices.builder(Bot.class)
 ```
 
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
+
+### MCP Tool Name Mapping
+
+If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
+adjust an inappropriately chosen name), it may be useful to apply a tool name mapping function.
+This can be done by specifying a `BiFunction<McpClient, ToolSpecification, String>` when creating the `McpToolProvider`.
+
+For example:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient1, mcpClient2)
+        .toolNameMapper((client, toolSpec) -> {
+            // Prefix all tool names with the name of the MCP client and an underscore
+            return client.key() + "_" + toolSpec.name();
+        })
+        .build();
+```
+
+After this, the `ToolSpecification` objects returned by the tool provider will contain the mapped (logical) names,
+but the generated `ToolExecutor` objects will be fixed to pass the original (physical) names to the server when invoking the tools.
+
+### MCP Tool Specification Mapping
+
+Similarly to MCP tool mapping (above), one can map complete `ToolSpecification`:
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolSpecificationMapper((client, toolSpec) -> {
+            // Prefix all tool names with "myprefix_" and convert the description to uppercase
+            return toolSpec.toBuilder()
+                .name("myprefix_" + toolSpec.name())
+                .description(toolSpec.description().toUpperCase())
+                .build();
+        })
+        .build();
+```
 
 ## Logging
 
@@ -427,3 +500,29 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .cacheToolList(false)
     .build();
 ```
+
+## MCP Registry client
+
+LangChain4j also offers a separate client implementation that can talk to 
+[MCP registries](https://registry.modelcontextprotocol.io/docs#/). Right now, only
+read-only operations are implemented (you can search for MCP servers, but managing and adding servers
+is not supported - please use the 
+[official tools](https://github.com/modelcontextprotocol/registry/blob/main/docs/guides/publishing/publish-server.md) for that).
+
+**_WARNING:_** Discovering MCP servers and using them (especially running locally) may present serious security risks. Before
+running any MCP server that you locate in a public registry, make sure you can trust it.
+
+The registry client
+lives in the `dev.langchain4j.mcp.registryclient` package and can be initialized like this:
+
+```java
+McpRegistryClient client = DefaultMcpRegistryClient.builder()
+        .baseUrl("URL-OF-THE-REGISTRY")
+        .build();
+```
+
+If no base URL is provided, the official registry will be used as the default (https://registry.modelcontextprotocol.io).
+Then, to search for MCP servers, use the `registry.listServers(McpServerListRequest)` method. A `McpServerListRequest`
+object can be built using the `McpServerListRequest.Builder` class. The Java API in LangChain4j
+closely mirrors the REST API of MCP registries as described in the official
+[MCP Registry Reference](https://registry.modelcontextprotocol.io/docs).

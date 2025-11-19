@@ -19,6 +19,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
 
@@ -36,6 +38,7 @@ abstract class OllamaBaseChatModel {
                 .customHeaders(builder.customHeaders)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .logger(builder.logger)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -110,6 +113,7 @@ abstract class OllamaBaseChatModel {
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
         protected Boolean logResponses;
+        protected Logger logger;
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
 
@@ -230,7 +234,7 @@ abstract class OllamaBaseChatModel {
 
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code thinking} field from the API response
          * and return it inside the {@link AiMessage}.
@@ -262,6 +266,15 @@ abstract class OllamaBaseChatModel {
 
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return self();
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public B logger(Logger logger) {
+            this.logger = logger;
             return self();
         }
 

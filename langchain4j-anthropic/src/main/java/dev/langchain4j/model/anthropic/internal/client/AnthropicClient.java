@@ -8,6 +8,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 
@@ -48,6 +49,7 @@ public abstract class AnthropicClient {
         public String version;
         public String beta;
         public Duration timeout;
+        public Logger logger;
         public Boolean logRequests;
         public Boolean logResponses;
 
@@ -104,6 +106,15 @@ public abstract class AnthropicClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return (B) this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public B logger(Logger logger) {
+            this.logger = logger;
             return (B) this;
         }
     }

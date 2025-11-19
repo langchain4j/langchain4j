@@ -24,6 +24,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
+import com.google.common.annotations.VisibleForTesting;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -189,6 +190,10 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             GoogleCredentials scopedCredentials =
                     builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
             vertexAiBuilder.setCredentials(scopedCredentials);
+        }
+
+        if (builder.apiEndpoint != null) {
+            vertexAiBuilder.setApiEndpoint(builder.apiEndpoint);
         }
 
         this.vertexAI = vertexAiBuilder.build();
@@ -532,6 +537,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
     }
 
+    @VisibleForTesting
+    VertexAI vertexAI() {
+        return this.vertexAI;
+    }
+
     @Override
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
@@ -577,6 +587,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
         private GoogleCredentials credentials;
+        private String apiEndpoint;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -689,6 +700,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         public VertexAiGeminiChatModelBuilder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
+            return this;
+        }
+
+        public VertexAiGeminiChatModelBuilder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
             return this;
         }
 

@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
@@ -929,7 +928,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = "How much is 37 plus 87? How much is 73 plus 78?";
+        var text = "How much is 37 plus 87? How much is 73 plus 78? Call 2 tools in parallel (at the same time)!";
 
         // when
         var response = assistant.chat(text);

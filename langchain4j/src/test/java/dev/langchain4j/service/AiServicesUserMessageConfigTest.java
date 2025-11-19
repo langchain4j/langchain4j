@@ -7,21 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,11 +38,17 @@ class AiServicesUserMessageConfigTest {
         verifyNoMoreInteractionsFor(chatModel);
     }
 
+    static class MyInvocationParameters extends InvocationParameters {}
+
     interface AiService {
 
         String chat1(String userMessage);
 
         String chat2(@UserMessage String userMessage);
+
+        String chat2_1(@UserMessage String userMessage, InvocationParameters invocationParameters);
+
+        String chat2_2(@UserMessage String userMessage, MyInvocationParameters invocationParameters);
 
         String chat3(@UserMessage String userMessage, @V("country") String country);
 
@@ -99,6 +98,10 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
+        String illegalChat7(String userMessage, InvocationParameters invocationParameters);
+
+        String illegalChat8(@UserMessage String userMessage, InvocationParameters ip1, InvocationParameters ip2);
+
         // TODO more tests with @UserName, @V, @MemoryId
     }
 
@@ -141,6 +144,52 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_2_1() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat2_1("What is the capital of Germany?", new InvocationParameters()))
+                .containsIgnoringCase("Berlin");
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_2_1_when_invocation_parameters_are_null() {
+
+        // given
+        InvocationParameters invocationParameters = null;
+
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> aiService.chat2_1("does not matter", invocationParameters))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("InvocationParameters cannot be null");
+    }
+
+    @Test
+    void user_message_configuration_2_2() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat2_2("What is the capital of Germany?", new MyInvocationParameters()))
+                .containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
     }
@@ -391,8 +440,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg0' of method 'illegalChat3' should be annotated "
-                        + "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
@@ -406,8 +454,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat4' should be annotated "
-                        + "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
@@ -439,103 +486,33 @@ class AiServicesUserMessageConfigTest {
                         "Error: The method 'illegalChat6' has multiple @UserMessage annotations. Please use only one.");
     }
 
-    interface AssistantHallucinatedTool {
-        Result<AiMessage> chat(String userMessage);
-    }
+    @Test
+    void illegal_user_message_configuration_7() {
 
-    static class HelloWorld {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
 
-        @Tool("Say hello")
-        String hello(String name) {
-            return "Hello " + name + "!";
-        }
+        // when-then
+        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new InvocationParameters()))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
-    void should_fail_on_hallucinated_tool_execution() {
+    void illegal_user_message_configuration_8() {
 
-        ChatModel chatModel = new ChatModelMock(ignore -> AiMessage.from(
-                ToolExecutionRequest.builder().id("id").name("unknown").build()));
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(chatModel)
-                .chatMemory(chatMemory)
-                .tools(new HelloWorld())
-                .hallucinatedToolNameStrategy(HallucinatedToolNameStrategy.THROW_EXCEPTION)
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining("unknown");
+        InvocationParameters invocationParameters = new InvocationParameters();
 
-        validateChatMemory(chatMemory);
-    }
-
-    @Test
-    void should_retry_on_hallucinated_tool_execution() {
-
-        ChatModel chatModel = new ChatModelMock(chatRequest -> {
-            List<ToolExecutionResultMessage> toolResults = chatRequest.messages().stream()
-                    .filter(ToolExecutionResultMessage.class::isInstance)
-                    .map(ToolExecutionResultMessage.class::cast)
-                    .toList();
-            if (toolResults.isEmpty()) {
-                return AiMessage.from(
-                        ToolExecutionRequest.builder().id("id").name("unknown").build());
-            }
-            ToolExecutionResultMessage lastToolResult = toolResults.get(toolResults.size() - 1);
-            String text = lastToolResult.text();
-            if (text.contains("Error")) {
-                // The LLM is supposed to understand the error and retry with the correct tool name
-                return AiMessage.from(ToolExecutionRequest.builder()
-                        .id("id")
-                        .name("hello")
-                        .arguments("{\"arg0\": \"Mario\"}")
-                        .build());
-            }
-            return AiMessage.from(text);
-        });
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
-                .chatModel(chatModel)
-                .chatMemory(chatMemory)
-                .tools(new HelloWorld())
-                .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                        toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
-                .build();
-
-        Result<AiMessage> result = assistant.chat("hi");
-        assertThat(result.content().text()).isEqualTo("Hello Mario!");
-
-        validateChatMemory(chatMemory);
-    }
-
-    private static void validateChatMemory(ChatMemory chatMemory) {
-        List<ChatMessage> messages = chatMemory.messages();
-        Class<?> expectedMessageType = dev.langchain4j.data.message.UserMessage.class;
-        for (ChatMessage message : messages) {
-            assertThat(message).isInstanceOf(expectedMessageType);
-            expectedMessageType = nextExpectedMessageType(message);
-        }
-    }
-
-    private static Class<?> nextExpectedMessageType(ChatMessage message) {
-        if (message instanceof dev.langchain4j.data.message.UserMessage) {
-            return AiMessage.class;
-        } else if (message instanceof AiMessage aiMessage) {
-            if (aiMessage.hasToolExecutionRequests()) {
-                return ToolExecutionResultMessage.class;
-            } else {
-                return dev.langchain4j.data.message.UserMessage.class;
-            }
-        } else if (message instanceof ToolExecutionResultMessage) {
-            return AiMessage.class;
-        }
-        throw new UnsupportedOperationException(
-                "Unsupported message type: " + message.getClass().getName());
+        // when-then
+        assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("There can be at most one parameter of type dev.langchain4j.invocation.InvocationParameters");
     }
 }

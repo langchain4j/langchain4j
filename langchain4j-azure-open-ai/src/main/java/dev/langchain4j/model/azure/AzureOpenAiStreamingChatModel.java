@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
@@ -32,10 +33,12 @@ import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -52,6 +55,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.HashSet;
@@ -59,6 +63,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 /**
@@ -91,12 +96,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAIAsyncClient client;
     private final ChatRequestParameters defaultRequestParameters;
+
     private final Map<String, Integer> logitBias;
     private final String user;
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
     private final boolean strictJsonSchema;
+    private final Integer maxCompletionTokens;
+    private final ReasoningEffortValue reasoningEffort;
+
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
@@ -109,6 +118,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -121,6 +131,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -133,6 +144,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -170,6 +182,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.enhancements = builder.enhancements;
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
+        this.reasoningEffort = builder.reasoningEffort;
+
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -196,13 +211,15 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setFrequencyPenalty(parameters.frequencyPenalty())
                 .setPresencePenalty(parameters.presencePenalty())
                 .setMaxTokens(parameters.maxOutputTokens())
+                .setMaxCompletionTokens(maxCompletionTokens)
                 .setStop(parameters.stopSequences().isEmpty() ? null : parameters.stopSequences())
                 .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias.isEmpty() ? null : logitBias)
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setSeed(seed);
+                .setSeed(seed)
+                .setReasoningEffort(reasoningEffort);
 
         ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
         ChatCompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
@@ -221,11 +238,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModelName = new AtomicReference<>();
+        AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-        chatCompletionsStream.subscribe(
+        Disposable disposable = chatCompletionsStream.subscribe(
                 chatCompletion -> {
                     responseBuilder.append(chatCompletion);
-                    handle(chatCompletion, toolCallBuilder, handler);
+                    handle(chatCompletion, toolCallBuilder, handler, streamingHandle.get());
 
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
@@ -255,16 +273,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                     .build())
                             .build();
 
-                    try {
-                        handler.onCompleteResponse(chatResponse);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onCompleteResponse(handler, chatResponse);
                 });
+
+        streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
     }
 
-    private static void handle(
-            ChatCompletions chatCompletions, ToolCallBuilder toolCallBuilder, StreamingChatResponseHandler handler) {
+    private static void handle(ChatCompletions chatCompletions,
+                               ToolCallBuilder toolCallBuilder,
+                               StreamingChatResponseHandler handler,
+                               StreamingHandle streamingHandle) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -277,7 +295,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.getContent();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content, streamingHandle);
         }
 
         List<ChatCompletionsToolCall> toolCalls = delta.getToolCalls();
@@ -308,7 +326,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                 .name(name)
                                 .partialArguments(partialArguments)
                                 .build();
-                        onPartialToolCall(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest, streamingHandle);
                     }
                 }
             }
@@ -349,6 +367,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
+        private Integer maxCompletionTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
@@ -363,6 +382,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIAsyncClient openAIAsyncClient;
@@ -370,6 +390,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
+        private ReasoningEffortValue reasoningEffort;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -460,6 +481,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
+            return this;
+        }
+
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
@@ -530,6 +556,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
+            return this;
+        }
+
         public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
@@ -574,6 +605,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         public Builder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
+
+        public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }      
 
         public AzureOpenAiStreamingChatModel build() {
             return new AzureOpenAiStreamingChatModel(this);

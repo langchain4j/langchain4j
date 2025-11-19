@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.scope;
 
+import dev.langchain4j.invocation.LangChain4jManaged;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,7 +14,7 @@ import java.util.Map;
  * The class also provides methods to read and write state, manage agent invocations, and retrieve
  * the context as a conversation.
  */
-public interface AgenticScope {
+public interface AgenticScope extends LangChain4jManaged {
 
     Object memoryId();
 
@@ -29,4 +31,7 @@ public interface AgenticScope {
     Map<String, Object> state();
 
     String contextAsConversation(String... agentNames);
+    String contextAsConversation(Object... agents);
+
+    List<AgentInvocation> agentInvocations(String agentName);
 }

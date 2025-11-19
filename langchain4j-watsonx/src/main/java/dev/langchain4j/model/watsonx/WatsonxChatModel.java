@@ -10,6 +10,7 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -35,10 +36,10 @@ import java.util.Set;
  *
  * <pre>{@code
  * ChatModel chatModel = WatsonxChatModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
- *     .modelName("ibm/granite-3-8b-instruct")
+ *     .modelName("ibm/granite-3-3-8b-instruct")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
@@ -66,12 +67,19 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) messages.add(THINKING);
+        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        ExtractionTags tags = null;
+
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
+            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
+            watsonxChatRequest.thinking(wcrp.thinking());
+            tags = wcrp.thinking().getExtractionTags();
+        }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
 
-        com.ibm.watsonx.ai.chat.ChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> chatService.chat(com.ibm.watsonx.ai.chat.ChatRequest.builder()
+        com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatService.chat(watsonxChatRequest
                         .messages(messages)
                         .tools(tools)
                         .parameters(parameters)
@@ -90,9 +98,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                     .map(Converter::toToolExecutionRequest)
                     .toList());
         } else if (nonNull(tags)) {
-            var parts = chatResponse.toTextByTags(Set.of(tags.think(), tags.response()));
-            aiMessage.thinking(parts.get(tags.think()));
-            aiMessage.text(parts.get(tags.response()));
+            aiMessage.thinking(chatResponse.extractThinking());
+            aiMessage.text(chatResponse.extractContent());
         } else {
             aiMessage.text(message.content());
         }
@@ -141,7 +148,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      *
      * <pre>{@code
      * ChatModel chatModel = WatsonxChatModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-3-8b-instruct")
@@ -160,6 +167,8 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      * Builder class for constructing {@link WatsonxChatModel} instances with configurable parameters.
      */
     public static class Builder extends WatsonxChat.Builder<Builder> {
+
+        private Builder() {}
 
         public WatsonxChatModel build() {
             return new WatsonxChatModel(this);

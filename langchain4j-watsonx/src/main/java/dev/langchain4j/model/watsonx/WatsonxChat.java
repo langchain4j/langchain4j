@@ -5,18 +5,18 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
-import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.Thinking;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,18 +33,14 @@ import java.util.Set;
 @Internal
 abstract class WatsonxChat {
 
-    protected static final ControlMessage THINKING = ControlMessage.of("thinking");
-
     protected final ChatService chatService;
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
     protected final Set<Capability> supportedCapabilities;
-    protected final ExtractionTags tags;
 
     protected WatsonxChat(Builder<?> builder) {
         listeners = copy(builder.listeners);
         supportedCapabilities = copy(builder.supportedCapabilities);
-        tags = builder.tags;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -63,7 +58,8 @@ abstract class WatsonxChat {
         var modelName = getOrDefault(builder.modelName, commonParameters.modelName());
         var projectId = getOrDefault(builder.projectId, watsonxParameters.projectId());
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
-        var timeLimit = getOrDefault(builder.timeLimit, watsonxParameters.timeLimit());
+        var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
+        var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
                 // Common parameters
@@ -85,7 +81,8 @@ abstract class WatsonxChat {
                 .topLogprobs(getOrDefault(builder.topLogprobs, watsonxParameters.topLogprobs()))
                 .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
-                .timeLimit(timeLimit)
+                .timeout(timeout)
+                .thinking(thinking)
                 .build();
 
         var chatServiceBuilder = ChatService.builder();
@@ -97,16 +94,30 @@ abstract class WatsonxChat {
         }
 
         chatService = chatServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(modelName)
                 .version(builder.version)
                 .projectId(projectId)
                 .spaceId(spaceId)
-                .timeout(timeLimit)
+                .timeout(timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
-                .httpClient(builder.httpClient)
                 .build();
+    }
+
+    void validateThinkingIsAllowedForGraniteModel(
+            String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
+
+        if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
+
+        if (!isNullOrEmpty(tools))
+            throw new InvalidRequestException("The thinking/reasoning cannot be activated when tools are used");
+
+        var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
+
+        if (systemMessageIsPresent)
+            throw new InvalidRequestException(
+                    "The thinking/reasoning cannot be activated when a system message is present");
     }
 
     void validate(ChatRequestParameters parameters) {
@@ -114,26 +125,9 @@ abstract class WatsonxChat {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
 
-    boolean isThinkingActivable(List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
-        if (isNull(tags)) return false;
-
-        if (!isNullOrEmpty(tools))
-            throw new LangChain4jException("The thinking/reasoning cannot be activated when tools are used");
-
-        var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
-
-        if (systemMessageIsPresent)
-            throw new LangChain4jException(
-                    "The thinking/reasoning cannot be activated when a system message is present");
-
-        return true;
-    }
-
     @SuppressWarnings("unchecked")
     abstract static class Builder<T extends Builder<T>> extends WatsonxBuilder<T> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
         private Double temperature;
         private Double topP;
         private Double frequencyPenalty;
@@ -147,15 +141,14 @@ abstract class WatsonxChat {
         private Integer topLogprobs;
         private Integer seed;
         private String toolChoiceName;
-        private Duration timeLimit;
         private List<ToolSpecification> toolSpecifications;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private Set<Capability> supportedCapabilities;
-        private ExtractionTags tags;
+        private Thinking thinking;
 
-        public T url(CloudRegion cloudRegion) {
-            return (T) super.url(cloudRegion.getMlEndpoint());
+        public T baseUrl(CloudRegion cloudRegion) {
+            return (T) super.baseUrl(cloudRegion.getMlEndpoint());
         }
 
         public T modelName(String modelName) {
@@ -242,11 +235,6 @@ abstract class WatsonxChat {
             return (T) this;
         }
 
-        public T timeLimit(Duration timeLimit) {
-            this.timeLimit = timeLimit;
-            return (T) this;
-        }
-
         public T supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return (T) this;
@@ -275,29 +263,26 @@ abstract class WatsonxChat {
             return (T) this;
         }
 
-        /**
-         * Sets the tag names used to extract segmented content from the assistant's response.
-         * <p>
-         * The provided {@link ExtractionTags} define which XML-like tags (such as {@code <think>} and {@code <response>}) will be used to extract the
-         * response from the {@link AiMessage}.
-         * <p>
-         * If the {@code response} tag is not specified in {@link ExtractionTags}, it will automatically default to {@code "root"}, meaning that only
-         * the text nodes directly under the root element will be treated as the final response.
-         * <p>
-         * Example:
-         *
-         * <pre>{@code
-         * // Explicitly set both tags
-         * builder.thinking(ExtractionTags.of("think", "response")).build();
-         *
-         * // Only set reasoning tag — response defaults to "root"
-         * builder.thinking(ExtractionTags.of("think")).build();
-         * }</pre>
-         *
-         * @param tags an {@link ExtractionTags} instance containing the reasoning and (optionally) response tag names
-         */
+        public T thinking(boolean enabled) {
+            return thinking(Thinking.builder().enabled(enabled).build());
+        }
+
         public T thinking(ExtractionTags tags) {
-            this.tags = tags;
+            if (nonNull(tags)) return thinking(Thinking.of(tags));
+
+            this.thinking = null;
+            return (T) this;
+        }
+
+        public T thinking(ThinkingEffort thinkingEffort) {
+            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+
+            this.thinking = null;
+            return (T) this;
+        }
+
+        public T thinking(Thinking thinking) {
+            this.thinking = thinking;
             return (T) this;
         }
     }

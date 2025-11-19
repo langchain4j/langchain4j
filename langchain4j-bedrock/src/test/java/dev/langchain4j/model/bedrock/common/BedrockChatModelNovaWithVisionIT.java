@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -48,6 +50,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
                 // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
                 .build();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return BedrockTokenUsage.class;
     }
 
     @Override

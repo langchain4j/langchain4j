@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-class Document {
+public class Document {
 
     private float[] vector;
     private String text;
@@ -49,7 +49,7 @@ class Document {
         return new Builder();
     }
 
-    static class Builder {
+    public static class Builder {
 
         private float[] vector;
         private String text;

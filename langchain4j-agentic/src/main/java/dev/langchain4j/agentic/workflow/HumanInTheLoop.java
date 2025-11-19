@@ -5,39 +5,47 @@ import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public record HumanInTheLoop(String inputName, String outputName, String description, Consumer<String> requestWriter, Supplier<String> responseReader) implements AgentSpecsProvider {
+public record HumanInTheLoop(
+        String inputKey,
+        String outputKey,
+        String description,
+        Consumer<?> requestWriter,
+        boolean async,
+        Supplier<?> responseReader)
+        implements AgentSpecsProvider {
 
     @Agent("An agent that asks the user for missing information")
-    public String askUser(String request) {
-        requestWriter.accept(request);
+    public Object askUser(Object request) {
+        ((Consumer<Object>) requestWriter).accept(request);
         return responseReader.get();
     }
 
     public static class HumanInTheLoopBuilder {
 
-        private String inputName = "request";
-        private String outputName = "response";
+        private String inputKey = "request";
+        private String outputKey = "response";
         private String description = "An agent that asks the user for missing information";
-        private Consumer<String> requestWriter;
-        private Supplier<String> responseReader;
+        private boolean async = false;
+        private Consumer<?> requestWriter;
+        private Supplier<?> responseReader;
 
-        public HumanInTheLoopBuilder requestWriter(Consumer<String> requestWriter) {
+        public HumanInTheLoopBuilder requestWriter(Consumer<?> requestWriter) {
             this.requestWriter = requestWriter;
             return this;
         }
 
-        public HumanInTheLoopBuilder responseReader(Supplier<String> responseReader) {
+        public HumanInTheLoopBuilder responseReader(Supplier<?> responseReader) {
             this.responseReader = responseReader;
             return this;
         }
 
-        public HumanInTheLoopBuilder inputName(String inputName) {
-            this.inputName = inputName;
+        public HumanInTheLoopBuilder inputKey(String inputKey) {
+            this.inputKey = inputKey;
             return this;
         }
 
-        public HumanInTheLoopBuilder outputName(String outputName) {
-            this.outputName = outputName;
+        public HumanInTheLoopBuilder outputKey(String outputKey) {
+            this.outputKey = outputKey;
             return this;
         }
 
@@ -46,8 +54,13 @@ public record HumanInTheLoop(String inputName, String outputName, String descrip
             return this;
         }
 
+        public HumanInTheLoopBuilder async(boolean async) {
+            this.async = async;
+            return this;
+        }
+
         public HumanInTheLoop build() {
-            return new HumanInTheLoop(inputName, outputName, description, requestWriter, responseReader);
+            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader);
         }
     }
 }

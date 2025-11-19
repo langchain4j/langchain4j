@@ -1,15 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -50,10 +51,8 @@ class SchemaMapper {
             if (jsonObjectSchema.properties() != null) {
                 Map<String, JsonSchemaElement> properties = jsonObjectSchema.properties();
                 Map<String, GeminiSchema> mappedProperties = properties.entrySet().stream()
-                    .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> fromJsonSchemaToGSchema(entry.getValue())
-                    ));
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey, entry -> fromJsonSchemaToGSchema(entry.getValue())));
                 schemaBuilder.properties(mappedProperties);
             }
 
@@ -68,6 +67,14 @@ class SchemaMapper {
             if (jsonArraySchema.items() != null) {
                 schemaBuilder.items(fromJsonSchemaToGSchema(jsonArraySchema.items()));
             }
+        } else if (jsonSchema instanceof JsonAnyOfSchema) {
+            JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchema;
+            schemaBuilder.description(jsonAnyOfSchema.description());
+            schemaBuilder.anyOf(jsonAnyOfSchema.anyOf().stream()
+                    .map(SchemaMapper::fromJsonSchemaToGSchema)
+                    .collect(Collectors.toList()));
+        } else if (jsonSchema instanceof JsonNullSchema) {
+            schemaBuilder.type(GeminiType.NULL);
         } else {
             throw new IllegalArgumentException("Unsupported JsonSchemaElement type: " + jsonSchema.getClass());
         }
