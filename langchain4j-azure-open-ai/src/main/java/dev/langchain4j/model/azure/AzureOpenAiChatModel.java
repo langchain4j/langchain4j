@@ -24,6 +24,7 @@ import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
@@ -85,6 +86,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final Long seed;
     private final Boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
+    private final ReasoningEffortValue reasoningEffort;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -164,6 +166,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
+        this.reasoningEffort = builder.reasoningEffort;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -198,7 +201,8 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setSeed(seed);
+                .setSeed(seed)
+                .setReasoningEffort(reasoningEffort);
 
         if (!parameters.toolSpecifications().isEmpty()) {
             options.setTools(toToolDefinitions(parameters.toolSpecifications()));
@@ -285,6 +289,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
+        private ReasoningEffortValue reasoningEffort;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -498,6 +503,11 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
+        public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
         }
 
         public AzureOpenAiChatModel build() {

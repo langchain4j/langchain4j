@@ -110,9 +110,9 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      */
     protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {
         try {
-            return this.outputClass != null
+            return Optional.of(this.outputClass != null
                     ? extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass))
-                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType));
+                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType)));
         } catch (Exception e) {
             return Optional.empty();
         }

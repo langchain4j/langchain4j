@@ -14,6 +14,8 @@ import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
+import dev.langchain4j.agentic.Agents.ColorExpert;
+import dev.langchain4j.agentic.Agents.ColorMixerExpert;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
@@ -600,7 +602,27 @@ public class SupervisorAgentIT {
                 .collect(Collectors.toSet());
 
         // only 2 agents, the jokester and done
-        assertThat(agentNames).hasSize(2);
-        assertThat(agentNames).containsExactly("JokesterAgent_JokesterAssistant", "done");
+        assertThat(agentNames)
+                .hasSize(2)
+                .containsExactly("JokesterAgent_JokesterAssistant", "done");
+    }
+
+    @Test
+    void list_argument_test() {
+        ColorExpert colorExpert = AgenticServices.agentBuilder(ColorExpert.class)
+                .chatModel(baseModel())
+                .build();
+        ColorMixerExpert colorMixerExpert = AgenticServices.agentBuilder(ColorMixerExpert.class)
+                .chatModel(baseModel())
+                .build();
+
+        SupervisorAgent colorSupervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(colorExpert, colorMixerExpert)
+                .build();
+
+        String result = colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
+        assertThat(result).containsIgnoringCase("purple");
     }
 }
