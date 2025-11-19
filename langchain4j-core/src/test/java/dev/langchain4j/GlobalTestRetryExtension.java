@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -63,5 +64,31 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
         } else {
             return t;
         }
+    }
+
+    @Override
+    public <T> T interceptTestClassConstructor(Invocation<T> invocation, ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext) throws Throwable {
+        Constructor<T> testConstructor = invocationContext.getExecutable();
+        Object[] arguments = invocationContext.getArguments().toArray(new Object[0]);
+
+        int attempt = 0;
+        Throwable lastThrowable;
+
+        do {
+            try {
+                testConstructor.setAccessible(true);
+                T testObject = testConstructor.newInstance(arguments);
+                invocation.skip(); // to avoid failing because invocation.proceed() was not called
+                return testObject;
+            } catch (Throwable t) {
+                lastThrowable = getActualCause(t);
+                attempt++;
+                LOG.warn("Attempt {}/{} for creating an instance of '{}' failed because of",
+                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
+                Thread.sleep(attempt * 1000L);
+            }
+        } while (attempt < MAX_ATTEMPTS);
+
+        throw lastThrowable;
     }
 }
