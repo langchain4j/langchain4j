@@ -2,10 +2,10 @@ package dev.langchain4j.model.openaiofficial.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 

@@ -2,11 +2,16 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.stream.Collectors.toList;
 
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
@@ -18,17 +23,10 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAIClient client;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final String modelName;
     private final Integer dimensions;
     private final String user;
@@ -36,27 +34,24 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public OpenAiOfficialEmbeddingModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
-                builder.isAzure,
-                builder.isGitHubModels,
-                builder.baseUrl,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion);
-
-        this.client = setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                this.modelHost,
-                builder.openAIClient,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+        if (builder.openAIClient != null) {
+            this.client = builder.openAIClient;
+        } else {
+            this.client = setupSyncClient(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.azureDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isAzure,
+                    builder.isGitHubModels,
+                    builder.modelName,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.customHeaders);
+        }
         this.modelName = builder.modelName;
         this.dimensions = getOrDefault(builder.dimensions, knownDimension());
         this.user = builder.user;

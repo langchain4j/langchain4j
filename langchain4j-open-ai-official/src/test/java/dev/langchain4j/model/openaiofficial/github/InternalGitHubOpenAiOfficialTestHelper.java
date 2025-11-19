@@ -1,10 +1,9 @@
 package dev.langchain4j.model.openaiofficial.github;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import java.util.ArrayList;
 import java.util.List;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

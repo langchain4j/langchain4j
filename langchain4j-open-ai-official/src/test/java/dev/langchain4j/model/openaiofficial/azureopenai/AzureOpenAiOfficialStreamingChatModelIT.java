@@ -4,7 +4,7 @@ import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpen
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
-import com.openai.models.ChatModel;
+import java.util.List;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -14,8 +14,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
-import java.util.List;
-
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
@@ -38,7 +36,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(ChatModel.GPT_4O.toString())
+                .azureDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
@@ -49,7 +47,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
 
     @Override
     protected String customModelName() {
-        return ChatModel.GPT_4O_2024_11_20.toString();
+        return CHAT_MODEL_NAME_ALTERNATE.asString();
     }
 
     @Override

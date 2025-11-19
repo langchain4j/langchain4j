@@ -2,6 +2,9 @@ package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -9,9 +12,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +26,8 @@ public class InternalOpenAiOfficialTestHelper {
 
     private static final Logger log = LoggerFactory.getLogger(InternalOpenAiOfficialTestHelper.class);
 
-    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_4O_MINI;
-    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_4O;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_5_MINI;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_5;
     public static final com.openai.models.embeddings.EmbeddingModel EMBEDDING_MODEL_NAME =
             com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
     public static final com.openai.models.images.ImageModel IMAGE_MODEL_NAME =

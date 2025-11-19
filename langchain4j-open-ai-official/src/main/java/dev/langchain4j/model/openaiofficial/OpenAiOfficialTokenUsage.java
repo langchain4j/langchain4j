@@ -1,8 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
-import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Objects;
+import dev.langchain4j.model.output.TokenUsage;
 
 public class OpenAiOfficialTokenUsage extends TokenUsage {
 

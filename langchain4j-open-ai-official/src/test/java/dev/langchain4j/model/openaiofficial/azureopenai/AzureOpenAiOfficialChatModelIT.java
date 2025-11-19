@@ -2,14 +2,13 @@ package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
+import java.util.List;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
-import java.util.List;
-
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -32,7 +31,7 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(com.openai.models.ChatModel.GPT_4O.toString())
+                .azureDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {

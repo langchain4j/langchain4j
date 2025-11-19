@@ -2,6 +2,9 @@ package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import com.openai.models.images.ImageGenerateParams;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -10,9 +13,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

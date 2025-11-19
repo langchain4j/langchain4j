@@ -3,12 +3,12 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import java.util.Map;
+import java.util.Objects;
 import com.openai.models.ChatModel;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import java.util.Map;
-import java.util.Objects;
 
 @Experimental
 public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParameters {
