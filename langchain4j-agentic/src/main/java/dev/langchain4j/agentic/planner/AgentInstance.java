@@ -13,4 +13,10 @@ public interface AgentInstance {
     String outputKey();
 
     List<AgentArgument> arguments();
+
+    default boolean isStreaming() {
+        return false;
+    }
+
+    default void setStreaming(boolean streaming) {}
 }

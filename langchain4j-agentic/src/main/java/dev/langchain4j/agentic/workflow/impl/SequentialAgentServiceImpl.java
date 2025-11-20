@@ -16,7 +16,7 @@ public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, Seq
 
     @Override
     public T build() {
-        return build(SequentialPlanner::new);
+        return build(new SequentialSupplier());
     }
 
     public static SequentialAgentServiceImpl<UntypedAgent> builder() {

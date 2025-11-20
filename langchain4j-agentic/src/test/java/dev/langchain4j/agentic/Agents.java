@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
@@ -258,6 +258,11 @@ public class Agents {
         TokenStream editStory(@V("story") String story, @V("style") String style);
     }
 
+    public interface NovelCreatorForStreaming {
+        @Agent("Edit a story to better fit a given style")
+        TokenStream editStory(@V("story") String story, @V("style") String style);
+    }
+
     public interface StyleScorer {
 
         @UserMessage(
@@ -321,7 +326,8 @@ public class Agents {
 
     public interface ColorExpert {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             What is the color of a {{object}}?
             Reply with only the name of the color of the object and nothing else.
             """)
@@ -332,7 +338,8 @@ public class Agents {
     public interface ColorMixerExpert {
 
         @SystemMessage("You are a color mixer expert who knows which color result from mixing other colors.")
-        @UserMessage("""
+        @UserMessage(
+                """
             What color do you obtain if you mix the following colors: {{colors}}?
             Reply with only the name of the color resulting from the mix and nothing else.
             """)

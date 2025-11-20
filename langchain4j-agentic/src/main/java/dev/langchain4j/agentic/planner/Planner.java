@@ -1,7 +1,5 @@
 package dev.langchain4j.agentic.planner;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
-
 import java.util.List;
 
 public interface Planner {
@@ -32,11 +30,5 @@ public interface Planner {
 
     default Action done(Object result) {
         return new Action.DoneWithResultAction(result);
-    }
-
-    default void checkSubAgents(List<AgentInstance> subAgents, AgentInstance plannerAgent) {
-        if (hasStreamingAgent(subAgents)) {
-            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
-        }
     }
 }

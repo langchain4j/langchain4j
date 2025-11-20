@@ -17,6 +17,7 @@ import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.LegalExpertForStreaming;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertForStreaming;
+import dev.langchain4j.agentic.Agents.NovelCreatorForStreaming;
 import dev.langchain4j.agentic.Agents.StyleEditorForStreaming;
 import dev.langchain4j.agentic.Agents.TechnicalExpertForStreaming;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -207,6 +208,37 @@ public class StreamingAgentsWorkflowIT {
                 .build();
 
         UntypedAgent novelCreator1 = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
+
+        final SequentialAgentService<UntypedAgent> sequentialAgentService = AgenticServices.sequenceBuilder()
+                .subAgents(novelCreator1, creativeWriter, audienceEditor)
+                .outputKey("story");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> sequentialAgentService.build())
+                .withMessage("Only the last sub-agent can return TokenStream.");
+    }
+
+    @Test
+    void streaming_sequence_agent_in_sequence_workflow_2_typed() throws Exception {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("story")
+                .build();
+
+        NovelCreatorForStreaming novelCreator1 = AgenticServices.sequenceBuilder(NovelCreatorForStreaming.class)
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
                 .outputKey("story")
                 .build();

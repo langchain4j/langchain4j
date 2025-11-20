@@ -1,7 +1,9 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -64,7 +66,6 @@ public class Models {
             .think(false)
             .build();
 
-
     private static final ChatModel GEMINI_BASE_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.5-flash-lite")
@@ -72,7 +73,23 @@ public class Models {
             .logResponses(true)
             .build();
 
+    private static final ChatModel GEMINI_STREAMING_BASE_MODEL = GoogleAiGeminiStreamingChatModel.builder()
+            .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+            .modelName("gemini-2.5-flash-lite")
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
     private static final ChatModel GEMINI_PLANNER_MODEL = GEMINI_BASE_MODEL;
+
+    private static final StreamingChatModel OLLAMA_STREAMING_BASE_MODEL = OllamaStreamingChatModel.builder()
+            .baseUrl(OLLAMA_BASE_URL)
+            .modelName("qwen3:8b")
+            .timeout(Duration.ofMinutes(10))
+            .temperature(0.0)
+            .logRequests(true)
+            .think(false)
+            .build();
 
     public static ChatModel baseModel() {
         return switch (modelProvider) {
@@ -86,6 +103,7 @@ public class Models {
         return switch (modelProvider) {
             case OPENAI -> OPENAI_STREAMING_BASE_MODEL;
             case OLLAMA -> OLLAMA_STREAMING_BASE_MODEL;
+            case GEMINI -> GEMINI_STREAMING_BASE_MODEL;
         };
     }
 

@@ -120,8 +120,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreator {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -135,8 +136,9 @@ public class DeclarativeAgentIT {
 
     public interface PlannerBasedStoryCreator {
 
-        @PlannerAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @PlannerAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @PlannerSupplier
@@ -156,8 +158,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithConfigurableStyleEditor {
 
-        @SequenceAgent( outputKey = "styledStory",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "styledStory",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -210,8 +213,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithErrorRecovery {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @ErrorHandler
@@ -241,8 +245,7 @@ public class DeclarativeAgentIT {
                 description = "Review and score the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-                )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -253,8 +256,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -282,8 +286,7 @@ public class DeclarativeAgentIT {
                 description = "Review the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-        )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String write(@V("story") String story);
 
         @ExitCondition(testExitAtLoopEnd = true)
@@ -295,8 +298,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithCounter {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgentWithCounter.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgentWithCounter.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -341,8 +345,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithListener {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -376,8 +381,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpert.class, TechnicalExpert.class, LegalExpert.class})
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpert.class)
@@ -398,8 +404,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouter.class, ExpertsAgent.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouter.class, ExpertsAgent.class})
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
 
@@ -417,8 +424,9 @@ public class DeclarativeAgentIT {
 
     public interface EveningPlannerAgent {
 
-        @ParallelAgent( outputKey = "plans",
-                subAgents = { FoodExpert.class, MovieExpert.class })
+        @ParallelAgent(
+                outputKey = "plans",
+                subAgents = {FoodExpert.class, MovieExpert.class})
         List<EveningPlan> plan(@V("mood") String mood);
 
         @ParallelExecutor
@@ -449,9 +457,10 @@ public class DeclarativeAgentIT {
 
     public interface SupervisorStoryCreator {
 
-        @SupervisorAgent( outputKey = "story",
+        @SupervisorAgent(
+                outputKey = "story",
                 responseStrategy = SupervisorResponseStrategy.LAST,
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @SupervisorRequest
@@ -523,7 +532,10 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A legal expert", outputKey = "response", summarizedContext = {"medical", "technical"})
+        @Agent(
+                description = "A legal expert",
+                outputKey = "response",
+                summarizedContext = {"medical", "technical"})
         String legal(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -561,8 +573,10 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgentWithMemory {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class })
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class
+                })
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpertWithMemory.class)
@@ -591,8 +605,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouterWithModel.class, ExpertsAgentWithMemory.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouterWithModel.class, ExpertsAgentWithMemory.class})
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
 
@@ -689,7 +704,7 @@ public class DeclarativeAgentIT {
 
         @SupervisorAgent(
                 responseStrategy = SupervisorResponseStrategy.SUMMARY,
-                subAgents = { WithdrawAgent.class, CreditAgent.class})
+                subAgents = {WithdrawAgent.class, CreditAgent.class})
         String invoke(@V("request") String request);
 
         @ChatModelSupplier
@@ -755,9 +770,15 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithHumanInTheLoop {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { AudienceRetriever.class, CreativeWriter.class, BarrierAwaiter.class,
-                              AudienceEditor.class, AudienceReader.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    AudienceRetriever.class,
+                    CreativeWriter.class,
+                    BarrierAwaiter.class,
+                    AudienceEditor.class,
+                    AudienceReader.class
+                })
         String write(@V("topic") String topic);
     }
 

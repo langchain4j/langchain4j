@@ -26,7 +26,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     @Override
     public T build() {
-        return build(() -> new ConditionalPlanner(conditionalAgents));
+        return build(new ConditionalSupplier(conditionalAgents));
     }
 
     public static ConditionalAgentServiceImpl<UntypedAgent> builder() {

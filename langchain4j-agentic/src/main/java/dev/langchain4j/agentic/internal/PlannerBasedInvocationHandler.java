@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -103,7 +104,12 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
     }
 
     private void checkSubAgents() {
-        plannerSupplier.get().checkSubAgents(agentInstances, plannerInstance);
+        if (hasStreamingAgent(agentInstances) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
+            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
+        }
+        if (plannerSupplier instanceof StreamingSubAgentsChecker) {
+            ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(agentInstances, plannerInstance);
+        }
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
@@ -111,6 +117,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class},
                 new PlannerBasedInvocationHandler(service, plannerSupplier, agenticScope));
+    }
+
+    public AgentInstance plannerInstance() {
+        return plannerInstance;
     }
 
     @Override

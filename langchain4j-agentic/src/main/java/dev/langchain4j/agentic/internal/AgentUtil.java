@@ -12,7 +12,6 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -25,8 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -35,13 +32,7 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
-    private static final Set<String> WORKFLOW_STREAMING_AGENTS = new CopyOnWriteArraySet<>();
-
     private AgentUtil() {}
-
-    public static void addWorkflowStreamingAgent(String agentId) {
-        WORKFLOW_STREAMING_AGENTS.add(agentId);
-    }
 
     public static String uniqueAgentName(Class<?> agentClass, String agentName) {
         return agentName + "_" + agentClass.getSimpleName();
@@ -234,7 +225,7 @@ public class AgentUtil {
 
     public static boolean hasStreamingAgent(Collection<AgentInstance> agentInstances) {
         for (AgentInstance instance : agentInstances) {
-            if (isStreamingAgent(instance)) {
+            if (instance.isStreaming()) {
                 return true;
             }
         }
@@ -251,7 +242,7 @@ public class AgentUtil {
 
     public static boolean isAllStreamingAgent(Collection<AgentInstance> agentInstances) {
         for (AgentInstance instance : agentInstances) {
-            if (!isStreamingAgent(instance)) {
+            if (!instance.isStreaming()) {
                 return false;
             }
         }
@@ -260,16 +251,8 @@ public class AgentUtil {
 
     public static boolean isOnlyLastStreamingAgent(List<AgentInstance> agentInstances) {
         List<AgentInstance> instances = agentInstances.subList(0, agentInstances.size() - 1);
-        return !hasStreamingAgent(instances) && isStreamingAgent(agentInstances.get(agentInstances.size() - 1));
-    }
-
-    public static boolean isStreamingAgent(AgentInstance agentInstance) {
-        return WORKFLOW_STREAMING_AGENTS.contains(agentInstance.agentId())
-                || ((AgentExecutor) agentInstance)
-                        .agentInvoker()
-                        .method()
-                        .getReturnType()
-                        .equals(TokenStream.class);
+        return !hasStreamingAgent(instances)
+                && agentInstances.get(agentInstances.size() - 1).isStreaming();
     }
 
     public static AgentInstance getLastAgent(List<AgentInstance> agentInstances) {
