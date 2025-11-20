@@ -25,10 +25,10 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>
  * Files are stored for 48 hours and can be referenced in content generation requests using their URI.
- * The API supporjava.net.http.HttpClien
+ * The API supports up to 20 GB of files per project, with a maximum of 2 GB per individual file.
  * During the retention period, you can retrieve file metadata but cannot download the files directly.
  */
-final class GeminiFiles {
+public final class GeminiFiles {
     private static final String BASE_URL = "https://generativelanguage.googleapis.com";
     private static final String DELETE_FILE_PATH = "/v1beta";
     private static final String GET_FILE_PATH = "/v1beta";
@@ -56,7 +56,7 @@ final class GeminiFiles {
      * @param filePath    path to the file to upload
      * @param displayName optional display name for the file
      */
-    GeminiFile uploadFile(Path filePath, @Nullable String displayName) throws IOException, InterruptedException {
+    public GeminiFile uploadFile(Path filePath, @Nullable String displayName) throws IOException, InterruptedException {
         ensureNotNull(filePath, "filePath");
 
         byte[] fileBytes = Files.readAllBytes(filePath);
@@ -77,7 +77,7 @@ final class GeminiFiles {
      *
      * @param name the name of the file to retrieve metadata for (e.g., "files/abc123")
      */
-    GeminiFile getMetadata(String name) throws IOException, InterruptedException {
+    public GeminiFile getMetadata(String name) throws IOException, InterruptedException {
         ensureNotBlank(name, "name");
 
         String url = baseUrl + GET_FILE_PATH + "/" + name;
@@ -103,7 +103,7 @@ final class GeminiFiles {
      * <p><strong>Note:</strong> The Files API lets you store up to 20 GB of files per project, with a per-file
      * maximum size of 2 GB. Files are stored for 48 hours.
      */
-    List<GeminiFile> listFiles() throws IOException, InterruptedException {
+    public List<GeminiFile> listFiles() throws IOException, InterruptedException {
         String url = baseUrl + LIST_FILES_PATH;
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -123,7 +123,7 @@ final class GeminiFiles {
      *
      * @param name the name of the file to delete (e.g., "files/abc123")
      */
-    void deleteFile(String name) throws IOException, InterruptedException {
+    public void deleteFile(String name) throws IOException, InterruptedException {
         ensureNotBlank(name, "name");
 
         String url = baseUrl + DELETE_FILE_PATH + "/" + name;
@@ -242,7 +242,7 @@ final class GeminiFiles {
      * Represents a file uploaded to the Gemini API, <a href="https://ai.google.dev/gemini-api/docs/files>documentation</a>
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiFile(
+    public record GeminiFile(
             String name,
             @Nullable String displayName,
             String mimeType,
@@ -256,21 +256,21 @@ final class GeminiFiles {
         /**
          * Returns whether the file is in ACTIVE state and ready to use.
          */
-        boolean isActive() {
+        public boolean isActive() {
             return "ACTIVE".equals(state);
         }
 
         /**
          * Returns whether the file is still processing.
          */
-        boolean isProcessing() {
+        public boolean isProcessing() {
             return "PROCESSING".equals(state);
         }
 
         /**
          * Returns whether the file failed to process.
          */
-        boolean isFailed() {
+        public boolean isFailed() {
             return "FAILED".equals(state);
         }
     }
