@@ -18,21 +18,18 @@ public class MultipartBodyPublisher {
     }
 
     public MultipartBodyPublisher addFormField(String name, String value) {
-        String part =
-            "--" + BOUNDARY + "\r\n" +
-            "Content-Disposition: form-data; name=\"" + name + "\"\r\n" +
-            "\r\n" +
-            value + "\r\n";
+        String part = "--" + BOUNDARY + "\r\n" + "Content-Disposition: form-data; name=\""
+                + name + "\"\r\n" + "\r\n"
+                + value
+                + "\r\n";
         parts.add(part.getBytes(StandardCharsets.UTF_8));
         return this;
     }
 
     public MultipartBodyPublisher addFile(String name, Path file, String contentType) throws IOException {
-        String header =
-            "--" + BOUNDARY + "\r\n" +
-            "Content-Disposition: form-data; name=\"" + name + "\"; filename=\"" + file.getFileName() + "\"\r\n" +
-            "Content-Type: " + contentType + "\r\n" +
-            "\r\n";
+        String header = "--" + BOUNDARY + "\r\n" + "Content-Disposition: form-data; name=\""
+                + name + "\"; filename=\"" + file.getFileName() + "\"\r\n" + "Content-Type: "
+                + contentType + "\r\n" + "\r\n";
 
         parts.add(header.getBytes(StandardCharsets.UTF_8));
         parts.add(Files.readAllBytes(file));
