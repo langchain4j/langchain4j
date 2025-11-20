@@ -123,7 +123,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -219,7 +219,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -301,7 +301,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -377,7 +377,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -466,7 +466,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -590,7 +590,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -644,7 +644,7 @@ public class WatsonxStreamingChatModelTest {
     void testChatRequestWithTopK() {
 
         var streamingChatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -678,7 +678,7 @@ public class WatsonxStreamingChatModelTest {
                         }));
 
         assertThrows(UnsupportedFeatureException.class, () -> WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -692,7 +692,7 @@ public class WatsonxStreamingChatModelTest {
     void testSupportCapabilities() {
 
         var chatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")

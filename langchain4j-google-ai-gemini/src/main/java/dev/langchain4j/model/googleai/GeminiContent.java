@@ -1,107 +1,158 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-class GeminiContent {
-    private List<GeminiPart> parts;
-    private String role;
-
-    public GeminiContent(String role) {
-        this.parts = new ArrayList<>();
-        this.role = role;
-    }
-
-    @JsonCreator
-    public GeminiContent(@JsonProperty("parts") List<GeminiPart> parts, @JsonProperty("role") String role) {
-        this.parts = parts;
-        this.role = role;
-    }
-
-    public static GeminiContentBuilder builder() {
-        return new GeminiContentBuilder();
+record GeminiContent(List<GeminiPart> parts, String role) {
+    GeminiContent {
+        // Make sure the list is mutable.
+        parts = new ArrayList<>(parts);
     }
 
     void addPart(GeminiPart part) {
-        this.parts.add(part);
+        parts.add(part);
     }
 
-    public List<GeminiPart> getParts() {
-        return this.parts;
-    }
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiPart(
+            String text,
+            GeminiBlob inlineData,
+            GeminiFunctionCall functionCall,
+            GeminiFunctionResponse functionResponse,
+            GeminiFileData fileData,
+            GeminiExecutableCode executableCode,
+            GeminiCodeExecutionResult codeExecutionResult,
+            Boolean thought,
+            String thoughtSignature) {
 
-    public String getRole() {
-        return this.role;
-    }
-
-    public void setParts(List<GeminiPart> parts) {
-        this.parts = parts;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public boolean equals(final Object o) {
-        if (o == this) return true;
-        if (!(o instanceof GeminiContent)) return false;
-        final GeminiContent other = (GeminiContent) o;
-        if (!other.canEqual((Object) this)) return false;
-        final Object this$parts = this.getParts();
-        final Object other$parts = other.getParts();
-        if (this$parts == null ? other$parts != null : !this$parts.equals(other$parts)) return false;
-        final Object this$role = this.getRole();
-        final Object other$role = other.getRole();
-        if (this$role == null ? other$role != null : !this$role.equals(other$role)) return false;
-        return true;
-    }
-
-    protected boolean canEqual(final Object other) {
-        return other instanceof GeminiContent;
-    }
-
-    public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        final Object $parts = this.getParts();
-        result = result * PRIME + ($parts == null ? 43 : $parts.hashCode());
-        final Object $role = this.getRole();
-        result = result * PRIME + ($role == null ? 43 : $role.hashCode());
-        return result;
-    }
-
-    public String toString() {
-        return "GeminiContent(parts=" + this.getParts() + ", role=" + this.getRole() + ")";
-    }
-
-    public static class GeminiContentBuilder {
-        private List<GeminiPart> parts;
-        private String role;
-
-        GeminiContentBuilder() {
+        static Builder builder() {
+            return new Builder();
         }
 
-        public GeminiContentBuilder parts(List<GeminiPart> parts) {
-            this.parts = parts;
-            return this;
+        Boolean isThought() {
+            return thought;
         }
 
-        public GeminiContentBuilder role(String role) {
-            this.role = role;
-            return this;
+        static class Builder {
+            private String text;
+            private GeminiBlob inlineData;
+            private GeminiFunctionCall functionCall;
+            private GeminiFunctionResponse functionResponse;
+            private GeminiFileData fileData;
+            private GeminiExecutableCode executableCode;
+            private GeminiCodeExecutionResult codeExecutionResult;
+            private Boolean thought;
+            private String thoughtSignature;
+
+            private Builder() {}
+
+            Builder text(String text) {
+                this.text = text;
+                return this;
+            }
+
+            Builder inlineData(GeminiBlob inlineData) {
+                this.inlineData = inlineData;
+                return this;
+            }
+
+            Builder functionCall(GeminiFunctionCall functionCall) {
+                this.functionCall = functionCall;
+                return this;
+            }
+
+            Builder functionResponse(GeminiFunctionResponse functionResponse) {
+                this.functionResponse = functionResponse;
+                return this;
+            }
+
+            Builder fileData(GeminiFileData fileData) {
+                this.fileData = fileData;
+                return this;
+            }
+
+            Builder executableCode(GeminiExecutableCode executableCode) {
+                this.executableCode = executableCode;
+                return this;
+            }
+
+            Builder codeExecutionResult(GeminiCodeExecutionResult codeExecutionResult) {
+                this.codeExecutionResult = codeExecutionResult;
+                return this;
+            }
+
+            Builder thought(Boolean thought) {
+                this.thought = thought;
+                return this;
+            }
+
+            Builder thoughtSignature(String thoughtSignature) {
+                this.thoughtSignature = thoughtSignature;
+                return this;
+            }
+
+            GeminiPart build() {
+                return new GeminiPart(
+                        text,
+                        inlineData,
+                        functionCall,
+                        functionResponse,
+                        fileData,
+                        executableCode,
+                        codeExecutionResult,
+                        thought,
+                        thoughtSignature);
+            }
         }
 
-        public GeminiContent build() {
-            return new GeminiContent(this.parts, this.role);
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiBlob(String mimeType, String data) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFunctionCall(String name, Map<String, Object> args) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFunctionResponse(String name, Map<String, String> response) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiFileData(String mimeType, String fileUri) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
+            enum GeminiLanguage {
+                PYTHON,
+                LANGUAGE_UNSPECIFIED;
+
+                @Override
+                public String toString() {
+                    return name().toLowerCase();
+                }
+            }
+
+            GeminiExecutableCode {
+                if (programmingLanguage == null) {
+                    programmingLanguage = GeminiLanguage.PYTHON;
+                }
+            }
         }
 
-        public String toString() {
-            return "GeminiContent.GeminiContentBuilder(parts=" + this.parts + ", role=" + this.role + ")";
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiCodeExecutionResult(GeminiOutcome outcome, String output) {
+            // TODO how to deal with the non-OK outcomes?
+            enum GeminiOutcome {
+                OUTCOME_UNSPECIFIED,
+                OUTCOME_OK,
+                OUTCOME_FAILED,
+                OUTCOME_DEADLINE_EXCEEDED;
+
+                @Override
+                public String toString() {
+                    return this.name().toLowerCase();
+                }
+            }
         }
     }
 }

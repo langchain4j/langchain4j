@@ -1,5 +1,7 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
+import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -13,25 +15,33 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
+import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -64,7 +74,11 @@ class GeminiService {
                 .build();
 
         if (logRequestsAndResponses || logResponses || logRequests) {
-            this.httpClient = new LoggingHttpClient(httpClient, logRequestsAndResponses || logRequests, logRequestsAndResponses || logResponses, logger);
+            this.httpClient = new LoggingHttpClient(
+                    httpClient,
+                    logRequestsAndResponses || logRequests,
+                    logRequestsAndResponses || logResponses,
+                    logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -75,19 +89,48 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
 
+    BatchRequestResponse.Operation batchGenerateContent(
+            String modelName, BatchRequestResponse.BatchGenerateContentRequest request) {
+        String url = String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, BatchRequestResponse.Operation.class);
+    }
+
+    BatchRequestResponse.Operation batchRetrieveBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, BatchRequestResponse.Operation.class, GET);
+    }
+
+    Void batchCancelBatch(String batchName) {
+        String url = String.format("%s/%s:cancel", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, Void.class);
+    }
+
+    Void batchDeleteBatch(String batchName) {
+        String url = String.format("%s/%s", baseUrl, batchName);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    ListOperationsResponse batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/batches",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, ListOperationsResponse.class, GET);
+    }
+
     GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
         String url = String.format("%s/models/%s:countTokens", baseUrl, modelName);
         return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
     }
 
-    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+    GeminiEmbeddingResponse embed(String modelName, GeminiEmbeddingRequest request) {
         String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiEmbeddingResponse.class);
     }
 
-    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+    GeminiBatchEmbeddingResponse batchEmbed(String modelName, GeminiBatchEmbeddingRequest request) {
         String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
+        return sendRequest(url, apiKey, request, GeminiBatchEmbeddingResponse.class);
     }
 
     void generateContentStream(
@@ -100,13 +143,14 @@ class GeminiService {
         streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
     }
 
-    private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
-        String jsonBody = Json.toJson(requestBody);
-        HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
+    private <T> T sendRequest(String url, String apiKey, @Nullable Object requestBody, Class<T> responseType) {
+        return sendRequest(url, apiKey, requestBody, responseType, POST);
+    }
 
-        SuccessfulHttpResponse response = httpClient.execute(request);
-
-        return fromJson(response.body(), responseType);
+    private <T> T sendRequest(
+            String url, String apiKey, @Nullable Object requestBody, Class<T> responseType, HttpMethod httpMethod) {
+        HttpRequest request = buildHttpRequest(url, apiKey, requestBody, httpMethod);
+        return fromJson(httpClient.execute(request).body(), responseType);
     }
 
     private void streamRequest(
@@ -116,8 +160,7 @@ class GeminiService {
             boolean includeCodeExecutionOutput,
             Boolean returnThinking,
             StreamingChatResponseHandler handler) {
-        String jsonBody = Json.toJson(requestBody);
-        HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
+        HttpRequest httpRequest = buildHttpRequest(url, apiKey, requestBody, POST);
 
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
@@ -173,14 +216,27 @@ class GeminiService {
         });
     }
 
-    private HttpRequest buildHttpRequest(String url, String apiKey, String jsonBody) {
-        return HttpRequest.builder()
-                .method(POST)
+    private HttpRequest buildHttpRequest(String url, String apiKey, @Nullable Object body, HttpMethod method) {
+        var builder = HttpRequest.builder()
+                .method(method)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "LangChain4j")
-                .addHeader(API_KEY_HEADER_NAME, apiKey)
-                .body(jsonBody)
-                .build();
+                .addHeader(API_KEY_HEADER_NAME, apiKey);
+        if (body != null) {
+            builder.body(Json.toJson(body));
+        }
+        return builder.build();
     }
+
+    private static String buildUrl(String baseUrl, StringPair... pairs) {
+        var queryParams = Stream.of(pairs)
+                .filter(pair -> pair.value != null)
+                .map(entry -> entry.key() + "=" + URLEncoder.encode(entry.value(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+
+        return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
+    }
+
+    private record StringPair(String key, @Nullable String value) {}
 }

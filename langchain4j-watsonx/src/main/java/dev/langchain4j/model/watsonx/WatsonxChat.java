@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +58,7 @@ abstract class WatsonxChat {
         var modelName = getOrDefault(builder.modelName, commonParameters.modelName());
         var projectId = getOrDefault(builder.projectId, watsonxParameters.projectId());
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
-        var timeLimit = getOrDefault(builder.timeLimit, watsonxParameters.timeLimit());
+        var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
         var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
@@ -82,7 +81,7 @@ abstract class WatsonxChat {
                 .topLogprobs(getOrDefault(builder.topLogprobs, watsonxParameters.topLogprobs()))
                 .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
-                .timeLimit(timeLimit)
+                .timeout(timeout)
                 .thinking(thinking)
                 .build();
 
@@ -95,12 +94,12 @@ abstract class WatsonxChat {
         }
 
         chatService = chatServiceBuilder
-                .baseUrl(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(modelName)
                 .version(builder.version)
                 .projectId(projectId)
                 .spaceId(spaceId)
-                .timeout(timeLimit)
+                .timeout(timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .build();
@@ -129,8 +128,6 @@ abstract class WatsonxChat {
     @SuppressWarnings("unchecked")
     abstract static class Builder<T extends Builder<T>> extends WatsonxBuilder<T> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
         private Double temperature;
         private Double topP;
         private Double frequencyPenalty;
@@ -144,15 +141,14 @@ abstract class WatsonxChat {
         private Integer topLogprobs;
         private Integer seed;
         private String toolChoiceName;
-        private Duration timeLimit;
         private List<ToolSpecification> toolSpecifications;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private Set<Capability> supportedCapabilities;
         private Thinking thinking;
 
-        public T url(CloudRegion cloudRegion) {
-            return (T) super.url(cloudRegion.getMlEndpoint());
+        public T baseUrl(CloudRegion cloudRegion) {
+            return (T) super.baseUrl(cloudRegion.getMlEndpoint());
         }
 
         public T modelName(String modelName) {
@@ -239,11 +235,6 @@ abstract class WatsonxChat {
             return (T) this;
         }
 
-        public T timeLimit(Duration timeLimit) {
-            this.timeLimit = timeLimit;
-            return (T) this;
-        }
-
         public T supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return (T) this;
@@ -273,19 +264,21 @@ abstract class WatsonxChat {
         }
 
         public T thinking(boolean enabled) {
-            if (enabled) {
-                return thinking(Thinking.builder().build());
-            }
+            return thinking(Thinking.builder().enabled(enabled).build());
+        }
+
+        public T thinking(ExtractionTags tags) {
+            if (nonNull(tags)) return thinking(Thinking.of(tags));
+
             this.thinking = null;
             return (T) this;
         }
 
-        public T thinking(ExtractionTags tags) {
-            return thinking(Thinking.of(tags));
-        }
-
         public T thinking(ThinkingEffort thinkingEffort) {
-            return thinking(Thinking.of(thinkingEffort));
+            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+
+            this.thinking = null;
+            return (T) this;
         }
 
         public T thinking(Thinking thinking) {

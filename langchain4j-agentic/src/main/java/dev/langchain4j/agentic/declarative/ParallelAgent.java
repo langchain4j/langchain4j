@@ -9,18 +9,14 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a definition of a parallel agent, used to orchestrate the agentic workflow
  * by invoking a series of sub-agents in parallel.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputKey = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputKey = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputKey = "movies")
- *         })
+ *         @ParallelAgent( outputKey = "plans",
+ *                 subAgents = { FoodExpert.class, MovieExpert.class })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *     }
  * }
@@ -57,5 +53,5 @@ public @interface ParallelAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }

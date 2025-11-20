@@ -49,4 +49,11 @@ public @interface Agent {
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * Names of other agents participating in the definition of the context of this agent.
+     *
+     * @return array of names of other agents participating in the definition of the context of this agent.
+     */
+    String[] summarizedContext() default {};
 }

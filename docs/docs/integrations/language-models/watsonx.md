@@ -22,7 +22,7 @@ sidebar_position: 22
 The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.  
 To create an instance, you must specify the mandatory parameters:
 
-- `url(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
 - `apiKey(...)` – IBM Cloud IAM API key;
 - `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
 - `modelName(...)` – Foundation model ID for inference;
@@ -35,7 +35,7 @@ import dev.langchain4j.model.watsonx.WatsonxChatModel;
 import com.ibm.watsonx.ai.CloudRegion;
 
 ChatModel chatModel = WatsonxChatModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("ibm/granite-3-3-8b-instruct")
@@ -78,7 +78,7 @@ import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
 import com.ibm.watsonx.ai.CloudRegion;
 
 StreamingChatModel model = WatsonxStreamingChatModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("ibm/granite-3-3-8b-instruct")
@@ -129,7 +129,7 @@ interface AiService {
 }
 
 ChatModel chatModel = WatsonxChatModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("mistralai/mistral-small-3-1-24b-instruct-2503")
@@ -180,7 +180,7 @@ The tags define XML-like markers used to separate the reasoning from the final r
 
 ```java
 ChatModel chatModel = WatsonxChatModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("ibm/granite-3-3-8b-instruct")
@@ -207,7 +207,7 @@ Alternatively, enable it using the boolean flag.
 
 ```java
 ChatModel chatModel = WatsonxChatModel.builder()
-    .url(CloudRegion.DALLAS)
+    .baseUrl(CloudRegion.DALLAS)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("openai/gpt-oss-120b")
@@ -219,7 +219,7 @@ or
 
 ```java
 ChatModel chatModel = WatsonxChatModel.builder()
-    .url(CloudRegion.DALLAS)
+    .baseUrl(CloudRegion.DALLAS)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("openai/gpt-oss-120b")
@@ -231,7 +231,7 @@ ChatModel chatModel = WatsonxChatModel.builder()
 
 ```java
 StreamingChatModel model = WatsonxStreamingChatModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("ibm/granite-3-3-8b-instruct")
@@ -273,7 +273,7 @@ It implements the LangChain4j `EmbeddingModel` interface.
 
 ```java
 EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("ibm/granite-embedding-278m-multilingual")
@@ -285,23 +285,19 @@ System.out.println(embeddingModel.embed("Hello from watsonx.ai"));
 
 ## WatsonxScoringModel
 
-The `WatsonxScoringModel` provides a LangChain4j-compatible implementation of a `ScoringModel` using IBM watsonx.ai Rerank (cross-encoder) models.
+The `WatsonxScoringModel` provides a LangChain4j implementation of a `ScoringModel` using IBM watsonx.ai models.
 
 It is particularly useful for ranking a list of documents (or text segments) based on their relevance to a user query.
 
----
-
-### Example: LangChain4j Integration
+### Example
 
 ```java
 ScoringModel scoringModel = WatsonxScoringModel.builder()
-    .url(CloudRegion.FRANKFURT)
+    .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
     .modelName("cross-encoder/ms-marco-minilm-l-12-v2")
     .build();
-
-ScoringModel model = new WatsonxScoringModel(rerankService);
 
 var scores = scoringModel.scoreAll(
     List.of(
@@ -320,6 +316,50 @@ System.out.println(scores);
 
 ---
 
+## WatsonxModerationModel
+
+The `WatsonxModerationModel` provides a LangChain4j implementation of the `ModerationModel` interface using IBM watsonx.ai.  
+It allows to automatically detect and flag sensitive, unsafe, or policy-violating content in text through **detectors**.
+
+One or multiple **detectors** can be used to identify different types of content, such as:
+
+- **Pii** – Detects Personally Identifiable Information (e.g., emails, phone numbers)  
+- **Hap** – Detects hate, abuse, or profanity  
+- **GraniteGuardian** – Detects risky or harmful language  
+
+### Example
+
+```java
+ModerationModel model = WatsonxModerationModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .detectors(Hap.ofDefaults(), GraniteGuardian.ofDefaults())
+    .build();
+
+Response<Moderation> response = model.moderate("...");
+```
+
+### Metadata
+
+Each moderation response includes a `metadata` map that provides additional context about the detection.  
+
+| Key | Description | 
+|-----|--------------|
+| `detection` | The detected label or category assigned by the detector
+| `detection_type` | The type of detector that triggered the flag 
+| `start` | The starting character index of the detected segment 
+| `end` | The ending character index of the detected segment 
+| `score` | The confidence score of the detection 
+
+These metadata values are available via `Response.metadata()`:
+
+```java
+Map<String, Object> metadata = response.metadata();
+System.out.println("Detection type: " + metadata.get("detection_type"));
+System.out.println("Score: " + metadata.get("score"));
+```
+
 ## Quarkus
 
 See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/watsonx-chat-model.html).
@@ -334,3 +374,4 @@ See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/wats
 - [WatsonxEmbeddingModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxEmbeddingModelTest.java)
 - [WatsonxScoringModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxScoringModelTest.java)
 - [WatsonxTokenCounterEstimatorTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxTokenCounterEstimatorTest.java)
+- [WatsonxModerationModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxModerationModelTest.java)

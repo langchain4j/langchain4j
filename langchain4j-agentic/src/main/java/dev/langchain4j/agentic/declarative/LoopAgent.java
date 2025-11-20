@@ -9,8 +9,6 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a definition of a loop agent, used to orchestrate the agentic workflow
  * by invoking a series of sub-agents in a loop until a certain condition is met or a maximum number of iterations is reached.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
@@ -20,10 +18,7 @@ import java.lang.annotation.Target;
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
  *                 outputKey = "story", maxIterations = 5,
- *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *             }
+ *                 subAgents = { StyleScorer.class, StyleEditor.class }
  *         )
  *         String write(@V("story") String story);
  *     }
@@ -61,7 +56,7 @@ public @interface LoopAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 
     /**
      * Maximum number of iterations the loop will execute.

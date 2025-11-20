@@ -91,7 +91,7 @@ Just point to your document(s), and LangChain4j will do its magic.
 If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
-Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-easy-rag.html).
 
 :::note
 The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.

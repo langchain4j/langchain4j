@@ -41,7 +41,7 @@ import java.util.Set;
  * <pre>{@code
  *
  * StreamingChatModel chatModel = WatsonxStreamingChatModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .modelName("ibm/granite-3-3-8b-instruct")
@@ -187,7 +187,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
      *
      * <pre>{@code
      * StreamingChatModel chatModel = WatsonxStreamingChatModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-3-8b-instruct")

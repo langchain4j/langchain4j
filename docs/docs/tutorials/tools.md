@@ -700,6 +700,17 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+Additionally, we can pass a list of tool names that should [immediately/directly return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) their results and not send them to the LLM for reprocessing.
+
+```java
+Set<String> immediateReturnToolNames = Set.of("get_booking_details");
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .tools(Map.of(toolSpecification, toolExecutor), immediateReturnToolNames)
+    .build();
+```
+
 ### Specifying Tools Dynamically
 
 When using AI services, tools can also be specified dynamically for each invocation.

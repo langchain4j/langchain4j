@@ -95,6 +95,9 @@ public class AgentBuilder<T> {
             this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
+        if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
+            this.contextProvidingAgents = agent.summarizedContext();
+        }
     }
 
     public T build() {
@@ -341,7 +344,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
         return this;
     }
