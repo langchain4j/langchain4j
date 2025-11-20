@@ -19,6 +19,8 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,7 +36,7 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public abstract class HttpClientIT {
 
-    private static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+    public static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
 
     protected abstract List<HttpClient> clients();
 
@@ -51,16 +53,16 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ]
                                     }
-                                ]
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -81,10 +83,10 @@ public abstract class HttpClientIT {
             // given
             String invalidBody =
                     """
-                    {
-                        "model": "gpt-4o-mini"
-                    }
-                    """; // missing field "messages"
+                            {
+                                "model": "gpt-4o-mini"
+                            }
+                            """; // missing field "messages"
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -123,16 +125,16 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ]
                                     }
-                                ]
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -162,22 +164,23 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ],
+                                        "stream": true
                                     }
-                                ],
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
             record StreamingResult(
-                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {}
+                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {
+            }
 
             CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
 
@@ -230,8 +233,8 @@ public abstract class HttpClientIT {
 
             assertThat(streamingResult.events()).isNotEmpty();
             assertThat(streamingResult.events().stream()
-                            .map(ServerSentEvent::data)
-                            .collect(joining("")))
+                    .map(ServerSentEvent::data)
+                    .collect(joining("")))
                     .contains("Berlin");
 
             assertThat(streamingResult.threads()).hasSize(1);
@@ -261,17 +264,17 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "Tell me a story about kittens"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "Tell me a story about kittens"
+                                            }
+                                        ],
+                                        "stream": true
                                     }
-                                ],
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -335,23 +338,24 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany? What is a capital of France? Your answers must be separated by a double newline!"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany? What is a capital of France? Your answers must be separated by a double newline!"
+                                            }
+                                        ],
+                                        "temperature": 0.0,
+                                        "stream": true
                                     }
-                                ],
-                                "temperature": 0.0,
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
             record StreamingResult(
-                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {}
+                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {
+            }
 
             CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
 
@@ -404,8 +408,8 @@ public abstract class HttpClientIT {
 
             assertThat(streamingResult.events()).isNotEmpty();
             assertThat(streamingResult.events().stream()
-                            .map(ServerSentEvent::data)
-                            .collect(joining("")))
+                    .map(ServerSentEvent::data)
+                    .collect(joining("")))
                     .contains("Berlin", "Paris", "\\n\\n");
 
             assertThat(streamingResult.threads()).hasSize(1);
@@ -428,11 +432,11 @@ public abstract class HttpClientIT {
             // given
             String invalidBody =
                     """
-                    {
-                        "model": "gpt-4o-mini",
-                        "stream": true
-                    }
-                    """; // missing field "messages"
+                            {
+                                "model": "gpt-4o-mini",
+                                "stream": true
+                            }
+                            """; // missing field "messages"
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -443,7 +447,8 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            record StreamingResult(Throwable throwable, Set<Thread> threads) {}
+            record StreamingResult(Throwable throwable, Set<Thread> threads) {
+            }
 
             CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
 
@@ -507,17 +512,17 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ],
+                                        "stream": true
                                     }
-                                ],
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -593,17 +598,17 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ],
+                                        "stream": true
                                     }
-                                ],
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -683,17 +688,17 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "application/json")
                     .body(
                             """
-                            {
-                                "model": "gpt-4o-mini",
-                                "messages": [
                                     {
-                                        "role" : "user",
-                                        "content" : "What is the capital of Germany?"
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ],
+                                        "stream": true
                                     }
-                                ],
-                                "stream": true
-                            }
-                            """)
+                                    """)
                     .build();
 
             // when
@@ -822,6 +827,33 @@ public abstract class HttpClientIT {
 
             verify(spyListener).onError(any());
             verifyNoMoreInteractions(spyListener);
+        }
+    }
+
+    @Test
+    void should_return_successful_http_response_sync_form_data() throws URISyntaxException {
+        Path audioMessage = Path.of(getClass().getClassLoader().getResource("audio.mp3").toURI());
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/audio/transcriptions")
+                    .addHeader("Authorization", "Bearer " + System.getenv("OPENAI_API_KEY"))
+                    .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
+                    .addFormData("model", "gpt-4o-transcribe")
+                    .addFormData("response_format", "text")
+                    .addFile("file", audioMessage)
+                    .build();
+
+            // when
+            SuccessfulHttpResponse response = client.execute(request);
+
+            // then
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers()).isNotEmpty();
+            assertThat(response.body()).containsIgnoringCase("good morning");
         }
     }
 }
