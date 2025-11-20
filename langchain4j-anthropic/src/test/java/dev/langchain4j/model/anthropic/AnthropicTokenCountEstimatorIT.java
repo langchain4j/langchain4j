@@ -1,14 +1,14 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_OPUS_20240229;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.TokenCountEstimator;
-import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -40,7 +40,7 @@ class AnthropicTokenCountEstimatorIT {
     void should_estimate_token_count_in_message() {
         // given
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_OPUS_20240229)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)
@@ -66,11 +66,12 @@ class AnthropicTokenCountEstimatorIT {
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What's the tallest mountain in the world?");
-        AiMessage aiMessage = AiMessage.from("The tallest mountain in the world is Mount Everest, with a height of 8,848.86 meters (29,031.7 feet) above sea level.");
+        AiMessage aiMessage = AiMessage.from(
+                "The tallest mountain in the world is Mount Everest, with a height of 8,848.86 meters (29,031.7 feet) above sea level.");
         UserMessage userMessage2 = UserMessage.from("And what's the second tallest?");
 
         // when
-        int count = tokenCountEstimator.estimateTokenCountInMessages(Arrays.asList(userMessage1, aiMessage, userMessage2));
+        int count = tokenCountEstimator.estimateTokenCountInMessages(List.of(userMessage1, aiMessage, userMessage2));
 
         // then
         assertThat(count).isGreaterThan(0);
@@ -92,9 +93,44 @@ class AnthropicTokenCountEstimatorIT {
         UserMessage userMessage2 = UserMessage.from("How many moons does Jupiter have?");
 
         // when
-        int count = tokenCountEstimator.estimateTokenCountInMessages(Arrays.asList(systemMessage, userMessage1, aiMessage, userMessage2));
+        int count = tokenCountEstimator.estimateTokenCountInMessages(
+                List.of(systemMessage, userMessage1, aiMessage, userMessage2));
 
         // then
         assertThat(count).isGreaterThan(0);
+    }
+
+    @Test
+    void should_estimate_token_count_when_only_system_message_provided_and_dummy_user_inserted() {
+        TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .apiKey(ANTHROPIC_API_KEY)
+                .addDummyUserMessageIfNoUserMessages()
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        SystemMessage systemMessage = SystemMessage.from("You are a useful assistant");
+
+        int count = tokenCountEstimator.estimateTokenCountInMessages(List.of(systemMessage));
+        assertThat(count).isGreaterThan(0);
+    }
+
+    @Test
+    void should_fail_when_only_system_message_is_provided() {
+        TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .apiKey(ANTHROPIC_API_KEY)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        SystemMessage systemMessage = SystemMessage.from("You are a useful assistant");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> tokenCountEstimator.estimateTokenCountInMessages(List.of(systemMessage)));
+
+        assertThat(ex).hasMessageContaining("at least one non-system message");
     }
 }
