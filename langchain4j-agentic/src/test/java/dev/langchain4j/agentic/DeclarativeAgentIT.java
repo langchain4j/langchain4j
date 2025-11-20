@@ -2,16 +2,12 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
-import static dev.langchain4j.agentic.Models.streamingBaseModel;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
-import dev.langchain4j.agentic.Agents.CreativeWriterForStreaming;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
@@ -62,16 +58,13 @@ import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -87,35 +80,6 @@ public class DeclarativeAgentIT {
 
         String story = creativeWriter.generateStory("dragons and wizards");
         assertThat(story).isNotBlank();
-    }
-
-    @Test
-    void declarative_streaming_agent_tests() throws Exception {
-        CreativeWriterForStreaming creativeWriter = AgenticServices.agentBuilder(CreativeWriterForStreaming.class)
-                .streamingChatModel(streamingBaseModel())
-                .outputKey("story")
-                .build();
-
-        final TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
-
-        StringBuilder answerBuilder = new StringBuilder();
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-
-        tokenStream
-                .onPartialResponse(answerBuilder::append)
-                .onCompleteResponse(response -> {
-                    futureAnswer.complete(answerBuilder.toString());
-                    futureResponse.complete(response);
-                })
-                .onError(futureAnswer::completeExceptionally)
-                .start();
-
-        String story = futureAnswer.get(60, SECONDS);
-        ChatResponse response = futureResponse.get(60, SECONDS);
-
-        assertThat(story).isNotBlank();
-        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     public interface StoryCreator {

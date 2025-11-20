@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.AudienceEditorForStreaming;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.CreativeWriterForStreaming;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgentForStreaming;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.LegalExpertForStreaming;
@@ -34,6 +35,35 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 public class StreamingAgentsWorkflowIT {
+
+    @Test
+    void single_streaming_agent_tests() throws Exception {
+        CreativeWriterForStreaming creativeWriter = AgenticServices.agentBuilder(CreativeWriterForStreaming.class)
+                .streamingChatModel(streamingBaseModel())
+                .outputKey("story")
+                .build();
+
+        final TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
+
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        tokenStream
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResponse.complete(response);
+                })
+                .onError(futureAnswer::completeExceptionally)
+                .start();
+
+        String story = futureAnswer.get(60, SECONDS);
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        assertThat(story).isNotBlank();
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
 
     @Test
     void streaming_agent_only_in_last_sequence_workflow() throws Exception {
