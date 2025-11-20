@@ -1,13 +1,18 @@
 package dev.langchain4j.http.client.jdk;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.stream.Collectors.joining;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.MultipartFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.payload.MultipartBodyPublisher;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,14 +22,8 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
-
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.joining;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -70,7 +69,6 @@ public class JdkHttpClient implements HttpClient {
 
         delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
                 .thenAccept(jdkResponse -> {
-
                     if (!isSuccessful(jdkResponse)) {
                         HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
                         ignoringExceptions(() -> listener.onError(exception));
@@ -98,8 +96,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
-        java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
-                .uri(URI.create(request.url()));
+        java.net.http.HttpRequest.Builder builder =
+                java.net.http.HttpRequest.newBuilder().uri(URI.create(request.url()));
 
         request.headers().forEach((name, values) -> {
             if (values != null) {
@@ -126,9 +124,7 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    public static BodyPublisher ofMultipartData(
-            Map<String, String> fields,
-            Map<String, Path> files) {
+    public static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, MultipartFile> files) {
 
         MultipartBodyPublisher mp = new MultipartBodyPublisher();
 
@@ -136,19 +132,8 @@ public class JdkHttpClient implements HttpClient {
             mp.addFormField(entry.getKey(), entry.getValue());
         }
 
-        try {
-            for (Map.Entry<String, Path> entry : files.entrySet()) {
-                String mimeType = null;
-
-                mimeType = Files.probeContentType(entry.getValue());
-
-                if (mimeType == null) {
-                    mimeType = "application/octet-stream";
-                }
-                mp.addFile("file", entry.getValue(), mimeType);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        for (Map.Entry<String, MultipartFile> entry : files.entrySet()) {
+            mp.addFile(entry.getKey(), entry.getValue());
         }
 
         return mp.build();
@@ -169,7 +154,7 @@ public class JdkHttpClient implements HttpClient {
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
         try (InputStream inputStream = response.body();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             return reader.lines().collect(joining(System.lineSeparator()));
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();

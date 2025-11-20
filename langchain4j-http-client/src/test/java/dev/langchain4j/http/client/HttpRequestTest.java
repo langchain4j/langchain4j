@@ -480,6 +480,7 @@ class HttpRequestTest {
 
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+        assertThat(builder.build().formData()).containsEntry("single", "value1");
         assertThat(builder.build().formData()).containsEntry("map1", "value2");
         assertThat(builder.build().formData()).containsEntry("map2", "value3");
     }

@@ -5,11 +5,14 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -176,5 +179,75 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        byte[] audioData = getBinaryDataFromAudio(request.file());
+
+        var httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/transcriptions")
+                .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
+                .addHeaders(defaultHeaders);
+
+        httpRequestBuilder.addFormData("model", request.model());
+        httpRequestBuilder.addFile(
+                "file",
+                "audio" + getAudioExtension(request.file().mimeType()),
+                request.file().mimeType(),
+                audioData);
+
+        if (request.language() != null) {
+            httpRequestBuilder.addFormData("language", request.language());
+        }
+
+        if (request.prompt() != null) {
+            httpRequestBuilder.addFormData("prompt", request.prompt());
+        }
+
+        if (request.temperature() != null) {
+            httpRequestBuilder.addFormData("temperature", Double.toString(request.temperature()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
+    }
+
+    private String getAudioExtension(String mimeType) {
+        if (mimeType == null) return "";
+
+        return switch (mimeType) {
+            case "audio/flac" -> ".flac";
+            case "audio/mpeg", "audio/mpeg3" -> ".mp3";
+            case "audio/mp4", "video/mp4" -> ".mp4";
+            case "audio/mpga" -> ".mpga";
+            case "audio/m4a" -> ".m4a";
+            case "audio/ogg" -> ".ogg";
+            case "audio/x-wav", "audio/wave", "audio/wav" -> ".wav";
+            case "audio/webm", "video/webm" -> ".webm";
+            case "audio/x-mpegurl", "audio/mpegurl" -> ".m3u";
+            default -> ""; // Unknown; return empty or throw
+        };
+    }
+
+    private byte[] getBinaryDataFromAudio(Audio audio) {
+        if (audio.binaryData() != null) {
+            return audio.binaryData();
+        }
+
+        if (audio.base64Data() != null) {
+            try {
+                return java.util.Base64.getDecoder().decode(audio.base64Data());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid base64 audio data provided", e);
+            }
+        }
+
+        if (audio.url() != null) {
+            throw new IllegalArgumentException(
+                    "URL-based audio is not supported by OpenAI transcription. Please provide audio as binary data or base64 encoded data.");
+        }
+
+        throw new IllegalArgumentException("No audio data found. Audio must contain either binary data, base64 data");
     }
 }
