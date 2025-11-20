@@ -93,10 +93,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private static String toCard(AgentInstance agent) {
         List<String> agentArguments = agent.arguments().stream()
-                .map(AgentArgument::name)
-                .filter(a -> !a.equals("@MemoryId"))
+                .filter(a -> !a.name().equals("@MemoryId"))
+                .map(a -> a.name() + ": " + a.type().getSimpleName())
                 .toList();
-        return "{" + agent.agentId() + ": " + agent.description() + ", " + agentArguments + "}";
+        return "{'" + agent.agentId() + "', '" + agent.description() + "', " + agentArguments + "}";
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
@@ -137,7 +137,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (output != null) {
             return output.apply(agenticScope);
         }
-        String doneResponse = done != null ? done.getArguments().get("response") : null;
+        String doneResponse = done != null ? done.getArguments().get("response").toString() : null;
         if (doneResponse == null) {
             return lastResponse;
         }

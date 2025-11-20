@@ -93,6 +93,9 @@ public class AgentBuilder<T> {
             this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
+        if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
+            this.contextProvidingAgents = agent.summarizedContext();
+        }
     }
 
     public T build() {

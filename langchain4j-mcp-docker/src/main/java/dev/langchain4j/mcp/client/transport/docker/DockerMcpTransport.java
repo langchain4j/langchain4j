@@ -21,6 +21,7 @@ import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -244,6 +245,10 @@ public class DockerMcpTransport  implements McpTransport {
         }
 
         return future;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {
