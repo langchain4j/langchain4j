@@ -17,7 +17,10 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -105,10 +108,14 @@ public class JdkHttpClient implements HttpClient {
         });
 
         BodyPublisher bodyPublisher;
-        if (request.body() != null) {
-            bodyPublisher = BodyPublishers.ofString(request.body());
+        if (request.formData().isEmpty() && request.files().isEmpty()) {
+            if (request.body() != null) {
+                bodyPublisher = BodyPublishers.ofString(request.body());
+            } else {
+                bodyPublisher = BodyPublishers.noBody();
+            }
         } else {
-            bodyPublisher = BodyPublishers.noBody();
+            bodyPublisher = ofMultipartData(request.formData(), request.files());
         }
         builder.method(request.method().name(), bodyPublisher);
 
@@ -117,6 +124,34 @@ public class JdkHttpClient implements HttpClient {
         }
 
         return builder.build();
+    }
+
+    public static BodyPublisher ofMultipartData(
+            Map<String, String> fields,
+            Map<String, Path> files) {
+
+        MultipartBodyPublisher mp = new MultipartBodyPublisher();
+
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            mp.addFormField(entry.getKey(), entry.getValue());
+        }
+
+        try {
+            for (Map.Entry<String, Path> entry : files.entrySet()) {
+                String mimeType = null;
+
+                mimeType = Files.probeContentType(entry.getValue());
+
+                if (mimeType == null) {
+                    mimeType = "application/octet-stream";
+                }
+                mp.addFile("file", entry.getValue(), mimeType);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return mp.build();
     }
 
     private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
