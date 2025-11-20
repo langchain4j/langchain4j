@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +16,7 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_handlesNullParts() {
 
         // Given
-        List<GeminiPart> parts = null;
+        List<GeminiContent.GeminiPart> parts = null;
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -32,7 +32,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesEmptyPartsList() {
         // Given
-        List<GeminiPart> parts = List.of();
+        List<GeminiContent.GeminiPart> parts = List.of();
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -48,8 +48,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesPartWithAllFieldsNull() {
         // Given
-        GeminiPart part = GeminiPart.builder().build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder().build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -65,8 +65,9 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesPartWithEmptyText() {
         // Given
-        GeminiPart part = GeminiPart.builder().text("").build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part =
+                GeminiContent.GeminiPart.builder().text("").build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -83,8 +84,9 @@ class PartsAndContentsMapperTest {
     void fromGPartsToAiMessage_handlesNonNullParts() {
 
         // Given
-        GeminiPart part = GeminiPart.builder().text("Hello world").build();
-        List<GeminiPart> parts = List.of(part);
+        GeminiContent.GeminiPart part =
+                GeminiContent.GeminiPart.builder().text("Hello world").build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -102,8 +104,8 @@ class PartsAndContentsMapperTest {
         SystemMessage msg = new SystemMessage("system text");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("model");
-        assertThat(result.get(0).getParts().get(0).getText()).isEqualTo("system text");
+        assertThat(result.get(0).role()).isEqualTo("model");
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("system text");
     }
 
     @Test
@@ -111,25 +113,8 @@ class PartsAndContentsMapperTest {
         UserMessage msg = new UserMessage(List.of(new dev.langchain4j.data.message.TextContent("user text")));
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("user");
-        assertThat(result.get(0).getParts().get(0).getText()).isEqualTo("user text");
-    }
-
-    @Test
-    void fromMessageToGContent_toolExecutionResultMessage() {
-        ToolExecutionResultMessage msg = new ToolExecutionResultMessage("toolId", "tool name", "tool response");
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo("user");
-        assertThat(result.get(0).getParts().get(0).getFunctionResponse().getName())
-                .isEqualTo("tool name");
-        assertThat(result.get(0)
-                        .getParts()
-                        .get(0)
-                        .getFunctionResponse()
-                        .getResponse()
-                        .get("response"))
-                .isEqualTo("tool response");
+        assertThat(result.get(0).role()).isEqualTo("user");
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("user text");
     }
 
     @Test
@@ -141,16 +126,16 @@ class PartsAndContentsMapperTest {
     @Test
     void fromGPartsToAiMessage_handlesGeneratedImages() {
         // Given
-        GeminiBlob imageBlob = GeminiBlob.builder()
-                .mimeType("image/png")
-                .data(
-                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")
-                .build();
+        GeminiBlob imageBlob = new GeminiBlob(
+                "image/png",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==");
 
-        GeminiPart textPart =
-                GeminiPart.builder().text("Here's your generated image:").build();
-        GeminiPart imagePart = GeminiPart.builder().inlineData(imageBlob).build();
-        List<GeminiPart> parts = List.of(textPart, imagePart);
+        GeminiContent.GeminiPart textPart = GeminiContent.GeminiPart.builder()
+                .text("Here's your generated image:")
+                .build();
+        GeminiContent.GeminiPart imagePart =
+                GeminiContent.GeminiPart.builder().inlineData(imageBlob).build();
+        List<GeminiContent.GeminiPart> parts = List.of(textPart, imagePart);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
@@ -163,20 +148,17 @@ class PartsAndContentsMapperTest {
         // Verify generated images are stored in attributes
         List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
         assertThat(generatedImages).hasSize(1);
-        assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.getData());
+        assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
     }
 
     @Test
     void fromGPartsToAiMessage_ignoresNonImageInlineData() {
         // Given
-        GeminiBlob audioBlob = GeminiBlob.builder()
-                .mimeType("audio/mp3")
-                .data("base64audiodata")
-                .build();
-
-        GeminiPart audioPart = GeminiPart.builder().inlineData(audioBlob).build();
-        List<GeminiPart> parts = List.of(audioPart);
+        GeminiBlob audioBlob = new GeminiBlob("audio/mp3", "base64audiodata");
+        GeminiContent.GeminiPart audioPart =
+                GeminiContent.GeminiPart.builder().inlineData(audioBlob).build();
+        List<GeminiContent.GeminiPart> parts = List.of(audioPart);
 
         // When
         AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);

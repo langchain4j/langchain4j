@@ -32,6 +32,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiChatModelIT {
@@ -209,6 +210,27 @@ class AzureOpenAiChatModelIT {
         // then
         assertThat(answer).contains("Berlin");
     }
+
+    @Test
+    void should_support_ReasoningEffort() {
+
+        // given
+        ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
+
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .reasoningEffort(reasoningEffort)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
+    }    
 
     @AfterEach
     void afterEach() throws InterruptedException {

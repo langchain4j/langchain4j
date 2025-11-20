@@ -54,7 +54,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).contains("\"seed\" : 42");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).contains("\"seed\" : 42");
         }
 
         @Test
@@ -65,7 +65,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).doesNotContain("\"seed\"");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).doesNotContain("\"seed\"");
         }
     }
 }

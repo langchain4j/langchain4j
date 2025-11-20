@@ -20,7 +20,7 @@ class HuggingFaceEmbeddingModelIT {
             .build();
 
     HuggingFaceEmbeddingModel customUrlModel = HuggingFaceEmbeddingModel.builder()
-            .baseUrl("https://api-inference.huggingface.co/")
+            .baseUrl("https://router.huggingface.co/hf-inference/")
             .accessToken(System.getenv("HF_API_KEY"))
             .modelId("sentence-transformers/all-MiniLM-L6-v2")
             .waitForModel(true)

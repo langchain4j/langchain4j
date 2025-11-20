@@ -13,6 +13,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 import static java.time.Duration.ofSeconds;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 
 import java.util.HashMap;
@@ -277,7 +278,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+            io.verify(handler).onPartialToolCall(eq(partial(0, id, "getWeather", "{\"city\":\"Munich\"}")), any());
         }
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
@@ -290,11 +291,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
                             && !toolCall.id().isBlank()
                             && toolCall.name().equals("get_current_time")
                             && toolCall.partialArguments().equals("{}")
-            ));
+            ), any());
         }
 
         // Ollama talks in-between for some reason
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         io.verify(handler).onCompleteToolCall(argThat(request ->
                 request.index() == 0
@@ -308,7 +309,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         verifyToolCallbacks(handler, io, id1, model);
 
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
+            io.verify(handler).onPartialToolCall(eq(partial(1, id2, "getTime", "{\"country\":\"France\"}")), any());
         }
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }

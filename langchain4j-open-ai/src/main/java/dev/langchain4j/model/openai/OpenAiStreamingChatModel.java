@@ -36,6 +36,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
@@ -115,8 +116,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .store(getOrDefault(builder.store, openAiParameters.store()))
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
-                .reasoningEffort(openAiParameters.reasoningEffort())
-                .customParameters(openAiParameters.customParameters())
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
@@ -147,7 +148,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse.parsedResponse(), toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -165,9 +166,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private void handle(
-            ChatCompletionResponse partialResponse,
+            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
             ToolCallBuilder toolCallBuilder,
             StreamingChatResponseHandler handler) {
+        ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
             return;
         }
@@ -189,12 +191,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content);
+            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            onPartialThinking(handler, reasoningContent);
+            onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -220,7 +222,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                             .name(name)
                             .partialArguments(partialArguments)
                             .build();
-                    onPartialToolCall(handler, partialToolRequest);
+                    onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
                 }
             }
         }
@@ -271,6 +273,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
         private Boolean returnThinking;
         private Duration timeout;
         private Boolean logRequests;
@@ -278,6 +281,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Logger logger;
         private Map<String, String> customHeaders;
         private Map<String, String> customQueryParams;
+        private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
 
         public OpenAiStreamingChatModelBuilder() {
@@ -423,6 +427,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public OpenAiStreamingChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
         /**
          * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
          * <p>
@@ -464,13 +473,27 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers
+         */
         public OpenAiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
+        /**
+         * Sets custom URL query parameters
+         */
         public OpenAiStreamingChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP body parameters
+         */
+        public OpenAiStreamingChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 
