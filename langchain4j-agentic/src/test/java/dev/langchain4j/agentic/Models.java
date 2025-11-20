@@ -73,7 +73,7 @@ public class Models {
             .logResponses(true)
             .build();
 
-    private static final ChatModel GEMINI_STREAMING_BASE_MODEL = GoogleAiGeminiStreamingChatModel.builder()
+    private static final StreamingChatModel GEMINI_STREAMING_BASE_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.5-flash-lite")
             .logRequests(true)
