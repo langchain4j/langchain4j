@@ -73,5 +73,5 @@ public @interface ConditionalAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }

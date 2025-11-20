@@ -22,8 +22,6 @@ import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class MultipleMcpToolsIT {
 
@@ -32,8 +30,6 @@ class MultipleMcpToolsIT {
 
     private static Process process1;
     private static Process process2;
-
-    private static final Logger log = LoggerFactory.getLogger(MultipleMcpToolsIT.class);
 
     @BeforeAll
     static void setup() throws IOException, InterruptedException, TimeoutException {
@@ -146,19 +142,22 @@ class MultipleMcpToolsIT {
 
     @Test
     void filterDuplicatedTools() {
-        // Filter out the base-mcp version of echoInteger
+        String duplicatedToolName = "echoInteger";
+
+        // Filter out "echoInteger" tool from mcpBaseClient
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
-                .filter((mcpClient, tool) -> !tool.name().startsWith("echoInteger")
+                .filter((mcpClient, tool) -> !tool.name().startsWith(duplicatedToolName)
                         || mcpClient.key().equals("numeric-mcp"))
                 .build()
                 .provideTools(null);
-        assertThat(toolProviderResult.tools()).hasSize(17);
+        assertThat(toolProviderResult.tools().keySet().stream().map(ToolSpecification::name))
+                .containsOnlyOnce(duplicatedToolName);
 
-        // Execute the numeric-mcp version of echoInteger which adds 1 to the input
-        ToolExecutor executor = toolProviderResult.toolExecutorByName("echoInteger");
+        // Execute "echoInteger" tool (it adds 1 to the input) from mcpNumericClient
+        ToolExecutor executor = toolProviderResult.toolExecutorByName(duplicatedToolName);
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .name("echoInteger")
+                .name(duplicatedToolName)
                 .arguments("{\"input\": 2}")
                 .build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);

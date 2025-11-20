@@ -8,21 +8,14 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of an agent based on a custom planner.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
  * {@code
  *     public interface PlannerBasedStoryCreator {
  *
- *         @PlannerAgent(
- *                 outputKey = "story",
- *                 subAgents = {
- *                     @SubAgent(type = CreativeWriter.class, outputKey = "story"),
- *                     @SubAgent(type = AudienceEditor.class, outputKey = "story"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *                 })
+ *         @PlannerAgent( outputKey = "story",
+ *                        subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *
  *         @PlannerSupplier
@@ -64,5 +57,5 @@ public @interface PlannerAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }

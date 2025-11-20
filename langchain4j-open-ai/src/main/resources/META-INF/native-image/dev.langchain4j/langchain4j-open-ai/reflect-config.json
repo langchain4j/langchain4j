@@ -108,6 +108,15 @@
     "allPublicFields": true
   },
   {
+    "name": "dev.langchain4j.model.openai.internal.chat.VideoUrl",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.chat.InputAudio",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -523,6 +532,15 @@
   },
   {
     "name": "dev.langchain4j.model.openai.internal.chat.PdfFile$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.chat.VideoUrl$Builder",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

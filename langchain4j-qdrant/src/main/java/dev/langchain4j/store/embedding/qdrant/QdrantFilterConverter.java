@@ -6,20 +6,20 @@ import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import io.qdrant.client.ConditionFactory;
-import io.qdrant.client.grpc.Points;
-import io.qdrant.client.grpc.Points.Condition;
+import io.qdrant.client.grpc.Common;
+import io.qdrant.client.grpc.Common.Condition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 class QdrantFilterConverter {
 
-    public static Points.Filter convertExpression(Filter expression) {
+    public static Common.Filter convertExpression(Filter expression) {
         return QdrantFilterConverter.convertOperand(expression);
     }
 
-    private static Points.Filter convertOperand(Filter operand) {
-        Points.Filter.Builder context = Points.Filter.newBuilder();
+    private static Common.Filter convertOperand(Filter operand) {
+        Common.Filter.Builder context = Common.Filter.newBuilder();
         List<Condition> mustClauses = new ArrayList<Condition>();
         List<Condition> shouldClauses = new ArrayList<Condition>();
         List<Condition> mustNotClauses = new ArrayList<Condition>();
@@ -65,7 +65,8 @@ class QdrantFilterConverter {
         } else if (filter instanceof IsNotIn isNotIn) {
             return buildNInCondition(isNotIn);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
@@ -93,18 +94,18 @@ class QdrantFilterConverter {
         String key = notEqual.key();
         Object value = notEqual.comparisonValue();
         if (value instanceof String || value instanceof UUID) {
-            return ConditionFactory.filter(Points.Filter.newBuilder()
+            return ConditionFactory.filter(Common.Filter.newBuilder()
                     .addMustNot(ConditionFactory.matchKeyword(key, value.toString()))
                     .build());
         } else if (value instanceof Boolean) {
             Condition condition = ConditionFactory.match(key, (Boolean) value);
             return ConditionFactory.filter(
-                    Points.Filter.newBuilder().addMustNot(condition).build());
+                    Common.Filter.newBuilder().addMustNot(condition).build());
         } else if (value instanceof Integer || value instanceof Long) {
             long lValue = Long.parseLong(value.toString());
             Condition condition = ConditionFactory.match(key, lValue);
             return ConditionFactory.filter(
-                    Points.Filter.newBuilder().addMustNot(condition).build());
+                    Common.Filter.newBuilder().addMustNot(condition).build());
         }
 
         throw new IllegalArgumentException(
@@ -117,7 +118,7 @@ class QdrantFilterConverter {
         if (value instanceof Number) {
             Double dvalue = Double.parseDouble(value.toString());
             return ConditionFactory.range(
-                    key, Points.Range.newBuilder().setGt(dvalue).build());
+                    key, Common.Range.newBuilder().setGt(dvalue).build());
         }
         throw new RuntimeException("Unsupported value type for IsGreaterThan condition. Only supports Number");
     }
@@ -128,7 +129,7 @@ class QdrantFilterConverter {
         if (value instanceof Number) {
             Double dvalue = Double.parseDouble(value.toString());
             return ConditionFactory.range(
-                    key, Points.Range.newBuilder().setLt(dvalue).build());
+                    key, Common.Range.newBuilder().setLt(dvalue).build());
         }
         throw new RuntimeException("Unsupported value type for IsLessThan condition. Only supports Number");
     }
@@ -139,7 +140,7 @@ class QdrantFilterConverter {
         if (value instanceof Number) {
             Double dvalue = Double.parseDouble(value.toString());
             return ConditionFactory.range(
-                    key, Points.Range.newBuilder().setGte(dvalue).build());
+                    key, Common.Range.newBuilder().setGte(dvalue).build());
         }
         throw new RuntimeException("Unsupported value type for IsGreaterThanOrEqualTo condition. Only supports Number");
     }
@@ -150,7 +151,7 @@ class QdrantFilterConverter {
         if (value instanceof Number) {
             Double dvalue = Double.parseDouble(value.toString());
             return ConditionFactory.range(
-                    key, Points.Range.newBuilder().setLte(dvalue).build());
+                    key, Common.Range.newBuilder().setLte(dvalue).build());
         }
         throw new RuntimeException("Unsupported value type for IsLessThanOrEqualTo condition. Only supports Number");
     }

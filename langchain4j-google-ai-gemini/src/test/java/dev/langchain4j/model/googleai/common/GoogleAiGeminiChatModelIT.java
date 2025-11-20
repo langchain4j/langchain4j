@@ -1,11 +1,14 @@
 package dev.langchain4j.model.googleai.common;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.output.TokenUsage;
+
 import java.util.List;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
@@ -62,5 +65,11 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // not tested
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        // Sometimes Gemini produces one token less than expected (e.g., 4 instead of 5)
+        assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
     }
 }

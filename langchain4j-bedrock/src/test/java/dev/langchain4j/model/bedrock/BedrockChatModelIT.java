@@ -34,6 +34,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
