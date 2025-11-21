@@ -1,3 +1,11 @@
 package dev.langchain4j.agentic.planner;
 
-public record AgentArgument(Class<?> type, String name) {}
+import dev.langchain4j.agentic.internal.AgentUtil;
+import java.lang.reflect.Type;
+
+public record AgentArgument(Type type, String name) {
+
+    public Class<?> rawType() {
+        return AgentUtil.rawType(type);
+    }
+}
