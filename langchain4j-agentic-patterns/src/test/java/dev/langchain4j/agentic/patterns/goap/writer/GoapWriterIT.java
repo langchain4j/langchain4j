@@ -58,7 +58,7 @@ public class GoapWriterIT {
                 .planner(GoalOrientedPlanner::new)
                 .build();
 
-        ResultWithAgenticScope<String> result = writer.write("dragons and wizards", "fantasy", "young adults");
+        ResultWithAgenticScope<String> result = writer.write("dragons and a male wizard", "fantasy", "young adults");
         String story = result.result();
         assertThat(story).contains("dragon").contains("wizard");
 
