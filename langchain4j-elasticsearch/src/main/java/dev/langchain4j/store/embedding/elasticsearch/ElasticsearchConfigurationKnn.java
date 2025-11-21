@@ -4,15 +4,16 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
  * using the approximate kNN query implementation.
+ *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
  */
 public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
@@ -44,17 +45,26 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
         return new Builder();
     }
 
-
     private ElasticsearchConfigurationKnn(Integer numCandidates) {
         this.numCandidates = numCandidates;
     }
 
     @Override
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
-                                                   String indexName,
-                                                   EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
+            throws ElasticsearchException, IOException {
+        return internalSearch(client, indexName, embeddingSearchRequest, false);
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest,
+            boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()
-                .field("vector")
+                .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
         if (embeddingSearchRequest.filter() != null) {
@@ -69,11 +79,35 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
 
         log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);
 
-        return client.search(sr -> sr
+        return client.search(
+                s -> s.source(sr -> {
+                            if (includeVectorResponse) {
+                                return sr.filter(f -> f.excludeVectors(false));
+                            }
+                            return new SourceConfig.Builder().filter(f -> f);
+                        })
                         .index(indexName)
                         .size(embeddingSearchRequest.maxResults())
                         .query(q -> q.knn(knn))
-                        .minScore(embeddingSearchRequest.minScore())
-                , Document.class);
+                        .minScore(embeddingSearchRequest.minScore()),
+                Document.class);
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client, final String indexName, final String textQuery)
+            throws ElasticsearchException, IOException {
+        throw new UnsupportedOperationException("Knn configuration does not support full text search");
+    }
+
+    @Override
+    SearchResponse<Document> internalSearch(
+            final ElasticsearchClient client,
+            final String indexName,
+            final EmbeddingSearchRequest embeddingSearchRequest,
+            final String textQuery,
+            final boolean includeVectorResponse)
+            throws ElasticsearchException, IOException {
+        throw new UnsupportedOperationException("Knn configuration does not support hybrid search");
     }
 }
