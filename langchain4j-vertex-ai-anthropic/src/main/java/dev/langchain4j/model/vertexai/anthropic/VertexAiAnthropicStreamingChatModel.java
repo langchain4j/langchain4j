@@ -72,19 +72,39 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        // Validate that JSON response format is not used (not supported)
+        ChatRequestParameters parameters = chatRequest.parameters();
+        if (parameters.responseFormat() != null) {
+            try {
+                handler.onError(new dev.langchain4j.exception.UnsupportedFeatureException(
+                        "JSON response format is not supported by Vertex AI Anthropic"));
+            } catch (Exception userException) {
+                logger.warn("User's onError handler threw an exception, ignoring", userException);
+            }
+            return;
+        }
+
         try {
             String requestModelName = determineRequestModelName(chatRequest.parameters());
             AnthropicRequest anthropicRequest = buildAnthropicRequest(chatRequest, requestModelName);
-            
+
             logRequestIfEnabled(requestModelName, chatRequest.parameters().modelName(), anthropicRequest);
-            
-            client.generateContentStreaming(anthropicRequest, requestModelName, 
+
+            client.generateContentStreaming(anthropicRequest, requestModelName,
                     createStreamingResponseHandler(handler));
-            
+
         } catch (IOException e) {
-            handler.onError(new RuntimeException("Failed to generate response", e));
+            try {
+                handler.onError(new RuntimeException("Failed to generate response", e));
+            } catch (Exception userException) {
+                logger.warn("User's onError handler threw an exception, ignoring", userException);
+            }
         } catch (Exception e) {
-            handler.onError(e);
+            try {
+                handler.onError(e);
+            } catch (Exception userException) {
+                logger.warn("User's onError handler threw an exception, ignoring", userException);
+            }
         }
     }
 
@@ -141,11 +161,15 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                     if (logResponses) {
                         logger.debug("Anthropic streaming chunk: {}", jsonChunk);
                     }
-                    
+
                     processStreamingChunk(jsonChunk, handler);
                 } catch (Exception e) {
                     logger.error("Error processing streaming chunk", e);
-                    handler.onError(e);
+                    try {
+                        handler.onError(e);
+                    } catch (Exception userException) {
+                        logger.warn("User's onError handler threw an exception, ignoring", userException);
+                    }
                 }
             }
 
@@ -155,13 +179,21 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                     sendCompleteToolCalls(handler);
                     sendCompleteResponse(handler);
                 } catch (Exception e) {
-                    handler.onError(e);
+                    try {
+                        handler.onError(e);
+                    } catch (Exception userException) {
+                        logger.warn("User's onError handler threw an exception, ignoring", userException);
+                    }
                 }
             }
 
             @Override
             public void onError(Throwable error) {
-                handler.onError(error);
+                try {
+                    handler.onError(error);
+                } catch (Exception userException) {
+                    logger.warn("User's onError handler threw an exception, ignoring", userException);
+                }
             }
 
             private void extractToolCallsFromResponse(AnthropicResponse response) {

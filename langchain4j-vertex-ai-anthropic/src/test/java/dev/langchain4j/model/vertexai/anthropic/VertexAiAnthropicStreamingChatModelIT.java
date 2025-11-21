@@ -84,6 +84,12 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        // Vertex AI Anthropic does not support response format yet
+        return false;
+    }
+
+    @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         // Vertex AI Anthropic does not support images as URLs, only as Base64-encoded strings
         return false;
@@ -148,5 +154,10 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     @Override
     protected boolean assertThreads() {
         return false; // Vertex AI Anthropic uses simulated streaming, not true async streaming
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
+        return false; // Streaming exceptions get wrapped in RuntimeException/ExecutionException
     }
 }

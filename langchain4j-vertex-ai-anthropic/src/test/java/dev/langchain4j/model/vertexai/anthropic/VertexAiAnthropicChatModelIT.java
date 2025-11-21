@@ -81,6 +81,12 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        // Vertex AI Anthropic does not support response format yet
+        return false;
+    }
+
+    @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         // Vertex AI Anthropic does not support images as URLs, only as Base64-encoded strings
         return false;
@@ -93,7 +99,6 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        // Vertex AI Anthropic does not support JSON response format with schema combined with tools yet
         return false;
     }
 }

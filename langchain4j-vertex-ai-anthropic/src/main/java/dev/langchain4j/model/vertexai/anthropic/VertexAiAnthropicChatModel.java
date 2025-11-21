@@ -7,6 +7,7 @@ import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_ANTHROPIC;
 import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -93,6 +94,11 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
 
         List<ChatMessage> messages = chatRequest.messages();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+
+        // Validate that JSON response format with schema is not used (not yet supported)
+        if (parameters.responseFormat() != null && parameters.responseFormat().jsonSchema() != null) {
+            throw new UnsupportedFeatureException("JSON response format is not supported yet");
+        }
 
         try {
             String requestModelName = getOrDefault(parameters.modelName(), modelName);
