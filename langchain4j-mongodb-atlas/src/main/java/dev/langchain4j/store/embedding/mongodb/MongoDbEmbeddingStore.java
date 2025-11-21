@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -19,6 +20,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
@@ -85,6 +88,20 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * -&gt; Next -&gt; Create Search Index
  */
 public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
+
+    /**
+     * Reflective reference to MongoClient.appendMetadata method (available since driver version 5.6.0).
+     */
+    private static Method APPEND_METADATA;
+
+    static {
+        try {
+            APPEND_METADATA = MongoClient.class.getMethod("appendMetadata", MongoDriverInformation.class);
+        } catch (NoSuchMethodException e) {
+            // Method doesn't exist (older driver version)
+        }
+    }
+
     private static final int SECONDS_TO_WAIT_FOR_INDEX = 20;
 
     private static final Logger log = LoggerFactory.getLogger(MongoDbEmbeddingStore.class);
@@ -104,6 +121,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                                  Bson filter,
                                  IndexMapping indexMapping,
                                  Boolean createIndex) {
+        mongoClient = ensureNotNull(mongoClient, "mongoClient");
         databaseName = ensureNotNull(databaseName, "databaseName");
         collectionName = ensureNotNull(collectionName, "collectionName");
         createIndex = getOrDefault(createIndex, false);
@@ -114,6 +132,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+        appendMongoClientMetadata(mongoClient);
 
         // create collection if not exist
         MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -414,5 +433,23 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         log.warn("Index {} was not created or did not exit INITIAL_SYNC within {} seconds",
                 indexName, SECONDS_TO_WAIT_FOR_INDEX);
+    }
+
+    private static void appendMongoClientMetadata(final MongoClient mongoClient) {
+        // append metadata to mongo client
+        // in case when driver version is lower than 5.6.0, appendMetadata method does not exist
+        if (APPEND_METADATA != null) {
+            try {
+                APPEND_METADATA.invoke(
+                        mongoClient,
+                        MongoDriverInformation.builder()
+                                .driverName("langchain4j-mongodb")
+                                .build()
+                );
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                // ignore exception, failed to append metadata should not block normal usage
+                log.warn("langchain4j-mongodb metadata could not be added to MongoClient");
+            }
+        }
     }
 }
