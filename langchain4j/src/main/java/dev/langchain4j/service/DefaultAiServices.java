@@ -21,9 +21,9 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -56,7 +56,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -254,7 +253,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalQuery = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage userMessage = originalQuery;
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
@@ -317,8 +317,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
-                            chatMemory.add(userMessage);
                             messages.addAll(chatMemory.messages());
+                            chatMemory.add(shouldUseOriginalQuery(method) ? originalQuery : userMessage);
+                            messages.add(userMessage);
                         } else {
                             systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
@@ -650,6 +651,20 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
         }
         return Optional.empty();
+    }
+
+    private static boolean shouldUseOriginalQuery(Method method) {
+        if (method.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+            return method.getAnnotation(dev.langchain4j.service.UserMessage.class)
+                    .storeOriginal();
+        }
+
+        return Arrays.stream(method.getParameters())
+                .filter(p -> p.isAnnotationPresent(dev.langchain4j.service.UserMessage.class))
+                .findFirst()
+                .map(p -> p.getAnnotation(dev.langchain4j.service.UserMessage.class)
+                        .storeOriginal())
+                .orElse(false);
     }
 
     private static Optional<List<Content>> findContents(Method method, Object[] args) {
