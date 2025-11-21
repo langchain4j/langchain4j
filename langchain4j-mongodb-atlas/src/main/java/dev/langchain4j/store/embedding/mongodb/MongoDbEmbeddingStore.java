@@ -447,8 +447,8 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 .build()
                 );
             } catch (IllegalAccessException | InvocationTargetException e) {
-                // ignore exception , failed to append metadata should not block normal usage
-                log.warn("Failed to append metadata to MongoClient", e);
+                // ignore exception, failed to append metadata should not block normal usage
+                log.warn("langchain4j-mongodb metadata could not be added to MongoClient");
             }
         }
     }
