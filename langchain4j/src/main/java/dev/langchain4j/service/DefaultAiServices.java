@@ -390,15 +390,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                         boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
 
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
+                                context,
+                                memoryId,
                                 chatResponse,
                                 parameters,
                                 messages,
-                                context.chatModel,
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext.toolExecutors(),
-                                isReturnTypeResult,
-                                context.eventListenerRegistrar);
+                                isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
                             var result = Result.builder()
