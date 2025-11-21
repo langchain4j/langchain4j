@@ -32,6 +32,8 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -422,13 +424,13 @@ public class WorkflowAgentsIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations(StyleScorer.class);
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
                 .isGreaterThanOrEqualTo(0.8);
 
-        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
+        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations(StyleEditor.class);
         assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
@@ -498,9 +500,92 @@ public class WorkflowAgentsIT {
                 .outputKey("response")
                 .build();
 
+        AgentInstance rootAgent = (AgentInstance) expertRouterAgent;
+        assertThat(rootAgent.name()).isEqualTo("ask");
+        assertThat(rootAgent.outputType()).isEqualTo(String.class);
+        assertThat(rootAgent.outputKey()).isEqualTo("response");
+        assertThat(rootAgent.arguments()).hasSize(1);
+        assertThat(rootAgent.arguments().get(0).name()).isEqualTo("request");
+        assertThat(rootAgent.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(rootAgent.subagents()).hasSize(2);
+
+        AgentInstance routerAgentInstance = rootAgent.subagents().get(0);
+        assertThat(routerAgentInstance.name()).isEqualTo("classify");
+        assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
+        assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
+        assertThat(routerAgentInstance.arguments()).hasSize(1);
+        assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(routerAgentInstance.subagents()).isEmpty();
+
+        AgentInstance conditionalAgentInstance = rootAgent.subagents().get(1);
+        assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
+        assertThat(conditionalAgentInstance.outputKey()).isNull();
+        assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
+        assertThat(conditionalAgentInstance.subagents()).hasSize(3);
+
+        checkExpertAgent(conditionalAgentInstance.subagents().get(0), "medical");
+        checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
+        checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
+
         System.out.println(expertRouterAgent.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
+    }
+
+    private static void checkExpertAgent(AgentInstance medicalAgentInstance, String name) {
+        assertThat(medicalAgentInstance.name()).isEqualTo(name);
+        assertThat(medicalAgentInstance.outputType()).isEqualTo(String.class);
+        assertThat(medicalAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(medicalAgentInstance.arguments()).hasSize(1);
+        assertThat(medicalAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(medicalAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(medicalAgentInstance.subagents()).hasSize(0);
+    }
+
+    @Test
+    void agents_validation_tests() {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build());
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+
+
+        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
+                AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+                    .subAgents(routerAgent, expertsAgent)
+                    .outputKey("response")
+                    .build()))
+            .hasMessageContaining("category");
     }
 
     @Test
