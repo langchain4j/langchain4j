@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static java.util.Collections.singletonList;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialChatModelListenerIT extends AbstractChatModelListenerIT {
