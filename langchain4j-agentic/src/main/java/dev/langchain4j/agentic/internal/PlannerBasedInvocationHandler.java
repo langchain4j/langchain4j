@@ -80,11 +80,29 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         this.plannerSupplier = plannerSupplier;
         this.agenticScope = agenticScope;
 
-        this.plannerAgent = new DefaultAgentInstance(service.agentServiceClass, service.name, uniqueAgentName(service.agentServiceClass, service.name),
-                service.description, service.agentReturnType(), service.outputKey,
+        this.plannerAgent = new DefaultAgentInstance(
+                service.agentServiceClass,
+                service.name,
+                uniqueAgentName(service.agentServiceClass, service.name),
+                service.description,
+                service.agentReturnType(),
+                service.outputKey,
                 service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of(),
                 service.agentExecutors().stream().map(AgentInstance.class::cast).toList());
         agenticSystemDataTypes(this.plannerAgent);
+
+        checkSubAgents();
+    }
+
+    private void checkSubAgents() {
+        final List<AgentInstance> agentInstances =
+                service.agentExecutors().stream().map(AgentInstance.class::cast).toList();
+        if (hasStreamingAgent(agentInstances) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
+            throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
+        }
+        if (plannerSupplier instanceof StreamingSubAgentsChecker) {
+            ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(agentInstances, plannerAgent);
+        }
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
@@ -95,7 +113,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
     }
 
     public AgentInstance plannerInstance() {
-        return plannerInstance;
+        return plannerAgent;
     }
 
     @Override
@@ -156,7 +174,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
         if (method.getDeclaringClass() == Object.class) {
             return switch (method.getName()) {
-                case "toString" -> service.serviceType() + "<" + plannerAgent.type().getSimpleName() + ">";
+                case "toString" ->
+                    service.serviceType() + "<" + plannerAgent.type().getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(this);
                 default ->
                     throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
@@ -173,7 +192,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
     private AgenticScopeRegistry agenticScopeRegistry() {
         if (isRootCall()) {
-            agenticScopeRegistry.compareAndSet(null, new AgenticScopeRegistry(plannerAgent.type().getName()));
+            agenticScopeRegistry.compareAndSet(
+                    null, new AgenticScopeRegistry(plannerAgent.type().getName()));
         }
         return agenticScopeRegistry.get();
     }

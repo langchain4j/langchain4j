@@ -154,7 +154,7 @@ public class StreamingAgentsWorkflowIT {
 
         StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("story")
+                .outputKey("story_s")
                 .build();
 
         final SequentialAgentService<UntypedAgent> sequentialAgentService = AgenticServices.sequenceBuilder();
@@ -265,12 +265,12 @@ public class StreamingAgentsWorkflowIT {
 
         StyleEditorForStreaming styleEditor = AgenticServices.agentBuilder(StyleEditorForStreaming.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("story")
+                .outputKey("story_s")
                 .build();
 
         NovelCreatorForStreaming novelCreator1 = AgenticServices.sequenceBuilder(NovelCreatorForStreaming.class)
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
-                .outputKey("story")
+                .outputKey("story_s")
                 .build();
 
         final SequentialAgentService<UntypedAgent> sequentialAgentService = AgenticServices.sequenceBuilder()

@@ -9,11 +9,10 @@ import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.reflect.Type;
-import java.util.List;
 
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance {
 
@@ -65,7 +64,8 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             if (outputKey != null && !outputKey.isBlank()) {
                 agenticScope.writeState(outputKey, response);
             }
-            AgentInvocation agentInvocation = new AgentInvocation(type(), name(), agentId(), args.namedArgs(), response);
+            AgentInvocation agentInvocation =
+                    new AgentInvocation(type(), name(), agentId(), args.namedArgs(), response);
             agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
             if (listener != null) {
                 listener.onAgentInvoked(agentInvocation);
@@ -75,6 +75,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             return handleAgentFailure(e, agenticScope, invokedAgent, listener);
         }
     }
+
     @Override
     public Class<?> type() {
         return agentInvoker.type();

@@ -70,8 +70,14 @@ public class AgentUtil {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
-                        new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
-                                name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
+                        new NonAiAgentSpecification(
+                                agenticMethod.getDeclaringClass(),
+                                name,
+                                agentId,
+                                description,
+                                agenticMethod.getGenericReturnType(),
+                                annotation.outputKey(),
+                                annotation.async(),
                                 argumentsFromMethod(agenticMethod),
                                 x -> {},
                                 x -> {}),
@@ -262,7 +268,7 @@ public class AgentUtil {
     public static boolean hasSameOutput(AgentInstance agent, AgentInstance otherAgent) {
         return agent.outputKey().equals(otherAgent.outputKey());
     }
-    
+
     public static Map<String, Class<?>> agenticSystemDataTypes(AgentInstance rootAgent) {
         Map<String, Class<?>> dataTypes = new HashMap<>();
         collectAgenticSystemDataTypes(rootAgent, dataTypes);
@@ -292,9 +298,8 @@ public class AgentUtil {
             } else if (keyClass.isAssignableFrom(existingType)) {
                 dataTypes.put(name, keyClass);
             } else {
-                throw new AgenticSystemConfigurationException(
-                        "Conflicting types for key '" + name + "': " +
-                                existingType.getName() + " and " + keyClass.getName());
+                throw new AgenticSystemConfigurationException("Conflicting types for key '" + name + "': "
+                        + existingType.getName() + " and " + keyClass.getName());
             }
         }
     }

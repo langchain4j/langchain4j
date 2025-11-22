@@ -26,5 +26,4 @@ public interface AgentInstance {
     }
 
     default void setStreaming(boolean streaming) {}
-
 }
