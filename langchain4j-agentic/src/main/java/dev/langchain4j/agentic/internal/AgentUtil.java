@@ -9,14 +9,18 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -66,12 +70,8 @@ public class AgentUtil {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
-                        new AgentSpecificationImpl(
-                                name,
-                                agentId,
-                                description,
-                                annotation.outputKey(),
-                                annotation.async(),
+                        new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
+                                name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
                                 argumentsFromMethod(agenticMethod),
                                 x -> {},
                                 x -> {}),
@@ -103,7 +103,7 @@ public class AgentUtil {
 
     public static List<AgentArgument> argumentsFromMethod(Method method) {
         return Stream.of(method.getParameters())
-                .map(p -> new AgentArgument(p.getType(), parameterName(p)))
+                .map(p -> new AgentArgument(p.getParameterizedType(), parameterName(p)))
                 .toList();
     }
 
@@ -146,7 +146,7 @@ public class AgentUtil {
                 positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
-            Object argValue = argumentFromAgenticScope(agenticScope, arg.type(), argName);
+            Object argValue = argumentFromAgenticScope(agenticScope, arg.rawType(), argName);
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
@@ -261,5 +261,55 @@ public class AgentUtil {
 
     public static boolean hasSameOutput(AgentInstance agent, AgentInstance otherAgent) {
         return agent.outputKey().equals(otherAgent.outputKey());
+    }
+    
+    public static Map<String, Class<?>> agenticSystemDataTypes(AgentInstance rootAgent) {
+        Map<String, Class<?>> dataTypes = new HashMap<>();
+        collectAgenticSystemDataTypes(rootAgent, dataTypes);
+        return dataTypes;
+    }
+
+    private static void collectAgenticSystemDataTypes(AgentInstance rootAgent, Map<String, Class<?>> dataTypes) {
+        for (AgentArgument arg : rootAgent.arguments()) {
+            recordType(dataTypes, arg.name(), arg.type());
+        }
+        if (rootAgent.outputKey() != null) {
+            recordType(dataTypes, rootAgent.outputKey(), rootAgent.outputType());
+        }
+        for (AgentInstance subagent : rootAgent.subagents()) {
+            collectAgenticSystemDataTypes(subagent, dataTypes);
+        }
+    }
+
+    private static void recordType(Map<String, Class<?>> dataTypes, String name, Type type) {
+        Class<?> keyClass = rawType(type);
+        if (!dataTypes.containsKey(name)) {
+            dataTypes.put(name, keyClass);
+        } else {
+            Class<?> existingType = dataTypes.get(name);
+            if (existingType.isAssignableFrom(keyClass)) {
+                // do nothing, keep the existing type
+            } else if (keyClass.isAssignableFrom(existingType)) {
+                dataTypes.put(name, keyClass);
+            } else {
+                throw new AgenticSystemConfigurationException(
+                        "Conflicting types for key '" + name + "': " +
+                                existingType.getName() + " and " + keyClass.getName());
+            }
+        }
+    }
+
+    public static Class<?> rawType(Type type) {
+        if (type instanceof Class<?> clazz) {
+            return clazz;
+        }
+        if (type instanceof ParameterizedType parameterizedType) {
+            Class<?> clazz = (Class<?>) parameterizedType.getRawType();
+            if (clazz == ResultWithAgenticScope.class) {
+                return rawType(parameterizedType.getActualTypeArguments()[0]);
+            }
+            return clazz;
+        }
+        throw new IllegalArgumentException("Unsupported type: " + type);
     }
 }

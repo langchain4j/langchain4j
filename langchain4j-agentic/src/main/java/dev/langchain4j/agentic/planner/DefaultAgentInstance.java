@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.planner;
 
+import java.lang.reflect.Type;
 import java.util.List;
 
 public class DefaultAgentInstance implements AgentInstance {
@@ -8,6 +9,7 @@ public class DefaultAgentInstance implements AgentInstance {
     private String description;
     private String outputKey;
     private List<AgentArgument> arguments;
+    private List<AgentInstance> subagents;
     private boolean streaming;
 
     public DefaultAgentInstance(
@@ -15,12 +17,14 @@ public class DefaultAgentInstance implements AgentInstance {
             final String agentId,
             final String description,
             final String outputKey,
-            final List<AgentArgument> arguments) {
+            final List<AgentArgument> arguments,
+            final List<AgentInstance> subagents) {
         this.name = name;
         this.agentId = agentId;
         this.description = description;
         this.outputKey = outputKey;
         this.arguments = arguments;
+        this.subagents = subagents;
     }
 
     @Override
@@ -46,6 +50,11 @@ public class DefaultAgentInstance implements AgentInstance {
     @Override
     public List<AgentArgument> arguments() {
         return this.arguments;
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return subagents;
     }
 
     @Override
