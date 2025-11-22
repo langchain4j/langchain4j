@@ -19,7 +19,9 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -827,9 +829,9 @@ public abstract class HttpClientIT {
     }
 
     @Test
-    void should_return_successful_http_response_sync_form_data() throws URISyntaxException {
+    void should_return_successful_http_response_sync_form_data() throws URISyntaxException, IOException {
         Path audioMessage =
-                Path.of(getClass().getClassLoader().getResource("audio.mp3").toURI());
+                Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
 
         for (HttpClient client : clients()) {
 
@@ -841,7 +843,7 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
                     .addFormData("model", "gpt-4o-transcribe")
                     .addFormData("response_format", "text")
-                    .addFile("file", audioMessage)
+                    .addFile("file", "audio.wav", "", Files.readAllBytes(audioMessage))
                     .build();
 
             // when

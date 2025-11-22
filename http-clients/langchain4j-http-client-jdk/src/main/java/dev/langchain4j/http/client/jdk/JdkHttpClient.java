@@ -8,7 +8,9 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.MultipartFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.payload.MultipartBodyPublisher;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
@@ -20,8 +22,6 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 
@@ -124,7 +124,7 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    public static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, Path> files) {
+    public static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, MultipartFile> files) {
 
         MultipartBodyPublisher mp = new MultipartBodyPublisher();
 
@@ -132,19 +132,8 @@ public class JdkHttpClient implements HttpClient {
             mp.addFormField(entry.getKey(), entry.getValue());
         }
 
-        try {
-            for (Map.Entry<String, Path> entry : files.entrySet()) {
-                String mimeType = null;
-
-                mimeType = Files.probeContentType(entry.getValue());
-
-                if (mimeType == null) {
-                    mimeType = "application/octet-stream";
-                }
-                mp.addFile("file", entry.getValue(), mimeType);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        for (Map.Entry<String, MultipartFile> entry : files.entrySet()) {
+            mp.addFile("file", entry.getValue());
         }
 
         return mp.build();

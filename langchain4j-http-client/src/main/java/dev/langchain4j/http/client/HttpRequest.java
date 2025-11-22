@@ -10,7 +10,6 @@ import static java.util.stream.Collectors.joining;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +21,7 @@ public class HttpRequest {
     private final String url;
     private final Map<String, List<String>> headers;
     private final Map<String, String> formData;
-    private final Map<String, Path> files;
+    private final Map<String, MultipartFile> files;
     private final String body;
 
     public HttpRequest(Builder builder) {
@@ -71,7 +70,7 @@ public class HttpRequest {
         return formData;
     }
 
-    public Map<String, Path> files() {
+    public Map<String, MultipartFile> files() {
         return files;
     }
 
@@ -90,7 +89,7 @@ public class HttpRequest {
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
         private Map<String, String> formData;
-        private Map<String, Path> files;
+        private Map<String, MultipartFile> files;
         private String body;
 
         private Builder() {}
@@ -208,14 +207,14 @@ public class HttpRequest {
             return this;
         }
 
-        public Builder addFile(String name, Path file) {
-            if (isNullOrEmpty(file)) {
+        public Builder addFile(String name, String filename, String contentType, byte[] fileAsBytes) {
+            if (fileAsBytes.length == 0) {
                 return this;
             }
             if (this.files == null) {
                 this.files = new LinkedHashMap<>();
             }
-            this.files.put(name, file);
+            this.files.put(name, new MultipartFile(filename, contentType, fileAsBytes));
             return this;
         }
 
