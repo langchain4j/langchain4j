@@ -1,16 +1,15 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
@@ -39,6 +38,18 @@ public class EmbeddingSearchRequest {
      */
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
+        this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
+        this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
+        this.filter = filter;
+    }
+
+    /** This constructor is used when subclass (e.g., MilvusEmbeddingSearchRequest) needs to allow null queryEmbedding for sparse embedding only */
+    protected EmbeddingSearchRequest(Embedding queryEmbedding,
+                                     Integer maxResults,
+                                     Double minScore,
+                                     Filter filter,
+                                     boolean allowNullQueryEmbedding) {
+        this.queryEmbedding = allowNullQueryEmbedding ? queryEmbedding : ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
@@ -78,7 +89,9 @@ public class EmbeddingSearchRequest {
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
+        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding
+                + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter="
+                + this.filter + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
@@ -87,8 +100,7 @@ public class EmbeddingSearchRequest {
         private Double minScore;
         private Filter filter;
 
-        EmbeddingSearchRequestBuilder() {
-        }
+        EmbeddingSearchRequestBuilder() {}
 
         public EmbeddingSearchRequestBuilder queryEmbedding(Embedding queryEmbedding) {
             this.queryEmbedding = queryEmbedding;
@@ -111,7 +123,11 @@ public class EmbeddingSearchRequest {
         }
 
         public EmbeddingSearchRequest build() {
-            return new EmbeddingSearchRequest(this.queryEmbedding, this.maxResults, this.minScore, this.filter);
+            return new EmbeddingSearchRequest(
+                    this.queryEmbedding,
+                    this.maxResults,
+                    this.minScore,
+                    this.filter);
         }
     }
 }
