@@ -95,13 +95,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
     }
 
     private void checkSubAgents() {
-        final List<AgentInstance> agentInstances =
-                service.agentExecutors().stream().map(AgentInstance.class::cast).toList();
-        if (hasStreamingAgent(agentInstances) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
+        if (hasStreamingAgent(plannerAgent.subagents()) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
             throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
         }
         if (plannerSupplier instanceof StreamingSubAgentsChecker) {
-            ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(agentInstances, plannerAgent);
+            ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(plannerAgent.subagents(), plannerAgent);
         }
     }
 
