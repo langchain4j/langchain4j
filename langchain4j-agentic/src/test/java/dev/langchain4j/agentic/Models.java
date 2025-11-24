@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
@@ -10,10 +11,11 @@ public class Models {
 
     private enum MODEL_PROVIDER {
         OPENAI,
+        GEMINI,
         OLLAMA
     }
 
-    private static final MODEL_PROVIDER modelProvider = Models.MODEL_PROVIDER.OPENAI;
+    private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OPENAI;
 
     private static final String OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
     private static final String OLLAMA_ENV_URL = System.getenv("OLLAMA_BASE_URL");
@@ -51,10 +53,21 @@ public class Models {
             .think(false)
             .build();
 
+
+    private static final ChatModel GEMINI_BASE_MODEL = GoogleAiGeminiChatModel.builder()
+            .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+            .modelName("gemini-2.5-flash-lite")
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    private static final ChatModel GEMINI_PLANNER_MODEL = GEMINI_BASE_MODEL;
+
     public static ChatModel baseModel() {
         return switch (modelProvider) {
             case OPENAI -> OPENAI_BASE_MODEL;
             case OLLAMA -> OLLAMA_BASE_MODEL;
+            case GEMINI -> GEMINI_BASE_MODEL;
         };
     }
 
@@ -62,6 +75,7 @@ public class Models {
         return switch (modelProvider) {
             case OPENAI -> OPENAI_PLANNER_MODEL;
             case OLLAMA -> OLLAMA_PLANNER_MODEL;
+            case GEMINI -> GEMINI_PLANNER_MODEL;
         };
     }
 }

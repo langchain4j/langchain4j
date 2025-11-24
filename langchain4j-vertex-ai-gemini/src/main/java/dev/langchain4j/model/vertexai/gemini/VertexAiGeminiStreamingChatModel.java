@@ -183,6 +183,10 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             vertexAiBuilder.setCredentials(scopedCredentials);
         }
 
+        if (builder.apiEndpoint != null) {
+            vertexAiBuilder.setApiEndpoint(builder.apiEndpoint);
+        }
+
         this.vertexAI = vertexAiBuilder.build();
 
         this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
@@ -580,6 +584,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private GoogleCredentials credentials;
+        private String apiEndpoint;
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -674,6 +679,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         public VertexAiGeminiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return this;
+        }
+
+        public VertexAiGeminiStreamingChatModelBuilder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
             return this;
         }
 

@@ -223,7 +223,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 buffer.flush();
                 return buffer.toByteArray();
             }
-            throw new IllegalStateException("An error occured while generating image.");
+            throw new IllegalStateException("An error occurred while generating image.");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

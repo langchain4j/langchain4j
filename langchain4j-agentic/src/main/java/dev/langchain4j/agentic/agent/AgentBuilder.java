@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.agent;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -10,6 +11,7 @@ import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -30,15 +32,18 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
-    private final Class<T> agentServiceClass;
+    final Class<T> agentServiceClass;
+    final Class<?> agentReturnType;
+    final List<AgentArgument> arguments;
 
     String name;
-    String uniqueName;
+    String agentId;
     String description;
     String outputKey;
     boolean async;
@@ -73,6 +78,8 @@ public class AgentBuilder<T> {
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agentReturnType = agenticMethod.getReturnType();
+        this.arguments = argumentsFromMethod(agenticMethod);
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
@@ -82,7 +89,7 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
@@ -93,6 +100,9 @@ public class AgentBuilder<T> {
             this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
+        if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
+            this.contextProvidingAgents = agent.summarizedContext();
+        }
     }
 
     public T build() {
@@ -201,10 +211,6 @@ public class AgentBuilder<T> {
         }
     }
 
-    String agentId() {
-        return agentServiceClass.getName();
-    }
-
     public AgentBuilder<T> chatModel(ChatModel model) {
         this.model = model;
         return this;
@@ -285,7 +291,7 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 
@@ -335,7 +341,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> toolArgumentsErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
         return this;
     }

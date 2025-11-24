@@ -1,14 +1,18 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.invocation.InvocationParameters;
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -19,11 +23,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -125,9 +124,8 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
-        InvocationContext invocationContext = InvocationContext.builder()
-                .chatMemoryId(memoryId)
-                .build();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
 
         ToolExecutionResult result = executeWithContext(request, invocationContext);
 
@@ -149,10 +147,9 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
-        String resultText = toText(result);
         return ToolExecutionResult.builder()
                 .result(result)
-                .resultText(resultText)
+                .resultTextSupplier(() -> toText(result))
                 .build();
     }
 

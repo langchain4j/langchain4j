@@ -2,20 +2,24 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.output.TokenUsage;
 
+/**
+ * @since 1.9.0
+ */
 public class BedrockTokenUsage extends TokenUsage {
+
     private final Integer cacheWriteInputTokens;
     private final Integer cacheReadInputTokens;
 
     public BedrockTokenUsage(Builder builder) {
-        super(builder.inputTokenCount, builder.outputTokenCount, builder.totalTokenCount);
+        super(builder.inputTokenCount, builder.outputTokenCount);
         this.cacheWriteInputTokens = builder.cacheWriteInputTokens;
         this.cacheReadInputTokens = builder.cacheReadInputTokens;
     }
 
     /**
-     * Returns The total cached token written count, or null if unknown.
+     * Returns The total cached token write count, or null if unknown.
      *
-     * @return The total cached token written count, or null if unknown.
+     * @return The total cached token write count, or null if unknown.
      */
     public Integer cacheWriteInputTokens() {
         return cacheWriteInputTokens;
@@ -39,23 +43,22 @@ public class BedrockTokenUsage extends TokenUsage {
         return builder()
                 .inputTokenCount(sum(this.inputTokenCount(), that.inputTokenCount()))
                 .outputTokenCount(sum(this.outputTokenCount(), that.outputTokenCount()))
-                .totalTokenCount(sum(this.totalTokenCount(), that.totalTokenCount()))
                 .cacheWriteInputTokens(addCacheWriteInputTokens(that))
                 .cacheReadInputTokens(addCacheReadInputTokens(that))
                 .build();
     }
 
     private Integer addCacheWriteInputTokens(TokenUsage that) {
-        if (that instanceof BedrockTokenUsage thatAnthropicTokenUsage) {
-            return sum(this.cacheWriteInputTokens, thatAnthropicTokenUsage.cacheWriteInputTokens);
+        if (that instanceof BedrockTokenUsage thatBedrockTokenUsage) {
+            return sum(this.cacheWriteInputTokens, thatBedrockTokenUsage.cacheWriteInputTokens);
         } else {
             return this.cacheWriteInputTokens;
         }
     }
 
     private Integer addCacheReadInputTokens(TokenUsage that) {
-        if (that instanceof BedrockTokenUsage thatAnthropicTokenUsage) {
-            return sum(this.cacheReadInputTokens, thatAnthropicTokenUsage.cacheReadInputTokens);
+        if (that instanceof BedrockTokenUsage thatBedrockTokenUsage) {
+            return sum(this.cacheReadInputTokens, thatBedrockTokenUsage.cacheReadInputTokens);
         } else {
             return this.cacheReadInputTokens;
         }
@@ -63,13 +66,12 @@ public class BedrockTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "BedrockTokenUsage {" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", totalTokenCount = " + totalTokenCount() +
-                ", cacheWriteInputTokens = " + cacheWriteInputTokens +
-                ", cacheReadInputTokens = " + cacheReadInputTokens +
-                " }";
+        return "BedrockTokenUsage {" + " inputTokenCount = "
+                + inputTokenCount() + ", outputTokenCount = "
+                + outputTokenCount() + ", totalTokenCount = "
+                + totalTokenCount() + ", cacheWriteInputTokens = "
+                + cacheWriteInputTokens + ", cacheReadInputTokens = "
+                + cacheReadInputTokens + " }";
     }
 
     public static Builder builder() {
@@ -82,7 +84,6 @@ public class BedrockTokenUsage extends TokenUsage {
         private Integer outputTokenCount;
         private Integer cacheWriteInputTokens;
         private Integer cacheReadInputTokens;
-        private Integer totalTokenCount;
 
         public Builder inputTokenCount(Integer inputTokenCount) {
             this.inputTokenCount = inputTokenCount;
@@ -101,11 +102,6 @@ public class BedrockTokenUsage extends TokenUsage {
 
         public Builder cacheReadInputTokens(Integer cacheReadInputTokens) {
             this.cacheReadInputTokens = cacheReadInputTokens;
-            return this;
-        }
-
-        public Builder totalTokenCount(Integer totalTokenCount) {
-            this.totalTokenCount = totalTokenCount;
             return this;
         }
 

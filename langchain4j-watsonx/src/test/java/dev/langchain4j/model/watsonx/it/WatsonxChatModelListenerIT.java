@@ -49,12 +49,12 @@ public class WatsonxChatModelListenerIT extends AbstractChatModelListenerIT {
 
     private WatsonxChatModel.Builder createChatModel(String model) {
         return WatsonxChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
                 .logRequests(true)
                 .logResponses(true)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

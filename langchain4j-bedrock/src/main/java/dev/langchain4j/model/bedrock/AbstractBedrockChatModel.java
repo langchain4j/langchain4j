@@ -37,7 +37,6 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -426,16 +425,16 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
-    protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
+    protected BedrockTokenUsage tokenUsageFrom(
+            software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
         return Optional.ofNullable(tokenUsage)
-                .map(usage ->  BedrockTokenUsage.builder()
-                                    .inputTokenCount(usage.inputTokens())
-                                    .outputTokenCount(usage.outputTokens())
-                                    .cacheReadInputTokens(usage.cacheReadInputTokens())
-                                    .cacheWriteInputTokens(usage.cacheWriteInputTokens())
-                                    .totalTokenCount(usage.totalTokens())
-                                    .build())
-                .orElseGet(()->BedrockTokenUsage.builder().build());
+                .map(usage -> BedrockTokenUsage.builder()
+                        .inputTokenCount(tokenUsage.inputTokens())
+                        .outputTokenCount(tokenUsage.outputTokens())
+                        .cacheWriteInputTokens(tokenUsage.cacheWriteInputTokens())
+                        .cacheReadInputTokens(tokenUsage.cacheReadInputTokens())
+                        .build())
+                .orElseGet(BedrockTokenUsage.builder()::build);
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
@@ -449,10 +448,6 @@ abstract class AbstractBedrockChatModel {
 
         if (stopReason == StopReason.TOOL_USE) {
             return FinishReason.TOOL_EXECUTION;
-        }
-
-        if (stopReason == StopReason.CONTENT_FILTERED) {
-            return FinishReason.CONTENT_FILTER;
         }
 
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);

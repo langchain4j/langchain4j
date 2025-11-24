@@ -147,13 +147,13 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     private WatsonxStreamingChatModel.Builder createStreamingChatModel(String model) {
         return WatsonxStreamingChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

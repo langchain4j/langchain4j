@@ -72,6 +72,12 @@
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-guardrails</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
             <!-- model providers -->
 
             <dependency>
@@ -569,6 +575,11 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-agentic-a2a</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-agentic-patterns</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

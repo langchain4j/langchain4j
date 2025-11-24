@@ -81,7 +81,7 @@ public class WatsonxEmbeddingModelTest {
             httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
 
             var embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url(CloudRegion.FRANKFURT)
+                    .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -102,7 +102,7 @@ public class WatsonxEmbeddingModelTest {
             assertEquals("space-id", embeddingRequest.spaceId());
             // 6. Test builder secondario
             assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .authenticationProvider(
                             IAMAuthenticator.builder().apiKey("api-key").build())
@@ -124,7 +124,7 @@ public class WatsonxEmbeddingModelTest {
 
         withEmbeddingServiceMock(() -> {
             EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .projectId("projectId")
                     .modelName("modelName")
                     .apiKey("apiKey")
@@ -154,7 +154,7 @@ public class WatsonxEmbeddingModelTest {
 
         withEmbeddingServiceMock(() -> {
             WatsonxEmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .projectId("projectId")
                     .modelName("modelName")
                     .apiKey("apiKey")

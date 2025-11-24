@@ -30,6 +30,7 @@ import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -469,6 +470,10 @@ public class DefaultMcpClient implements McpClient {
         if (closed) {
             throw new IllegalStateException("The client is closed");
         }
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {

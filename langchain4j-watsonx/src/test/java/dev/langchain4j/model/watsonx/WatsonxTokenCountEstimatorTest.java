@@ -93,7 +93,7 @@ public class WatsonxTokenCountEstimatorTest {
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
             httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
             var tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                    .url(CloudRegion.FRANKFURT)
+                    .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -114,7 +114,7 @@ public class WatsonxTokenCountEstimatorTest {
             assertEquals("space-id", tokenizationRequest.spaceId());
 
             assertDoesNotThrow(() -> WatsonxScoringModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .authenticationProvider(
                             IAMAuthenticator.builder().apiKey("api-key").build())
@@ -132,7 +132,7 @@ public class WatsonxTokenCountEstimatorTest {
 
         withTokenizationServiceMock(() -> {
             TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -158,7 +158,7 @@ public class WatsonxTokenCountEstimatorTest {
 
         withTokenizationServiceMock(() -> {
             WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -174,7 +174,7 @@ public class WatsonxTokenCountEstimatorTest {
 
         withTokenizationServiceMock(() -> {
             WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -204,7 +204,7 @@ public class WatsonxTokenCountEstimatorTest {
 
         withTokenizationServiceMock(() -> {
             WatsonxTokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
