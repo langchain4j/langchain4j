@@ -26,8 +26,8 @@ public class InternalOpenAiOfficialTestHelper {
 
     private static final Logger log = LoggerFactory.getLogger(InternalOpenAiOfficialTestHelper.class);
 
-    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_5_MINI;
-    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_5;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_4O_MINI;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_4O;
     public static final com.openai.models.embeddings.EmbeddingModel EMBEDDING_MODEL_NAME =
             com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
     public static final com.openai.models.images.ImageModel IMAGE_MODEL_NAME =
