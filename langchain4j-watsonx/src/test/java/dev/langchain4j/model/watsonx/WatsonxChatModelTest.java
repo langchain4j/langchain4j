@@ -43,6 +43,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -134,6 +135,11 @@ public class WatsonxChatModelTest {
         assertNull(defaultRequestParameters.topK());
         assertNull(defaultRequestParameters.topLogprobs());
         assertNull(defaultRequestParameters.topP());
+        assertNull(defaultRequestParameters.guidedChoice());
+        assertNull(defaultRequestParameters.guidedGrammar());
+        assertNull(defaultRequestParameters.guidedRegex());
+        assertNull(defaultRequestParameters.repetitionPenalty());
+        assertNull(defaultRequestParameters.lengthPenalty());
 
         assertDoesNotThrow(() -> WatsonxChatModel.builder()
                 .baseUrl("https://test.com")
@@ -540,17 +546,25 @@ public class WatsonxChatModelTest {
                     .build();
 
             var chatRequest = ChatRequest.builder()
-                    .modelName("customModelName")
-                    .frequencyPenalty(0.10)
-                    .maxOutputTokens(10)
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
-                    .presencePenalty(0.10)
-                    .responseFormat(ResponseFormat.JSON)
-                    .stopSequences(List.of("stop"))
-                    .temperature(0.10)
-                    .toolChoice(ToolChoice.REQUIRED)
-                    .toolSpecifications(ToolSpecification.builder().name("name").build())
-                    .topP(0.10)
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .modelName("customModelName")
+                            .frequencyPenalty(0.10)
+                            .maxOutputTokens(10)
+                            .presencePenalty(0.10)
+                            .responseFormat(ResponseFormat.JSON)
+                            .stopSequences(List.of("stop"))
+                            .temperature(0.10)
+                            .toolChoice(ToolChoice.REQUIRED)
+                            .toolSpecifications(
+                                    ToolSpecification.builder().name("name").build())
+                            .topP(0.10)
+                            .guidedChoice("a", "b")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
+                            .build())
                     .build();
 
             chatModel.chat(chatRequest);
@@ -570,6 +584,11 @@ public class WatsonxChatModelTest {
             assertEquals(0.10, parameters.getTemperature());
             assertEquals("required", parameters.getToolChoiceOption());
             assertEquals(0.10, parameters.getTopP());
+            assertEquals(Set.of("a", "b"), parameters.getGuidedChoice());
+            assertEquals("guidedGrammar", parameters.getGuidedGrammar());
+            assertEquals("guidedRegex", parameters.getGuidedRegex());
+            assertEquals(1.1f, parameters.getRepetitionPenalty());
+            assertEquals(1.2f, parameters.getLengthPenalty());
         });
     }
 
@@ -605,6 +624,11 @@ public class WatsonxChatModelTest {
                     .topLogprobs(10)
                     .toolSpecifications(
                             ToolSpecification.builder().name("toolChoiceName").build())
+                    .guidedChoice("a", "b")
+                    .guidedGrammar("guidedGrammar")
+                    .guidedRegex("guidedRegex")
+                    .repetitionPenalty(1.1)
+                    .lengthPenalty(1.2)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -633,6 +657,11 @@ public class WatsonxChatModelTest {
                     Map.of("type", "function", "function", Map.of("name", "toolChoiceName")),
                     parameters.getToolChoice());
             assertEquals(10, parameters.getTopLogprobs());
+            assertEquals(Set.of("a", "b"), parameters.getGuidedChoice());
+            assertEquals("guidedGrammar", parameters.getGuidedGrammar());
+            assertEquals("guidedRegex", parameters.getGuidedRegex());
+            assertEquals(1.1f, parameters.getRepetitionPenalty());
+            assertEquals(1.2f, parameters.getLengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -659,6 +688,11 @@ public class WatsonxChatModelTest {
                             .toolSpecifications(
                                     ToolSpecification.builder().name("test").build())
                             .topLogprobs(10)
+                            .guidedChoice("a", "b")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
                             .build())
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                     .build();
@@ -692,6 +726,11 @@ public class WatsonxChatModelTest {
                     parameters.getToolChoice());
             assertEquals(10, parameters.getTopLogprobs());
             assertNull(parameters.getToolChoiceOption());
+            assertEquals(Set.of("a", "b"), parameters.getGuidedChoice());
+            assertEquals("guidedGrammar", parameters.getGuidedGrammar());
+            assertEquals("guidedRegex", parameters.getGuidedRegex());
+            assertEquals(1.1f, parameters.getRepetitionPenalty());
+            assertEquals(1.2f, parameters.getLengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -785,6 +824,11 @@ public class WatsonxChatModelTest {
                     .toolSpecifications(ToolSpecification.builder().name("test").build())
                     .topLogprobs(10)
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
+                    .guidedChoice("defaultValue1", "defaultValue2")
+                    .guidedGrammar("defaultGuidedGrammar")
+                    .guidedRegex("defaultGuidedRegex")
+                    .repetitionPenalty(1.0)
+                    .lengthPenalty(1.0)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -815,6 +859,11 @@ public class WatsonxChatModelTest {
                                     .name("toolChoiceName")
                                     .build())
                             .topLogprobs(11)
+                            .guidedChoice("value1", "value2")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
@@ -840,6 +889,11 @@ public class WatsonxChatModelTest {
             assertNotNull(parameters.getToolChoice());
             assertEquals(11, parameters.getTopLogprobs());
             assertNull(parameters.getToolChoiceOption());
+            assertEquals(Set.of("value1", "value2"), parameters.getGuidedChoice());
+            assertEquals("guidedGrammar", parameters.getGuidedGrammar());
+            assertEquals("guidedRegex", parameters.getGuidedRegex());
+            assertEquals(1.1f, parameters.getRepetitionPenalty());
+            assertEquals(1.2f, parameters.getLengthPenalty());
             // ----------------
         });
     }
