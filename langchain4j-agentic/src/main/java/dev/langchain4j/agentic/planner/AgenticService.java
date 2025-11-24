@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.AgentState;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
@@ -26,6 +27,7 @@ public interface AgenticService<T, A> {
     T description(String description);
 
     T outputKey(String outputKey);
+    T outputKey(Class<? extends AgentState<?>> outputKey);
 
     T output(Function<AgenticScope, Object> output);
 

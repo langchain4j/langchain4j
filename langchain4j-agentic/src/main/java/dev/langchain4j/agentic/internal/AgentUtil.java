@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.AgentState;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -16,6 +17,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -34,7 +37,27 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
+    private static final Map<Class<? extends AgentState<?>>, AgentState<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
+
     private AgentUtil() {}
+
+    private static <T> AgentState<T> stateInstance(Class<? extends AgentState<? extends T>> key) {
+        return (AgentState<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
+            try {
+                return key.getDeclaredConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static <T> T stateDefaultValue(Class<? extends AgentState<T>> key) {
+        return stateInstance(key).defaultValue();
+    }
+
+    public static String stateName(Class<? extends AgentState<?>> key) {
+        return stateInstance(key).name();
+    }
 
     public static String uniqueAgentName(Class<?> agentClass, String agentName) {
         return agentName + "_" + agentClass.getSimpleName();

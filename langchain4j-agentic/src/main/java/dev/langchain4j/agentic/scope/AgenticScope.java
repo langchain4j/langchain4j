@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.scope;
 
+import dev.langchain4j.agentic.declarative.AgentState;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public interface AgenticScope extends LangChain4jManaged {
     Object readState(String key);
 
     <T> T readState(String key, T defaultValue);
+    <T> T readState(Class<? extends AgentState<T>> key);
 
     Map<String, Object> state();
 
