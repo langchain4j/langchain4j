@@ -434,7 +434,7 @@ abstract class AbstractBedrockChatModel {
                         .cacheWriteInputTokens(tokenUsage.cacheWriteInputTokens())
                         .cacheReadInputTokens(tokenUsage.cacheReadInputTokens())
                         .build())
-                .orElseGet( BedrockTokenUsage.builder()::build);
+                .orElseGet(BedrockTokenUsage.builder()::build);
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
