@@ -11,8 +11,6 @@ import java.util.stream.Collectors;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 class EmbeddingModelTest implements WithAssertions {
     public static class EmbeddingModelImpl implements EmbeddingModel {
         @Override
