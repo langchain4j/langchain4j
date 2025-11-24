@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 class EmbeddingModelTest implements WithAssertions {
     public static class EmbeddingModelImpl implements EmbeddingModel {
         @Override
@@ -70,4 +72,36 @@ class EmbeddingModelTest implements WithAssertions {
                 .withMessageContaining("Expected a single embedding, but got 2");
         assertThat(model.dimension()).isEqualTo(0);
     }
+
+
+    @Test
+    void defaultModelNameShouldReturnNotImplemented() {
+        EmbeddingModel model = new BrokenEmbeddingModelImpl();
+
+        String name = model.modelName();
+
+        assertThat(name).isEqualTo("not-implemented");
+    }
+
+    @Test
+    void shouldReturnOverriddenModelName() {
+
+        final String expected = "test-embedding-model";
+
+        EmbeddingModel model = new EmbeddingModel() {
+            @Override
+            public Response<List<Embedding>> embedAll(final List<TextSegment> textSegments) {
+                return null;
+            }
+
+            @Override
+            public String modelName() {
+                return expected;
+            }
+        };
+
+        assertThat(model.modelName()).isEqualTo(expected);
+    }
+
+
 }
