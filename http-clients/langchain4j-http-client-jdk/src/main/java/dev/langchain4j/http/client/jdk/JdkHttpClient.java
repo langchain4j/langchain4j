@@ -172,6 +172,8 @@ public class JdkHttpClient implements HttpClient {
         @Override
         public void subscribe(Subscriber<? super StreamingHttpEvent> subscriber) {
             // TODO should send request on subscription or on first request(n)?
+            // TODO verify there is only one subscription
+
             client.sendAsync(request, BodyHandlers.ofPublisher())
                     .thenAccept(jdkResponse -> handleResponse(jdkResponse, subscriber))
                     .exceptionally(throwable -> {
@@ -211,7 +213,7 @@ public class JdkHttpClient implements HttpClient {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     this.subscription = subscription;
-                    subscription.request(Long.MAX_VALUE);
+                    subscription.request(?); // TODO request only what was requested
                 }
 
                 @Override
