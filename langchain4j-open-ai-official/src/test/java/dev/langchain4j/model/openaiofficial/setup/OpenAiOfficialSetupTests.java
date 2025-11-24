@@ -44,7 +44,7 @@ public class OpenAiOfficialSetupTests {
     @Test
     void detectModelProvider_returnsGitHubModels_whenBaseUrlMatchesGitHub() {
         ModelProvider result = OpenAiOfficialSetup.detectModelProvider(
-                false, false, "https://models.inference.ai.azure.com", null, null);
+                false, false, "https://models.github.ai/inference", null, null);
 
         assertEquals(ModelProvider.GITHUB_MODELS, result);
     }
