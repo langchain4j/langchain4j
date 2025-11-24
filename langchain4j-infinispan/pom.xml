@@ -86,7 +86,12 @@
 
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-server-testdriver-core</artifactId>
+            <artifactId>testcontainers-infinispan</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
             <scope>test</scope>
         </dependency>
 

@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.infinispan;
 
-import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_PASSWORD;
-import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_USERNAME;
-import static org.infinispan.server.test.core.InfinispanContainer.IMAGE_BASENAME;
+import static org.infinispan.testcontainers.InfinispanContainer.DEFAULT_PASSWORD;
+import static org.infinispan.testcontainers.InfinispanContainer.DEFAULT_USERNAME;
+import static org.infinispan.testcontainers.InfinispanContainer.IMAGE_BASENAME;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -11,7 +11,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.commons.util.Version;
-import org.infinispan.server.test.core.InfinispanContainer;
+import org.infinispan.testcontainers.InfinispanContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -35,8 +35,7 @@ class InfinispanEmbeddingStoreWithFilterIT extends EmbeddingStoreWithFilteringIT
     protected void clearStore() {
         ConfigurationBuilder builder = new ConfigurationBuilder();
         builder.addServer()
-                .host(infinispan.getHost())
-                .port(infinispan.getFirstMappedPort())
+                .uri(infinispan.getConnectionURI())
                 .security()
                 .authentication()
                 .username(DEFAULT_USERNAME)
