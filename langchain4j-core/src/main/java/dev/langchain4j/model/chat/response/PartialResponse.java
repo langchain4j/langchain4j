@@ -9,7 +9,7 @@ import dev.langchain4j.Experimental;
  * @since 1.8.0
  */
 @Experimental
-public class PartialResponse {
+public class PartialResponse implements StreamingEvent {
 
     private final String text;
 

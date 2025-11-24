@@ -12,8 +12,11 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Flow;
 
 @Internal
 public class LoggingHttpClient implements HttpClient {
@@ -143,5 +146,11 @@ public class LoggingHttpClient implements HttpClient {
                 delegateListener.onClose();
             }
         });
+    }
+
+    @Override
+    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
+        // TODO log, etc
+        return delegateHttpClient.executeWithPublisher(request);
     }
 }

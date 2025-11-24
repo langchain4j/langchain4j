@@ -30,6 +30,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Publisher;
+
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -315,5 +319,58 @@ class OpenAiStreamingChatModelIT {
 
         SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
         assertThat(rawResponse).isEqualTo(response);
+    }
+
+    @Test
+    void test_publisher() throws Exception {
+
+        // given
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        Publisher<StreamingEvent> publisher = model.chat(chatRequest);
+
+        CompletableFuture<Void> futureResponse = new CompletableFuture<>();
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+
+            private Flow.Subscription subscription;
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                this.subscription = subscription;
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(StreamingEvent item) {
+                System.out.println("OLOLO onNext: " + item);
+
+                subscription.request(1);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                futureResponse.completeExceptionally(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                System.out.println("OLOLO onComplete");
+                futureResponse.complete(null);
+            }
+        });
+
+        futureResponse.get(30, SECONDS);
     }
 }

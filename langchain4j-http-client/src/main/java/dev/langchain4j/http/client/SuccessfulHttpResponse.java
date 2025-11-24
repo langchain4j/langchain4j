@@ -1,12 +1,14 @@
 package dev.langchain4j.http.client;
 
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
 import java.util.List;
 import java.util.Map;
 
-public class SuccessfulHttpResponse {
+public class SuccessfulHttpResponse implements StreamingHttpEvent {
 
     private final int statusCode;
     private final Map<String, List<String>> headers;
@@ -29,6 +31,8 @@ public class SuccessfulHttpResponse {
     public String body() {
         return body;
     }
+
+    // TODO equals, hashcode, toString?
 
     public static Builder builder() {
         return new Builder();

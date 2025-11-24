@@ -2,8 +2,11 @@ package dev.langchain4j.http.client;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+
+import java.util.concurrent.Flow.Publisher;
 
 /**
  * A client for executing HTTP requests both synchronously and asynchronously.
@@ -66,4 +69,11 @@ public interface HttpClient {
      * @param listener the listener to receive parsed events and error notifications.
      */
     void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
+
+    // TODO name
+    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
+        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
+    }
+
+    // TODO another one with parser?
 }

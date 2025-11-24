@@ -9,7 +9,7 @@ import java.util.Objects;
  * @since 1.2.0
  */
 @Experimental
-public class PartialThinking {
+public class PartialThinking implements StreamingEvent {
 
     private final String text;
 

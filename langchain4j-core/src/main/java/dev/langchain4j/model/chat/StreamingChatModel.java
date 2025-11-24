@@ -1,9 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import static dev.langchain4j.model.ModelProvider.OTHER;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
-
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -20,10 +16,17 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Flow.Publisher;
+
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -38,7 +41,7 @@ public interface StreamingChatModel {
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
-    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) { // TODO rewrite using publisher
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
@@ -136,4 +139,10 @@ public interface StreamingChatModel {
     default Set<Capability> supportedCapabilities() {
         return Set.of();
     }
+
+    default Publisher<StreamingEvent> chat(ChatRequest chatRequest) {
+        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
+    }
+
+    // TODO more convenience methods accepting String, messages, etc
 }

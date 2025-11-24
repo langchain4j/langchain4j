@@ -1,15 +1,12 @@
 package dev.langchain4j.model.openai.internal;
 
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -20,8 +17,15 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Flow.Publisher;
+
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
@@ -132,6 +136,24 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
+    }
+
+    @Override
+    public Publisher<StreamingEvent> chatCompletionPublisher(ChatCompletionRequest request) {
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "chat/completions")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(Json.toJson(request))
+                .build();
+
+        Publisher<StreamingHttpEvent> publisher = httpClient.executeWithPublisher(httpRequest);
+        OpenAiServerSentEventProcessor processor = new OpenAiServerSentEventProcessor();
+        publisher.subscribe(processor);
+        return processor;
     }
 
     @Override

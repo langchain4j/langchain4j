@@ -7,7 +7,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
 
-public class ChatResponse {
+public class ChatResponse implements StreamingEvent { // TODO? use separate type?
 
     private final AiMessage aiMessage;
     private final ChatResponseMetadata metadata;

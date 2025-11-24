@@ -16,7 +16,7 @@ import java.util.Objects;
  * @since 1.2.0
  */
 @Experimental
-public class PartialToolCall {
+public class PartialToolCall implements StreamingEvent {
 
     private final int index;
     private final String id;

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -15,6 +16,8 @@ import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.Flow.Publisher;
+
 import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
@@ -22,6 +25,10 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
+
+    public Publisher<StreamingEvent> chatCompletionPublisher(ChatCompletionRequest request) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 
     public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);
 

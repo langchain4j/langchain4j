@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 import java.util.Objects;
 
-public class ServerSentEvent {
+public class ServerSentEvent implements StreamingHttpEvent {
 
     private final String event;
     private final String data;

@@ -35,6 +35,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -47,6 +48,9 @@ import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Publisher;
+
 import org.slf4j.Logger;
 
 /**
@@ -148,7 +152,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -165,10 +169,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private void handle(
+    static void handle(
             ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
             ToolCallBuilder toolCallBuilder,
-            StreamingChatResponseHandler handler) {
+            StreamingChatResponseHandler handler,
+            boolean returnThinking) {
         ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
             return;
@@ -236,6 +241,27 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     @Override
     public ModelProvider provider() {
         return OPEN_AI;
+    }
+
+    @Override
+    public Publisher<StreamingEvent> chat(ChatRequest chatRequest) {
+
+        // TODO implement doChat in parent interface (merge parameters, call listeners, etc)
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) finalChatRequest.parameters();
+        validate(parameters);
+
+        ChatCompletionRequest.Builder requestBuilder = toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema);
+        ChatCompletionRequest openAiRequest = requestBuilder.stream(true)
+                .streamOptions(StreamOptions.builder().includeUsage(true).build())
+                .build();
+
+        return client.chatCompletionPublisher(openAiRequest);
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
