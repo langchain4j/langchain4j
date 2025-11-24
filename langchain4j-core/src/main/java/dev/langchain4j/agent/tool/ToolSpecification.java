@@ -2,8 +2,11 @@ package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
@@ -16,6 +19,7 @@ public class ToolSpecification {
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
+    private final Map<String, Object> metadata;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -26,6 +30,7 @@ public class ToolSpecification {
         this.name = builder.name;
         this.description = builder.description;
         this.parameters = builder.parameters;
+        this.metadata = copy(builder.metadata);
     }
 
     /**
@@ -51,6 +56,13 @@ public class ToolSpecification {
      */
     public JsonObjectSchema parameters() {
         return parameters;
+    }
+
+    /**
+     * Returns the metadata relevant to the tool.
+     */
+    public Map<String, Object> metadata() {
+        return metadata;
     }
 
     @Override
@@ -108,11 +120,13 @@ public class ToolSpecification {
         private String name;
         private String description;
         private JsonObjectSchema parameters;
+        private Map<String, Object> metadata;
 
         /**
          * Creates a {@link Builder}.
          */
         private Builder() {
+            this.metadata = new HashMap<>();
         }
 
         /**
@@ -145,6 +159,25 @@ public class ToolSpecification {
          */
         public Builder parameters(JsonObjectSchema parameters) {
             this.parameters = parameters;
+            return this;
+        }
+
+        /**
+         * Sets the {@code metadata}.
+         *
+         * @param metadata
+         * @return {@code this}
+         */
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * Adds a key-value pair to the tool's {@code metadata}.
+         */
+        public Builder addMetadata(String key, Object value) {
+            this.metadata.put(key, value);
             return this;
         }
 

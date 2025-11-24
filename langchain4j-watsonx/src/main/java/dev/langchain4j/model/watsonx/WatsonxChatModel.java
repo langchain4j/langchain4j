@@ -36,7 +36,7 @@ import java.util.Set;
  *
  * <pre>{@code
  * ChatModel chatModel = WatsonxChatModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .modelName("ibm/granite-3-3-8b-instruct")
@@ -148,7 +148,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      *
      * <pre>{@code
      * ChatModel chatModel = WatsonxChatModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-3-8b-instruct")

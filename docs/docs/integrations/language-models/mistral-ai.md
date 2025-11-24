@@ -279,7 +279,7 @@ The status of transaction T1005 is Pending. The payment date is October 8, 2021.
 ### JSON mode
 You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `ResponseFormat.JSON`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
 
-Syncronous example:
+Synchronous example:
 
 ```java
 ChatModel model = MistralAiChatModel.builder()
@@ -363,7 +363,7 @@ ChatModel model = MistralAiChatModel.builder()
 ### Guardrailing
 Guardrails are a way to limit the behavior of the model to prevent it from generating harmful or unwanted content. You can set optionally `safePrompt` parameter in the `MistralAiChatModel` builder or `MistralAiStreamingChatModel` builder.
 
-Syncronous example:
+Synchronous example:
 
 ```java
 ChatModel model = MistralAiChatModel.builder()

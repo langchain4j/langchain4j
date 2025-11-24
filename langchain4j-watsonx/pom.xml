@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai</artifactId>
-            <version>0.11.0</version>
+            <version>0.13.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>

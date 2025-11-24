@@ -123,7 +123,7 @@ class Converter {
             builder.logitBias(watsonxParameters.logitBias());
             builder.logprobs(watsonxParameters.logprobs());
             builder.seed(watsonxParameters.seed());
-            builder.timeLimit(watsonxParameters.timeLimit());
+            builder.timeLimit(watsonxParameters.timeout());
             builder.topLogprobs(watsonxParameters.topLogprobs());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();

@@ -85,6 +85,11 @@ public class ToolService {
         });
     }
 
+    public void tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
+        this.tools(tools);
+        immediateReturnTools.addAll(immediateReturnToolNames);
+    }
+
     public void tools(Collection<Object> objectsWithTools) {
         for (Object objectWithTool : objectsWithTools) {
             if (objectWithTool instanceof Class) {
@@ -412,9 +417,9 @@ public class ToolService {
 
             ToolErrorHandlerResult errorHandlerResult;
             if (e instanceof ToolArgumentsException) {
-                errorHandlerResult = argumentsErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
-                errorHandlerResult = executionErrorHandler.handle(e.getCause(), errorContext);
+                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
             }
 
             return ToolExecutionResult.builder()
@@ -422,6 +427,11 @@ public class ToolService {
                     .resultText(errorHandlerResult.text())
                     .build();
         }
+    }
+
+    private static Throwable getCause(Exception e) {
+        Throwable cause = e.getCause();
+        return cause != null ? cause : e;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {

@@ -103,7 +103,7 @@ public class WatsonxChatModelTest {
     void testWatsonxChatModelBuilder() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url(CloudRegion.FRANKFURT)
+                .baseUrl(CloudRegion.FRANKFURT)
                 .modelName("model-name")
                 .apiKey("api-key-test")
                 .projectId("project-id")
@@ -127,7 +127,7 @@ public class WatsonxChatModelTest {
         assertEquals("space-id", defaultRequestParameters.spaceId());
         assertEquals(List.of(), defaultRequestParameters.stopSequences());
         assertNull(defaultRequestParameters.temperature());
-        assertNull(defaultRequestParameters.timeLimit());
+        assertNull(defaultRequestParameters.timeout());
         assertNull(defaultRequestParameters.toolChoice());
         assertNull(defaultRequestParameters.toolChoiceName());
         assertEquals(List.of(), defaultRequestParameters.toolSpecifications());
@@ -136,7 +136,7 @@ public class WatsonxChatModelTest {
         assertNull(defaultRequestParameters.topP());
 
         assertDoesNotThrow(() -> WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("model-name")
                 .authenticationProvider(
                         IAMAuthenticator.builder().apiKey("api-key").build())
@@ -156,7 +156,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -180,7 +180,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -211,7 +211,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -231,7 +231,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -250,7 +250,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -269,7 +269,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -283,7 +283,7 @@ public class WatsonxChatModelTest {
             assertEquals(
                     UserMessage.text("Hello"),
                     chatRequestCaptor.getValue().getMessages().get(0));
-            assertNull(chatRequestCaptor.getValue().getThinking());
+            assertFalse(chatRequestCaptor.getValue().getThinking().getEnabled());
         });
     }
 
@@ -308,7 +308,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -330,7 +330,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -350,7 +350,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -370,7 +370,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -385,7 +385,7 @@ public class WatsonxChatModelTest {
             assertEquals(
                     UserMessage.text("Hello"),
                     chatRequestCaptor.getValue().getMessages().get(0));
-            assertNull(chatRequestCaptor.getValue().getThinking());
+            assertFalse(chatRequestCaptor.getValue().getThinking().getEnabled());
         });
     }
 
@@ -394,7 +394,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("ibm/granite-3-3-8b-instruct")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -417,7 +417,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("ibm/granite-3-3-8b-instruct")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -451,7 +451,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -482,7 +482,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -532,7 +532,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -584,7 +584,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelName")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -596,7 +596,7 @@ public class WatsonxChatModelTest {
                     .temperature(0.3)
                     .toolChoice(ToolChoice.REQUIRED)
                     .responseFormat(ResponseFormat.TEXT)
-                    .timeLimit(Duration.ofMillis(30))
+                    .timeout(Duration.ofMillis(30))
                     .topP(0.4)
                     .logitBias(Map.of("test", 10))
                     .logprobs(true)
@@ -637,7 +637,7 @@ public class WatsonxChatModelTest {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .apiKey("api-key")
                     .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                             .frequencyPenalty(0.1)
@@ -648,7 +648,7 @@ public class WatsonxChatModelTest {
                             .temperature(0.3)
                             .toolChoice(ToolChoice.REQUIRED)
                             .responseFormat(ResponseFormat.TEXT)
-                            .timeLimit(Duration.ofMillis(30))
+                            .timeout(Duration.ofMillis(30))
                             .topP(0.4)
                             .projectId("default-project-id")
                             .logitBias(Map.of("test", 10))
@@ -698,7 +698,7 @@ public class WatsonxChatModelTest {
 
             // TEST 1: Override paramaters
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .apiKey("api-key")
                     .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                             .modelName("modelId")
@@ -712,7 +712,7 @@ public class WatsonxChatModelTest {
                             .temperature(0.3)
                             .toolChoice(ToolChoice.REQUIRED)
                             .responseFormat(ResponseFormat.TEXT)
-                            .timeLimit(Duration.ofMillis(30))
+                            .timeout(Duration.ofMillis(30))
                             .topP(0.4)
                             .projectId("default-project-id")
                             .logitBias(Map.of("test", 10))
@@ -761,7 +761,7 @@ public class WatsonxChatModelTest {
 
             // TEST 2: Override parameters
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .spaceId("space-id")
@@ -774,7 +774,7 @@ public class WatsonxChatModelTest {
                     .temperature(0.3)
                     .toolChoice(ToolChoice.REQUIRED)
                     .responseFormat(ResponseFormat.TEXT)
-                    .timeLimit(Duration.ofMillis(30))
+                    .timeout(Duration.ofMillis(30))
                     .topP(0.4)
                     .projectId("default-project-id")
                     .logitBias(Map.of("test", 10))
@@ -803,7 +803,7 @@ public class WatsonxChatModelTest {
                                             .addStringProperty("city")
                                             .build())
                                     .build())
-                            .timeLimit(Duration.ofMillis(40))
+                            .timeout(Duration.ofMillis(40))
                             .topP(0.5)
                             .projectId("projectIds")
                             .logitBias(Map.of("tests", 11))
@@ -848,7 +848,7 @@ public class WatsonxChatModelTest {
     void testChatRequestWithTopK() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -863,7 +863,7 @@ public class WatsonxChatModelTest {
                         .build()));
 
         assertThrows(UnsupportedFeatureException.class, () -> WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -877,7 +877,7 @@ public class WatsonxChatModelTest {
     void testSupportCapabilities() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")

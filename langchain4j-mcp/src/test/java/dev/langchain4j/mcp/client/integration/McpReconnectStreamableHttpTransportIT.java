@@ -1,0 +1,41 @@
+package dev.langchain4j.mcp.client.integration;
+
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+
+import dev.langchain4j.mcp.client.DefaultMcpClient;
+import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+
+class McpReconnectStreamableHttpTransportIT extends McpReconnectTestBase {
+
+    @BeforeAll
+    static void setup() throws IOException, InterruptedException, TimeoutException {
+        skipTestsIfJbangNotAvailable();
+        process = startProcess();
+        StreamableHttpMcpTransport transport = new StreamableHttpMcpTransport.Builder()
+                .url("http://localhost:8080/mcp")
+                .customHeaders(() -> customHeaders)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+        mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolExecutionTimeout(Duration.ofSeconds(4))
+                .reconnectInterval(Duration.ofSeconds(1))
+                .build();
+    }
+
+    @AfterAll
+    static void tearDown() throws Exception {
+        if (mcpClient != null) {
+            mcpClient.close();
+        }
+        if (process != null) {
+            process.destroyForcibly();
+        }
+    }
+}

@@ -10,6 +10,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
 import java.util.Map;
@@ -176,18 +179,16 @@ class GoogleAiGeminiChatModelTest {
                     .totalTokenCount(40)
                     .build();
 
-            var candidate = GeminiCandidate.builder()
-                    .content(GeminiContent.builder()
-                            .role("model")
-                            .parts(List.of(GeminiPart.builder()
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
                                     .text("Response with tokens")
-                                    .build()))
-                            .build())
-                    .finishReason(GeminiFinishReason.STOP)
-                    .build();
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.STOP);
 
             var geminiResponse = new GeminiGenerateContentResponse(
-                    "token-response-id", "gemini-pro-v1", List.of(candidate), null, usageMetadata);
+                    "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata);
 
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(geminiResponse);
@@ -213,18 +214,16 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldHandleDifferentFinishReasons() {
             // Given
-            var candidate = GeminiCandidate.builder()
-                    .content(GeminiContent.builder()
-                            .role("model")
-                            .parts(List.of(GeminiPart.builder()
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
                                     .text("Partial response")
-                                    .build()))
-                            .build())
-                    .finishReason(GeminiFinishReason.MAX_TOKENS)
-                    .build();
+                                    .build()),
+                            "mode"),
+                    GeminiFinishReason.MAX_TOKENS);
 
             var geminiResponse = new GeminiGenerateContentResponse(
-                    "finish-reason-id", "gemini-pro-v1", List.of(candidate), null, createUsageMetadata(10, 20, 30));
+                    "finish-reason-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
 
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(geminiResponse);
@@ -309,16 +308,13 @@ class GoogleAiGeminiChatModelTest {
     }
 
     private static GeminiGenerateContentResponse createGeminiResponse(String text) {
-        var candidate = GeminiCandidate.builder()
-                .content(GeminiContent.builder()
-                        .role("model")
-                        .parts(List.of(GeminiPart.builder().text(text).build()))
-                        .build())
-                .finishReason(GeminiFinishReason.STOP)
-                .build();
+        var candidate = new GeminiCandidate(
+                new GeminiContent(
+                        List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
+                GeminiFinishReason.STOP);
 
         return new GeminiGenerateContentResponse(
-                "response-id-123", "gemini-pro-v1", List.of(candidate), null, createUsageMetadata(10, 20, 30));
+                "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
     }
 
     private static GeminiUsageMetadata createUsageMetadata(int promptTokens, int candidateTokens, int totalTokens) {

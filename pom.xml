@@ -103,17 +103,20 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- guardrails -->
+        <module>langchain4j-guardrails</module>
+
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-patterns</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
 
         <!-- internal -->
         <module>internal/langchain4j-docu-chatbot-updater</module>
-
     </modules>
 
     <properties>
