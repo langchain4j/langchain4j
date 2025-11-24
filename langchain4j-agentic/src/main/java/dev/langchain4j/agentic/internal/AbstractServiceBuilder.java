@@ -13,9 +13,9 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -52,7 +52,7 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     private void initService(Method agenticMethod) {
         if (agenticMethod == null) {
-            this.name = "UntypedAgent#" + UUID.randomUUID();
+            this.name = this.serviceType();
             return;
         }
         Agent agent = agenticMethod.getAnnotation(Agent.class);
@@ -73,6 +73,10 @@ public abstract class AbstractServiceBuilder<T, S> {
         if (!isNullOrBlank(agent.outputKey())) {
             this.outputKey = agent.outputKey();
         }
+    }
+
+    Type agentReturnType() {
+        return agenticMethod == null ? Object.class : agenticMethod.getGenericReturnType();
     }
 
     public S beforeCall(Consumer<AgenticScope> beforeCall) {

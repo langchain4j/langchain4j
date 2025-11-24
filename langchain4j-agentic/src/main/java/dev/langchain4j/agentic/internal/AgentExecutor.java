@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.lang.reflect.Type;
 import java.util.List;
 
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance {
@@ -57,7 +58,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             if (outputKey != null && !outputKey.isBlank()) {
                 agenticScope.writeState(outputKey, response);
             }
-            AgentInvocation agentInvocation = new AgentInvocation(name(), agentId(), args.namedArgs(), response);
+            AgentInvocation agentInvocation = new AgentInvocation(type(), name(), agentId(), args.namedArgs(), response);
             agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
             if (listener != null) {
                 listener.onAgentInvoked(agentInvocation);
@@ -66,6 +67,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         } catch (AgentInvocationException e) {
             return handleAgentFailure(e, agenticScope, invokedAgent, listener);
         }
+    }
+    @Override
+    public Class<?> type() {
+        return agentInvoker.type();
     }
 
     @Override
@@ -84,6 +89,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public Type outputType() {
+        return agentInvoker.outputType();
+    }
+
+    @Override
     public String outputKey() {
         return agentInvoker.outputKey();
     }
@@ -91,5 +101,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public List<AgentArgument> arguments() {
         return agentInvoker.arguments();
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return agentInvoker.subagents();
     }
 }

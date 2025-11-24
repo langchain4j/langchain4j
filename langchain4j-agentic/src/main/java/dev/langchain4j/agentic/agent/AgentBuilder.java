@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.agent;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -10,6 +11,7 @@ import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -30,12 +32,15 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
     final Class<T> agentServiceClass;
+    final Class<?> agentReturnType;
+    final List<AgentArgument> arguments;
 
     String name;
     String agentId;
@@ -73,6 +78,8 @@ public class AgentBuilder<T> {
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agentReturnType = agenticMethod.getReturnType();
+        this.arguments = argumentsFromMethod(agenticMethod);
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
@@ -93,6 +100,9 @@ public class AgentBuilder<T> {
             this.outputKey = agent.outputKey();
         }
         this.async = agent.async();
+        if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
+            this.contextProvidingAgents = agent.summarizedContext();
+        }
     }
 
     public T build() {
