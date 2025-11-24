@@ -33,5 +33,7 @@ public interface AgenticScope extends LangChain4jManaged {
     String contextAsConversation(String... agentNames);
     String contextAsConversation(Object... agents);
 
+    List<AgentInvocation> agentInvocations();
     List<AgentInvocation> agentInvocations(String agentName);
+    List<AgentInvocation> agentInvocations(Class<?> agentType);
 }

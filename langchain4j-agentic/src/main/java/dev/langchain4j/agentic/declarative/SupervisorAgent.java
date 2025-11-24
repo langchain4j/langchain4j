@@ -16,10 +16,8 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface SupervisorBanker {
  *
- *         @SupervisorAgent(responseStrategy = SupervisorResponseStrategy.SUMMARY, subAgents = {
- *                 @SubAgent(type = WithdrawAgent.class),
- *                 @SubAgent(type = CreditAgent.class)
- *         })
+ *         @SupervisorAgent( responseStrategy = SupervisorResponseStrategy.SUMMARY,
+ *                 subAgents = { WithdrawAgent.class, CreditAgent.class })
  *         String invoke(@V("request") String request);
  *
  *         @ChatModelSupplier
@@ -61,7 +59,7 @@ public @interface SupervisorAgent {
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 
     /**
      * Maximum number of sub-agent invocations allowed during a single supervisor agent execution.

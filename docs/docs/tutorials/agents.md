@@ -561,10 +561,8 @@ For instance the `EveningPlannerAgent` implementing the parallel workflow progra
 ```java
 public interface EveningPlannerAgent {
 
-    @ParallelAgent(outputKey = "plans", subAgents = {
-            @SubAgent(type = FoodExpert.class, outputKey = "meals"),
-            @SubAgent(type = MovieExpert.class, outputKey = "movies")
-    })
+    @ParallelAgent( outputKey = "plans", 
+            subAgents = { FoodExpert.class, MovieExpert.class })
     List<EveningPlan> plan(@V("mood") String mood);
 
     @ParallelExecutor
@@ -608,7 +606,7 @@ public interface FoodExpert {
         For each meal, just give the name of the meal.
         Provide a list with the 3 items and nothing else.
         """)
-    @Agent
+    @Agent(outputKey = "meals")
     List<String> findMeal(@V("mood") String mood);
 
     @ChatModelSupplier
@@ -637,11 +635,8 @@ To give another example of this declarative API, let's redefine through it the `
 ```java
 public interface ExpertsAgent {
 
-    @ConditionalAgent(outputKey = "response", subAgents = {
-            @SubAgent(type = MedicalExpert.class, outputKey = "response"),
-            @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
-            @SubAgent(type = LegalExpert.class, outputKey = "response")
-    })
+    @ConditionalAgent(outputKey = "response", 
+            subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class })
     String askExpert(@V("request") String request);
 
     @ActivationCondition(MedicalExpert.class)

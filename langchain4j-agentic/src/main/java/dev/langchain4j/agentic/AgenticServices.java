@@ -42,7 +42,6 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
@@ -451,11 +450,11 @@ public class AgenticServices {
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
-        for (SubAgent subagent : conditionalAgent.subAgents()) {
+        for (Class<?> subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
                         ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
                         return activationCondition != null
-                                && Arrays.asList(activationCondition.value()).contains(subagent.type());
+                                && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
                     .map(AgenticServices::agenticScopePredicate)
                     .ifPresent(condition ->
@@ -694,25 +693,21 @@ public class AgenticServices {
     }
 
     private static List<AgentExecutor> createSubagents(
-            SubAgent[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
+            Class<?>[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         return Stream.of(subAgents)
                 .map(subagent -> createSubagent(subagent, chatModel, agentConfigurator))
                 .toList();
     }
 
     private static AgentExecutor createSubagent(
-            SubAgent subagent, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
-        AgentExecutor agentExecutor = createBuiltInAgentExecutor(subagent.type(), chatModel, agentConfigurator);
+            Class<?> subgentClass, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
+        AgentExecutor agentExecutor = createBuiltInAgentExecutor(subgentClass, chatModel, agentConfigurator);
         if (agentExecutor != null) {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type()).outputKey(subagent.outputKey());
-        configureAgent(subagent.type(), chatModel, agentBuilder, agentConfigurator);
-
-        if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
-            agentBuilder.summarizedContext(subagent.summarizedContext());
-        }
+        AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
+        configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor((AgentSpecification) agentBuilder.build());
     }
