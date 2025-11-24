@@ -78,7 +78,7 @@ class EmbeddingModelTest implements WithAssertions {
 
         String name = model.modelName();
 
-        assertThat(name).isEqualTo("not-implemented");
+        assertThat(name).isEqualTo("unknown");
     }
 
     @Test

@@ -58,12 +58,12 @@ public interface EmbeddingModel {
      * Returns the name of the underlying embedding model.
      * <p>
      * Implementations may override this to provide the actual model name.
-     * The default implementation returns {@code "not-implemented"}, which indicates
+     * The default implementation returns {@code "unknown"}, which indicates
      * that the model does not expose a specific name.
      *
      * @return the model name or a fallback value if not provided
      */
     default String modelName() {
-        return "not-implemented";
+        return "unknown";
     }
 }
