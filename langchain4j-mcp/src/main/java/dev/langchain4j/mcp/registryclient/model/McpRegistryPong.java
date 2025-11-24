@@ -7,4 +7,11 @@ public class McpRegistryPong {
     public boolean pong() {
         return pong;
     }
+
+    @Override
+    public String toString() {
+        return "McpRegistryPong{" +
+                "pong=" + pong +
+                '}';
+    }
 }

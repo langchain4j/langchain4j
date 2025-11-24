@@ -12,7 +12,7 @@ This section describes how to build agentic AI applications using the `langchain
 
 Although there is no universally agreed definition of an AI agent, several emerging patterns demonstrate how to coordinate and combine the capabilities of multiple AI services to create AI-infused applications that can accomplish more complex tasks. These patterns are often referred to as "agentic systems" or "agentic AI". They typically involve the use of large language models (LLMs) to orchestrate the execution of tasks, manage tool usage, and maintain context across interactions.
 
-According to a [recent article published by Antropic researchers](https://www.anthropic.com/research/building-effective-agents), these Agentic System architectures can be grouped into two main categories: workflows and pure agents.
+According to a [recent article published by Anthropic researchers](https://www.anthropic.com/research/building-effective-agents), these Agentic System architectures can be grouped into two main categories: workflows and pure agents.
 
 ![](/img/workflow-vs-agents.png)
 
@@ -47,16 +47,16 @@ It is now possible to build an instance of this agent using the `AgenticServices
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(myChatModel)
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
 
 In essence agents are plain AI services, providing the same features, but with the ability to be combined with other agents to create more complex workflows and agentic systems. 
 
-The other main difference with an AI service is the presence of the `outputName` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system. Alternatively, the output name can be also declared directly in the `@Agent` annotation instead of programmatically like in this example, so that it could be omitted in the code and added here.
+The other main difference with an AI service is the presence of the `outputKey` parameter that is used to specify the name of the shared variable where the result of the agent invocation will be stored in order to make it available for other agents in the same agentic system. Alternatively, the output name can be also declared directly in the `@Agent` annotation instead of programmatically like in this example, so that it could be omitted in the code and added here.
 
 ```java
-@Agent(outputName = "story", description = "Generates a story based on the given topic")
+@Agent(outputKey = "story", description = "Generates a story based on the given topic")
 ```
 
 The `AgenticServices` class provides a set of static factory methods to create and define all kinds of agents made available by the `langchain4j-agentic` framework.
@@ -116,25 +116,25 @@ At this point it is possible to create a sequential workflow that combines these
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 AudienceEditor audienceEditor = AgenticServices
         .agentBuilder(AudienceEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 UntypedAgent novelCreator = AgenticServices
         .sequenceBuilder()
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 Map<String, Object> input = Map.of(
@@ -173,7 +173,7 @@ so that the `novelCreator` agent can be created and used as follows:
 NovelCreator novelCreator = AgenticServices
         .sequenceBuilder(NovelCreator.class)
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 String story = novelCreator.createNovel("dragons and wizards", "young adults", "fantasy");
@@ -207,13 +207,13 @@ Then it is possible to use this agent in a loop with the `StyleEditor` one to it
 StyleEditor styleEditor = AgenticServices
         .agentBuilder(StyleEditor.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyleScorer styleScorer = AgenticServices
         .agentBuilder(StyleScorer.class)
         .chatModel(BASE_MODEL)
-        .outputName("score")
+        .outputKey("score")
         .build();
 
 UntypedAgent styleReviewLoop = AgenticServices
@@ -226,7 +226,24 @@ UntypedAgent styleReviewLoop = AgenticServices
 
 Here the `styleScorer` agent writes its output to the `AgenticScope` shared variable named "score", and the same variable is accessed and evaluated in the exit condition of the loop.
 
-At this point the `styleReviewLoop` agent can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
+The `exitCondition` method takes as argument a `Predicate<AgenticScope>` that by default is evaluated after each and every agent invocation, making the loop to exit as soon as the condition is satisfied, in order to reduce as much as possible the number of agent invocations. However, it is also possible to check the exit condition only at the end of a loop, thus forcing all agents to be invoked before testing that condition, by configuring the loop builder with the `testExitAtLoopEnd(true)` method. Alternatively, the `exitCondition` method can also take as argument a `BiPredicate<AgenticScope, Integer>` that receives as second argument the counter of the current loop iteration. For example, the following loop definition:
+
+```java
+UntypedAgent styleReviewLoop = AgenticServices
+        .loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .testExitAtLoopEnd(true)
+        .exitCondition( (agenticScope, loopCounter) -> {
+            double score = agenticScope.readState("score", 0.0);
+            return loopCounter <= 3 ? score >= 0.8 : score >= 0.6;
+        })
+        .build();
+```
+
+will make the loop to exit if the score is at least 0.8 in the first 3 iterations, otherwise it will lower the quality expectations, terminating the loop with a score of at least 0.6, also forcing the invocation of the `styleEditor` agent one last time even after the exit condition has been satisfied.
+
+After having configured this `styleReviewLoop`, it can be seen as a single agent and put in a sequence with the `CreativeWriter` agent to create a `StyledWriter` agent
 
 ```java
 public interface StyledWriter {
@@ -242,13 +259,13 @@ implementing a more complex workflow that combines the story generation and styl
 CreativeWriter creativeWriter = AgenticServices
         .agentBuilder(CreativeWriter.class)
         .chatModel(BASE_MODEL)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 StyledWriter styledWriter = AgenticServices
         .sequenceBuilder(StyledWriter.class)
         .subAgents(creativeWriter, styleReviewLoop)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 String story = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
@@ -293,20 +310,20 @@ Since the work of the two experts is independent, it is possible to invoke them 
 FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("meals")
+        .outputKey("meals")
         .build();
 
 MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("movies")
+        .outputKey("movies")
         .build();
 
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .parallelBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
         .executor(Executors.newFixedThreadPool(2))
-        .outputName("plans")
+        .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
             List<String> meals = agenticScope.readState("meals", List.of());
@@ -383,23 +400,23 @@ implementing a conditional workflow that invokes the appropriate agent based on 
 CategoryRouter routerAgent = AgenticServices
         .agentBuilder(CategoryRouter.class)
         .chatModel(BASE_MODEL)
-        .outputName("category")
+        .outputKey("category")
         .build();
 
 MedicalExpert medicalExpert = AgenticServices
         .agentBuilder(MedicalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 LegalExpert legalExpert = AgenticServices
         .agentBuilder(LegalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 TechnicalExpert technicalExpert = AgenticServices
         .agentBuilder(TechnicalExpert.class)
         .chatModel(BASE_MODEL)
-        .outputName("response")
+        .outputKey("response")
         .build();
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -411,7 +428,7 @@ UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
 ExpertRouterAgent expertRouterAgent = AgenticServices
         .sequenceBuilder(ExpertRouterAgent.class)
         .subAgents(routerAgent, expertsAgent)
-        .outputName("response")
+        .outputKey("response")
         .build();
 
 String response = expertRouterAgent.ask("I broke my leg what should I do");
@@ -430,21 +447,21 @@ FoodExpert foodExpert = AgenticServices
         .agentBuilder(FoodExpert.class)
         .chatModel(BASE_MODEL)
         .async(true)
-        .outputName("meals")
+        .outputKey("meals")
         .build();
 
 MovieExpert movieExpert = AgenticServices
         .agentBuilder(MovieExpert.class)
         .chatModel(BASE_MODEL)
         .async(true)
-        .outputName("movies")
+        .outputKey("movies")
         .build();
 
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
         .executor(Executors.newFixedThreadPool(2))
-        .outputName("plans")
+        .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
             List<String> meals = agenticScope.readState("meals", List.of());
@@ -485,7 +502,7 @@ For instance, if a necessary argument is omitted from the very first example of 
 UntypedAgent novelCreator = AgenticServices
         .sequenceBuilder()
         .subAgents(creativeWriter, audienceEditor, styleEditor)
-        .outputName("story")
+        .outputKey("story")
         .build();
 
 Map<String, Object> input = Map.of(
@@ -516,9 +533,24 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
             }
             return ErrorRecoveryResult.throwException();
         })
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
+
+## Observability
+
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `beforeAgentInvocation` and `afterAgentInvocation` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
+
+```java
+CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+    .chatModel(baseModel())
+    .outputKey("story")
+    .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
+    .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
+    .build();
+```
+
+These listeners receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these listeners are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
 
 ## Declarative API
 
@@ -529,10 +561,8 @@ For instance the `EveningPlannerAgent` implementing the parallel workflow progra
 ```java
 public interface EveningPlannerAgent {
 
-    @ParallelAgent(outputName = "plans", subAgents = {
-            @SubAgent(type = FoodExpert.class, outputName = "meals"),
-            @SubAgent(type = MovieExpert.class, outputName = "movies")
-    })
+    @ParallelAgent( outputKey = "plans", 
+            subAgents = { FoodExpert.class, MovieExpert.class })
     List<EveningPlan> plan(@V("mood") String mood);
 
     @ParallelExecutor
@@ -576,7 +606,7 @@ public interface FoodExpert {
         For each meal, just give the name of the meal.
         Provide a list with the 3 items and nothing else.
         """)
-    @Agent
+    @Agent(outputKey = "meals")
     List<String> findMeal(@V("mood") String mood);
 
     @ChatModelSupplier
@@ -586,28 +616,27 @@ public interface FoodExpert {
 }
 ```
 
-In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments except for the one annotated with `@ChatMemoryProviderSupplier`. The list of annotations available to this purpose follows:
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
 
-| Annotation Name               | Description                                                                                                                                               |
-|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                         |
-| `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                        |
+| Annotation Name               | Description                                                                                                                                                   |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
+| `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
-| `@ContentRetrieverSupplier` | Returns the `ContentRetriever` to be used by this agent.                                                                                                  |
-| `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                |
-| `@ToolsSupplier` | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                         |
-| `@ToolProviderSupplier` | Returns the `ToolProvider` to be used by this agent.                                        |
+| `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
+| `@BeforeAgentInvocation`      | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
+| `@AfterAgentInvocation`       | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
+| `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
+| `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
+| `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
 
 To give another example of this declarative API, let's redefine through it the `ExpertsAgent` demonstrated in the conditional workflow section.
 
 ```java
 public interface ExpertsAgent {
 
-    @ConditionalAgent(outputName = "response", subAgents = {
-            @SubAgent(type = MedicalExpert.class, outputName = "response"),
-            @SubAgent(type = TechnicalExpert.class, outputName = "response"),
-            @SubAgent(type = LegalExpert.class, outputName = "response")
-    })
+    @ConditionalAgent(outputKey = "response", 
+            subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class })
     String askExpert(@V("request") String request);
 
     @ActivationCondition(MedicalExpert.class)
@@ -628,6 +657,60 @@ public interface ExpertsAgent {
 ```
 
 In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
+
+Note that it is also possible to mix the programmatic and declarative styles of defining agents and agentic systems, so that an agent can be configured partially using annotations and partially using the agent builders. It is also allowed to completely define an agent declaratively and then programmatically implement an agentic system using the agent's class as a subagent. For instance, it would be possible to declaratively define the `CreativeWriter` and `AudienceEditor` agents as follows:
+
+```java
+public interface CreativeWriter {
+
+    @UserMessage("""
+            You are a creative writer.
+            Generate a draft of a story long no more than 3 sentence around the given topic.
+            Return only the story and nothing else.
+            The topic is {{topic}}.
+            """)
+    @Agent(description = "Generate a story based on the given topic", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return baseModel();
+    }
+}
+
+public interface AudienceEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better align with the target audience of {{audience}}.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent(description = "Edit a story to better fit a given audience", outputKey = "story")
+    String editStory(@V("story") String story, @V("audience") String audience);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return baseModel();
+    }
+}
+```
+
+and then programmatically concatenating them in a sequence simply using their classes as subagents.
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(CreativeWriter.class, AudienceEditor.class)
+        .outputKey("story")
+        .build();
+
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "audience", "young adults"
+);
+
+String story = (String) novelCreator.invoke(input);
+```
 
 ## Memory and context engineering
 
@@ -655,7 +738,7 @@ MedicalExpertWithMemory medicalExpert = AgenticServices
         .agentBuilder(MedicalExpertWithMemory.class)
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -704,7 +787,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
         .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -727,7 +810,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .chatModel(BASE_MODEL)
         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
         .summarizedContext("medical", "technical")
-        .outputName("response")
+        .outputKey("response")
         .build();
 ```
 
@@ -870,7 +953,7 @@ CreditAgent creditAgent = AgenticServices
         .tools(bankTool)
         .build();
 
-ExchangeAgent exchange = AgenticServices
+ExchangeAgent exchangeAgent = AgenticServices
         .agentBuilder(ExchangeAgent.class)
         .chatModel(BASE_MODEL)
         .tools(new ExchangeTool())
@@ -1023,6 +1106,476 @@ String result = (String) bankSupervisor.invoke(input);
 
 If both are provided, the invocation value overrides the build-time `supervisorContext`.
 
+## Custom agentic patterns
+
+The agentic patterns discussed so far are provided out-of-the-box by the `langchain4j-agentic` module, but what if none of them fit the specific needs of your application? In this case it is possible to create your own custom pattern, that orchestrates the interactions among a set of subagents in a way that is tailored to your requirements.
+
+In more details an agentic pattern is simply the specification of an execution plan for the subagents that it coordinates. This plan can be defined by implementing the following `Planner` interface:
+
+```java
+public interface Planner {
+
+    default void init(InitPlanningContext initPlanningContext) { }
+
+    default Action firstAction(PlanningContext planningContext) {
+        return nextAction(planningContext);
+    }
+
+    Action nextAction(PlanningContext planningContext);
+}
+```
+
+This interface has three methods: `init`, `firstAction`, and `nextAction`. The `init` method is called once at the beginning of the execution, and can be used to initialize any state or data structures needed by the planner. The `firstAction` method is called to determine the first action to be taken by the agentic pattern, while the `nextAction` method is called after each agent execution to determine the next action to be taken based on the current state of the `AgenticScope` and the result of the previous agent execution.
+
+Note that the `firstAction` method has been introduced only because in many cases it is convenient to have a distinct callback defining the very first agent to be invoked by the `Planner`. However, for the situations where this distinction is not necessary, it provides a default implementation that simply forwards the call to the `nextAction` method, so it is not strictly necessary to override it.
+
+The `Action` class returned by the `firstAction` and `nextAction` methods represents the next step to be taken by the agentic pattern, and can be one either a list of one or more subagents to be called next, or a signal that the execution has been completed. If the action specifies only one subagent invocation, then it will be executed sequentially, and in the same thread that is executing the planner itself, while if there are more than one, they will be executed in parallel using the provided `Executor` or the LangChain4j default one.
+
+All the built-in agentic patterns are also written in terms of this `Planner` abstraction and giving a look at their implementation can clarify how this works and be a good starting point to create your own custom patterns. For instance the parallel workflow is probably the simplest of those implementation, and it is defined as follows:
+
+```java
+public class ParallelPlanner implements Planner {
+
+    private List<AgentInstance> agents;
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agents = initPlanningContext.subagents();
+    }
+
+    @Override
+    public Action firstAction(PlanningContext planningContext) {
+        return call(agents);
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        return done();
+    }
+}
+```
+
+Here the `init` method simply stores the list of subagents with which the parallel workflow has been configured, while the `firstAction` method returns an action that calls all those agents in parallel. Once this parallel execution is completed, there isn't any other action to be taken, so the `nextAction` method simply returns `done()` used to signal the termination of the execution.
+
+The `Planner` implementing the sequential workflow is only slightly more complex, as it needs to keep track of the next subagent to be invoked using an internal cursor, and then return the appropriate action in the `nextAction` method or signal the termination of the execution when all subagents have been invoked.
+
+```java
+public class SequentialPlanner implements Planner {
+
+    private List<AgentInstance> agents;
+    private int agentCursor = 0;
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agents = initPlanningContext.subagents();
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        return agentCursor >= agents.size() ? done() : call(agents.get(agentCursor++));
+    }
+}
+```
+
+To understand how to define an agentic system from a planner implementation, it is possible, for example, to create an instance of the formerly discussed sequential workflow generating a novel for a topic and then editing it for a specific style and audience, as it follows:
+
+```java
+UntypedAgent novelCreator = AgenticServices.plannerBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .planner(SequentialPlanner::new)
+                .build();
+```
+
+which is totally equivalent to use the dedicated API for sequential workflows:
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
+```
+
+The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
+
+Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the two examples of custom patterns, provided in the `langchain4j-agentic-patterns` module, that can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
+
+### Goal oriented agentic pattern
+
+The workflow patterns and the supervisor agent represents the two extremes of the spectrum of possible agentic systems: the former is completely deterministic and rigid, forcing to decide in advance the sequence of agents to be invoked, while the latter is completely flexible and adaptive, but delegates the decision of the sequence of agents to be invoked to a non-deterministic LLM. However, there are cases where a middle ground between these two extremes can be more appropriate, allowing agents to work towards a specific goal in a relatively flexible way, but also determining how these agents should be invoked in an algorithmic way.
+
+In order to put this approach in practice, not only the whole agentic system needs to define a goal, but also each subagent needs to declare its own pre and postconditions. This is necessary to calculate the sequence of agent invocations that lead to the achievement of the goal in the fastest possible way. However, all this information are implicitly already present in the agentic system, as those pre and postconditions are nothing else than the required inputs and produced outputs of each agent, and the final goal is simply the desired outputs of the whole agentic system.
+
+Following this idea, it is possible to calculate a dependency graph of all the subagents participating in the agentic system, and then to implement a `Planner` that is capable of analyzing the initial state of the `AgenticScope`, comparing it with the desired goal, and then using that graph to determine the sequence of agent invocations that can lead to the achievement of that goal.
+
+```java
+public class GoalOrientedPlanner implements Planner {
+
+    private String goal;
+
+    private GoalOrientedSearchGraph graph;
+    private List<AgentInstance> path;
+
+    private int agentCursor = 0;
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.goal = initPlanningContext.plannerAgent().outputKey();
+        this.graph = new GoalOrientedSearchGraph(initPlanningContext.subagents());
+    }
+
+    @Override
+    public Action firstAction(PlanningContext planningContext) {
+        path = graph.search(planningContext.agenticScope().state().keySet(), goal);
+        if (path.isEmpty()) {
+            throw new IllegalStateException("No path found for goal: " + goal);
+        }
+        return call(path.get(agentCursor++));
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        return agentCursor >= path.size() ? done() : call(path.get(agentCursor++));
+    }
+}
+```
+
+As anticipated, here the goal coincides with the final output of the planner-based agentic pattern itself, while the path from the initial state to the goal is calculated using a `GoalOrientedSearchGraph`, that is built analyzing the input and output keys of all subagents. The sequence of agents to be invoked is then calculated as the shortest path on that graph from the current state to the desired goal.
+
+To give a practical example of how this works, let's try to build a goal-oriented agentic system that can extract the name and zodiac sign of a person from a prompt, generate the horoscope for that sign, look for a related story on the internet and finally create a nice writeup combining all this information. We can achieve this set of tasks by using the following 5 agents:
+
+```java
+public interface HoroscopeGenerator {
+    @SystemMessage("You are an astrologist that generates horoscopes based on the user's name and zodiac sign.")
+    @UserMessage("Generate the horoscope for {{person}} who is a {{sign}}.")
+    @Agent("An astrologist that generates horoscopes based on the user's name and zodiac sign.")
+    String horoscope(@V("person") Person person, @V("sign") Sign sign);
+}
+
+public interface PersonExtractor {
+
+    @UserMessage("Extract a person from the following prompt: {{prompt}}")
+    @Agent("Extract a person from user's prompt")
+    Person extractPerson(@V("prompt") String prompt);
+}
+
+public interface SignExtractor {
+
+    @UserMessage("Extract the zodiac sign of a person from the following prompt: {{prompt}}")
+    @Agent("Extract a person from user's prompt")
+    Sign extractSign(@V("prompt") String prompt);
+}
+
+public interface Writer {
+    @UserMessage("""
+            Create an amusing writeup for {{person}} based on the following:
+            - their horoscope: {{horoscope}}
+            - a current news story: {{story}}
+            """)
+    @Agent("Create an amusing writeup for the target person based on their horoscope and current news stories")
+    String write(@V("person") Person person, @V("horoscope") String horoscope, @V("story") String story);
+}
+
+public interface StoryFinder {
+
+    @SystemMessage("""
+            You're a story finder, use the provided web search tools, calling it once and only once,
+            to find a fictional and funny story on the internet about the user provided topic.
+            """)
+    @UserMessage("""
+            Find a story on the internet for {{person}} who has the following horoscope: {{horoscope}}.
+            """)
+    @Agent("Find a story on the internet for a given person with a given horoscope")
+    String findStory(@V("person") Person person, @V("horoscope") String horoscope);
+}
+```
+
+Leveraging the `GoalOrientedPlanner` developed before, these agents can be combined in a goal-oriented agentic system as follows:
+
+```java
+HoroscopeGenerator horoscopeGenerator = AgenticServices.agentBuilder(HoroscopeGenerator.class)
+        .chatModel(baseModel())
+        .outputKey("horoscope")
+        .build();
+
+PersonExtractor personExtractor = AgenticServices.agentBuilder(PersonExtractor.class)
+        .chatModel(baseModel())
+        .outputKey("person")
+        .build();
+
+SignExtractor signExtractor = AgenticServices.agentBuilder(SignExtractor.class)
+        .chatModel(baseModel())
+        .outputKey("sign")
+        .build();
+
+Writer writer = AgenticServices.agentBuilder(Writer.class)
+        .chatModel(baseModel())
+        .outputKey("writeup")
+        .build();
+
+StoryFinder storyFinder = AgenticServices.agentBuilder(StoryFinder.class)
+        .chatModel(baseModel())
+        .tools(new WebSearchTool())
+        .outputKey("story")
+        .build();
+
+UntypedAgent horoscopeAgent = AgenticServices.plannerBuilder()
+        .subAgents(horoscopeGenerator, personExtractor, signExtractor, writer, storyFinder)
+        .outputKey("writeup")
+        .planner(GoalOrientedPlanner::new)
+        .build();
+```
+
+As anticipated, the overall goal of this agentic system is to produce a `writeup` which is also the output key of the GOAP-based planner itself. Taking into account the inputs and outputs of all subagents, the dependency graph built by the `GoalOrientedSearchGraph` will look like this:
+
+![](/img/goap.png)
+
+When invoking this agentic system with a prompt like "My name is Mario and my zodiac sign is pisces"
+
+```java
+Map<String, Object> input = Map.of("prompt", "My name is Mario and my zodiac sign is pisces");
+String writeup = horoscopeAgent.invoke(input);
+```
+
+the `GoalOrientedPlanner` will analyze the initial state of the `AgenticScope`, that contains only the `prompt` variable, and then it will calculate the shortest path on the dependency graph from that initial state to the desired goal, which is the `writeup`, so that the resulting sequence of agent invocations will be:
+
+```
+Agents path sequence: [extractPerson, extractSign, horoscope, findStory, write]
+```
+
+Note that, as anticipated, this goal-oriented agentic pattern can be mixed and combined with any other of the existing agentic patterns. For instance this possibility can be used to overcome an evident limitation of this approach that, being optimized to reach a specific goal following the shortest possible path, structurally doesn't allow loops, so in some cases it could be useful to have a loop agentic pattern as a subagent of this goal-oriented one.
+
+### Peer-to-peer agentic pattern
+
+All the agentic system discussed up to this point are based on a centralized and hierarchical architecture. In fact all the workflow patterns had a well-defined top-level agent coordinating the activities of multiple sub-agents in a programmatically predetermined way. Even the supervisor pattern, which is more flexible and dynamic thanks to the presence of its LLM-based planner agent, still relies on a coordinator agent that controls the interactions among the various sub-agents. This typology of architectures are suitable for many applications and scenarios, but they can also have some limitations, especially in terms of scalability and fault tolerance. This is why we may want to offer an alternative peer-to-peer approach for multi-agent systems, that can overcome these limitations by adopting a more decentralized and distributed strategy.
+
+In a peer-to-peer agentic systems there isn't any top level agent, and all agents are equal peers that are coordinated through the state of the `AgenticScope`. In particular, an agent is triggered by the presence of its own required inputs as state variables in the `AgenticScope`. Subsequently, a change in one or more of those variables, produced by the output of a different agent, can retrigger the invocation of that agent again. The process terminates either when the `AgenticScope` reaches a stable state and no agent can be invoked anymore, or when the predefined exit condition is satisfied, or when a maximum number of agent invocations has been reached. A `Planner` implementation that realizes this peer-to-peer agentic pattern could be written as it follows:
+
+```java
+public class P2PPlanner implements Planner {
+
+    private final int maxAgentsInvocations;
+    private final BiPredicate<AgenticScope, Integer> exitCondition;
+
+    private int invocationCounter = 0;
+    private Map<String, AgentActivator> agentActivators;
+
+    public P2PPlanner(int maxAgentsInvocations, BiPredicate<AgenticScope, Integer> exitCondition) {
+        this(null, maxAgentsInvocations, exitCondition);
+    }
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.agentActivators = initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, AgentActivator::new));
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        if (terminated(planningContext.agenticScope())) {
+            return done();
+        }
+
+        AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
+        lastExecutedAgent.finishExecution();
+        agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+
+        return nextCallAction(planningContext.agenticScope());
+    }
+
+    private Action nextCallAction(AgenticScope agenticScope) {
+        AgentInstance[] agentsToCall = agentActivators.values().stream()
+                .filter(agentActivator -> agentActivator.canActivate(agenticScope))
+                .peek(AgentActivator::startExecution)
+                .map(AgentActivator::agent)
+                .toArray(AgentInstance[]::new);
+        invocationCounter += agentsToCall.length;
+        return call(agentsToCall);
+    }
+
+    private boolean terminated(AgenticScope agenticScope) {
+        return invocationCounter > maxAgentsInvocations || exitCondition.test(agenticScope, invocationCounter);
+    }
+}
+```
+
+Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them.
+
+To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
+
+```java
+public interface ResearchAgent {
+
+    @Agent("Conduct research on a given topic")
+    String research(@V("topic") String topic);
+}
+```
+
+To this purpose the following 5 agents can be defined:
+
+```java
+public interface LiteratureAgent {
+
+    @SystemMessage("Search for scientific literature on the given topic and return a summary of the findings.")
+    @UserMessage("""
+            You are a scientific literature search agent.
+            Your task is to find relevant scientific papers on the topic provided by the user and summarize them.
+            Use the provided tool to search for scientific papers and return a summary of your findings.
+            The topic is: {{topic}}
+            """)
+    @Agent("Search for scientific literature on a given topic")
+    String searchLiterature(@V("topic") String topic);
+}
+
+public interface HypothesisAgent {
+
+    @SystemMessage("Based on the research findings, formulate a clear and concise hypothesis related to the given topic.")
+    @UserMessage("""
+            You are a hypothesis formulation agent.
+            Your task is to formulate a clear and concise hypothesis based on the research findings provided by the user.
+            The topic is: {{topic}}
+            The research findings are: {{researchFindings}}
+            """)
+    @Agent("Formulate hypothesis around a give topic based on research findings")
+    String makeHypothesis(@V("topic") String topic, @V("researchFindings") String researchFindings);
+}
+
+public interface CriticAgent {
+
+    @SystemMessage("Critically evaluate the given hypothesis related to the specified topic. Provide constructive feedback and suggest improvements if necessary.")
+    @UserMessage("""
+            You are a critical evaluation agent.
+            Your task is to critically evaluate the hypothesis provided by the user in relation to the specified topic.
+            Provide constructive feedback and suggest improvements if necessary.
+            If you need to, you can also perform additional research to validate or confute the hypothesis using the provided tool.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            """)
+    @Agent("Critically evaluate a hypothesis related to a given topic")
+    String criticHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis);
+}
+
+public interface ValidationAgent {
+
+    @SystemMessage("Validate the provided hypothesis on the given topic based on the critique provided.")
+    @UserMessage("""
+            You are a validation agent.
+            Your task is to validate the hypothesis provided by the user in relation to the specified topic based on the critique provided.
+            Validate the provided hypothesis, either confirming it or reformulating a different hypothesis based on the critique.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            The critique is: {{critique}}
+            """)
+    @Agent("Validate a hypothesis based on a given topic and critique")
+    String validateHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
+}
+
+public interface ScorerAgent {
+
+    @SystemMessage("Score the provided hypothesis on the given topic based on the critique provided.")
+    @UserMessage("""
+            You are a scoring agent.
+            Your task is to score the hypothesis provided by the user in relation to the specified topic based on the critique provided.
+            Score the provided hypothesis on a scale from 0.0 to 1.0, where 0.0 means the hypothesis is completely invalid and 1.0 means the hypothesis is fully valid.
+            The topic is: {{topic}}
+            The hypothesis is: {{hypothesis}}
+            The critique is: {{critique}}
+            """)
+    @Agent("Score a hypothesis based on a given topic and critique")
+    double scoreHypothesis(@V("topic") String topic, @V("hypothesis") String hypothesis, @V("critique") String critique);
+}
+```
+
+These agents will be all provided with a tool capable of performing research on scientific literature, for instance downloading academic papers from arXiv, and then added to the P2P agentic system:
+
+```java
+ArxivCrawler arxivCrawler = new ArxivCrawler();
+
+LiteratureAgent literatureAgent = AgenticServices.agentBuilder(LiteratureAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputKey("researchFindings")
+        .build();
+HypothesisAgent hypothesisAgent = AgenticServices.agentBuilder(HypothesisAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputKey("hypothesis")
+        .build();
+CriticAgent criticAgent = AgenticServices.agentBuilder(CriticAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputKey("critique")
+        .build();
+ValidationAgent validationAgent = AgenticServices.agentBuilder(ValidationAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputKey("hypothesis")
+        .build();
+ScorerAgent scorerAgent = AgenticServices.agentBuilder(ScorerAgent.class)
+        .chatModel(baseModel())
+        .tools(arxivCrawler)
+        .outputKey("score")
+        .build();
+
+ResearchAgent researcher = AgenticServices.plannerBuilder(ResearchAgent.class)
+        .subAgents(literatureAgent, hypothesisAgent, criticAgent, validationAgent, scorerAgent)
+        .outputKey("hypothesis")
+        .planner(() -> new P2PPlanner(10, agenticScope -> {
+            if (!agenticScope.hasState("score")) {
+                return false;
+            }
+            double score = agenticScope.readState("score", 0.0);
+            System.out.println("Current hypothesis score: " + score);
+            return score >= 0.85;
+        }))
+        .build();
+
+String hypothesis = researcher.research("black holes");
+```
+
+With this configuration the `researcher` p2p coordinator is passed with the topic of the research. At this point the only agent that can be invoked is the `literatureAgent`, because it is the only one that has all its required inputs, in this case the `topic`, present in the `AgenticScope`. The invocation of this agent produces the `researchFindings` variable, which is added to the `AgenticScope` state, and this new variable triggers the invocation of the `HypothesisAgent`. Then this produces a `hypothesis` that in turn triggers the `criticAgent`. Finally, the `ValidationAgent` takes in input both the `hypothesis` and the `critique` and generates a new `hypothesis` that eventually retriggers the other agents again. In the meanwhile the `ScorerAgent` gives a `score` to the `hypothesis` and the process terminates when this `score` is greater than or equal to 0.85, or when a maximum of 10 agents invocations have been performed. The following image summarizes all the agents and variables involved in this execution.
+
+![](/img/p2p.png)
+
+For instance a typical run of this example could terminate because the `ScorerAgent` produced a score above the predetermined threshold
+
+```
+Current hypothesis score: 0.95
+```
+
+and the final output could be something like:
+
+```
+Based on the provided references, here are some key points about stochastic gravitational wave backgrounds (SGWBs) from primordial black holes (PBHs):
+
+1. **Detection Rates and Sources:**
+   - The detection rate of gravity waves emitted during parabolic encounters of stellar black holes in globular clusters was estimated by Kocsis et al. [85].
+   - Gravitational wave bursts from PBH hyperbolic encounters were discussed by García-Bellido and Nesseris [93].
+
+2. **Energy Emission:**
+   - The energy spectrum of gravitational waves from hyperbolic encounters was studied by De Vittori, Jetzer, and Klein [88].
+   - Gravitational wave energy emission and detection rates for PBH hyperbolic encounters were analyzed by García-Bellido and Nesseris [90].
+
+3. **Template Banks:**
+   - Template banks for gravitational waveforms from coalescing binary black holes (including non-spinning binaries) were developed by Ajith et al. [92].
+
+4. **Constraints on PBHs:**
+   - Constraints on primordial black holes were reviewed by Carr, Kohri, Sendouda, and Yokoyama [98].
+   - Universal gravitational wave signatures of cosmological solitons were discussed by Lozanov, Sasaki, and Takhistov [100].
+
+5. **Induced SGWBs:**
+   - Doubly peaked induced stochastic gravitational wave backgrounds were tested for baryogenesis from primordial black holes by Bhaumik et al. [101].
+   - Distinct signatures of spinning PBH domination and evaporation, including doubly peaked gravitational waves, dark relics, and CMB complementarity, were explored by Bhaumik et al. [101].
+
+6. **Future Detectors:**
+   - Future detectors like Taiji, LISA, DECIGO, Big Bang Observer, Cosmic Explorer, Einstein Telescope, and KAGRA are expected to contribute significantly to the detection of SGWBs from PBHs.
+
+7. **Pulsar Timing Arrays:**
+   - Pulsar timing arrays have been used to search for an isotropic stochastic gravitational wave background [73-75].
+
+8. **Template Banks and Simulations:**
+   - Template banks like those developed by Ajith et al. are crucial for matching observed signals with theoretical predictions.
+```
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
@@ -1033,7 +1586,7 @@ For instance the `ExchangeAgent` used in the supervisor example has been probabl
 public class ExchangeOperator {
 
     @Agent(value = "A money exchanger that converts a given amount of money from the original to the target currency",
-            outputName = "exchange")
+            outputKey = "exchange")
     public Double exchange(@V("originalCurrency") String originalCurrency, @V("amount") Double amount, @V("targetCurrency") String targetCurrency) {
         // invoke the REST API to perform the currency exchange
     }
@@ -1119,7 +1672,7 @@ AstrologyAgent astrologyAgent = AgenticServices
 HumanInTheLoop humanInTheLoop = AgenticServices
         .humanInTheLoopBuilder()
         .description("An agent that asks the zodiac sign of the user")
-        .outputName("sign")
+        .outputKey("sign")
         .requestWriter(request -> {
             System.out.println(request);
             System.out.print("> ");
@@ -1160,12 +1713,12 @@ For instance if the `CreativeWriter` agent used in the first example was defined
 ```java
 UntypedAgent creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL)
-        .inputNames("topic")
-        .outputName("story")
+        .inputKeys("topic")
+        .outputKey("story")
         .build();
 ```
 
-The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputNames` method.
+The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
 
 Alternatively, it is possible to define a local interface for the A2A agent like:
 
@@ -1182,7 +1735,7 @@ so that it can be used in a more type-safe way, and the input names are automati
 ```java
 A2ACreativeWriter creativeWriter = AgenticServices
         .a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
-        .outputName("story")
+        .outputKey("story")
         .build();
 ```
 

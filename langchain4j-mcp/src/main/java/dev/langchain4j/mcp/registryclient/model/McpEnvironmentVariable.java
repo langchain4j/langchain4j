@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.registryclient.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
@@ -13,10 +14,10 @@ public class McpEnvironmentVariable {
     private String description;
     private String format;
 
-    @JsonProperty("is_required")
+    @JsonAlias("is_required")
     private boolean isRequired;
 
-    @JsonProperty("is_secret")
+    @JsonAlias("is_secret")
     private boolean isSecret;
 
     private String name;
@@ -57,5 +58,20 @@ public class McpEnvironmentVariable {
 
     public Map<String, McpVariable> getVariables() {
         return variables;
+    }
+
+    @Override
+    public String toString() {
+        return "McpEnvironmentVariable{" +
+                "choices=" + choices +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", description='" + description + '\'' +
+                ", format='" + format + '\'' +
+                ", isRequired=" + isRequired +
+                ", isSecret=" + isSecret +
+                ", name='" + name + '\'' +
+                ", value='" + value + '\'' +
+                ", variables=" + variables +
+                '}';
     }
 }

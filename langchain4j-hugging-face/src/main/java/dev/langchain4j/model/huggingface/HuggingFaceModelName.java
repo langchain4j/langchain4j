@@ -1,5 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 public final class HuggingFaceModelName {
 
     private HuggingFaceModelName() {}

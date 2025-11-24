@@ -1,7 +1,9 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -27,6 +29,7 @@ import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 
 import java.time.Duration;
@@ -38,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -138,19 +142,29 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final AtomicReference<String> responseModel = new AtomicReference<>();
 
             volatile String stopReason;
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
+
                 AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
 
                 if ("message_start".equals(event.event())) {
                     handleMessageStart(data);
                 } else if ("content_block_start".equals(event.event())) {
-                    handleContentBlockStart(data);
+                    handleContentBlockStart(data, streamingHandle);
                 } else if ("content_block_delta".equals(event.event())) {
-                    handleContentBlockDelta(data);
+                    handleContentBlockDelta(data, streamingHandle);
                 } else if ("content_block_stop".equals(event.event())) {
-                    handleContentBlockStop();
+                    handleContentBlockStop(streamingHandle);
                 } else if ("message_delta".equals(event.event())) {
                     handleMessageDelta(data);
                 } else if ("message_stop".equals(event.event())) {
@@ -190,7 +204,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
             }
 
-            private void handleContentBlockStart(AnthropicStreamingData data) {
+            private void handleContentBlockStart(AnthropicStreamingData data, StreamingHandle streamingHandle) {
                 if (data.contentBlock == null) {
                     return;
                 }
@@ -201,13 +215,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
-                        onPartialResponse(handler, text);
+                        onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
-                        onPartialThinking(handler, thinking);
+                        onPartialThinking(handler, thinking, streamingHandle);
                     }
                     String signature = data.contentBlock.signature;
                     if (isNotNullOrEmpty(signature)) {
@@ -225,7 +239,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
             }
 
-            private void handleContentBlockDelta(AnthropicStreamingData data) {
+            private void handleContentBlockDelta(AnthropicStreamingData data, StreamingHandle streamingHandle) {
                 if (data.delta == null) {
                     return;
                 }
@@ -234,13 +248,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
-                        onPartialResponse(handler, text);
+                        onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
-                        onPartialThinking(handler, thinking);
+                        onPartialThinking(handler, thinking, streamingHandle);
                     }
                     String signature = data.delta.signature;
                     if (isNotNullOrEmpty(signature)) {
@@ -262,12 +276,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                                 .name(toolCallBuilder.name())
                                 .partialArguments(partialJson)
                                 .build();
-                        onPartialToolCall(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest, streamingHandle);
                     }
                 }
             }
 
-            private void handleContentBlockStop() {
+            private void handleContentBlockStop(StreamingHandle streamingHandle) {
                 if ("text".equals(currentContentBlockStartType)) {
                     contents.add(contentBuilder.toString());
                     contentBuilder.setLength(0);
@@ -284,7 +298,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                                 .name(completeToolCall.toolExecutionRequest().name())
                                 .partialArguments(completeToolCall.toolExecutionRequest().arguments())
                                 .build();
-                        onPartialToolCall(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest, streamingHandle);
                     }
 
                     onCompleteToolCall(handler, completeToolCall);

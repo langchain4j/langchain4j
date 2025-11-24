@@ -1,7 +1,9 @@
 package dev.langchain4j.mcp.registryclient.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 public class McpRuntimeArgument {
 
@@ -13,23 +15,23 @@ public class McpRuntimeArgument {
     private String description;
     private String format;
 
-    @JsonProperty("is_repeated")
+    @JsonAlias("is_repeated")
     private boolean isRepeated;
 
-    @JsonProperty("is_required")
+    @JsonAlias("is_required")
     private boolean isRequired;
 
-    @JsonProperty("is_secret")
+    @JsonAlias("is_secret")
     private boolean isSecret;
 
     private String name;
     private String type;
     private String value;
 
-    @JsonProperty("value_hint")
+    @JsonAlias("value_hint")
     private String valueHint;
 
-    private List<McpVariable> variables;
+    private Map<String, McpVariable> variables;
 
     public List<String> getChoices() {
         return choices;
@@ -75,7 +77,27 @@ public class McpRuntimeArgument {
         return valueHint;
     }
 
-    public List<McpVariable> getVariables() {
+    public Map<String, McpVariable> getVariables() {
         return variables;
+    }
+
+    @Override
+    public String toString() {
+        String maskedDefaultValue = isSecret ? "<REDACTED>" : defaultValue;
+        String maskedValue = isSecret ? "<REDACTED>" : value;
+
+        return "McpRuntimeArgument{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRepeated="
+                + isRepeated + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", type='"
+                + type + '\'' + ", value='"
+                + maskedValue + '\'' + ", valueHint='"
+                + valueHint + '\'' + ", variables="
+                + variables + '}';
     }
 }

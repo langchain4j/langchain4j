@@ -33,7 +33,7 @@ The `langchain4j-azure-open-ai` library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.5.0</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.5.0-beta11</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 
@@ -66,7 +66,7 @@ ChatModel model = AzureOpenAiChatModel.builder()
         .build();
 ```
 
-This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and depoyment name.
+This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and deployment name.
 Other parameters can be customized by providing values in the builder.
 
 ### Spring Boot
@@ -78,6 +78,7 @@ langchain4j.azure-open-ai.chat-model.service-version=...
 langchain4j.azure-open-ai.chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.chat-model.non-azure-api-key=${OPENAI_API_KEY}
 langchain4j.azure-open-ai.chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.chat-model.max-tokens=...
 langchain4j.azure-open-ai.chat-model.temperature=...
 langchain4j.azure-open-ai.chat-model.top-p=
@@ -93,6 +94,7 @@ langchain4j.azure-open-ai.chat-model.max-retries=...
 langchain4j.azure-open-ai.chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.chat-model.user-agent-suffix=
 langchain4j.azure-open-ai.chat-model.custom-headers=...
+langchain4j.azure-open-ai.chat-model.reasoningEffort=...
 ```
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
@@ -326,6 +328,7 @@ langchain4j.azure-open-ai.streaming-chat-model.endpoint=${AZURE_OPENAI_URL}
 langchain4j.azure-open-ai.streaming-chat-model.service-version=...
 langchain4j.azure-open-ai.streaming-chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.streaming-chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.streaming-chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.max-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.temperature=...
 langchain4j.azure-open-ai.streaming-chat-model.top-p=...
@@ -340,6 +343,7 @@ langchain4j.azure-open-ai.streaming-chat-model.max-retries=...
 langchain4j.azure-open-ai.streaming-chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
+langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
 
 
@@ -355,7 +359,7 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.5.0</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 

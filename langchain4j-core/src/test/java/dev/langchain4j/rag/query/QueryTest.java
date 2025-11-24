@@ -86,14 +86,9 @@ class QueryTest {
 
         // then
         assertThat(toString)
-                .isEqualTo("Query { " + "text = \"query\", "
-                        + "metadata = Metadata { "
-                        + "chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
-                        + "chatMemoryId = 42, "
-                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, "
-                        + "AiMessage { text = \"Hi, how can I help you today?\", thinking = null, toolExecutionRequests = [], attributes = {} }] "
-                        + "} "
-                        + "}");
+                .isEqualToIgnoringWhitespace("""
+                        Query { text = "query", metadata = Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} } }
+                        """);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
 import java.util.HashMap;
@@ -65,5 +66,40 @@ class IsNotEqualToTest {
         Metadata metadata = new Metadata(new HashMap<>());
         metadata.put(key, "testValue");
         assertThat(subject.test(metadata)).isFalse();
+    }
+
+    @Test
+    void test_nullComparisonValue() {
+        // Constructor should reject null comparison value
+        assertThatThrownBy(() -> new IsNotEqualTo("key", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("comparisonValue with key 'key' cannot be null");
+    }
+
+    @Test
+    void test_emptyStringComparison() {
+        IsNotEqualTo subject = new IsNotEqualTo("value", "");
+        Metadata metadata = new Metadata(new HashMap<>());
+        metadata.put("value", "");
+        assertThat(subject.test(metadata)).isFalse();
+
+        metadata.put("value", " ");
+        assertThat(subject.test(metadata)).isTrue();
+    }
+
+    @Test
+    void test_nullMetadata() {
+        IsNotEqualTo subject = new IsNotEqualTo("key", "value");
+        assertThat(subject.test(null)).isFalse();
+    }
+
+    @Test
+    void test_getters() {
+        String key = "testKey";
+        String value = "testValue";
+        IsNotEqualTo subject = new IsNotEqualTo(key, value);
+
+        assertThat(subject.key()).isEqualTo(key);
+        assertThat(subject.comparisonValue()).isEqualTo(value);
     }
 }

@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import org.jspecify.annotations.NonNull;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -236,7 +237,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return newly created row id
      */
     @Override
-    public String add(Embedding embedding) {
+    public String add(@NonNull Embedding embedding) {
         Objects.requireNonNull(embedding, "embedding must not be null");
         return add(embedding, null);
     }
@@ -251,12 +252,12 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return newly created row id
      */
     @Override
-    public String add(Embedding embedding, TextSegment textSegment) {
+    public String add(@NonNull Embedding embedding, TextSegment textSegment) {
         Objects.requireNonNull(embedding, "embedding must not be null");
         return addInternal(randomUUID(), embedding, textSegment);
     }
 
-    private String addInternal(String id, Embedding embedding, TextSegment textSegment) {
+    private String addInternal(@NonNull String id, @NonNull Embedding embedding, TextSegment textSegment) {
         Objects.requireNonNull(id, "id must not be null");
         Objects.requireNonNull(embedding, "embedding must not be null");
         MetadataVectorRecord record = new MetadataVectorRecord(id, embedding.vectorAsList());
@@ -275,7 +276,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param embedding representation of the list of floats
      */
     @Override
-    public void add(String rowId, Embedding embedding) {
+    public void add(@NonNull String rowId, @NonNull Embedding embedding) {
         Objects.requireNonNull(rowId, "rowId must not be null");
         Objects.requireNonNull(embedding, "embedding must not be null");
         embeddingTable.put(new MetadataVectorRecord(rowId, embedding.vectorAsList()));
@@ -299,9 +300,13 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-        if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
-            throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
+    	if (ids == null || embeddingList == null || textSegmentList == null) {
+            throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must not be null");
         }
+        if (ids.size() != embeddingList.size() || ids.size() != textSegmentList.size()) {
+            throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must all have the same size");
+        }
+        
         // Looping on both list with an index
         for (int i = 0; i < embeddingList.size(); i++) {
             addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));

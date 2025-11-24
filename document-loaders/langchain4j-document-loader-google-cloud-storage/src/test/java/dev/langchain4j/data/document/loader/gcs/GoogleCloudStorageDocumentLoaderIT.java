@@ -46,7 +46,7 @@ public class GoogleCloudStorageDocumentLoaderIT {
     }
 
     @Test
-    void should_load_multipe_documents() {
+    void should_load_multiple_documents() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))

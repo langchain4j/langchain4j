@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.registryclient.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +15,10 @@ public class McpHeader {
     private String description;
     private String format;
 
-    @JsonProperty("is_required")
+    @JsonAlias("is_required")
     private boolean isRequired;
 
-    @JsonProperty("is_secret")
+    @JsonAlias("is_secret")
     private boolean isSecret;
 
     private String name;
@@ -58,5 +59,22 @@ public class McpHeader {
 
     public boolean isSecret() {
         return isSecret;
+    }
+
+    @Override
+    public String toString() {
+        String maskedDefaultValue = isSecret ? "[REDACTED]" : defaultValue;
+        String maskedValue = isSecret ? "[REDACTED]" : value;
+
+        return "McpHeader{" + "choices="
+                + choices + ", defaultValue='"
+                + maskedDefaultValue + '\'' + ", description='"
+                + description + '\'' + ", format='"
+                + format + '\'' + ", isRequired="
+                + isRequired + ", isSecret="
+                + isSecret + ", name='"
+                + name + '\'' + ", value='"
+                + maskedValue + '\'' + ", variables="
+                + variables + '}';
     }
 }
