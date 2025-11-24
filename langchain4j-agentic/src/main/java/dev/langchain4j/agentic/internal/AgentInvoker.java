@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-
 public interface AgentInvoker extends AgentSpecification {
 
     Logger LOG = LoggerFactory.getLogger(AgentInvoker.class);
@@ -54,11 +52,11 @@ public interface AgentInvoker extends AgentSpecification {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name, String agentId) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputKey()));
-        AgentSpecification agentSpecification = new AgentSpecificationImpl(
-                name, agentId, spec.description(), spec.outputKey(), spec.async(), arguments,
+        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getGenericParameterTypes()[0], spec.inputKey()));
+        AgentSpecification agentSpecification = new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
+                name, agentId, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 x -> { }, x -> { });
-        return new MethodAgentInvoker(agenticMethod, agentSpecification, arguments);
+        return new MethodAgentInvoker(agenticMethod, agentSpecification);
     }
 
     static AgentInvoker fromMethod(AgentSpecification spec, Method method) {
@@ -66,7 +64,7 @@ public interface AgentInvoker extends AgentSpecification {
             return new UntypedAgentInvoker(method, spec);
         }
 
-        return new MethodAgentInvoker(method, spec, argumentsFromMethod(method));
+        return new MethodAgentInvoker(method, spec);
     }
 
     static String parameterName(Parameter parameter) {
