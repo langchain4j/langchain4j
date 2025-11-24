@@ -57,9 +57,9 @@ public interface EmbeddingModel {
     /**
      * Returns the name of the underlying embedding model.
      * <p>
-     * Implementations may override this to provide the actual model name.
+     * Implementations are encouraged to override this method and provide the actual model name.
      * The default implementation returns {@code "unknown"}, which indicates
-     * that the model does not expose a specific name.
+     * that the model name is unknown.
      *
      * @return the model name or a fallback value if not provided
      */
