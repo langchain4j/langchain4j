@@ -4,6 +4,7 @@ import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
+import java.time.Duration;
 
 /**
  * Represents an event that is executed when a guardrail validation occurs.
@@ -43,6 +44,13 @@ public interface GuardrailExecutedEvent<
      */
     Class<G> guardrailClass();
 
+    /**
+     * Retrieves the duration of the guardrail execution.
+     *
+     * @return the duration of the guardrail validation process.
+     */
+    Duration duration();
+
     abstract class GuardrailExecutedEventBuilder<
                     P extends GuardrailRequest<P>,
                     R extends GuardrailResult<R>,
@@ -53,6 +61,7 @@ public interface GuardrailExecutedEvent<
         private P request;
         private R result;
         private Class<G> guardrailClass;
+        private Duration duration;
 
         protected GuardrailExecutedEventBuilder() {}
 
@@ -61,6 +70,7 @@ public interface GuardrailExecutedEvent<
             request(src.request());
             result(src.result());
             guardrailClass(src.guardrailClass());
+            duration(src.duration());
         }
 
         public Class<G> guardrailClass() {
@@ -73,6 +83,10 @@ public interface GuardrailExecutedEvent<
 
         public R result() {
             return result;
+        }
+
+        public Duration duration() {
+            return duration;
         }
 
         public GuardrailExecutedEventBuilder<P, R, G, T> request(P request) {
@@ -91,6 +105,11 @@ public interface GuardrailExecutedEvent<
 
         public <C extends G> GuardrailExecutedEventBuilder<P, R, G, T> guardrailClass(Class<C> guardrailClass) {
             this.guardrailClass = (Class<G>) guardrailClass;
+            return this;
+        }
+
+        public GuardrailExecutedEventBuilder<P, R, G, T> duration(Duration duration) {
+            this.duration = duration;
             return this;
         }
     }
