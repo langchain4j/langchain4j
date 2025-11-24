@@ -63,7 +63,10 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
-
+    @Override
+    public String modelName() {
+        return modelName;
+    }
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
