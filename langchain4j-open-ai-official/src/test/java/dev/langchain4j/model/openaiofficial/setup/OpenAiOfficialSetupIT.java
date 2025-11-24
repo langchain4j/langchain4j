@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-public class OpenAiOfficialSetupTests {
+public class OpenAiOfficialSetupIT {
 
     @Test
     void detectModelProvider_returnsAzureOpenAI_whenAzureFlagIsTrue() {
