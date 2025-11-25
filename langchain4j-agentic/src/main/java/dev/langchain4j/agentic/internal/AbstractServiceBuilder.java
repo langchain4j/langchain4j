@@ -73,9 +73,7 @@ public abstract class AbstractServiceBuilder<T, S> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputKey())) {
-            this.outputKey = agent.outputKey();
-        }
+        this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
     }
 
     Type agentReturnType() {

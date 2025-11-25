@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.declarative;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import java.lang.annotation.Retention;
@@ -53,6 +54,15 @@ public @interface SupervisorAgent {
      * @return name of the output variable.
      */
     String outputKey() default "";
+
+    /**
+     * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.
+     * It enforces type safety when retrieving the output from the agent's state and can be used in alternative
+     * to the {@code outputKey()} attribute. Note that only one of those two attributes can be used at a time.
+     *
+     * @return class representing the typed output variable.
+     */
+    Class<? extends AgentState<?>> typedOutputKey() default Agent.NoAgentState.class;
 
     /**
      * Array of sub-agents that can be invoked by the supervisor agent.

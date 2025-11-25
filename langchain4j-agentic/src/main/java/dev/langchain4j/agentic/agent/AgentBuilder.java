@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.AgentState;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
@@ -98,11 +99,9 @@ public class AgentBuilder<T> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputKey())) {
-            this.outputKey = agent.outputKey();
-        } else if (agent.typedOutputKey() != Agent.NoAgentState.class) {
-            this.outputKey = stateName(agent.typedOutputKey());
-        }
+
+        this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
+
         this.async = agent.async();
         if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
             this.contextProvidingAgents = agent.summarizedContext();
