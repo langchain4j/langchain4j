@@ -412,7 +412,7 @@ class GeminiFilesIT {
     }
 
     private GeminiFiles createGeminiFiles() {
-        return new GeminiFiles(GOOGLE_AI_GEMINI_API_KEY, null, null);
+        return GeminiFiles.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).build();
     }
 
     private Path createTestFile(String filename, String content) throws IOException {

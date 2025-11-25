@@ -41,10 +41,14 @@ public final class GeminiFiles {
     private final String baseUrl;
     private final String apiKey;
 
-    GeminiFiles(String apiKey, @Nullable HttpClient httpClient, @Nullable String baseUrl) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.httpClient = firstNotNull("httpClient", httpClient, HttpClient.newHttpClient());
-        this.baseUrl = firstNotNull("baseUrl", baseUrl, BASE_URL);
+    private GeminiFiles(Builder builder) {
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.httpClient = firstNotNull("httpClient", builder.httpClient, HttpClient.newHttpClient());
+        this.baseUrl = firstNotNull("baseUrl", builder.baseUrl, BASE_URL);
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
@@ -252,6 +256,55 @@ public final class GeminiFiles {
 
         GeminiUploadFailureException(String message) {
             super(message);
+        }
+    }
+
+    public static class Builder {
+        private String apiKey;
+        private HttpClient httpClient;
+        private String baseUrl;
+
+        /**
+         * Sets the API key for authentication.
+         *
+         * @param apiKey the API key (required)
+         * @return this builder
+         */
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Sets the HTTP client to use for requests.
+         *
+         * @param httpClient the HTTP client (optional, defaults to a new HttpClient)
+         * @return this builder
+         */
+        public Builder httpClient(HttpClient httpClient) {
+            this.httpClient = httpClient;
+            return this;
+        }
+
+        /**
+         * Sets the base URL for the API.
+         *
+         * @param baseUrl the base URL (optional, defaults to BASE_URL)
+         * @return this builder
+         */
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * Builds a new GeminiFiles instance.
+         *
+         * @return a new GeminiFiles instance
+         * @throws IllegalArgumentException if apiKey is blank
+         */
+        public GeminiFiles build() {
+            return new GeminiFiles(this);
         }
     }
 
