@@ -62,7 +62,7 @@ public @interface SupervisorAgent {
      *
      * @return class representing the typed output variable.
      */
-    Class<? extends AgentState<?>> typedOutputKey() default Agent.NoAgentState.class;
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * Array of sub-agents that can be invoked by the supervisor agent.

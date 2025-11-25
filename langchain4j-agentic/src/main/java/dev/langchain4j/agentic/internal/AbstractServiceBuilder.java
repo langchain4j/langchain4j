@@ -6,12 +6,11 @@ import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -100,7 +99,7 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    public S outputKey(Class<? extends AgentState<?>> outputKey) {
+    public S outputKey(Class<? extends TypedKey<?>> outputKey) {
         return outputKey(stateName(outputKey));
     }
 

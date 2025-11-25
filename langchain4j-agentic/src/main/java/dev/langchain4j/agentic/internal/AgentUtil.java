@@ -6,7 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -37,12 +37,12 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
-    private static final Map<Class<? extends AgentState<?>>, AgentState<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
 
     private AgentUtil() {}
 
-    private static <T> AgentState<T> stateInstance(Class<? extends AgentState<? extends T>> key) {
-        return (AgentState<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
+    private static <T> TypedKey<T> stateInstance(Class<? extends TypedKey<? extends T>> key) {
+        return (TypedKey<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
             try {
                 return key.getDeclaredConstructor().newInstance();
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
@@ -51,21 +51,21 @@ public class AgentUtil {
         });
     }
 
-    public static String outputKey(String outputKey, Class<? extends AgentState<?>> typedOutputKey) {
+    public static String outputKey(String outputKey, Class<? extends TypedKey<?>> typedOutputKey) {
         if (isNullOrBlank(outputKey)) {
-            return typedOutputKey != Agent.NoAgentState.class ? stateName(typedOutputKey) : null;
+            return typedOutputKey != Agent.NoTypedKey.class ? stateName(typedOutputKey) : null;
         }
-        if (typedOutputKey != Agent.NoAgentState.class) {
+        if (typedOutputKey != Agent.NoTypedKey.class) {
             throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
         }
         return outputKey;
     }
 
-    public static <T> T stateDefaultValue(Class<? extends AgentState<T>> key) {
+    public static <T> T stateDefaultValue(Class<? extends TypedKey<T>> key) {
         return stateInstance(key).defaultValue();
     }
 
-    public static String stateName(Class<? extends AgentState<?>> key) {
+    public static String stateName(Class<? extends TypedKey<?>> key) {
         return stateInstance(key).name();
     }
 

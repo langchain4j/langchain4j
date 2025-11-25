@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -45,7 +45,7 @@ public @interface Agent {
      */
     String outputKey() default "";
 
-    Class<? extends AgentState<?>> typedOutputKey() default NoAgentState.class;
+    Class<? extends TypedKey<?>> typedOutputKey() default NoTypedKey.class;
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
@@ -61,5 +61,5 @@ public @interface Agent {
      */
     String[] summarizedContext() default {};
 
-    class NoAgentState implements AgentState<Void> { }
+    class NoTypedKey implements TypedKey<Void> { }
 }

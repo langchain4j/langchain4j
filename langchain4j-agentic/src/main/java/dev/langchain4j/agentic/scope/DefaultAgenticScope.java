@@ -5,7 +5,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,7 +16,6 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -115,7 +114,7 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
-    public <T> T readState(Class<? extends AgentState<T>> key) {
+    public <T> T readState(Class<? extends TypedKey<T>> key) {
         return readState(stateName(key), stateDefaultValue(key));
     }
 

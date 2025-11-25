@@ -74,7 +74,7 @@ public @interface ConditionalAgent {
      *
      * @return class representing the typed output variable.
      */
-    Class<? extends AgentState<?>> typedOutputKey() default Agent.NoAgentState.class;
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * Sub-agents that can be conditionally activated by this agent.

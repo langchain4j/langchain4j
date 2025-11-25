@@ -59,7 +59,7 @@ public @interface A2AClientAgent {
      *
      * @return class representing the typed output variable.
      */
-    Class<? extends AgentState<?>> typedOutputKey() default Agent.NoAgentState.class;
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.

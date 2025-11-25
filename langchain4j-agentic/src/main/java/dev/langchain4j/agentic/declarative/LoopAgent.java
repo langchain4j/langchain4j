@@ -60,7 +60,7 @@ public @interface LoopAgent {
      *
      * @return class representing the typed output variable.
      */
-    Class<? extends AgentState<?>> typedOutputKey() default Agent.NoAgentState.class;
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * Array of sub-agents that will be invoked in parallel.

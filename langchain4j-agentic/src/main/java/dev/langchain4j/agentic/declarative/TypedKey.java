@@ -1,12 +1,12 @@
 package dev.langchain4j.agentic.declarative;
 
 /**
- * A class implementing this interface represents the input or output of an agent in a strongly typed way.
+ * A class implementing this interface represents the input or output key of an agent in a strongly typed way.
  * This corresponds to a state of the agentic system that can be used to store and retrieve information during the system's operation.
  *
  * @param <T> The type of the state value.
  */
-public interface AgentState<T> {
+public interface TypedKey<T> {
 
     /**
      * Returns the default value for this state.

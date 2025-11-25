@@ -17,9 +17,9 @@ import java.util.function.Function;
  * the value of a key representing a specific typed state in the agentic system.
  * That parameter also becomes a prompt template variable, so its value will be injected into prompt templates defined
  * via @{@link UserMessage}, @{@link SystemMessage} and {@link AiServices#systemMessageProvider(Function)}.
- * The variable name to be used in the prompt template corresponds to the one returned by the {@link AgentState#name()}
+ * The variable name to be used in the prompt template corresponds to the one returned by the {@link TypedKey#name()}
  * method of the class specified as the value of this annotation, which by default is the simple name of the class
- * implementing the {@link AgentState} interface.
+ * implementing the {@link TypedKey} interface.
  * <p>
  * Example:
  * <pre>
@@ -41,5 +41,5 @@ import java.util.function.Function;
 @Retention(RUNTIME)
 public @interface K {
 
-    Class<? extends AgentState<?>> value();
+    Class<? extends TypedKey<?>> value();
 }

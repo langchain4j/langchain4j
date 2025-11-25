@@ -1,15 +1,13 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agentic.declarative.ActivationCondition;
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.agentic.AgenticServices.createAgenticSystem;
@@ -24,17 +22,17 @@ public class TypedAgentsIT {
         LEGAL, MEDICAL, TECHNICAL, UNKNOWN
     }
 
-    public static class RequestCategory implements AgentState<Category> {
+    public static class RequestCategory implements TypedKey<Category> {
         @Override
         public Category defaultValue() {
             return Category.UNKNOWN;
         }
     }
 
-    public static class UserRequest implements AgentState<String> {
+    public static class UserRequest implements TypedKey<String> {
     }
 
-    public static class ExpertResponse implements AgentState<String> {
+    public static class ExpertResponse implements TypedKey<String> {
     }
 
     public interface CategoryRouter {

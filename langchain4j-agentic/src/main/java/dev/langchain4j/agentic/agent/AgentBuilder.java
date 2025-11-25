@@ -8,7 +8,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.AgentState;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -308,7 +308,7 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> outputKey(Class<? extends AgentState<?>> outputKey) {
+    public AgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
         return outputKey(stateName(outputKey));
     }
 
