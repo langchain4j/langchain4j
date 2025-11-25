@@ -1,16 +1,15 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
@@ -59,7 +58,8 @@ public class EmbeddingSearchRequest {
      *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
      *                       This is an optional parameter. Default: no filtering
      */
-    public EmbeddingSearchRequest(String queryContent, Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
+    public EmbeddingSearchRequest(
+            String queryContent, Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
         this.queryContent = queryContent;
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
@@ -106,7 +106,8 @@ public class EmbeddingSearchRequest {
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryContent=" + this.queryContent + ", queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
+        return "EmbeddingSearchRequest(queryContent=" + this.queryContent + ", queryEmbedding=" + this.queryEmbedding
+                + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
@@ -116,8 +117,7 @@ public class EmbeddingSearchRequest {
         private Double minScore;
         private Filter filter;
 
-        EmbeddingSearchRequestBuilder() {
-        }
+        EmbeddingSearchRequestBuilder() {}
 
         public EmbeddingSearchRequestBuilder queryContent(String queryContent) {
             this.queryContent = queryContent;
@@ -145,7 +145,8 @@ public class EmbeddingSearchRequest {
         }
 
         public EmbeddingSearchRequest build() {
-            return new EmbeddingSearchRequest(this.queryContent, this.queryEmbedding, this.maxResults, this.minScore, this.filter);
+            return new EmbeddingSearchRequest(
+                    this.queryContent, this.queryEmbedding, this.maxResults, this.minScore, this.filter);
         }
     }
 }
