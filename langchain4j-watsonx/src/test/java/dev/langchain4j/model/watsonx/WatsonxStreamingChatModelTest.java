@@ -176,11 +176,16 @@ public class WatsonxStreamingChatModelTest {
                 assertEquals("spaceId", parameters.getSpaceId());
                 assertEquals(List.of(), parameters.getStop());
                 assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
+                assertNull(parameters.getTimeLimit());
                 assertNull(parameters.getToolChoice());
                 assertNull(parameters.getToolChoiceOption());
                 assertNull(parameters.getTopLogprobs());
                 assertNull(parameters.getTopP());
+                assertNull(parameters.getGuidedChoice());
+                assertNull(parameters.getGuidedGrammar());
+                assertNull(parameters.getGuidedRegex());
+                assertNull(parameters.getRepetitionPenalty());
+                assertNull(parameters.getLengthPenalty());
             } catch (Exception e) {
                 fail(e);
             }
@@ -432,7 +437,7 @@ public class WatsonxStreamingChatModelTest {
                 assertEquals("spaceId", parameters.getSpaceId());
                 assertEquals(List.of(), parameters.getStop());
                 assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
+                assertNull(parameters.getTimeLimit());
                 assertNull(parameters.getToolChoice());
                 assertNull(parameters.getToolChoiceOption());
                 assertNull(parameters.getTopLogprobs());
