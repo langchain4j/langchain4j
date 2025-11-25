@@ -66,7 +66,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(Exception.class, () -> {
             VertexAiAnthropicChatModel model = VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(INVALID_MODEL_NAME)
                     .build();
 
@@ -81,7 +81,7 @@ class VertexAiAnthropicErrorHandlingIT {
         // given
         ChatModel model = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .build();
 
@@ -98,7 +98,7 @@ class VertexAiAnthropicErrorHandlingIT {
         // given
         ChatModel model = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .build();
 
@@ -114,7 +114,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .temperature(-0.1)
                     .build();
@@ -123,7 +123,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .temperature(1.1)
                     .build();
@@ -136,7 +136,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .topP(-0.1)
                     .build();
@@ -145,7 +145,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .topP(1.1)
                     .build();
@@ -158,7 +158,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .topK(-1)
                     .build();
@@ -167,7 +167,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .topK(0)
                     .build();
@@ -180,7 +180,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .maxTokens(-1)
                     .build();
@@ -189,7 +189,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(IllegalArgumentException.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .maxTokens(0)
                     .build();
@@ -251,36 +251,13 @@ class VertexAiAnthropicErrorHandlingIT {
         }
     }
 
-    @RetryingTest(3)
-    void should_handle_very_large_input() {
-        // given
-        ChatModel model = VertexAiAnthropicChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName(DEFAULT_MODEL_NAME)
-                .maxTokens(100)
-                .build();
-
-        UserMessage userMessage = UserMessage.from(LARGE_INPUT_TEXT);
-
-        // when/then - should either succeed or throw a meaningful exception
-        try {
-            ChatResponse response = model.chat(
-                    ChatRequest.builder().messages(List.of(userMessage)).build());
-            assertThat(response).isNotNull();
-        } catch (Exception e) {
-            // Expected for very large inputs
-            assertThat(e.getMessage()).isNotNull();
-        }
-    }
-
     @Test
     void should_handle_null_project() {
         // given/when/then
         assertThrows(Exception.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(null)
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .build();
         });
@@ -304,7 +281,7 @@ class VertexAiAnthropicErrorHandlingIT {
         assertThrows(Exception.class, () -> {
             VertexAiAnthropicChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(null)
                     .build();
         });

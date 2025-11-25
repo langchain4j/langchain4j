@@ -32,7 +32,7 @@ class VertexAiAnthropicCustomCredentialsIT {
         // given/when - should not throw exception with null credentials
         VertexAiAnthropicChatModel model = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .credentials(null) // explicitly set null credentials
                 .build();
@@ -49,7 +49,7 @@ class VertexAiAnthropicCustomCredentialsIT {
 
         ChatModel model = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .credentials(credentials)
                 .maxTokens(100)
@@ -76,7 +76,7 @@ class VertexAiAnthropicCustomCredentialsIT {
         // when
         VertexAiAnthropicStreamingChatModel model = VertexAiAnthropicStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .credentials(credentials)
                 .maxTokens(100)
@@ -95,7 +95,7 @@ class VertexAiAnthropicCustomCredentialsIT {
         // when - the client should automatically scope the credentials
         VertexAiAnthropicChatModel model = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .credentials(credentials)
                 .build();

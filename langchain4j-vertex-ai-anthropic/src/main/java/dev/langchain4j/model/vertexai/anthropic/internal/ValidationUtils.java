@@ -1,23 +1,9 @@
 package dev.langchain4j.model.vertexai.anthropic.internal;
 
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Utility class for common validation and listener notification methods.
  */
 public final class ValidationUtils {
-
-    private static final Logger logger = LoggerFactory.getLogger(ValidationUtils.class);
-
-    private ValidationUtils() {
-        // Utility class
-    }
 
     /**
      * Validates that maxTokens is within acceptable range.
@@ -69,50 +55,5 @@ public final class ValidationUtils {
             throw new IllegalArgumentException("topK must be greater than 0");
         }
         return topK;
-    }
-
-    /**
-     * Notifies listeners about the request.
-     */
-    public static void notifyListenersOnRequest(List<ChatModelListener> listeners, ChatModelRequestContext request) {
-        if (listeners != null) {
-            listeners.forEach(listener -> {
-                try {
-                    listener.onRequest(request);
-                } catch (Exception e) {
-                    logger.warn(Constants.EXCEPTION_IN_LISTENER, e);
-                }
-            });
-        }
-    }
-
-    /**
-     * Notifies listeners about the response.
-     */
-    public static void notifyListenersOnResponse(List<ChatModelListener> listeners, ChatModelResponseContext response) {
-        if (listeners != null) {
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(response);
-                } catch (Exception e) {
-                    logger.warn(Constants.EXCEPTION_IN_LISTENER, e);
-                }
-            });
-        }
-    }
-
-    /**
-     * Notifies listeners about an error.
-     */
-    public static void notifyListenersOnError(List<ChatModelListener> listeners, ChatModelErrorContext error) {
-        if (listeners != null) {
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(error);
-                } catch (Exception e) {
-                    logger.warn(Constants.EXCEPTION_IN_LISTENER, e);
-                }
-            });
-        }
     }
 }

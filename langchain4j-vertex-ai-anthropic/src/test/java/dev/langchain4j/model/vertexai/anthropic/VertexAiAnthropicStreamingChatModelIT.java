@@ -1,14 +1,19 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
+import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -16,7 +21,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL =
             VertexAiAnthropicStreamingChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(System.getenv("GCP_LOCATION"))
+                    .location(DEFAULT_LOCATION)
                     .modelName(DEFAULT_MODEL_NAME)
                     .temperature(0.0)
                     .logRequests(false)
@@ -33,7 +38,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
         VertexAiAnthropicStreamingChatModel.VertexAiAnthropicStreamingChatModelBuilder
                 vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
@@ -41,6 +46,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
         } else {
             vertexAiAnthropicStreamingChatModelBuilder.modelName(parameters.modelName());
         }
+        // TODO support defaultRequestParameters
         if (parameters.temperature() != null) {
             vertexAiAnthropicStreamingChatModelBuilder.temperature(parameters.temperature());
         }
@@ -58,7 +64,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected String customModelName() {
-        return "claude-3-5-sonnet-v2@20241022";
+        return "claude-sonnet-4-5@20250929";
     }
 
     @Override
@@ -96,11 +102,6 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
-    protected boolean supportsStopSequencesParameter() {
-        return true;
-    }
-
-    @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         // Vertex AI Anthropic does not support JSON response format with schema combined with tools yet
         return false;
@@ -116,7 +117,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return VertexAiAnthropicStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .modelName(DEFAULT_MODEL_NAME)
                 .listeners(List.of(listener))
                 .logRequests(true)
@@ -125,28 +126,20 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
-    protected void verifyToolCallbacks(
-            dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler,
-            org.mockito.InOrder io,
-            String id) {
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         // Vertex AI Anthropic can send text responses before tool calls
         // Use atLeast(0) to ignore any onPartialResponse calls that happen before tool execution
-        io.verify(handler, org.mockito.Mockito.atLeast(0)).onPartialResponse(org.mockito.ArgumentMatchers.any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any());
 
         // Vertex AI Anthropic doesn't support partial tool streaming, so we only verify onCompleteToolCall
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\n  \"city\" : \"Munich\"\n}"));
     }
 
     @Override
-    protected void verifyToolCallbacks(
-            dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler,
-            org.mockito.InOrder io,
-            String id1,
-            String id2) {
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         // Handle multiple tool calls - account for onPartialResponse calls first
-        io.verify(handler, org.mockito.Mockito.atLeast(0)).onPartialResponse(org.mockito.ArgumentMatchers.any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        // Verify both tool calls
         io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\n  \"city\" : \"Munich\"\n}"));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\n  \"country\" : \"France\"\n}"));
     }

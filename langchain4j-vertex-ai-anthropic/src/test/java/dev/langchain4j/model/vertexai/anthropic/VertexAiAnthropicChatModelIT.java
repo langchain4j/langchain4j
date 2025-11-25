@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
+import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -14,7 +15,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel VERTEX_AI_ANTHROPIC_CHAT_MODEL = VertexAiAnthropicChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
+            .location(DEFAULT_LOCATION)
             .modelName(DEFAULT_MODEL_NAME)
             .temperature(0.0)
             .logRequests(false)
@@ -30,7 +31,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         VertexAiAnthropicChatModel.VertexAiAnthropicChatModelBuilder vertexAiAnthropicChatModelBuilder = VertexAiAnthropicChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
+                .location(DEFAULT_LOCATION)
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
@@ -38,6 +39,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
         } else {
             vertexAiAnthropicChatModelBuilder.modelName(parameters.modelName());
         }
+        // TODO support defaultRequestParameters
         if (parameters.temperature() != null) {
             vertexAiAnthropicChatModelBuilder.temperature(parameters.temperature());
         }
@@ -55,7 +57,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "claude-3-5-sonnet-v2@20241022";
+        return "claude-sonnet-4-5@20250929";
     }
 
     @Override
@@ -71,7 +73,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormat() {
         // Vertex AI Anthropic supports JSON response format through prompt engineering
-        return true;
+        return true; // TODO
     }
 
     @Override
@@ -90,11 +92,6 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
     protected boolean supportsSingleImageInputAsPublicURL() {
         // Vertex AI Anthropic does not support images as URLs, only as Base64-encoded strings
         return false;
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return true;
     }
 
     @Override
