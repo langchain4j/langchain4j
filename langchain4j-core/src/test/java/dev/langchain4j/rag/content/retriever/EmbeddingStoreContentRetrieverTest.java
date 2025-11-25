@@ -63,6 +63,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -87,6 +88,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -109,6 +111,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(CUSTOM_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -134,6 +137,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(CUSTOM_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -159,6 +163,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(CUSTOM_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -181,6 +186,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(CUSTOM_MIN_SCORE)
@@ -206,6 +212,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(CUSTOM_MIN_SCORE)
@@ -231,6 +238,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(CUSTOM_MIN_SCORE)
@@ -258,6 +266,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -286,6 +295,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
@@ -358,6 +368,7 @@ class EmbeddingStoreContentRetrieverTest {
         // then
         verify(EMBEDDING_STORE)
                 .search(EmbeddingSearchRequest.builder()
+                        .queryContent(QUERY.text())
                         .queryEmbedding(EMBEDDING)
                         .maxResults(1) // dynamic value used
                         .minScore(0.1) // dynamic value used
