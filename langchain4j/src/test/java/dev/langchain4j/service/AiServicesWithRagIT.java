@@ -628,6 +628,49 @@ class AiServicesWithRagIT {
         assertThat(observedAttributeValue).hasValue(attributeValue);
     }
 
+    interface AssistantWithSystemMessage {
+
+        @SystemMessage("You are a helpful assistant for a car rental company.")
+        String answer(String query);
+    }
+
+    @Test
+    void should_add_system_message_to_chat_memory_when_chat_memory_is_present() {
+
+        // given
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(new InMemoryChatMemoryStore())
+                .build();
+        AtomicReference<List<ChatMessage>> capturedMessages = new AtomicReference<>();
+
+        AssistantWithSystemMessage assistant = AiServices.builder(AssistantWithSystemMessage.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("I can help with bookings."))
+                .chatMemory(chatMemory)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(new QueryTransformer() {
+                                @Override
+                                public Collection<Query> transform(Query query) {
+                                        capturedMessages.set(query.metadata().chatMemory());
+                                        return List.of(query);
+                                }
+                        })
+                        .contentRetriever(contentRetriever)
+                        .build())
+                .build();
+
+        // when
+        assistant.answer("Can I cancel my booking?");
+
+        // then
+        assertThat(capturedMessages.get()).isEqualTo(List.of(dev.langchain4j.data.message.SystemMessage.from("You are a helpful assistant for a car rental company.")));
+    }
+
     private void ingest(
             String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);

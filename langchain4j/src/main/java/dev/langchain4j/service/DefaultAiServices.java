@@ -56,7 +56,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -262,6 +261,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .userMessage(userMessage)
                                 .build());
 
+                        if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
+                        }
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
@@ -316,7 +319,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
                             messages.addAll(chatMemory.messages());
                         } else {
