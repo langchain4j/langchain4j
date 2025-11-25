@@ -61,7 +61,6 @@ jobs:
 
   integration_test:
     runs-on: ubuntu-latest
-    environment: integration-tests
     continue-on-error: true
     strategy:
       fail-fast: false
