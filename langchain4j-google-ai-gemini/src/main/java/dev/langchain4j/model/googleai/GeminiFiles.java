@@ -218,22 +218,19 @@ public final class GeminiFiles {
      * Request body for initiating a resumable upload.
      */
     private record GeminiFileMetadata(FileInfo file) {
-        record FileInfo(String display_name) {
-        }
+        record FileInfo(String display_name) {}
     }
 
     /**
      * Response from the file upload containing file information.
      */
-    record GeminiFileResponse(GeminiFile file) {
-    }
+    record GeminiFileResponse(GeminiFile file) {}
 
     /**
      * Response from listing files.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiFilesListResponse(List<GeminiFile> files) {
-    }
+    record GeminiFilesListResponse(List<GeminiFile> files) {}
 
     static class GeminiUploadFailureException extends RuntimeException {
         GeminiUploadFailureException(String message, Throwable cause) {
