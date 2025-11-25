@@ -228,6 +228,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryContent(query.text())
                 .queryEmbedding(embeddedQuery)
                 .maxResults(maxResultsProvider.apply(query))
                 .minScore(minScoreProvider.apply(query))
