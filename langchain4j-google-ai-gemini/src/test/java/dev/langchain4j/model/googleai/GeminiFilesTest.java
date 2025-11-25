@@ -55,7 +55,11 @@ class GeminiFilesTest {
                     .thenAnswer(invocation -> createInitialUploadResponse(TEST_UPLOAD_URL))
                     .thenAnswer(invocation -> createFileUploadResponse(expectedFileUri, "test.txt", "text/plain", 15L));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, "test.txt");
@@ -86,7 +90,11 @@ class GeminiFilesTest {
                     .thenAnswer(
                             invocation -> createFileUploadResponse(expectedFileUri, "sample.mp3", "audio/mpeg", 13L));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, null);
@@ -119,7 +127,11 @@ class GeminiFilesTest {
                             "application/pdf",
                             16L));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             subject.uploadFile(testFile, "My Document");
@@ -156,7 +168,11 @@ class GeminiFilesTest {
                             "image/jpeg",
                             15L));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             subject.uploadFile(testFile, "Test Image");
@@ -191,7 +207,11 @@ class GeminiFilesTest {
                             "application/octet-stream",
                             (long) largeContent.length()));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, "Large File");
@@ -209,7 +229,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createResponseWithoutUploadUrl());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.uploadFile(testFile, "Test"))
@@ -220,7 +244,11 @@ class GeminiFilesTest {
         @Test
         void should_throwExceptionWhenFilePathIsNull() {
             // Given
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.uploadFile(null, "Test"))
@@ -232,7 +260,11 @@ class GeminiFilesTest {
         void should_throwExceptionWhenFileDoesNotExist() {
             // Given
             var nonExistentFile = tempDir.resolve("does-not-exist.txt");
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.uploadFile(nonExistentFile, "Test"))
@@ -249,7 +281,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenThrow(new IOException("Network error"));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.uploadFile(testFile, "Test"))
@@ -273,7 +309,11 @@ class GeminiFilesTest {
                             13L,
                             "PROCESSING"));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, "Video");
@@ -294,7 +334,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createListFilesResponse());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var files = subject.listFiles();
@@ -313,7 +357,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createListFilesResponse());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             subject.listFiles();
@@ -333,7 +381,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createEmptyListFilesResponse());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var files = subject.listFiles();
@@ -349,7 +401,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenThrow(new IOException("Network error"));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(subject::listFiles)
@@ -367,7 +423,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createSuccessfulDeleteResponse());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             subject.deleteFile("files/test-file-123");
@@ -384,7 +444,11 @@ class GeminiFilesTest {
         @Test
         void should_throwExceptionWhenFileNameIsNull() {
             // Given
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.deleteFile(null))
@@ -395,7 +459,11 @@ class GeminiFilesTest {
         @Test
         void should_throwExceptionWhenFileNameIsBlank() {
             // Given
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.deleteFile(""))
@@ -409,7 +477,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> createFailedDeleteResponse());
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.deleteFile("files/test-file-123"))
@@ -426,7 +498,11 @@ class GeminiFilesTest {
             when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                     .thenThrow(new IOException("Network error"));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When/Then
             assertThatThrownBy(() -> subject.deleteFile("files/test-file-123"))
@@ -441,7 +517,10 @@ class GeminiFilesTest {
         @Test
         void should_useDefaultHttpClientWhenNull() {
             // When
-            var subject = new GeminiFiles(TEST_API_KEY, null, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // Then
             assertThat(subject).isNotNull();
@@ -460,7 +539,10 @@ class GeminiFilesTest {
                             "text/plain",
                             7L));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, null);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .build();
 
             // When
             subject.uploadFile(testFile, "Test");
@@ -475,7 +557,10 @@ class GeminiFilesTest {
         @Test
         void should_throwExceptionWhenApiKeyIsNull() {
             // When/Then
-            assertThatThrownBy(() -> new GeminiFiles(null, mockHttpClient, TEST_BASE_URL))
+            assertThatThrownBy(() -> GeminiFiles.builder()
+                            .httpClient(mockHttpClient)
+                            .baseUrl(TEST_BASE_URL)
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("apiKey");
         }
@@ -483,7 +568,11 @@ class GeminiFilesTest {
         @Test
         void should_throwExceptionWhenApiKeyIsBlank() {
             // When/Then
-            assertThatThrownBy(() -> new GeminiFiles("", mockHttpClient, TEST_BASE_URL))
+            assertThatThrownBy(() -> GeminiFiles.builder()
+                            .apiKey("")
+                            .httpClient(mockHttpClient)
+                            .baseUrl(TEST_BASE_URL)
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("apiKey");
         }
@@ -506,7 +595,11 @@ class GeminiFilesTest {
                             7L,
                             "ACTIVE"));
 
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, "Active File");
@@ -529,7 +622,11 @@ class GeminiFilesTest {
                             "text/plain",
                             7L,
                             "FAILED"));
-            var subject = new GeminiFiles(TEST_API_KEY, mockHttpClient, TEST_BASE_URL);
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
 
             // When
             var uploadedFile = subject.uploadFile(testFile, "Failed File");
