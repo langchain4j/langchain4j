@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.service.UserMessage;
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import static dev.langchain4j.agentic.AgenticServices.createAgenticSystem;
 import static dev.langchain4j.agentic.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -160,5 +163,18 @@ public class TypedAgentsIT {
 
         String response = expertChatbot.ask("I broke my leg what should I do");
         assertThat(response).contains("leg");
+    }
+
+    public interface MisconfiguredExpertChatbot {
+
+        @SequenceAgent( outputKey = "ExpertResponse", typedOutputKey = ExpertResponse.class,
+                subAgents = { CategoryRouter.class, ExpertsRouterAgent.class })
+        String ask(@K(UserRequest.class) String request);
+    }
+
+    @Test
+    void misconfigured_conditional_typed_agents_tests() {
+        assertThrows( AgenticSystemConfigurationException.class,
+                () -> createAgenticSystem(MisconfiguredExpertChatbot.class, baseModel()));
     }
 }
