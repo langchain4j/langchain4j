@@ -218,7 +218,10 @@ public class OpenAiOfficialSetup {
             if (baseUrl == null || baseUrl.isBlank()) {
                 return GITHUB_MODELS_URL;
             }
-            return baseUrl;
+            if (baseUrl.startsWith(GITHUB_MODELS_URL)) { // To support GitHub Models for specific orgs
+                return baseUrl;
+            }
+            return GITHUB_MODELS_URL;
         } else if (modelProvider == ModelProvider.AZURE_OPEN_AI) {
             if (baseUrl == null || baseUrl.isBlank()) {
                 throw new IllegalArgumentException("Base URL must be provided for Azure OpenAI.");
