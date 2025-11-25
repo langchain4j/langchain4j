@@ -2,12 +2,14 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_CANCELLED;
 import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_PENDING;
+import static java.nio.file.Files.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
@@ -15,6 +17,7 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
 import java.util.List;
 import java.util.Objects;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -125,6 +128,74 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             // then
             assertThat(response).isInstanceOf(BatchIncomplete.class);
             assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
+        }
+    }
+
+    @Nested
+    class BatchFromFile {
+
+        @Test
+        void should_write_upload_and_create_batch_from_file() throws Exception {
+            // given
+            var embeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName(MODEL_NAME)
+                    .taskType(TaskType.RETRIEVAL_DOCUMENT)
+                    .logRequestsAndResponses(true)
+                    .build();
+
+            var filesClient = GeminiFiles.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .build();
+
+            var tempFile = createTempFile("gemini-it-test", ".jsonl");
+            GeminiFiles.GeminiFile uploadedFile;
+            BatchName batchName;
+
+            // 1. Write batch requests to local temp file (Integration of writeBatchToFile)
+            var requests = List.of(
+                    new BatchFileRequest<>("req-1", TextSegment.from("Integration test segment 1")),
+                    new BatchFileRequest<>("req-2", TextSegment.from("Integration test segment 2"))
+            );
+
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                embeddingModel.writeBatchToFile(writer, requests);
+            }
+
+            // 2. Upload the file to Google AI (Prerequisite for createBatchFromFile)
+            uploadedFile = filesClient.uploadFile(tempFile, "IT Batch File");
+            System.out.println("Got: " + uploadedFile);
+            assertThat(uploadedFile.state()).isEqualTo("ACTIVE");
+
+            // 3. Create batch from the uploaded file (Integration of createBatchFromFile)
+            var response = embeddingModel.createBatchFromFile("IT File Batch", uploadedFile);
+
+            // then
+            assertThat(response).isInstanceOf(BatchIncomplete.class);
+            assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
+            batchName = ((BatchIncomplete<?>) response).batchName();
+            assertThat(batchName.value()).startsWith("batches/");
+
+        }
+
+        @Test
+        void should_fail_to_create_batch_from_non_existent_file() {
+            // given
+            var embeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName(MODEL_NAME)
+                    .build();
+
+            var nonExistentFile = new GeminiFiles.GeminiFile(
+                    "files/1234567890", "Fake File", "text/plain", 0L,
+                    "2025-01-01T00:00:00Z", "2025-01-01T00:00:00Z", "2025-01-03T00:00:00Z",
+                    "hash", "https://uri", "ACTIVE"
+            );
+
+            // when & then
+            assertThatThrownBy(() -> embeddingModel.createBatchFromFile("Bad Batch", nonExistentFile))
+                    .isInstanceOf(HttpException.class)
+                    .hasMessageContaining("Requested entity was not found");
         }
     }
 

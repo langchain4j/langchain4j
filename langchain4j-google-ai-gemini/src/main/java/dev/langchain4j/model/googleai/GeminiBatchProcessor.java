@@ -3,6 +3,9 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileBatch;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileInputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Batch;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InlinedRequest;
@@ -55,22 +58,20 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                 .toList();
 
         var request = new BatchCreateRequest<>(new Batch<>(
-                displayName, new InputConfig<>(new Requests<>(inlineRequests), null), getOrDefault(priority, 0L)));
+                displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
 
         return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
     }
 
     public BatchResponse<RESPONSE> createBatchFromFile(
             String displayName,
-            @Nullable Long priority,
             GeminiFiles.GeminiFile file,
             String modelName,
             GeminiService.BatchOperationType operationType) {
         return processResponse(
                 geminiService.batchCreate(
                         modelName,
-                        new BatchCreateRequest<>(new Batch<>(
-                                displayName, new InputConfig<>(null, file.uri()), getOrDefault(priority, 0L))),
+                        new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
                         operationType),
                 preparer);
     }

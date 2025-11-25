@@ -462,8 +462,7 @@ class GeminiServiceTest {
                     new BatchRequestResponse.BatchCreateRequest.InputConfig<>(
                             new BatchRequestResponse.BatchCreateRequest.Requests<>(
                                     List.of(new BatchRequestResponse.BatchCreateRequest.InlinedRequest<>(
-                                            contentRequest, null))),
-                            null),
+                                            contentRequest, null)))),
                     1L));
 
             // When
@@ -496,8 +495,7 @@ class GeminiServiceTest {
                     new BatchRequestResponse.BatchCreateRequest.InputConfig<>(
                             new BatchRequestResponse.BatchCreateRequest.Requests<>(
                                     List.of(new BatchRequestResponse.BatchCreateRequest.InlinedRequest<>(
-                                            contentRequest, null))),
-                            null),
+                                            contentRequest, null)))),
                     1L));
 
             // When

@@ -87,16 +87,8 @@ public final class BatchRequestResponse {
         /**
          * Configures the input to the batch request.
          */
-        record InputConfig<REQ>(Requests<REQ> requests, @JsonProperty("file_name") String fileName) {
-            public InputConfig {
-                if (requests != null && fileName != null) {
-                    throw new IllegalArgumentException("Only one of 'requests' or 'fileName' can be set, not both");
-                }
-                if (requests == null && fileName == null) {
-                    throw new IllegalArgumentException("Either 'requests' or 'fileName' must be set");
-                }
-            }
-        }
+        record InputConfig<REQ>(Requests<REQ> requests) {}
+
 
         /**
          * Wrapper for the list of inlined requests.
@@ -110,6 +102,15 @@ public final class BatchRequestResponse {
          * @param metadata Optional. The metadata to be associated with the request.
          */
         record InlinedRequest<REQ>(REQ request, Map<String, String> metadata) {}
+    }
+
+    record BatchCreateFileRequest(FileBatch batch) {
+
+        record FileBatch(
+                @JsonProperty("display_name") String displayName,
+                @JsonProperty("input_config") FileInputConfig inputConfig) {}
+
+        record FileInputConfig(@JsonProperty("file_name") String fileName) {}
     }
 
     /**

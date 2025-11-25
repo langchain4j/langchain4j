@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai.jsonl;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -29,7 +30,9 @@ final class StreamingJsonLinesWriter implements JsonLinesWriter {
 
     @Override
     public void write(Object object) throws IOException {
-        objectMapper.writeValue(writer, object);
+        objectMapper.writer()
+                .without(JsonGenerator.Feature.AUTO_CLOSE_TARGET)
+                .writeValue(writer, object);
         writer.newLine();
     }
 

@@ -43,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,7 +76,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -103,7 +104,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is the capital of Italy?"));
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -130,7 +131,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest("gemini-2.5-pro", "Explain quantum computing"));
             var expectedOperation = createPendingOperation("batches/test-789", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -172,7 +173,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is AI?"));
             var expectedOperation = createPendingOperation("batches/test-negative", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -201,7 +202,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-pro", "Question 3"));
             var expectedOperation = createPendingOperation("batches/test-model", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -210,7 +211,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // then
             assertThat(result).isInstanceOf(BatchIncomplete.class);
 
-            verify(mockGeminiService).batchCreate(eq("gemini-2.5-pro"), any(), eq(BATCH_GENERATE_CONTENT));
+            verify(mockGeminiService).batchCreate(eq("gemini-2.5-pro"), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT));
         }
 
         @Test
@@ -221,7 +222,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "Test message"));
             var expectedOperation = createPendingOperation("batches/test-metadata", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -252,7 +253,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest("gemini-2.5-flash-lite", "Question 5"));
             var expectedOperation = createPendingOperation("batches/test-multiple", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                            any(), any(), eq(BATCH_GENERATE_CONTENT)))
+                    any(), ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -497,9 +498,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class CancelBatchJob {
         @ParameterizedTest
         @CsvSource({
-            "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
-            "batches/test-already-cancelled, Batch is already in CANCELLED state",
-            "batches/non-existent, Batch not found"
+                "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
+                "batches/test-already-cancelled, Batch is already in CANCELLED state",
+                "batches/non-existent, Batch not found"
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchNameValue, String errorMessage) {
             // given
@@ -554,9 +555,9 @@ class GoogleAiGeminiBatchChatModelTest {
 
         @ParameterizedTest
         @CsvSource({
-            "batches/test-cannot-delete, Batch cannot be deleted due to server error",
-            "batches/non-existent, Batch not found",
-            "batches/invalid-name, Invalid batch name format"
+                "batches/test-cannot-delete, Batch cannot be deleted due to server error",
+                "batches/non-existent, Batch not found",
+                "batches/invalid-name, Invalid batch name format"
         })
         void should_throw_exception_when_batch_deletion_fails(String batchNameValue, String errorMessage) {
             // given

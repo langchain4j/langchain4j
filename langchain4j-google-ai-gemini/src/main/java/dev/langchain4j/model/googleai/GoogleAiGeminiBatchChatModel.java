@@ -8,6 +8,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InlinedRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
@@ -76,14 +77,15 @@ public final class GoogleAiGeminiBatchChatModel {
         return batchProcessor.createBatchInline(displayName, priority, requests, modelName, BATCH_GENERATE_CONTENT);
     }
 
-    public BatchResponse<ChatResponse> createBatchFromFile(String displayName, @Nullable Long priority, GeminiFile file) {
-        return batchProcessor.createBatchFromFile(displayName, priority, file, modelName, BATCH_GENERATE_CONTENT);
+    public BatchResponse<ChatResponse> createBatchFromFile(String displayName, GeminiFile file) {
+        return batchProcessor.createBatchFromFile(displayName, file, modelName, BATCH_GENERATE_CONTENT);
     }
 
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<ChatRequest>> requests)
             throws IOException {
         for (var request : requests) {
-            writer.write(preparer.createInlinedRequest(request.request()));
+            var inlinedRequest = preparer.createInlinedRequest(request.request());
+            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
         }
     }
 

@@ -114,6 +114,15 @@ class GeminiService {
                 BatchRequestResponse.Operation.class);
     }
 
+    <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
+            String modelName, BatchRequestResponse.BatchCreateFileRequest request, BatchOperationType operationType) {
+        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+                String.format("%s/models/%s:%s", baseUrl, modelName, operationType.value),
+                apiKey,
+                request,
+                BatchRequestResponse.Operation.class);
+    }
+
     @SuppressWarnings("unchecked")
     <RESP> BatchRequestResponse.Operation<RESP> batchRetrieveBatch(String operationName) {
         return (BatchRequestResponse.Operation<RESP>) sendRequest(

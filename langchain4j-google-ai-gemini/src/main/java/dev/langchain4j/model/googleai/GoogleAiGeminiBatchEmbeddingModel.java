@@ -65,14 +65,15 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
         return batchProcessor.createBatchInline(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
-    public BatchResponse<Embedding> createBatchFromFile(String displayName, @Nullable Long priority, GeminiFile file) {
-        return batchProcessor.createBatchFromFile(displayName, priority, file, modelName, ASYNC_BATCH_EMBED_CONTENT);
+    public BatchResponse<Embedding> createBatchFromFile(String displayName, GeminiFile file) {
+        return batchProcessor.createBatchFromFile(displayName, file, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<TextSegment>> requests)
             throws IOException {
         for (var request : requests) {
-            writer.write(preparer.createInlinedRequest(request.request()));
+            var inlinedRequest = preparer.createInlinedRequest(request.request());
+            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
         }
     }
 
@@ -116,7 +117,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
 
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-                    TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+            TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
