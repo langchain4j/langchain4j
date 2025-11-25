@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import java.lang.reflect.Parameter;
+import java.util.Optional;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.V;
@@ -21,6 +22,6 @@ public class AgenticParameterNameResolver implements ParameterNameResolver {
             return stateName(k.value());
         }
 
-        return parameter.getName();
+        return parameter.isNamePresent() ? parameter.getName() : null;
     }
 }

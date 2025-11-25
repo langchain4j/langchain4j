@@ -20,10 +20,12 @@ public interface AgenticScope extends LangChain4jManaged {
     Object memoryId();
 
     void writeState(String key, Object value);
+    <T> void writeState(Class<? extends TypedKey<T>> key, T value);
 
     void writeStates(Map<String, Object> newState);
 
     boolean hasState(String key);
+    boolean hasState(Class<? extends TypedKey<?>> key);
 
     Object readState(String key);
 

@@ -45,7 +45,11 @@ public class AgentUtil {
         return (TypedKey<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
             try {
                 return key.getDeclaredConstructor().newInstance();
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            }  catch (NoSuchMethodException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' doesn't have a no-args constructor", e);
+            }  catch (IllegalAccessException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' is not accessible", e);
+            } catch (InstantiationException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
         });

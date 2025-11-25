@@ -90,6 +90,11 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    public <T> void writeState(Class<? extends TypedKey<T>> key, T value) {
+        writeState(stateName(key), value);
+    }
+
+    @Override
     public void writeStates(Map<String, Object> newState) {
         withReadLock(() -> state.putAll(newState));
     }
@@ -101,6 +106,11 @@ public class DefaultAgenticScope implements AgenticScope {
             return false;
         }
         return value instanceof String s ? !s.isBlank() : true;
+    }
+
+    @Override
+    public boolean hasState(Class<? extends TypedKey<?>> key) {
+        return hasState(stateName(key));
     }
 
     @Override
