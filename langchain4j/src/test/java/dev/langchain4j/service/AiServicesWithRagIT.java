@@ -19,16 +19,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.stream.Stream;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -65,6 +55,16 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -146,10 +146,11 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever).retrieve(argThat(q -> q.text().equals(query)
-                && q.metadata().chatMessage().equals(UserMessage.from(query))
-                && q.metadata().chatMemoryId().equals("default")
-                && q.metadata().chatMemory().equals(List.of(userMessage, aiMessage))));
+        verify(contentRetriever)
+                .retrieve(argThat(q -> q.text().equals(query)
+                        && q.metadata().chatMessage().equals(UserMessage.from(query))
+                        && q.metadata().chatMemoryId().equals("default")
+                        && q.metadata().chatMemory().equals(List.of(userMessage, aiMessage))));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -185,10 +186,11 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever).retrieve(argThat(q -> q.text().equals(query)
-                && q.metadata().chatMessage().equals(UserMessage.from(query))
-                && q.metadata().chatMemoryId().equals(memoryId)
-                && q.metadata().chatMemory().isEmpty()));
+        verify(contentRetriever)
+                .retrieve(argThat(q -> q.text().equals(query)
+                        && q.metadata().chatMessage().equals(UserMessage.from(query))
+                        && q.metadata().chatMemoryId().equals(memoryId)
+                        && q.metadata().chatMemory().isEmpty()));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -652,11 +654,11 @@ class AiServicesWithRagIT {
                 .chatMemory(chatMemory)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(new QueryTransformer() {
-                                @Override
-                                public Collection<Query> transform(Query query) {
-                                        capturedMessages.set(query.metadata().chatMemory());
-                                        return List.of(query);
-                                }
+                            @Override
+                            public Collection<Query> transform(Query query) {
+                                capturedMessages.set(query.metadata().chatMemory());
+                                return List.of(query);
+                            }
                         })
                         .contentRetriever(contentRetriever)
                         .build())
@@ -666,7 +668,9 @@ class AiServicesWithRagIT {
         assistant.answer("Can I cancel my booking?");
 
         // then
-        assertThat(capturedMessages.get()).isEqualTo(List.of(dev.langchain4j.data.message.SystemMessage.from("You are a helpful assistant for a car rental company.")));
+        assertThat(capturedMessages.get())
+                .isEqualTo(List.of(dev.langchain4j.data.message.SystemMessage.from(
+                        "You are a helpful assistant for a car rental company.")));
     }
 
     private void ingest(
@@ -694,7 +698,7 @@ class AiServicesWithRagIT {
                         .logResponses(true)
                         .build())
                 // TODO add more models
-        );
+                );
     }
 
     private Path toPath(String fileName) {
