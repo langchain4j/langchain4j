@@ -218,19 +218,22 @@ public final class GeminiFiles {
      * Request body for initiating a resumable upload.
      */
     private record GeminiFileMetadata(FileInfo file) {
-        record FileInfo(String display_name) {}
+        record FileInfo(String display_name) {
+        }
     }
 
     /**
      * Response from the file upload containing file information.
      */
-    record GeminiFileResponse(GeminiFile file) {}
+    record GeminiFileResponse(GeminiFile file) {
+    }
 
     /**
      * Response from listing files.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiFilesListResponse(List<GeminiFile> files) {}
+    record GeminiFilesListResponse(List<GeminiFile> files) {
+    }
 
     static class GeminiUploadFailureException extends RuntimeException {
         GeminiUploadFailureException(String message, Throwable cause) {
@@ -292,7 +295,19 @@ public final class GeminiFiles {
     }
 
     /**
-     * Represents a file uploaded to the Gemini API, <a href="https://ai.google.dev/gemini-api/docs/files>documentation</a>
+     * Represents a file uploaded to the Gemini API,
+     * <a href="https://ai.google.dev/gemini-api/docs/files">documentation</a>
+     *
+     * @param name           The name of the file. This is a required field.
+     * @param displayName    An optional display name for the file, which may be different from the actual file name.
+     * @param mimeType       The MIME type of the file, indicating the nature and format of the file content.
+     * @param sizeBytes      The size of the file in bytes.
+     * @param createTime     The timestamp indicating when the file was created, formatted as an ISO-8601 string.
+     * @param updateTime     The timestamp indicating when the file was last updated, formatted as an ISO 8601 string.
+     * @param expirationTime The timestamp indicating when the file will expire, formatted as an ISO-8601 string.
+     * @param sha256Hash     The SHA-256 hash of the file, used for integrity verification.
+     * @param uri            The URI where the file can be accessed.
+     * @param state          The current state of the file (e.g., active, deleted).
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GeminiFile(
