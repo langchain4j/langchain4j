@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_SEARCH_ENGINE_ID", matches = ".*")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".*")
 class GoogleCustomWebSearchContentRetrieverIT extends WebSearchContentRetrieverIT {
 
     WebSearchEngine googleSearchEngine = GoogleCustomWebSearchEngine.builder()
