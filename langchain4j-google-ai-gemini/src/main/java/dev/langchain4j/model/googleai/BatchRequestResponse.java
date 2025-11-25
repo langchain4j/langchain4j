@@ -89,7 +89,6 @@ public final class BatchRequestResponse {
          */
         record InputConfig<REQ>(Requests<REQ> requests) {}
 
-
         /**
          * Wrapper for the list of inlined requests.
          */

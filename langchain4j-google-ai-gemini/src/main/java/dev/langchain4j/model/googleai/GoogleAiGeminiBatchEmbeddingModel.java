@@ -117,7 +117,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
 
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+                    TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {

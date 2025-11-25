@@ -14,10 +14,10 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
-import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -69,9 +69,8 @@ class GoogleAiGeminiBatchChatModelIT {
                     .logRequestsAndResponses(true)
                     .build();
 
-            var filesClient = GeminiFiles.builder()
-                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                    .build();
+            var filesClient =
+                    GeminiFiles.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).build();
 
             var tempFile = Files.createTempFile("gemini-chat-it-test", ".jsonl");
             GeminiFiles.GeminiFile uploadedFile = null;
@@ -81,8 +80,7 @@ class GoogleAiGeminiBatchChatModelIT {
                 // 1. Write batch requests to local temp file
                 var requests = List.of(
                         new BatchFileRequest<>("req-1", createChatRequest("What is the speed of light?")),
-                        new BatchFileRequest<>("req-2", createChatRequest("What is the speed of sound?"))
-                );
+                        new BatchFileRequest<>("req-2", createChatRequest("What is the speed of sound?")));
 
                 try (var writer = JsonLinesWriters.streaming(tempFile)) {
                     chatModel.writeBatchToFile(writer, requests);
@@ -129,10 +127,16 @@ class GoogleAiGeminiBatchChatModelIT {
                     .build();
 
             var nonExistentFile = new GeminiFiles.GeminiFile(
-                    "files/1234567890", "Fake File", "text/plain", 0L,
-                    "2025-01-01T00:00:00Z", "2025-01-01T00:00:00Z", "2025-01-03T00:00:00Z",
-                    "hash", "https://uri", "ACTIVE"
-            );
+                    "files/1234567890",
+                    "Fake File",
+                    "text/plain",
+                    0L,
+                    "2025-01-01T00:00:00Z",
+                    "2025-01-01T00:00:00Z",
+                    "2025-01-03T00:00:00Z",
+                    "hash",
+                    "https://uri",
+                    "ACTIVE");
 
             // when & then
             assertThatThrownBy(() -> chatModel.createBatchFromFile("Bad Batch", nonExistentFile))

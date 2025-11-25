@@ -1,25 +1,21 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InlinedRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
-import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -31,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 @Experimental
 public final class GoogleAiGeminiBatchChatModel {
     private final GeminiBatchProcessor<
-            ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+                    ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final BaseGeminiChatModel chatModel;
     private final String modelName;
@@ -136,8 +132,7 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
-        private Builder() {
-        }
+        private Builder() {}
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
@@ -146,7 +141,7 @@ public final class GoogleAiGeminiBatchChatModel {
 
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+                    ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {

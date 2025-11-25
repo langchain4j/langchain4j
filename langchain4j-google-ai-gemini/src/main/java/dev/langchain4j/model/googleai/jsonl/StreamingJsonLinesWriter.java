@@ -30,9 +30,7 @@ final class StreamingJsonLinesWriter implements JsonLinesWriter {
 
     @Override
     public void write(Object object) throws IOException {
-        objectMapper.writer()
-                .without(JsonGenerator.Feature.AUTO_CLOSE_TARGET)
-                .writeValue(writer, object);
+        objectMapper.writer().without(JsonGenerator.Feature.AUTO_CLOSE_TARGET).writeValue(writer, object);
         writer.newLine();
     }
 
