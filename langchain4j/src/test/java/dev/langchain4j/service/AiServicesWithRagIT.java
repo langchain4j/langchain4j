@@ -629,14 +629,12 @@ class AiServicesWithRagIT {
     }
 
     interface AssistantWithSystemMessage {
-
         @SystemMessage("You are a helpful assistant for a car rental company.")
         String answer(String query);
     }
 
     @Test
     void should_add_system_message_to_chat_memory_when_chat_memory_is_present() {
-
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
