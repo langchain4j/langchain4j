@@ -190,6 +190,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vertex-ai-anthropic</artifactId>
+                <version>1.9.0-beta16-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-google-ai-gemini</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>
