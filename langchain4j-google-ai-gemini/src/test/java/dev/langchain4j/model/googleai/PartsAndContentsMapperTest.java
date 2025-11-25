@@ -1,11 +1,19 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -167,5 +175,112 @@ class PartsAndContentsMapperTest {
         assertThat(result).isNotNull();
         List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
+    }
+
+    @Test
+    void fromContentToGPart_handlesDataUriImage() {
+        // Given - Create a simple base64 encoded 1x1 red pixel PNG
+        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String dataUri = "data:image/png;base64," + base64Image;
+
+        // Create ImageContent with data URI (this is how images are typically sent from web clients)
+        ImageContent imageContent = ImageContent.from(dataUri);
+
+        // When - This should not throw NullPointerException
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.inlineData().mimeType()).isEqualTo("image/png");
+        assertThat(result.inlineData().data()).isEqualTo(base64Image);
+    }
+
+    @Test
+    void fromContentToGPart_handlesDataUriAudio() {
+        // Given
+        String base64Audio = "SGVsbG8gV29ybGQ="; // "Hello World" in base64
+        String dataUri = "data:audio/mp3;base64," + base64Audio;
+
+        Audio audio = Audio.builder().url(dataUri).build();
+        AudioContent audioContent = new AudioContent(audio);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(audioContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.inlineData().mimeType()).isEqualTo("audio/mp3");
+        assertThat(result.inlineData().data()).isEqualTo(base64Audio);
+    }
+
+    @Test
+    void fromContentToGPart_handlesDataUriVideo() {
+        // Given
+        String base64Video = "VmlkZW9EYXRh"; // "VideoData" in base64
+        String dataUri = "data:video/mp4;base64," + base64Video;
+
+        Video video = Video.builder().url(dataUri).build();
+        VideoContent videoContent = new VideoContent(video);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(videoContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.inlineData().mimeType()).isEqualTo("video/mp4");
+        assertThat(result.inlineData().data()).isEqualTo(base64Video);
+    }
+
+    @Test
+    void fromContentToGPart_handlesDataUriPdf() {
+        // Given
+        String base64Pdf = "UERGRGF0YQ=="; // "PDFData" in base64
+        String dataUri = "data:application/pdf;base64," + base64Pdf;
+
+        PdfFile pdfFile = PdfFile.builder().url(dataUri).build();
+        PdfFileContent pdfFileContent = new PdfFileContent(pdfFile);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(pdfFileContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.inlineData().mimeType()).isEqualTo("application/pdf");
+        assertThat(result.inlineData().data()).isEqualTo(base64Pdf);
+    }
+
+    @Test
+    void fromContentToGPart_handlesDataUriWithoutBase64Marker() {
+        // Given - Data URI without ";base64" marker
+        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String dataUri = "data:image/png," + base64Image;
+
+        ImageContent imageContent = ImageContent.from(dataUri);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.inlineData().mimeType()).isEqualTo("image/png");
+        assertThat(result.inlineData().data()).isEqualTo(base64Image);
+    }
+
+    @Test
+    void fromContentToGPart_throwsExceptionForInvalidDataUri() {
+        // Given - Invalid data URI without comma
+        String invalidDataUri = "data:image/png;base64";
+
+        ImageContent imageContent = ImageContent.from(invalidDataUri);
+
+        // When/Then
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(imageContent))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid data URI format");
     }
 }

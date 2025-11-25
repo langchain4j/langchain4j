@@ -61,7 +61,27 @@ final class PartsAndContentsMapper {
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
-                if (url.getScheme() != null && url.getScheme().startsWith("http")) {
+                // Handle data URIs (e.g., "data:image/png;base64,iVBORw0KG...")
+                if (url.getScheme() != null && url.getScheme().equals("data")) {
+                    String urlString = url.toString();
+                    // Parse data URI format: data:[<mediatype>][;base64],<data>
+                    int commaIndex = urlString.indexOf(',');
+                    if (commaIndex > 0) {
+                        String header = urlString.substring(5, commaIndex); // Skip "data:"
+                        String base64Data = urlString.substring(commaIndex + 1);
+                        
+                        // Extract mime type from header (e.g., "image/png;base64" -> "image/png")
+                        String mimeType = header;
+                        if (header.contains(";")) {
+                            mimeType = header.substring(0, header.indexOf(';'));
+                        }
+                        
+                        return GeminiContent.GeminiPart.builder()
+                                .inlineData(new GeminiBlob(mimeType, base64Data))
+                                .build();
+                    }
+                    throw new IllegalArgumentException("Invalid data URI format: " + urlString);
+                } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
                     byte[] imageBytes = readBytes(url.toString());
                     String base64Data = Base64.getEncoder().encodeToString(imageBytes);
                     return GeminiContent.GeminiPart.builder()
@@ -81,6 +101,20 @@ final class PartsAndContentsMapper {
         } else if (content instanceof AudioContent audioContent) {
             URI uri = audioContent.audio().url();
             if (uri != null) {
+                // Handle data URIs for audio
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    String urlString = uri.toString();
+                    int commaIndex = urlString.indexOf(',');
+                    if (commaIndex > 0) {
+                        String header = urlString.substring(5, commaIndex);
+                        String base64Data = urlString.substring(commaIndex + 1);
+                        String mimeType = header.contains(";") ? header.substring(0, header.indexOf(';')) : header;
+                        return GeminiContent.GeminiPart.builder()
+                                .inlineData(new GeminiBlob(mimeType, base64Data))
+                                .build();
+                    }
+                    throw new IllegalArgumentException("Invalid data URI format: " + urlString);
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -94,6 +128,20 @@ final class PartsAndContentsMapper {
         } else if (content instanceof VideoContent videoContent) {
             URI uri = videoContent.video().url();
             if (uri != null) {
+                // Handle data URIs for video
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    String urlString = uri.toString();
+                    int commaIndex = urlString.indexOf(',');
+                    if (commaIndex > 0) {
+                        String header = urlString.substring(5, commaIndex);
+                        String base64Data = urlString.substring(commaIndex + 1);
+                        String mimeType = header.contains(";") ? header.substring(0, header.indexOf(';')) : header;
+                        return GeminiContent.GeminiPart.builder()
+                                .inlineData(new GeminiBlob(mimeType, base64Data))
+                                .build();
+                    }
+                    throw new IllegalArgumentException("Invalid data URI format: " + urlString);
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -109,6 +157,20 @@ final class PartsAndContentsMapper {
 
             URI uri = pdfFile.url();
             if (uri != null) {
+                // Handle data URIs for PDF
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    String urlString = uri.toString();
+                    int commaIndex = urlString.indexOf(',');
+                    if (commaIndex > 0) {
+                        String header = urlString.substring(5, commaIndex);
+                        String base64Data = urlString.substring(commaIndex + 1);
+                        String mimeType = header.contains(";") ? header.substring(0, header.indexOf(';')) : header;
+                        return GeminiContent.GeminiPart.builder()
+                                .inlineData(new GeminiBlob(mimeType, base64Data))
+                                .build();
+                    }
+                    throw new IllegalArgumentException("Invalid data URI format: " + urlString);
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
