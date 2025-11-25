@@ -7,12 +7,16 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddingModelBuilder;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -28,6 +32,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private final GoogleAiEmbeddingModel.TaskType taskType;
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
+    private final EmbeddingRequestPreparer preparer;
 
     GoogleAiGeminiBatchEmbeddingModel(final Builder builder) {
         this(
@@ -44,7 +49,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     }
 
     GoogleAiGeminiBatchEmbeddingModel(Builder builder, final GeminiService geminiService) {
-        this.batchProcessor = new GeminiBatchProcessor<>(geminiService, new EmbeddingRequestPreparer());
+        this.preparer = new EmbeddingRequestPreparer();
+        this.batchProcessor = new GeminiBatchProcessor<>(geminiService, preparer);
         this.modelName = builder.modelName;
         this.taskType = builder.taskType;
         this.titleMetadataKey = builder.titleMetadataKey != null ? builder.titleMetadataKey : "title";
@@ -57,6 +63,17 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
         return batchProcessor.createBatchInline(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
+    }
+
+    public BatchResponse<Embedding> createBatchFromFile(String displayName, @Nullable Long priority, GeminiFile file) {
+        return batchProcessor.createBatchFromFile(displayName, priority, file, modelName, ASYNC_BATCH_EMBED_CONTENT);
+    }
+
+    public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<TextSegment>> requests)
+            throws IOException {
+        for (var request : requests) {
+            writer.write(preparer.createInlinedRequest(request.request()));
+        }
     }
 
     /**

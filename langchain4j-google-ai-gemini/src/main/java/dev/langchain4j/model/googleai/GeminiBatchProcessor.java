@@ -55,9 +55,24 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                 .toList();
 
         var request = new BatchCreateRequest<>(new Batch<>(
-                displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
+                displayName, new InputConfig<>(new Requests<>(inlineRequests), null), getOrDefault(priority, 0L)));
 
         return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
+    }
+
+    public BatchResponse<RESPONSE> createBatchFromFile(
+            String displayName,
+            @Nullable Long priority,
+            GeminiFiles.GeminiFile file,
+            String modelName,
+            GeminiService.BatchOperationType operationType) {
+        return processResponse(
+                geminiService.batchCreate(
+                        modelName,
+                        new BatchCreateRequest<>(new Batch<>(
+                                displayName, new InputConfig<>(null, file.uri()), getOrDefault(priority, 0L))),
+                        operationType),
+                preparer);
     }
 
     /**

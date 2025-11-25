@@ -58,10 +58,27 @@ public final class GeminiFiles {
      */
     public GeminiFile uploadFile(Path filePath, @Nullable String displayName) throws IOException, InterruptedException {
         ensureNotNull(filePath, "filePath");
+        return uploadFile(
+                Files.readAllBytes(filePath),
+                detectMimeType(filePath),
+                displayName != null ? displayName : filePath.getFileName().toString());
+    }
 
-        byte[] fileBytes = Files.readAllBytes(filePath);
-        String mimeType = detectMimeType(filePath);
-        String name = displayName != null ? displayName : filePath.getFileName().toString();
+    /**
+     * Uploads a file to Gemini using the resumable upload protocol.
+     *
+     * <p><strong>Note:</strong> The Files API lets you store up to 20 GB of files per project, with a per-file
+     * maximum size of 2 GB. Files are stored for 48 hours.
+     *
+     * @param fileBytes byte array that is the file to be uploaded
+     * @param mimeType  mimetype of the file that is being uploaded
+     * @param name      optional display name for the file
+     */
+    public GeminiFile uploadFile(byte[] fileBytes, String mimeType, String name)
+            throws IOException, InterruptedException {
+        ensureNotNull(fileBytes, "fileBytes");
+        ensureNotNull(mimeType, "mimeType");
+        ensureNotNull(name, "name");
 
         // Step 1: Initial resumable request to get upload URL
         String uploadUrl = initiateResumableUpload(fileBytes.length, mimeType, name);

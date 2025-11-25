@@ -1,17 +1,24 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -23,17 +30,21 @@ import org.jspecify.annotations.Nullable;
 @Experimental
 public final class GoogleAiGeminiBatchChatModel {
     private final GeminiBatchProcessor<
-                    ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+            ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final BaseGeminiChatModel chatModel;
+    private final String modelName;
+    private final ChatRequestPreparer preparer;
 
     GoogleAiGeminiBatchChatModel(final Builder builder) {
         this(builder, BaseGeminiChatModel.buildGeminiService(builder));
     }
 
     GoogleAiGeminiBatchChatModel(final Builder builder, final GeminiService geminiService) {
-        this.batchProcessor = new GeminiBatchProcessor<>(geminiService, new ChatRequestPreparer());
+        this.preparer = new ChatRequestPreparer();
+        this.batchProcessor = new GeminiBatchProcessor<>(geminiService, preparer);
         this.chatModel = new BaseGeminiChatModel(builder, geminiService);
+        this.modelName = builder.modelName;
     }
 
     /***
@@ -61,8 +72,19 @@ public final class GoogleAiGeminiBatchChatModel {
      */
     public BatchResponse<ChatResponse> createBatchInline(
             String displayName, @Nullable Long priority, List<ChatRequest> requests) {
-        var modelName = extractModelFromChatRequests(requests);
+        validateModelInChatRequests(modelName, requests);
         return batchProcessor.createBatchInline(displayName, priority, requests, modelName, BATCH_GENERATE_CONTENT);
+    }
+
+    public BatchResponse<ChatResponse> createBatchFromFile(String displayName, @Nullable Long priority, GeminiFile file) {
+        return batchProcessor.createBatchFromFile(displayName, priority, file, modelName, BATCH_GENERATE_CONTENT);
+    }
+
+    public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<ChatRequest>> requests)
+            throws IOException {
+        for (var request : requests) {
+            writer.write(preparer.createInlinedRequest(request.request()));
+        }
     }
 
     /**
@@ -97,16 +119,14 @@ public final class GoogleAiGeminiBatchChatModel {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
-    private static String extractModelFromChatRequests(List<ChatRequest> requests) {
+    private static void validateModelInChatRequests(String modelName, List<ChatRequest> requests) {
         var modelNames = requests.stream().map(ChatRequest::modelName).collect(Collectors.toUnmodifiableSet());
 
-        if (modelNames.size() != 1) {
+        if (modelNames.size() != 1 || !modelNames.contains(modelName)) {
             throw new IllegalArgumentException(
                     "Batch requests cannot contain ChatRequest objects with different models; "
-                            + "all requests must use the same model.");
+                            + "all requests must use the same model: " + modelName);
         }
-
-        return modelNames.iterator().next();
     }
 
     static Builder builder() {
@@ -114,7 +134,8 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
-        private Builder() {}
+        private Builder() {
+        }
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
@@ -123,7 +144,7 @@ public final class GoogleAiGeminiBatchChatModel {
 
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-                    ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+            ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {

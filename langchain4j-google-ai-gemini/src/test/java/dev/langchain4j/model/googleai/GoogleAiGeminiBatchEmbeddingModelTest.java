@@ -10,6 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +22,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
@@ -27,9 +31,12 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -285,6 +292,354 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT));
+        }
+    }
+
+    @Nested
+    class CreateBatchFromFile {
+
+        @Mock
+        private GeminiFile mockGeminiFile;
+
+        @Test
+        void should_create_batch_from_file_with_valid_parameters() {
+            // given
+            String displayName = "Batch from File";
+            Long priority = 1L;
+            when(mockGeminiFile.name()).thenReturn("files/test-file-123");
+            var expectedOperation = createPendingOperation("batches/embed-file-test-123", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, priority, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-file-test-123"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(ASYNC_BATCH_EMBED_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
+            assertThat(capturedRequest.batch().inputConfig().fileName()).isEqualTo("files/test-file-123");
+            assertThat(capturedRequest.batch().inputConfig().requests()).isNull();
+        }
+
+        @Test
+        void should_create_batch_from_file_with_null_priority() {
+            // given
+            String displayName = "Batch from File with Null Priority";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-456");
+            var expectedOperation = createPendingOperation("batches/embed-file-test-456", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, null, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-file-test-456"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(ASYNC_BATCH_EMBED_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().priority()).isZero();
+            assertThat(capturedRequest.batch().inputConfig().fileName()).isEqualTo("files/test-file-456");
+        }
+
+        @Test
+        void should_create_batch_from_file_with_high_priority() {
+            // given
+            String displayName = "High Priority File Batch";
+            Long priority = 100L;
+            when(mockGeminiFile.name()).thenReturn("files/test-file-high-priority");
+            var expectedOperation = createPendingOperation("batches/embed-file-high", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, priority, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-file-high"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(ASYNC_BATCH_EMBED_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isEqualTo(100L);
+        }
+
+        @Test
+        void should_create_batch_from_file_with_negative_priority() {
+            // given
+            String displayName = "Low Priority File Batch";
+            Long priority = -50L;
+            when(mockGeminiFile.name()).thenReturn("files/test-file-low-priority");
+            var expectedOperation = createPendingOperation("batches/embed-file-low", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, priority, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-file-low"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(ASYNC_BATCH_EMBED_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isEqualTo(-50L);
+        }
+
+        @Test
+        void should_throw_exception_when_creating_batch_from_file_fails() {
+            // given
+            String displayName = "Batch from File";
+            Long priority = 1L;
+            when(mockGeminiFile.name()).thenReturn("files/test-file-error");
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenThrow(new RuntimeException("Error creating batch from file"));
+
+            // when & then
+            assertThatThrownBy(() -> subject.createBatchFromFile(displayName, priority, mockGeminiFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Error creating batch from file");
+        }
+
+        @Test
+        void should_use_correct_model_name_when_creating_batch_from_file() {
+            // given
+            String displayName = "Model Name Test";
+            Long priority = 1L;
+            when(mockGeminiFile.name()).thenReturn("files/test-file-model");
+            var expectedOperation = createPendingOperation("batches/embed-file-model", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                    eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            subject.createBatchFromFile(displayName, priority, mockGeminiFile);
+
+            // then
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), any(), eq(ASYNC_BATCH_EMBED_CONTENT));
+        }
+    }
+
+    @Nested
+    class WriteBatchToFile {
+
+        @Mock
+        private JsonLinesWriter mockJsonLinesWriter;
+
+        @Captor
+        private ArgumentCaptor<GeminiEmbeddingRequest> embeddingRequestCaptor;
+
+        @Test
+        void should_write_single_request_to_file() throws Exception {
+            // given
+            var segment = TextSegment.from("Sample text");
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.model()).isEqualTo("models/" + MODEL_NAME);
+            assertThat(capturedRequest.content().parts()).hasSize(1);
+            assertThat(capturedRequest.content().parts().get(0).text()).isEqualTo("Sample text");
+        }
+
+        @Test
+        void should_write_multiple_requests_to_file() throws Exception {
+            // given
+            var segment1 = TextSegment.from("First text");
+            var segment2 = TextSegment.from("Second text");
+            var segment3 = TextSegment.from("Third text");
+            var requests = List.of(
+                    new BatchFileRequest<>("key-1", segment1),
+                    new BatchFileRequest<>("key-2", segment2),
+                    new BatchFileRequest<>("key-3", segment3));
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter, times(3)).write(embeddingRequestCaptor.capture());
+            var capturedRequests = embeddingRequestCaptor.getAllValues();
+            assertThat(capturedRequests).hasSize(3);
+            assertThat(capturedRequests.get(0).content().parts().get(0).text()).isEqualTo("First text");
+            assertThat(capturedRequests.get(1).content().parts().get(0).text()).isEqualTo("Second text");
+            assertThat(capturedRequests.get(2).content().parts().get(0).text()).isEqualTo("Third text");
+        }
+
+        @Test
+        void should_write_request_with_metadata_to_file() throws Exception {
+            // given
+            var segment = TextSegment.from("Document text", Metadata.from("title", "Document Title"));
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.title()).isEqualTo("Document Title");
+            assertThat(capturedRequest.content().parts().get(0).text()).isEqualTo("Document text");
+        }
+
+        @Test
+        void should_write_request_without_title_when_metadata_is_null() throws Exception {
+            // given
+            var segment = TextSegment.from("Text without metadata");
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.title()).isNull();
+            assertThat(capturedRequest.content().parts().get(0).text()).isEqualTo("Text without metadata");
+        }
+
+        @Test
+        void should_write_request_without_title_when_title_metadata_is_missing() throws Exception {
+            // given
+            var segment = TextSegment.from("Text with other metadata", Metadata.from("author", "John Doe"));
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.title()).isNull();
+        }
+
+        @Test
+        void should_handle_empty_requests_list() throws Exception {
+            // given
+            List<BatchFileRequest<TextSegment>> requests = List.of();
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter, never()).write(any());
+        }
+
+        @Test
+        void should_throw_exception_when_writing_to_file_fails() throws Exception {
+            // given
+            var segment = TextSegment.from("Sample text");
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+            doThrow(new IOException("Error writing to file")).when(mockJsonLinesWriter).write(any());
+
+            // when & then
+            assertThatThrownBy(() -> subject.writeBatchToFile(mockJsonLinesWriter, requests))
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("Error writing to file");
+        }
+
+        @Test
+        void should_include_task_type_in_written_request() throws Exception {
+            // given
+            var segment = TextSegment.from("Sample text");
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.taskType()).isEqualTo(TaskType.RETRIEVAL_DOCUMENT);
+        }
+
+        @Test
+        void should_include_output_dimensionality_when_set() throws Exception {
+            // given
+            var subjectWithDimensionality = new GoogleAiGeminiBatchEmbeddingModel(
+                    GoogleAiGeminiBatchEmbeddingModel.builder()
+                            .apiKey("apiKey")
+                            .modelName(MODEL_NAME)
+                            .taskType(TaskType.RETRIEVAL_DOCUMENT)
+                            .outputDimensionality(256),
+                    mockGeminiService);
+            var segment = TextSegment.from("Sample text");
+            var request = new BatchFileRequest<>("key-1", segment);
+            var requests = List.of(request);
+
+            // when
+            subjectWithDimensionality.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter).write(embeddingRequestCaptor.capture());
+            var capturedRequest = embeddingRequestCaptor.getValue();
+            assertThat(capturedRequest.outputDimensionality()).isEqualTo(256);
+        }
+
+        @Test
+        void should_write_requests_with_different_text_lengths() throws Exception {
+            // given
+            var shortSegment = TextSegment.from("Short");
+            var mediumSegment = TextSegment.from("This is a medium length text segment for testing");
+            var longSegment = TextSegment.from(
+                    "This is a very long text segment that contains much more content "
+                            + "and is designed to test how the writer handles larger text inputs "
+                            + "with multiple sentences and various punctuation marks.");
+            var requests = List.of(
+                    new BatchFileRequest<>("key-1", shortSegment),
+                    new BatchFileRequest<>("key-2", mediumSegment),
+                    new BatchFileRequest<>("key-3", longSegment));
+
+            // when
+            subject.writeBatchToFile(mockJsonLinesWriter, requests);
+
+            // then
+            verify(mockJsonLinesWriter, times(3)).write(embeddingRequestCaptor.capture());
+            var capturedRequests = embeddingRequestCaptor.getAllValues();
+            assertThat(capturedRequests).hasSize(3);
+            assertThat(capturedRequests.get(0).content().parts().get(0).text()).isEqualTo("Short");
+            assertThat(capturedRequests.get(1).content().parts().get(0).text())
+                    .isEqualTo("This is a medium length text segment for testing");
+            assertThat(capturedRequests.get(2).content().parts().get(0).text()).contains("very long text segment");
         }
     }
 

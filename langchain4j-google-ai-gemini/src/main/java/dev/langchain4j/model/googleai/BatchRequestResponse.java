@@ -87,7 +87,16 @@ public final class BatchRequestResponse {
         /**
          * Configures the input to the batch request.
          */
-        record InputConfig<REQ>(Requests<REQ> requests) {}
+        record InputConfig<REQ>(Requests<REQ> requests, @JsonProperty("file_name") String fileName) {
+            public InputConfig {
+                if (requests != null && fileName != null) {
+                    throw new IllegalArgumentException("Only one of 'requests' or 'fileName' can be set, not both");
+                }
+                if (requests == null && fileName == null) {
+                    throw new IllegalArgumentException("Either 'requests' or 'fileName' must be set");
+                }
+            }
+        }
 
         /**
          * Wrapper for the list of inlined requests.
@@ -141,4 +150,6 @@ public final class BatchRequestResponse {
     }
 
     record ListOperationsResponse<RESP>(List<Operation<RESP>> operations, String nextPageToken) {}
+
+    public record BatchFileRequest<REQ>(String key, REQ request) {}
 }
