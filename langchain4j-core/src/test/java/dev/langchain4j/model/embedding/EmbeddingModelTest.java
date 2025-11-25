@@ -73,7 +73,7 @@ class EmbeddingModelTest implements WithAssertions {
 
 
     @Test
-    void defaultModelNameShouldReturnNotImplemented() {
+    void defaultModelNameShouldReturnUnknown() {
         EmbeddingModel model = new BrokenEmbeddingModelImpl();
 
         String name = model.modelName();
