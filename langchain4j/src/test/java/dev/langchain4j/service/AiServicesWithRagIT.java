@@ -58,6 +58,7 @@ import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -656,7 +657,8 @@ class AiServicesWithRagIT {
                         .queryTransformer(new QueryTransformer() {
                             @Override
                             public Collection<Query> transform(Query query) {
-                                capturedMessages.set(query.metadata().chatMemory());
+                                capturedMessages.set(
+                                        new ArrayList<>(query.metadata().chatMemory()));
                                 return List.of(query);
                             }
                         })
