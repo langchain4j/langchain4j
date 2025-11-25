@@ -106,9 +106,9 @@ class Converter {
                         var name = responseFormat.jsonSchema().name();
                         var jsonSchema = JsonSchemaElementUtils.toMap(
                                 responseFormat.jsonSchema().rootElement());
-                        builder.withJsonSchemaResponse(name, jsonSchema, true);
+                        builder.responseAsJsonSchema(name, jsonSchema, true);
                     } else {
-                        builder.withJsonResponse();
+                        builder.responseAsJson();
                     }
                 }
                 case TEXT -> {
@@ -125,6 +125,17 @@ class Converter {
             builder.seed(watsonxParameters.seed());
             builder.timeLimit(watsonxParameters.timeout());
             builder.topLogprobs(watsonxParameters.topLogprobs());
+            builder.guidedChoice(watsonxParameters.guidedChoice());
+            builder.guidedGrammar(watsonxParameters.guidedGrammar());
+            builder.guidedRegex(watsonxParameters.guidedRegex());
+            builder.repetitionPenalty(
+                    nonNull(watsonxParameters.repetitionPenalty())
+                            ? watsonxParameters.repetitionPenalty().floatValue()
+                            : null);
+            builder.lengthPenalty(
+                    nonNull(watsonxParameters.lengthPenalty())
+                            ? watsonxParameters.lengthPenalty().floatValue()
+                            : null);
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
             ToolChoice toolChoice = parameters.toolChoice();
