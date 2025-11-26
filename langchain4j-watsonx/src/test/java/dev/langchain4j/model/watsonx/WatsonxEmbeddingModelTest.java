@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.Json;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
+import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingRequest;
@@ -56,6 +56,8 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingServiceBuilder.version(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logRequests(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logResponses(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.authenticator(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.apiKey(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.build()).thenReturn(mockEmbeddingService);
     }
 
@@ -67,7 +69,7 @@ public class WatsonxEmbeddingModelTest {
 
         var mockHttpClient = mock(HttpClient.class);
         var mockHttpResponse = mock(HttpResponse.class);
-        var mockAuthenticatorProvider = mock(IAMAuthenticator.class);
+        var mockAuthenticatorProvider = mock(IBMCloudAuthenticator.class);
         var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(mockAuthenticatorProvider.token()).thenReturn("my-token");
@@ -89,7 +91,7 @@ public class WatsonxEmbeddingModelTest {
                     .version("my-version")
                     .logRequests(true)
                     .logResponses(true)
-                    .authenticationProvider(mockAuthenticatorProvider)
+                    .authenticator(mockAuthenticatorProvider)
                     .timeout(Duration.ofSeconds(10))
                     .build();
 
@@ -104,8 +106,7 @@ public class WatsonxEmbeddingModelTest {
             assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("model-name")
-                    .authenticationProvider(
-                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .apiKey("api-key")
                     .projectId("project-id")
                     .spaceId("space-id")
                     .build());

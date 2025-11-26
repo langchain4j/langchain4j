@@ -12,7 +12,6 @@ import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -90,13 +89,9 @@ abstract class WatsonxChat {
                 .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
                 .build();
 
-        var chatServiceBuilder = ChatService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            chatServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            chatServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+        var chatServiceBuilder = nonNull(builder.authenticator)
+                ? ChatService.builder().authenticator(builder.authenticator)
+                : ChatService.builder().apiKey(builder.apiKey);
 
         chatService = chatServiceBuilder
                 .baseUrl(builder.baseUrl)

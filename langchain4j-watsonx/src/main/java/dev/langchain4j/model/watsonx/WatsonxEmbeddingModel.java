@@ -4,7 +4,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
@@ -36,13 +35,10 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
     private final String modelName;
 
     private WatsonxEmbeddingModel(Builder builder) {
-        var embeddingServiceBuilder = EmbeddingService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            embeddingServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            embeddingServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var embeddingServiceBuilder = nonNull(builder.authenticator)
+                ? EmbeddingService.builder().authenticator(builder.authenticator)
+                : EmbeddingService.builder().apiKey(builder.apiKey);
 
         embeddingService = embeddingServiceBuilder
                 .baseUrl(builder.baseUrl)
