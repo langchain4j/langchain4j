@@ -270,4 +270,14 @@ public class MetadataFilterBuilder {
     public Filter isNotIn(Collection<?> values) {
         return new IsNotIn(key, values);
     }
+
+    public Filter like(String pattern, boolean negated) {
+        return new dev.langchain4j.store.embedding.filter.comparison.Like(
+                key, pattern, dev.langchain4j.store.embedding.filter.comparison.Like.Operator.LIKE, negated);
+    }
+
+    public Filter ilike(String pattern, boolean negated) {
+        return new dev.langchain4j.store.embedding.filter.comparison.Like(
+                key, pattern, dev.langchain4j.store.embedding.filter.comparison.Like.Operator.ILIKE, negated);
+    }
 }
