@@ -404,18 +404,6 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-embeddings-bge-small-zh</artifactId>
-                <version>${langchain4j.beta.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-embeddings-bge-small-zh-q</artifactId>
-                <version>${langchain4j.beta.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh-v15</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
