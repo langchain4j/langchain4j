@@ -1,12 +1,19 @@
 package dev.langchain4j.agentic.agent;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
@@ -20,44 +27,81 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
-    private final Class<T> agentServiceClass;
+    final Class<T> agentServiceClass;
+    final Class<?> agentReturnType;
+    final List<AgentArgument> arguments;
 
-    String outputName;
+    String name;
+    String agentId;
+    String description;
+    String outputKey;
+    boolean async;
+
+    Consumer<AgentRequest> beforeListener = request -> {};
+    Consumer<AgentResponse> afterListener = response -> {};
 
     private ChatModel model;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
-    private Object[] objectsWithTools;
     private Function<AgenticScope, String> contextProvider;
-    private String[] agentNames;
-    private ToolProvider toolProvider;
-    private Integer maxSequentialToolsInvocations;
-    private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
+    private String[] contextProvidingAgents;
     private ContentRetriever contentRetriever;
     private RetrievalAugmentor retrievalAugmentor;
+    private Function<Object, String> systemMessageProvider;
+
     private InputGuardrailsConfig inputGuardrailsConfig;
     private OutputGuardrailsConfig outputGuardrailsConfig;
     private Class<? extends InputGuardrail>[] inputGuardrailClasses;
     private Class<? extends OutputGuardrail>[] outputGuardrailClasses;
     private InputGuardrail[] inputGuardrails;
     private OutputGuardrail[] outputGuardrails;
-    private Function<Object, String> systemMessageProvider;
+
+    private Object[] objectsWithTools;
+    private ToolProvider toolProvider;
+    private Integer maxSequentialToolsInvocations;
+    private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
+    private boolean executeToolsConcurrently;
+    private Executor concurrentToolsExecutor;
+    private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
+    private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agentReturnType = agenticMethod.getReturnType();
+        this.arguments = argumentsFromMethod(agenticMethod);
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
-        if (!agent.outputName().isEmpty()) {
-            outputName = agent.outputName();
+
+        configureAgent(agentServiceClass, this);
+
+        this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
+
+        if (!isNullOrBlank(agent.description())) {
+            this.description = agent.description();
+        } else if (!isNullOrBlank(agent.value())) {
+            this.description = agent.value();
+        }
+        if (!isNullOrBlank(agent.outputKey())) {
+            this.outputKey = agent.outputKey();
+        }
+        this.async = agent.async();
+        if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
+            this.contextProvidingAgents = agent.summarizedContext();
         }
     }
 
@@ -66,7 +110,7 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
-        AiServiceContext context = new AiServiceContext(agentServiceClass);
+        AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
             aiServices.chatModel(model);
@@ -77,17 +121,8 @@ public class AgentBuilder<T> {
         if (chatMemoryProvider != null) {
             aiServices.chatMemoryProvider(chatMemoryProvider);
         }
-        if (objectsWithTools != null) {
-            aiServices.tools(objectsWithTools);
-        }
-        if (toolProvider != null) {
-            aiServices.toolProvider(toolProvider);
-        }
-        if (maxSequentialToolsInvocations != null) {
-            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
-        }
-        if (hallucinatedToolNameStrategy != null) {
-            aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        if (systemMessageProvider != null) {
+            aiServices.systemMessageProvider(systemMessageProvider);
         }
         if (contentRetriever != null) {
             aiServices.contentRetriever(contentRetriever);
@@ -95,6 +130,39 @@ public class AgentBuilder<T> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
+
+        setupGuardrails(aiServices);
+        setupTools(aiServices);
+
+        UserMessageRecorder messageRecorder = new UserMessageRecorder();
+        boolean agenticScopeDependent =
+                contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
+        if (agenticScope != null && agenticScopeDependent) {
+            if (contextProvider != null) {
+                aiServices.chatRequestTransformer(
+                        new Context.AgenticScopeContextGenerator(agenticScope, contextProvider)
+                                .andThen(messageRecorder));
+            } else {
+                aiServices.chatRequestTransformer(
+                        new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
+            }
+        } else {
+            aiServices.chatRequestTransformer(messageRecorder);
+        }
+
+        return (T) Proxy.newProxyInstance(
+                agentServiceClass.getClassLoader(),
+                new Class<?>[] {
+                    agentServiceClass,
+                    AgentSpecification.class,
+                    ChatMemoryAccess.class,
+                    AgenticScopeOwner.class,
+                    ChatMessagesAccess.class
+                },
+                new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
+    }
+
+    private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
             aiServices.inputGuardrailsConfig(inputGuardrailsConfig);
         }
@@ -113,27 +181,34 @@ public class AgentBuilder<T> {
         if (outputGuardrails != null) {
             aiServices.outputGuardrails(outputGuardrails);
         }
-        if (systemMessageProvider != null) {
-            aiServices.systemMessageProvider(systemMessageProvider);
-        }
-
-        boolean agenticScopeDependent = contextProvider != null || (agentNames != null && agentNames.length > 0);
-        if (agenticScope != null && agenticScopeDependent) {
-            if (contextProvider != null) {
-                aiServices.chatRequestTransformer(new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
-            } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, agentNames));
-            }
-        }
-
-        return (T) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[]{agentServiceClass, AgentSpecification.class, ChatMemoryAccess.class, AgenticScopeOwner.class},
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
     }
 
-    String agentId() {
-        return agentServiceClass.getName();
+    private void setupTools(AiServices<T> aiServices) {
+        if (objectsWithTools != null) {
+            aiServices.tools(objectsWithTools);
+        }
+        if (toolProvider != null) {
+            aiServices.toolProvider(toolProvider);
+        }
+        if (maxSequentialToolsInvocations != null) {
+            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        }
+        if (hallucinatedToolNameStrategy != null) {
+            aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        }
+        if (executeToolsConcurrently) {
+            if (concurrentToolsExecutor != null) {
+                aiServices.executeToolsConcurrently(concurrentToolsExecutor);
+            } else {
+                aiServices.executeToolsConcurrently();
+            }
+        }
+        if (toolArgumentsErrorHandler != null) {
+            aiServices.toolArgumentsErrorHandler(toolArgumentsErrorHandler);
+        }
+        if (toolExecutionErrorHandler != null) {
+            aiServices.toolExecutionErrorHandler(toolExecutionErrorHandler);
+        }
     }
 
     public AgentBuilder<T> chatModel(ChatModel model) {
@@ -166,7 +241,8 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> hallucinatedToolNameStrategy(Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
+    public AgentBuilder<T> hallucinatedToolNameStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         this.hallucinatedToolNameStrategy = hallucinatedToolNameStrategy;
         return this;
     }
@@ -191,12 +267,14 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrailClasses(Class<? extends I>... inputGuardrailClasses) {
+    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrailClasses(
+            Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
         return this;
     }
 
-    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrailClasses(Class<? extends O>... outputGuardrailClasses) {
+    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrailClasses(
+            Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
         return this;
     }
@@ -211,8 +289,24 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> outputName(String outputName) {
-        this.outputName = outputName;
+    public AgentBuilder<T> name(String name) {
+        this.name = name;
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
+        return this;
+    }
+
+    public AgentBuilder<T> description(String description) {
+        this.description = description;
+        return this;
+    }
+
+    public AgentBuilder<T> outputKey(String outputKey) {
+        this.outputKey = outputKey;
+        return this;
+    }
+
+    public AgentBuilder<T> async(boolean async) {
+        this.async = async;
         return this;
     }
 
@@ -221,13 +315,44 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> summarizedContext(String... agentNames) {
-        this.agentNames = agentNames;
+    public AgentBuilder<T> summarizedContext(String... contextProvidingAgents) {
+        this.contextProvidingAgents = contextProvidingAgents;
         return this;
     }
 
     public AgentBuilder<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         this.systemMessageProvider = systemMessageProvider;
+        return this;
+    }
+
+    public AgentBuilder<T> executeToolsConcurrently() {
+        this.executeToolsConcurrently = true;
+        return this;
+    }
+
+    public AgentBuilder<T> executeToolsConcurrently(Executor executor) {
+        this.executeToolsConcurrently = true;
+        this.concurrentToolsExecutor = executor;
+        return this;
+    }
+
+    public AgentBuilder<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler toolArgumentsErrorHandler) {
+        this.toolArgumentsErrorHandler = toolArgumentsErrorHandler;
+        return this;
+    }
+
+    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+        this.toolExecutionErrorHandler = toolExecutionErrorHandler;
+        return this;
+    }
+
+    public AgentBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> beforeListener) {
+        this.beforeListener = this.beforeListener.andThen(beforeListener);
+        return this;
+    }
+
+    public AgentBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
+        this.afterListener = this.afterListener.andThen(afterListener);
         return this;
     }
 }

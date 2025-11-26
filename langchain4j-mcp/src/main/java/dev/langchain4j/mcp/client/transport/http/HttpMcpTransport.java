@@ -14,10 +14,13 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -36,11 +39,14 @@ public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String CONTENT_TYPE_JSON = "application/json";
     private volatile Runnable onFailure;
 
     // this is obtained from the server after initializing the SSE channel
@@ -56,10 +62,11 @@ public class HttpMcpTransport implements McpTransport {
         httpClientBuilder.writeTimeout(timeout);
         this.logRequests = builder.logRequests;
         if (builder.logRequests) {
-            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor());
+            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor(builder.logger));
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
+        customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         client = httpClientBuilder.build();
     }
 
@@ -148,7 +155,8 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     private EventSource startSseChannel(boolean logResponses) {
-        Request request = new Request.Builder().url(sseUrl).build();
+        Request request =
+                new Request.Builder().url(sseUrl).headers(buildCommonHeaders()).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
         SseEventListener listener =
                 new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
@@ -174,10 +182,25 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    private Headers buildCommonHeaders() {
+        Headers.Builder headerBuilder = new Headers.Builder();
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
+        return headerBuilder.build();
+    }
+
     private Request createRequest(McpClientMessage message) throws JsonProcessingException {
+        Headers.Builder headerBuilder = new Headers.Builder().add(CONTENT_TYPE, CONTENT_TYPE_JSON);
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
+
         return new Request.Builder()
                 .url(postUrl)
-                .header("Content-Type", "application/json")
+                .headers(headerBuilder.build())
                 .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(message)))
                 .build();
     }
@@ -192,12 +215,18 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static class Builder {
 
         private String sseUrl;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
+        private Logger logger;
 
         /**
          * The initial URL where to connect to the server and request a SSE
@@ -205,6 +234,16 @@ public class HttpMcpTransport implements McpTransport {
          */
         public Builder sseUrl(String sseUrl) {
             this.sseUrl = sseUrl;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -220,6 +259,15 @@ public class HttpMcpTransport implements McpTransport {
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

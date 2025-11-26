@@ -1,5 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
+
 import com.azure.ai.openai.models.*;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -7,11 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back

@@ -2,21 +2,12 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-import com.openai.azure.AzureOpenAIServiceVersion;
-import com.openai.azure.credential.AzureApiKeyCredential;
-import com.openai.client.OpenAIClient;
-import com.openai.client.OpenAIClientAsync;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
-import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.core.JsonValue;
-import com.openai.credential.Credential;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 import com.openai.models.ReasoningEffort;
@@ -29,7 +20,9 @@ import com.openai.models.chat.completions.ChatCompletionContentPartImage;
 import com.openai.models.chat.completions.ChatCompletionContentPartInputAudio;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionFunctionTool;
 import com.openai.models.chat.completions.ChatCompletionMessage;
+import com.openai.models.chat.completions.ChatCompletionMessageFunctionToolCall;
 import com.openai.models.chat.completions.ChatCompletionMessageParam;
 import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
@@ -56,18 +49,15 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import java.net.Proxy;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,213 +65,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 class InternalOpenAiOfficialHelper {
-
-    static final String OPENAI_URL = "https://api.openai.com/v1";
-    static final String GITHUB_MODELS_URL = "https://models.inference.ai.azure.com";
-    static final String GITHUB_TOKEN = "GITHUB_TOKEN";
-    static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
-
-    enum ModelHost {
-        OPENAI,
-        AZURE_OPENAI,
-        GITHUB_MODELS
-    }
-
-    static ModelHost detectModelHost(
-            boolean isAzure,
-            boolean isGitHubModels,
-            String baseUrl,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
-        if (isAzure) {
-            return ModelHost.AZURE_OPENAI; // Forced by the user
-        }
-        if (isGitHubModels) {
-            return ModelHost.GITHUB_MODELS; // Forced by the user
-        }
-        if (baseUrl != null) {
-            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/")) {
-                return ModelHost.AZURE_OPENAI;
-            } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
-                return ModelHost.GITHUB_MODELS;
-            }
-        }
-        if (azureDeploymentName != null || azureOpenAIServiceVersion != null) {
-            return ModelHost.AZURE_OPENAI;
-        }
-        return ModelHost.OPENAI;
-    }
-
-    static OpenAIClient setupSyncClient(
-            String baseUrl,
-            String apiKey,
-            Credential credential,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAiServiceVersion,
-            String organizationId,
-            ModelHost modelHost,
-            OpenAIClient openAIClient,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Map<String, String> customHeaders) {
-
-        if (openAIClient != null) {
-            return openAIClient;
-        }
-
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
-        builder.baseUrl(
-                calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
-
-        Credential calculatedCredential = calculateCredential(modelHost, apiKey, credential);
-        String calculatedApiKey = calculateApiKey(modelHost, apiKey);
-        if (calculatedCredential == null && calculatedApiKey == null) {
-            throw new IllegalArgumentException("Either apiKey or credential must be set to authenticate");
-        } else if (calculatedCredential != null) {
-            builder.credential(calculatedCredential);
-        } else {
-            builder.apiKey(calculatedApiKey);
-        }
-        builder.organization(organizationId);
-
-        if (azureOpenAiServiceVersion != null) {
-            builder.azureServiceVersion(azureOpenAiServiceVersion);
-        }
-
-        if (proxy != null) {
-            builder.proxy(proxy);
-        }
-
-        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
-        if (customHeaders != null) {
-            builder.putAllHeaders(customHeaders.entrySet().stream()
-                    .collect(
-                            Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
-        }
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-        builder.timeout(timeout);
-
-        builder.maxRetries(getOrDefault(maxRetries, 2));
-
-        return builder.build();
-    }
-
-    static OpenAIClientAsync setupASyncClient(
-            String baseUrl,
-            String apiKey,
-            Credential credential,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAiServiceVersion,
-            ModelHost modelHost,
-            OpenAIClientAsync openAIClientAsync,
-            String organizationId,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Map<String, String> customHeaders) {
-
-        if (openAIClientAsync != null) {
-            return openAIClientAsync;
-        }
-
-        OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
-        builder.baseUrl(
-                calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
-
-        Credential calculatedCredential = calculateCredential(modelHost, apiKey, credential);
-        String calculatedApiKey = calculateApiKey(modelHost, apiKey);
-        if (calculatedCredential == null && calculatedApiKey == null) {
-            throw new IllegalArgumentException("Either apiKey or credential must be set to authenticate");
-        } else if (calculatedCredential != null) {
-            builder.credential(calculatedCredential);
-        } else {
-            builder.apiKey(calculatedApiKey);
-        }
-        builder.organization(organizationId);
-
-        if (azureOpenAiServiceVersion != null) {
-            builder.azureServiceVersion(azureOpenAiServiceVersion);
-        }
-
-        if (proxy != null) {
-            builder.proxy(proxy);
-        }
-
-        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
-        if (customHeaders != null) {
-            builder.putAllHeaders(customHeaders.entrySet().stream()
-                    .collect(
-                            Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
-        }
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-        builder.timeout(timeout);
-
-        builder.maxRetries(getOrDefault(maxRetries, 2));
-
-        return builder.build();
-    }
-
-    private static String calculateBaseUrl(
-            final String baseUrl,
-            ModelHost modelHost,
-            String modelName,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAiServiceVersion) {
-        if (modelHost == ModelHost.OPENAI) {
-            return getOrDefault(baseUrl, OPENAI_URL);
-        } else if (modelHost == ModelHost.GITHUB_MODELS) {
-            return GITHUB_MODELS_URL;
-        } else if (modelHost == ModelHost.AZURE_OPENAI) {
-            // Using Azure OpenAI
-            if (azureDeploymentName == null) {
-                // If the Azure deployment name is not configured, we use the model name instead, as it's the default
-                // deployment name
-                azureDeploymentName = modelName;
-            }
-            ensureNotBlank(azureDeploymentName, "azureDeploymentName");
-            String tmpUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            if (azureOpenAiServiceVersion == null) {
-                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
-            }
-            return tmpUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAiServiceVersion.value();
-        } else {
-            throw new IllegalArgumentException("Unknown model host: " + modelHost);
-        }
-    }
-
-    private static Credential calculateCredential(ModelHost modelHost, String apiKey, Credential credential) {
-        if (apiKey != null) {
-            if (modelHost == ModelHost.AZURE_OPENAI) {
-                return AzureApiKeyCredential.create(apiKey);
-            }
-        } else if (credential != null) {
-            return credential;
-        } else if (modelHost == ModelHost.AZURE_OPENAI) {
-            try {
-                return AzureInternalOpenAiOfficialHelper.getAzureCredential();
-            } catch (NoClassDefFoundError e) {
-                throw new IllegalArgumentException(
-                        "Azure OpenAI was detected, but no credential was provided. "
-                                + "If you want to use passwordless authentication, you need to add the Azure Identity library (groupId=`com.azure`, artifactId=`azure-identity`) to your classpath.");
-            }
-        }
-        return null;
-    }
-
-    private static String calculateApiKey(ModelHost modelHost, String apiKey) {
-        if (modelHost != ModelHost.AZURE_OPENAI && apiKey != null) {
-            return apiKey;
-        } else if (modelHost == ModelHost.GITHUB_MODELS && System.getenv(GITHUB_TOKEN) != null) {
-            return System.getenv(GITHUB_TOKEN);
-        }
-        return null;
-    }
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -318,13 +101,13 @@ class InternalOpenAiOfficialHelper {
             }
 
             List<ChatCompletionMessageToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
-                    .map(it -> ChatCompletionMessageToolCall.builder()
+                    .map(it -> ChatCompletionMessageToolCall.ofFunction(ChatCompletionMessageFunctionToolCall.builder()
                             .id(it.id())
-                            .function(ChatCompletionMessageToolCall.Function.builder()
+                            .function(ChatCompletionMessageFunctionToolCall.Function.builder()
                                     .name(it.name())
                                     .arguments(it.arguments())
                                     .build())
-                            .build())
+                            .build()))
                     .collect(toList());
 
             return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
@@ -403,9 +186,9 @@ class InternalOpenAiOfficialHelper {
             functionDefinitionBuilder.strict(true);
         }
 
-        return ChatCompletionTool.builder()
+        return ChatCompletionTool.ofFunction(ChatCompletionFunctionTool.builder()
                 .function(functionDefinitionBuilder.build())
-                .build();
+                .build());
     }
 
     private static FunctionParameters toOpenAiParameters(ToolSpecification toolSpecification, boolean strict) {
@@ -453,6 +236,7 @@ class InternalOpenAiOfficialHelper {
         if (toolCalls.isPresent()) {
             List<ToolExecutionRequest> toolExecutionRequests = toolCalls.get().stream()
                     .map(InternalOpenAiOfficialHelper::toToolExecutionRequest)
+                    .filter(java.util.Objects::nonNull)
                     .collect(toList());
 
             if (text.isEmpty()) {
@@ -468,11 +252,15 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ChatCompletionMessageToolCall toolCall) {
-        ChatCompletionMessageToolCall.Function function = toolCall.function();
+        if (!toolCall.isFunction() || toolCall.function().isEmpty()) {
+            return null;
+        }
+        ChatCompletionMessageFunctionToolCall functionToolCall =
+                toolCall.function().get();
         return ToolExecutionRequest.builder()
-                .id(toolCall.id())
-                .name(function.name())
-                .arguments(function.arguments())
+                .id(functionToolCall.id())
+                .name(functionToolCall.function().name())
+                .arguments(functionToolCall.function().arguments())
                 .build();
     }
 
@@ -566,7 +354,7 @@ class InternalOpenAiOfficialHelper {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             Map<String, JsonValue> properties = new HashMap<>();
@@ -589,6 +377,7 @@ class InternalOpenAiOfficialHelper {
         return switch (toolChoice) {
             case AUTO -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.AUTO);
             case REQUIRED -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.REQUIRED);
+            case NONE -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.NONE);
         };
     }
 

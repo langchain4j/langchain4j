@@ -19,9 +19,12 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiChatModelThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
@@ -51,7 +54,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
@@ -117,7 +121,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -134,8 +139,16 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(aiMessage.attributes()).isEmpty();
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
+    @RetryingTest(3)
+    void should_think_and_return_thinking_with_tools__sendThinking_true() {
+        should_think_and_return_thinking_with_tools(true);
+    }
+
+    @RetryingTest(value = 3, suspendForMs = 2_000)
+    void should_think_and_return_thinking_with_tools__sendThinking_false() {
+        should_think_and_return_thinking_with_tools(false);
+    }
+
     void should_think_and_return_thinking_with_tools(boolean sendThinking) {
 
         // given
@@ -167,7 +180,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                         .toolSpecifications(toolSpecification)
                         .build())
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
@@ -268,7 +282,8 @@ class GoogleAiGeminiChatModelThinkingIT {
 
                 .thinkingConfig(thinkingConfig)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -304,7 +319,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
 
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");

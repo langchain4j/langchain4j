@@ -6,8 +6,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,9 +24,30 @@ public class HttpRequest {
 
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
-        this.url = ensureNotBlank(builder.url, "url");
+        this.url = buildUrl(builder);
         this.headers = copy(builder.headers);
         this.body = builder.body;
+    }
+
+    private static String buildUrl(Builder builder) {
+        String url = ensureNotBlank(builder.url, "url");
+        if (isNullOrEmpty(builder.queryParams)) {
+            return url;
+        }
+
+        String queryString = buildQueryString(builder.queryParams);
+        String separator = url.contains("?") ? "&" : "?";
+        return url + separator + queryString;
+    }
+
+    private static String buildQueryString(Map<String, String> queryParams) {
+        return queryParams.entrySet().stream()
+                .map(entry -> encodeQueryParam(entry.getKey()) + "=" + encodeQueryParam(entry.getValue()))
+                .collect(joining("&"));
+    }
+
+    private static String encodeQueryParam(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     public HttpMethod method() {
@@ -50,6 +75,7 @@ public class HttpRequest {
         private HttpMethod method;
         private String url;
         private Map<String, List<String>> headers;
+        private Map<String, String> queryParams;
         private String body;
 
         private Builder() {}
@@ -102,6 +128,37 @@ public class HttpRequest {
 
         public Builder headers(Map<String, List<String>> headers) {
             this.headers = headers;
+            return this;
+        }
+
+        public Builder addQueryParam(String name, String value) {
+            ensureNotBlank(name, "name");
+            ensureNotBlank(value, "value");
+
+            if (this.queryParams == null) {
+                this.queryParams = new LinkedHashMap<>();
+            }
+            this.queryParams.put(name, value);
+            return this;
+        }
+
+        public Builder addQueryParams(Map<String, String> queryParams) {
+            if (isNullOrEmpty(queryParams)) {
+                return this;
+            }
+            if (this.queryParams == null) {
+                this.queryParams = new LinkedHashMap<>();
+            }
+            this.queryParams.putAll(queryParams);
+            return this;
+        }
+
+        public Builder queryParams(Map<String, String> queryParams) {
+            if (queryParams == null) {
+                this.queryParams = null;
+            } else {
+                this.queryParams = new LinkedHashMap<>(queryParams);
+            }
             return this;
         }
 

@@ -42,7 +42,7 @@ public class Result<T> {
      * @since 1.2.0
      */
     public Result(ResultBuilder<T> builder) {
-        this.content = ensureNotNull(builder.content, "content");
+        this.content = builder.content;
         this.tokenUsage = builder.tokenUsage;
         this.sources = copy(builder.sources);
         this.finishReason = builder.finishReason;
@@ -56,7 +56,7 @@ public class Result<T> {
                   List<Content> sources,
                   FinishReason finishReason,
                   List<ToolExecution> toolExecutions) {
-        this.content = ensureNotNull(content, "content");
+        this.content = content;
         this.tokenUsage = tokenUsage;
         this.sources = copy(sources);
         this.finishReason = finishReason;
@@ -66,7 +66,7 @@ public class Result<T> {
     }
 
     public static <T> ResultBuilder<T> builder() {
-        return new ResultBuilder<T>();
+        return new ResultBuilder<>();
     }
 
     public T content() {

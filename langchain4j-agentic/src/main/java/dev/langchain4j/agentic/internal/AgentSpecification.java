@@ -1,6 +1,14 @@
 package dev.langchain4j.agentic.internal;
 
-public interface AgentSpecification {
+import dev.langchain4j.agentic.agent.AgentRequest;
+import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.planner.AgentInstance;
 
-    String outputName();
+public interface AgentSpecification extends AgentInstance {
+
+    boolean async();
+
+    void beforeInvocation(AgentRequest request);
+
+    void afterInvocation(AgentResponse response);
 }

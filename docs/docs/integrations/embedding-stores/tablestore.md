@@ -1,5 +1,5 @@
 ---
-sidebar_position: 23
+sidebar_position: 24
 ---
 
 # Tablestore
@@ -13,7 +13,7 @@ https://www.aliyun.com/product/ots
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-tablestore</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 

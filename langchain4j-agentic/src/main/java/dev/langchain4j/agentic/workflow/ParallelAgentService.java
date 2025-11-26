@@ -1,8 +1,9 @@
 package dev.langchain4j.agentic.workflow;
 
-import java.util.concurrent.ExecutorService;
+import dev.langchain4j.agentic.planner.AgenticService;
+import java.util.concurrent.Executor;
 
-public interface ParallelAgentService<T> extends WorkflowService<ParallelAgentService<T>, T> {
+public interface ParallelAgentService<T> extends AgenticService<ParallelAgentService<T>, T> {
 
-    ParallelAgentService<T> executorService(ExecutorService executorService);
+    ParallelAgentService<T> executor(Executor executor);
 }

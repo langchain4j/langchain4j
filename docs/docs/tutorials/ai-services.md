@@ -188,6 +188,14 @@ String chat(@UserMessage String userMessage);
 
 String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
 
+String chat(@UserMessage String userMessage, @UserMessage Content content); // content can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image); // second argument can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
 @UserMessage("What is the capital of Germany?")
 String chat();
 
@@ -247,8 +255,26 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 </details>
 
 ## Multimodality
-AI services currently do not support multimodality,
-please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
+
+Additionally to the text content,
+AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
+
+```java
+String chat(@UserMessage String userMessage, @UserMessage Content content);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @UserMessage AudioContent audio);
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+```
+
+AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
+
+Please check [Content API](/tutorials/chat-and-language-models#multimodality)
+for more details on the available content types.
 
 
 ## Return Types
@@ -523,19 +549,46 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
+CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
 tokenStream
     .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
     .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
     .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
      // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
-    .beforeToolExecution((Consumer<BeforeToolExecution> beforeToolExecution) -> System.out.println(beforeToolExecution))
+    .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
      // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
-    .onCompleteResponse((ChatResponse response) -> System.out.println(response))
-    .onError((Throwable error) -> error.printStackTrace())
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+    .start();
+
+futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
+```
+
+### Streaming Cancellation
+
+If you wish to cancel the streaming, you can do so from one of the following callbacks:
+- `onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext>)`
+- `onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext>)`
+
+For example:
+```java
+tokenStream
+    .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
+        process(partialResponse);
+        if (shouldCancel()) {
+            context.streamingHandle().cancel();
+        }
+    })
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
     .start();
 ```
+
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
+Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
@@ -544,7 +597,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.3.0-beta9</version>
+    <version>1.8.0-beta15</version>
 </dependency>
 ```
 ```java
