@@ -56,6 +56,21 @@ class GeminiService {
     private final String baseUrl;
     private final String apiKey;
 
+    enum BatchOperationType {
+        BATCH_GENERATE_CONTENT("batchGenerateContent"),
+        ASYNC_BATCH_EMBED_CONTENT("asyncBatchEmbedContent");
+
+        private final String value;
+
+        BatchOperationType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
     GeminiService(
             final @Nullable HttpClientBuilder httpClientBuilder,
             final String apiKey,
@@ -89,19 +104,28 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
 
-    BatchRequestResponse.Operation batchGenerateContent(
-            String modelName, BatchRequestResponse.BatchGenerateContentRequest request) {
-        String url = String.format("%s/models/%s:batchGenerateContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, BatchRequestResponse.Operation.class);
+    @SuppressWarnings("unchecked")
+    <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
+            String modelName, BatchRequestResponse.BatchCreateRequest<REQ> request, BatchOperationType operationType) {
+        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+                String.format("%s/models/%s:%s", baseUrl, modelName, operationType.value),
+                apiKey,
+                request,
+                BatchRequestResponse.Operation.class);
     }
 
-    BatchRequestResponse.Operation batchRetrieveBatch(String batchName) {
-        String url = String.format("%s/%s", baseUrl, batchName);
-        return sendRequest(url, apiKey, null, BatchRequestResponse.Operation.class, GET);
+    @SuppressWarnings("unchecked")
+    <RESP> BatchRequestResponse.Operation<RESP> batchRetrieveBatch(String operationName) {
+        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+                String.format("%s/%s", baseUrl, operationName),
+                apiKey,
+                null,
+                BatchRequestResponse.Operation.class,
+                GET);
     }
 
-    Void batchCancelBatch(String batchName) {
-        String url = String.format("%s/%s:cancel", baseUrl, batchName);
+    Void batchCancelBatch(String operationName) {
+        String url = String.format("%s/%s:cancel", baseUrl, operationName);
         return sendRequest(url, apiKey, null, Void.class);
     }
 
@@ -110,7 +134,8 @@ class GeminiService {
         return sendRequest(url, apiKey, null, Void.class, DELETE);
     }
 
-    ListOperationsResponse batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+    @SuppressWarnings("unchecked")
+    <RESP> ListOperationsResponse<RESP> batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
         String url = buildUrl(
                 baseUrl + "/batches",
                 new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
