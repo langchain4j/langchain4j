@@ -73,7 +73,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
      *                    defaults to 0 if null
      * @param segments    the list of {@link TextSegment}s to generate embeddings for
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchIncomplete}
+     *         typically {@link BatchRequestResponse.BatchIncomplete}
      */
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
