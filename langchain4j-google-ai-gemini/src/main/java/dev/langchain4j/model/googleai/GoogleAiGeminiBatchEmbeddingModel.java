@@ -58,17 +58,69 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     }
 
     /**
-     * Creates and enqueues a batch of embedding requests for asynchronous processing.
+     * Creates and enqueues a batch of embedding requests for asynchronous processing using the inline API.
+     *
+     * <p>This method submits a list of text segments to be embedded as a single batch operation.
+     * It is designed for efficient, asynchronous processing of multiple texts. This method uses the
+     * inline batch creation endpoint, which supports requests up to 20 MB in size.</p>
+     *
+     * <p>The response contains the initial state of the batch job (usually PENDING). You can monitor
+     * the job's progress using {@link #retrieveBatchResults(BatchName)}.</p>
+     *
+     * @param displayName a user-defined name for the batch, used for identification and listing
+     * @param priority    optional priority for the batch; batches with higher priority values are
+     *                    processed before those with lower values; negative values are allowed;
+     *                    defaults to 0 if null
+     * @param segments    the list of {@link TextSegment}s to generate embeddings for
+     * @return a {@link BatchResponse} representing the initial state of the batch operation,
+     *         typically {@link BatchIncomplete}
      */
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
         return batchProcessor.createBatchInline(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
+    /**
+     * Creates and enqueues a batch of embedding requests from an uploaded file.
+     *
+     * <p>This method is used for processing large volumes of embedding requests that exceed the limits
+     * of the inline API. Before calling this method, you must write your requests to a JSONL file
+     * (using {@link #writeBatchToFile}) and upload it using the {@link GeminiFiles} API to get a {@link GeminiFile}.</p>
+     *
+     * @param displayName a user-defined name for the batch, used for identification
+     * @param file        the {@link GeminiFile} representing the uploaded JSONL file containing the requests
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     * @see #writeBatchToFile(JsonLinesWriter, Iterable)
+     * @see GeminiFiles#uploadFile(java.nio.file.Path, String)
+     */
     public BatchResponse<Embedding> createBatchFromFile(String displayName, GeminiFile file) {
         return batchProcessor.createBatchFromFile(displayName, file, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
+    /**
+     * Writes a sequence of text segments to a JSONL file writer in the format required for file-based batch processing.
+     *
+     * <p>This helper method takes high-level {@link TextSegment} objects wrapped in {@link BatchFileRequest}s
+     * (which enable assigning unique keys to each request) and serializes them into the specific JSON structure
+     * expected by the Gemini Batch API. It handles the conversion to internal request objects, including
+     * metadata handling for document titles.</p>
+     *
+     * <p><strong>Example Usage:</strong></p>
+     * <pre>{@code
+     * Path batchFile = Files.createTempFile("embeddings", ".jsonl");
+     * try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+     *     List<BatchFileRequest<TextSegment>> requests = List.of(
+     *         new BatchFileRequest<>("doc-1", TextSegment.from("Content for document 1")),
+     *         new BatchFileRequest<>("doc-2", TextSegment.from("Content for document 2"))
+     *     );
+     *     batchModel.writeBatchToFile(writer, requests);
+     * }
+     * }</pre>
+     *
+     * @param writer   the {@link JsonLinesWriter} to write to
+     * @param requests an iterable of {@link BatchFileRequest}s, each containing a key and a {@link TextSegment}
+     * @throws IOException if an error occurs while writing to the underlying stream
+     */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<TextSegment>> requests)
             throws IOException {
         for (var request : requests) {
