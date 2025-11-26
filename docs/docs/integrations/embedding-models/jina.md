@@ -13,7 +13,7 @@ https://jina.ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jina</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.9.0-beta16</version>
 </dependency>
 ```
 
