@@ -137,7 +137,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCountTokensRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
+            var expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -156,7 +156,7 @@ class GeminiServiceTest {
                     null);
 
             // When
-            GeminiCountTokensResponse actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
+            var actualResponse = subject.countTokens(TEST_MODEL_NAME, request);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -165,7 +165,7 @@ class GeminiServiceTest {
         @Test
         void shouldSendCorrectCountTokensHttpRequest() {
             // Given
-            GeminiCountTokensResponse expectedResponse = new GeminiCountTokensResponse(42);
+            var expectedResponse = new GeminiCountTokensResponse(42);
 
             SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
                     .statusCode(200)

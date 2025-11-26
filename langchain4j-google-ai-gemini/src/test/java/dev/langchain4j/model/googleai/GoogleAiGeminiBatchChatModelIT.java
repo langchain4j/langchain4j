@@ -9,10 +9,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -51,6 +54,94 @@ class GoogleAiGeminiBatchChatModelIT {
             assertThat(response).isInstanceOf(BatchIncomplete.class);
             assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
             assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
+        }
+    }
+
+    @Nested
+    class BatchFromFile {
+
+        @Test
+        void should_write_upload_and_create_batch_from_file() throws Exception {
+            // given
+            var chatModel = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName(MODEL_NAME)
+                    .logRequestsAndResponses(true)
+                    .build();
+
+            var filesClient =
+                    GeminiFiles.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).build();
+
+            var tempFile = Files.createTempFile("gemini-chat-it-test", ".jsonl");
+            GeminiFiles.GeminiFile uploadedFile = null;
+            BatchName batchName = null;
+
+            try {
+                // 1. Write batch requests to local temp file
+                var requests = List.of(
+                        new BatchFileRequest<>("req-1", createChatRequest("What is the speed of light?")),
+                        new BatchFileRequest<>("req-2", createChatRequest("What is the speed of sound?")));
+
+                try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                    chatModel.writeBatchToFile(writer, requests);
+                }
+
+                // 2. Upload the file to Google AI
+                uploadedFile = filesClient.uploadFile(tempFile, "IT Chat Batch File");
+                assertThat(uploadedFile.state()).isIn("ACTIVE");
+
+                // 3. Create batch from the uploaded file
+                var response = chatModel.createBatchFromFile("IT Chat File Batch", uploadedFile);
+
+                // then
+                assertThat(response).isInstanceOf(BatchIncomplete.class);
+                assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
+                batchName = ((BatchIncomplete<?>) response).batchName();
+                assertThat(batchName.value()).startsWith("batches/");
+            } finally {
+                // Cleanup
+                if (batchName != null) {
+                    try {
+                        chatModel.cancelBatchJob(batchName);
+                    } catch (Exception e) {
+                        System.err.println("Failed to cancel batch job: " + e.getMessage());
+                    }
+                }
+                if (uploadedFile != null) {
+                    try {
+                        filesClient.deleteFile(uploadedFile.name());
+                    } catch (Exception e) {
+                        System.err.println("Failed to delete file: " + e.getMessage());
+                    }
+                }
+                Files.deleteIfExists(tempFile);
+            }
+        }
+
+        @Test
+        void should_fail_to_create_batch_from_non_existent_file() {
+            // given
+            var chatModel = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName(MODEL_NAME)
+                    .build();
+
+            var nonExistentFile = new GeminiFiles.GeminiFile(
+                    "files/1234567890",
+                    "Fake File",
+                    "text/plain",
+                    0L,
+                    "2025-01-01T00:00:00Z",
+                    "2025-01-01T00:00:00Z",
+                    "2025-01-03T00:00:00Z",
+                    "hash",
+                    "https://uri",
+                    "ACTIVE");
+
+            // when & then
+            assertThatThrownBy(() -> chatModel.createBatchFromFile("Bad Batch", nonExistentFile))
+                    .isInstanceOf(HttpException.class)
+                    .hasMessageContaining("Requested entity was not found");
         }
     }
 

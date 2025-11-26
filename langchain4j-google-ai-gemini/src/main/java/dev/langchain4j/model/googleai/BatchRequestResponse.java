@@ -78,6 +78,11 @@ public final class BatchRequestResponse {
 
         /**
          * The batch configuration containing display name, input config, and priority.
+         *
+         * @param displayName Required. The user-defined name of this batch.
+         * @param inputConfig Configuration for the input to the batch request.
+         * @param priority    Optional. The priority of the batch. Batches with a higher priority value will be processed before
+         *                    batches with a lower priority value. Negative values are allowed. Default is 0.
          */
         record Batch<REQ>(
                 @JsonProperty("display_name") String displayName,
@@ -86,11 +91,15 @@ public final class BatchRequestResponse {
 
         /**
          * Configures the input to the batch request.
+         *
+         * @param requests The list of inlined requests to be processed in the batch.
          */
         record InputConfig<REQ>(Requests<REQ> requests) {}
 
         /**
          * Wrapper for the list of inlined requests.
+         *
+         * @param requests The list of inlined requests to be processed in the batch.
          */
         record Requests<REQ>(List<InlinedRequest<REQ>> requests) {}
 
@@ -103,6 +112,15 @@ public final class BatchRequestResponse {
         record InlinedRequest<REQ>(REQ request, Map<String, String> metadata) {}
     }
 
+    record BatchCreateFileRequest(FileBatch batch) {
+
+        record FileBatch(
+                @JsonProperty("display_name") String displayName,
+                @JsonProperty("input_config") FileInputConfig inputConfig) {}
+
+        record FileInputConfig(@JsonProperty("file_name") String fileName) {}
+    }
+
     /**
      * Represents the response from a batch operation.
      *
@@ -113,12 +131,16 @@ public final class BatchRequestResponse {
 
         /**
          * Wrapper for the list of inlined responses.
+         *
+         * @param inlinedResponses The list of individual response wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
          * Wrapper for an individual response.
+         *
+         * @param response The actual Gemini response.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponseWrapper<RESP>(RESP response) {}
@@ -135,10 +157,30 @@ public final class BatchRequestResponse {
 
         /**
          * Represents the error status of an operation.
+         *
+         * @param code    The status code.
+         * @param message A developer-facing error message.
+         * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record Status(int code, String message, List<Map<String, Object>> details) {}
     }
 
+    /**
+     * Represents a response containing a list of operations and a token for pagination.
+     *
+     * @param <RESP> the type of the response for each operation
+     * @param operations a list of operations to be performed
+     * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
+     */
     record ListOperationsResponse<RESP>(List<Operation<RESP>> operations, String nextPageToken) {}
+
+    /**
+     * Represents a batch request for a file operation.
+     *
+     * @param <REQ> the type of the request payload
+     * @param key a unique identifier for the request
+     * @param request the actual request payload containing the details of the operation
+     */
+    public record BatchFileRequest<REQ>(String key, REQ request) {}
 }
