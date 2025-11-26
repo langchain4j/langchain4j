@@ -70,6 +70,11 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings, tokenUsageFrom(response.getUsage()));
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static MistralAiEmbeddingModelBuilder builder() {
         for (MistralAiEmbeddingModelBuilderFactory factory :
                 loadFactories(MistralAiEmbeddingModelBuilderFactory.class)) {

@@ -85,6 +85,11 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static LocalAiEmbeddingModelBuilder builder() {
         for (LocalAiEmbeddingModelBuilderFactory factory : loadFactories(LocalAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
