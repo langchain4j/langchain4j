@@ -69,6 +69,11 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         return embedBatchedTexts(textBatches);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     private List<List<String>> partition(List<String> inputList, int size) {
         List<List<String>> result = new ArrayList<>();
         for (int i = 0; i < inputList.size(); i += size) {
