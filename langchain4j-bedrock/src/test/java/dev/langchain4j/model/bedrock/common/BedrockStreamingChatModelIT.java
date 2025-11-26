@@ -25,14 +25,13 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -49,8 +48,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected List<StreamingChatModel> models() {
         return List.of(
                 //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
-                TestedModels.STREAMING_AWS_NOVA_LITE,
-                TestedModels.STREAMING_AWS_NOVA_PRO);
+                TestedModels.STREAMING_AWS_NOVA_LITE, TestedModels.STREAMING_AWS_NOVA_PRO);
         //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
         //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
@@ -260,6 +258,21 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
+    @Test
+    void should_handle_content_filtered_responses() {
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .build();
+        UserMessage userMessage = userMessage("Give me a detailed description of a knife fight.");
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).hasSizeGreaterThan(0);
+    }
+
     record Dinosaur(String name, String periodOfActivity, String description) {}
 
     record Milestone(String name, String period, String description) {}
@@ -275,8 +288,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         UserMessage userMessage = userMessage(
                 "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
-        Method mermaidTimelineDiagram = Arrays.stream(
-                        BedrockStreamingChatModelIT.class.getDeclaredMethods())
+        Method mermaidTimelineDiagram = Arrays.stream(BedrockStreamingChatModelIT.class.getDeclaredMethods())
                 .filter(m -> m.getName().equals("mermaidTimelineDiagram"))
                 .findFirst()
                 .orElseThrow();
