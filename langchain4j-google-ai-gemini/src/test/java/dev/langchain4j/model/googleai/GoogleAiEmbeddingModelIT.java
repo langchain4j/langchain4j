@@ -47,7 +47,7 @@ class GoogleAiEmbeddingModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
                 .logRequests(false) // embeddings are huge in logs
-                .logResponses(true)
+                .logResponses(false)
                 .titleMetadataKey("title")
                 .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
                 .build();
