@@ -124,6 +124,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return VoyageAiEmbeddingModelName.knownDimension(modelName);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     private List<Embedding> getEmbeddings(EmbeddingResponse response) {
         return response.getData().stream()
                 .sorted(Comparator.comparingInt(EmbeddingResponse.EmbeddingData::getIndex))

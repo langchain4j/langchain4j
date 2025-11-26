@@ -93,6 +93,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(allEmbeddings);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+    
     private GoogleAiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
         GeminiContent.GeminiPart geminiPart =
                 GeminiContent.GeminiPart.builder().text(textSegment.text()).build();

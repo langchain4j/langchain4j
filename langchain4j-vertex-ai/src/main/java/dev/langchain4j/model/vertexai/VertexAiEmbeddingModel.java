@@ -68,6 +68,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
     private final Boolean autoTruncate;
+    private final String modelName;
 
     public enum TaskType {
         RETRIEVAL_QUERY,
@@ -121,6 +122,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         this.outputDimensionality = builder.outputDimensionality;
         this.autoTruncate = getOrDefault(builder.autoTruncate, false);
+        this.modelName = builder.modelName;
     }
 
     /**
@@ -254,6 +256,11 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     protected Integer knownDimension() {
         return VertexAiEmbeddingModelName.knownDimension(endpointName.getModel());
+    }
+
+    @Override
+    public String modelName() {
+        return this.modelName;
     }
 
     private List<Integer> groupByBatches(List<Integer> tokensCounts) {

@@ -204,6 +204,11 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         }
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     /**
      * Process chunk of text segments.
      *
@@ -239,4 +244,5 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         }
         return embeddingsList;
     }
+
 }

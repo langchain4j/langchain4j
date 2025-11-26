@@ -33,7 +33,7 @@ import java.util.List;
 public class WatsonxEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingService embeddingService;
-
+    private final String modelName;
     private WatsonxEmbeddingModel(Builder builder) {
         var embeddingServiceBuilder = EmbeddingService.builder();
         if (nonNull(builder.authenticationProvider)) {
@@ -53,6 +53,8 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .build();
+
+        this.modelName = builder.modelName;
     }
 
     @Override
@@ -60,6 +62,11 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
         return embedAll(textSegments, null);
     }
 
+    @Override
+    public String modelName() {
+
+        return this.modelName;
+    }
     /**
      * Embeds the text content of a list of TextSegment using the specified {@link EmbeddingParameters}.
      *
@@ -133,4 +140,5 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
             return new WatsonxEmbeddingModel(this);
         }
     }
+
 }

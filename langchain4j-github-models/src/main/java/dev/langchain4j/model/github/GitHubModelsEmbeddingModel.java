@@ -89,6 +89,11 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
         return embedTexts(texts);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         List<Embedding> embeddings = new ArrayList<>();

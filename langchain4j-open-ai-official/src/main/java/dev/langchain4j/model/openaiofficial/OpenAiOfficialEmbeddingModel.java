@@ -83,6 +83,11 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         return result;
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     private Response<List<Embedding>> embedBatchedTexts(List<List<String>> textBatches) {
         List<Response<List<Embedding>>> responses = new ArrayList<>();
         for (List<String> batch : textBatches) {
