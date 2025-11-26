@@ -13,14 +13,18 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
@@ -29,13 +33,21 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,6 +62,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
+    private static final String MODEL_NAME = "gemini-2.5-flash-lite";
+
     @Mock
     private GeminiService mockGeminiService;
 
@@ -72,8 +86,8 @@ class GoogleAiGeminiBatchChatModelTest {
             var displayName = "Test Batch";
             var priority = 1L;
             var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of France?"),
-                    createChatRequest("gemini-2.5-flash-lite", "What is the capital of Germany?"));
+                    createChatRequest(MODEL_NAME, "What is the capital of France?"),
+                    createChatRequest(MODEL_NAME, "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -90,7 +104,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-123"), BATCH_STATE_PENDING));
 
             verify(mockGeminiService)
-                    .batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
@@ -103,7 +117,7 @@ class GoogleAiGeminiBatchChatModelTest {
         void should_create_batch_with_null_priority_defaulting_to_zero() {
             // given
             var displayName = "Test Batch";
-            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is the capital of Italy?"));
+            var requests = List.of(createChatRequest(MODEL_NAME, "What is the capital of Italy?"));
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -120,7 +134,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-456"), BATCH_STATE_PENDING));
 
             verify(mockGeminiService)
-                    .batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
@@ -132,7 +146,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Single Request Batch";
             var priority = 5L;
-            var requests = List.of(createChatRequest("gemini-2.5-pro", "Explain quantum computing"));
+            var requests = List.of(createChatRequest(MODEL_NAME, "Explain quantum computing"));
             var expectedOperation = createPendingOperation("batches/test-789", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -149,7 +163,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-789"), BATCH_STATE_PENDING));
 
             verify(mockGeminiService)
-                    .batchCreate(eq("gemini-2.5-pro"), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
@@ -176,7 +190,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Low Priority Batch";
             var priority = -10L;
-            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "What is AI?"));
+            var requests = List.of(createChatRequest(MODEL_NAME, "What is AI?"));
             var expectedOperation = createPendingOperation("batches/test-negative", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -193,7 +207,7 @@ class GoogleAiGeminiBatchChatModelTest {
                     .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-negative"), BATCH_STATE_PENDING));
 
             verify(mockGeminiService)
-                    .batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().priority()).isEqualTo(-10L);
@@ -205,9 +219,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var displayName = "Model Extraction Test";
             var priority = 1L;
             var requests = List.of(
-                    createChatRequest("gemini-2.5-pro", "Question 1"),
-                    createChatRequest("gemini-2.5-pro", "Question 2"),
-                    createChatRequest("gemini-2.5-pro", "Question 3"));
+                    createChatRequest(MODEL_NAME, "Question 1"),
+                    createChatRequest(MODEL_NAME, "Question 2"),
+                    createChatRequest(MODEL_NAME, "Question 3"));
             var expectedOperation = createPendingOperation("batches/test-model", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -223,7 +237,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
             verify(mockGeminiService)
                     .batchCreate(
-                            eq("gemini-2.5-pro"),
+                            eq(MODEL_NAME),
                             ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
                             eq(BATCH_GENERATE_CONTENT));
         }
@@ -233,7 +247,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var displayName = "Metadata Test";
             var priority = 1L;
-            var requests = List.of(createChatRequest("gemini-2.5-flash-lite", "Test message"));
+            var requests = List.of(createChatRequest(MODEL_NAME, "Test message"));
             var expectedOperation = createPendingOperation("batches/test-metadata", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -262,11 +276,11 @@ class GoogleAiGeminiBatchChatModelTest {
             var displayName = "Multiple Requests Batch";
             var priority = 2L;
             var requests = List.of(
-                    createChatRequest("gemini-2.5-flash-lite", "Question 1"),
-                    createChatRequest("gemini-2.5-flash-lite", "Question 2"),
-                    createChatRequest("gemini-2.5-flash-lite", "Question 3"),
-                    createChatRequest("gemini-2.5-flash-lite", "Question 4"),
-                    createChatRequest("gemini-2.5-flash-lite", "Question 5"));
+                    createChatRequest(MODEL_NAME, "Question 1"),
+                    createChatRequest(MODEL_NAME, "Question 2"),
+                    createChatRequest(MODEL_NAME, "Question 3"),
+                    createChatRequest(MODEL_NAME, "Question 4"),
+                    createChatRequest(MODEL_NAME, "Question 5"));
             var expectedOperation = createPendingOperation("batches/test-multiple", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -283,11 +297,231 @@ class GoogleAiGeminiBatchChatModelTest {
                     .isEqualTo(new BatchIncomplete<>(new BatchName("batches/test-multiple"), BATCH_STATE_PENDING));
 
             verify(mockGeminiService)
-                    .batchCreate(eq("gemini-2.5-flash-lite"), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
                     .hasSize(5);
+        }
+    }
+
+    @Nested
+    class CreateBatchFromFile {
+        @Captor
+        private ArgumentCaptor<BatchCreateFileRequest> batchRequestCaptor;
+
+        @Mock
+        private GeminiFile mockGeminiFile;
+
+        @Test
+        void should_create_batch_from_file_with_valid_parameters() {
+            // given
+            String displayName = "Batch from File";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-123");
+            var expectedOperation = createPendingOperation("batches/chat-file-test-123", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/chat-file-test-123"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().inputConfig().fileName()).isEqualTo("files/test-file-123");
+        }
+
+        @Test
+        void should_create_batch_from_file_with_null_priority() {
+            // given
+            String displayName = "Batch from File with Null Priority";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-456");
+            var expectedOperation = createPendingOperation("batches/chat-file-test-456", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.createBatchFromFile(displayName, mockGeminiFile);
+
+            // then
+            assertThat(result)
+                    .isInstanceOf(BatchIncomplete.class)
+                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/chat-file-test-456"), BATCH_STATE_PENDING));
+
+            verify(mockGeminiService)
+                    .<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().inputConfig().fileName()).isEqualTo("files/test-file-456");
+        }
+
+        @Test
+        void should_throw_exception_when_creating_batch_from_file_fails() {
+            // given
+            String displayName = "Batch from File";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-error");
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenThrow(new RuntimeException("Error creating batch from file"));
+
+            // when & then
+            assertThatThrownBy(() -> subject.createBatchFromFile(displayName, mockGeminiFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Error creating batch from file");
+        }
+
+        @Test
+        void should_use_correct_model_name_when_creating_batch_from_file() {
+            // given
+            String displayName = "Model Name Test";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-model");
+            var expectedOperation = createPendingOperation("batches/chat-file-model", BATCH_STATE_PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            subject.createBatchFromFile(displayName, mockGeminiFile);
+
+            // then
+            verify(mockGeminiService)
+                    .<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT));
+        }
+    }
+
+    @Nested
+    class WriteBatchToFile {
+        private Path tempFile;
+
+        @BeforeEach
+        void setUp() throws IOException {
+            tempFile = Files.createTempFile("testBatchFile", ".jsonl");
+        }
+
+        @AfterEach
+        void tearDown() throws IOException {
+            Files.deleteIfExists(tempFile);
+        }
+
+        @Test
+        void should_write_single_request_to_file() throws Exception {
+            // given
+            var chatRequest = createChatRequest(MODEL_NAME, "Sample question");
+            var request = new BatchFileRequest<>("key-1", chatRequest);
+            var requests = List.of(request);
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            var capturedRequest = writtenRequests.get(0);
+            assertThat(capturedRequest.contents()).hasSize(1);
+            assertThat(capturedRequest.contents().get(0).parts().get(0).text()).isEqualTo("Sample question");
+        }
+
+        @Test
+        void should_write_multiple_requests_to_file() throws Exception {
+            // given
+            var chatRequest1 = createChatRequest(MODEL_NAME, "First question");
+            var chatRequest2 = createChatRequest(MODEL_NAME, "Second question");
+            var chatRequest3 = createChatRequest(MODEL_NAME, "Third question");
+            var requests = List.of(
+                    new BatchFileRequest<>("key-1", chatRequest1),
+                    new BatchFileRequest<>("key-2", chatRequest2),
+                    new BatchFileRequest<>("key-3", chatRequest3));
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).hasSize(3);
+            assertThat(writtenRequests.get(0).contents().get(0).parts().get(0).text())
+                    .isEqualTo("First question");
+            assertThat(writtenRequests.get(1).contents().get(0).parts().get(0).text())
+                    .isEqualTo("Second question");
+            assertThat(writtenRequests.get(2).contents().get(0).parts().get(0).text())
+                    .isEqualTo("Third question");
+        }
+
+        @Test
+        void should_handle_empty_requests_list() throws Exception {
+            // given
+            List<BatchFileRequest<ChatRequest>> requests = List.of();
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).isEmpty();
+        }
+
+        @Test
+        void should_write_requests_with_different_text_lengths() throws Exception {
+            // given
+            var shortRequest = createChatRequest(MODEL_NAME, "Short");
+            var mediumRequest = createChatRequest(MODEL_NAME, "This is a medium length question for testing");
+            var longRequest = createChatRequest(
+                    MODEL_NAME,
+                    "This is a very long question that contains much more content "
+                            + "and is designed to test how the writer handles larger text inputs "
+                            + "with multiple sentences and various punctuation marks.");
+            var requests = List.of(
+                    new BatchFileRequest<>("key-1", shortRequest),
+                    new BatchFileRequest<>("key-2", mediumRequest),
+                    new BatchFileRequest<>("key-3", longRequest));
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).hasSize(3);
+            assertThat(writtenRequests.get(0).contents().get(0).parts().get(0).text())
+                    .isEqualTo("Short");
+            assertThat(writtenRequests.get(1).contents().get(0).parts().get(0).text())
+                    .isEqualTo("This is a medium length question for testing");
+            assertThat(writtenRequests.get(2).contents().get(0).parts().get(0).text())
+                    .contains("very long question");
+        }
+
+        private List<GeminiGenerateContentRequest> readRequestsFromFile(Path file) throws IOException {
+            List<GeminiGenerateContentRequest> requests = new ArrayList<>();
+            ObjectMapper testMapper = new ObjectMapper();
+
+            try (BufferedReader reader = Files.newBufferedReader(file)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    BatchFileRequest<GeminiGenerateContentRequest> batchRequest =
+                            testMapper.readValue(line, new TypeReference<>() {});
+
+                    requests.add(batchRequest.request());
+                }
+            }
+            return requests;
         }
     }
 
@@ -779,7 +1013,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .aiMessage(AiMessage.from(content))
                 .metadata(ChatResponseMetadata.builder()
                         .id("response-id-" + content.hashCode())
-                        .modelName("gemini-2.5-flash-lite")
+                        .modelName(MODEL_NAME)
                         .tokenUsage(new TokenUsage(10, 5, 15))
                         .finishReason(FinishReason.STOP)
                         .build())
@@ -802,7 +1036,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("apiKey"), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("apiKey").modelName(MODEL_NAME), mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {

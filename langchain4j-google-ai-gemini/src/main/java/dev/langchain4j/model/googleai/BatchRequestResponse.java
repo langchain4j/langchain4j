@@ -166,7 +166,21 @@ public final class BatchRequestResponse {
         public record Status(int code, String message, List<Map<String, Object>> details) {}
     }
 
+    /**
+     * Represents a response containing a list of operations and a token for pagination.
+     *
+     * @param <RESP> the type of the response for each operation
+     * @param operations a list of operations to be performed
+     * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
+     */
     record ListOperationsResponse<RESP>(List<Operation<RESP>> operations, String nextPageToken) {}
 
+    /**
+     * Represents a batch request for a file operation.
+     *
+     * @param <REQ> the type of the request payload
+     * @param key a unique identifier for the request
+     * @param request the actual request payload containing the details of the operation
+     */
     public record BatchFileRequest<REQ>(String key, REQ request) {}
 }

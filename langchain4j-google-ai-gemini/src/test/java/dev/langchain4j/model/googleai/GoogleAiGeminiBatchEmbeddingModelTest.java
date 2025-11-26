@@ -13,6 +13,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -611,10 +613,14 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
 
         private List<GeminiEmbeddingRequest> readRequestsFromFile(Path file) throws IOException {
             List<GeminiEmbeddingRequest> requests = new ArrayList<>();
+            ObjectMapper testMapper = new ObjectMapper();
+
             try (BufferedReader reader = Files.newBufferedReader(file)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    requests.add(Json.fromJson(line, GeminiEmbeddingRequest.class));
+                    BatchFileRequest<GeminiEmbeddingRequest> batchRequest =
+                            testMapper.readValue(line, new TypeReference<>() {});
+                    requests.add(batchRequest.request());
                 }
             }
             return requests;
