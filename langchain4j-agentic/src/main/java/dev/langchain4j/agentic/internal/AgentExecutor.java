@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.DefaultAgentInstance;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
@@ -85,7 +86,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     public boolean isStreaming() {
         if (agentInvoker instanceof UntypedAgentInvoker) {
             PlannerBasedInvocationHandler handler = (PlannerBasedInvocationHandler) Proxy.getInvocationHandler(agent);
-            return handler.plannerInstance().isStreaming();
+            return ((DefaultAgentInstance) handler.plannerInstance()).streaming();
         }
         if (agentInvoker instanceof MethodAgentInvoker) {
             return agentInvoker.method().getReturnType().equals(TokenStream.class);

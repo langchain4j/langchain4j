@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.allHaveSameOutput;
 import static dev.langchain4j.agentic.internal.AgentUtil.getLastAgent;
-import static dev.langchain4j.agentic.internal.AgentUtil.hasSameOutput;
 import static dev.langchain4j.agentic.internal.AgentUtil.hasStreamingAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.isAllStreamingAgent;
 
@@ -16,7 +15,7 @@ import java.util.function.Supplier;
 public record ConditionalSupplier(List<ConditionalPlanner.ConditionalAgent> conditionalAgents)
         implements Supplier<Planner>, StreamingSubAgentsChecker {
     @Override
-    public void checkSubAgents(final List<AgentInstance> subAgents, final AgentInstance plannerAgent) {
+    public boolean checkSubAgents(final List<AgentInstance> subAgents, final String plannerAgentOutputKey) {
         List<AgentInstance> list = new ArrayList<>();
         for (ConditionalPlanner.ConditionalAgent conditionalAgent : this.conditionalAgents) {
             list.addAll(conditionalAgent.agentInstances());
@@ -28,10 +27,10 @@ public record ConditionalSupplier(List<ConditionalPlanner.ConditionalAgent> cond
                 if (allHaveSameOutput(list)) {
                     AgentInstance lastAgent = getLastAgent(list);
                     // The outputKey is also the output of the conditional workflow itself.
-                    if (hasSameOutput(lastAgent, plannerAgent)) {
+                    if (lastAgent.outputKey().equals(plannerAgentOutputKey)) {
                         // Consider the workflow is a streaming. for processing they are themselves subagent or a more
                         // complex workflow.
-                        plannerAgent.setStreaming(true);
+                        return true;
                     } else {
                         throw new IllegalArgumentException(
                                 "The agents and the workflow should have the same outputKey.");
@@ -45,6 +44,7 @@ public record ConditionalSupplier(List<ConditionalPlanner.ConditionalAgent> cond
                         "Part of the sub-agents return TokenStream, it needs all agents have the same return type.");
             }
         }
+        return false;
     }
 
     @Override

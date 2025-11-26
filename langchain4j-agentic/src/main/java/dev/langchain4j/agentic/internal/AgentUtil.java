@@ -265,10 +265,6 @@ public class AgentUtil {
         return agentInstances.get(agentInstances.size() - 1);
     }
 
-    public static boolean hasSameOutput(AgentInstance agent, AgentInstance otherAgent) {
-        return agent.outputKey().equals(otherAgent.outputKey());
-    }
-
     public static Map<String, Class<?>> agenticSystemDataTypes(AgentInstance rootAgent) {
         Map<String, Class<?>> dataTypes = new HashMap<>();
         collectAgenticSystemDataTypes(rootAgent, dataTypes);

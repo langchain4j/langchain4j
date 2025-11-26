@@ -4,5 +4,11 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import java.util.List;
 
 public interface StreamingSubAgentsChecker {
-    void checkSubAgents(List<AgentInstance> subAgents, AgentInstance plannerAgent);
+    /**
+     * Check the sub-agents whether is streaming or not
+     * @param subAgents the sub-agents needed to be checked
+     * @param plannerAgentOutputKey the planner agent outputKey
+     * @return `true` is streaming or `false` is not
+     */
+    boolean checkSubAgents(List<AgentInstance> subAgents, String plannerAgentOutputKey);
 }

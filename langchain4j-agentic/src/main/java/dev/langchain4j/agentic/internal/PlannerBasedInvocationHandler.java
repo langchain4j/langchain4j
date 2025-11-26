@@ -80,6 +80,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         this.plannerSupplier = plannerSupplier;
         this.agenticScope = agenticScope;
 
+        final List<AgentInstance> agentInstances =
+                service.agentExecutors().stream().map(AgentInstance.class::cast).toList();
+        final boolean streaming = checkSubAgents(agentInstances, service.outputKey);
+
         this.plannerAgent = new DefaultAgentInstance(
                 service.agentServiceClass,
                 service.name,
@@ -88,19 +92,19 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                 service.agentReturnType(),
                 service.outputKey,
                 service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of(),
-                service.agentExecutors().stream().map(AgentInstance.class::cast).toList());
+                agentInstances,
+                streaming);
         agenticSystemDataTypes(this.plannerAgent);
-
-        checkSubAgents();
     }
 
-    private void checkSubAgents() {
-        if (hasStreamingAgent(plannerAgent.subagents()) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
+    private boolean checkSubAgents(List<AgentInstance> subAgents, String plannerAgentOutputKey) {
+        if (hasStreamingAgent(subAgents) && !(plannerSupplier instanceof StreamingSubAgentsChecker)) {
             throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
         }
         if (plannerSupplier instanceof StreamingSubAgentsChecker) {
-            ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(plannerAgent.subagents(), plannerAgent);
+            return ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(subAgents, plannerAgentOutputKey);
         }
+        return false;
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
