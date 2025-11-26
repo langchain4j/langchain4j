@@ -14,10 +14,10 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
-import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleAiGeminiBatchChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    public static final String MODEL_NAME = "gemini-2.5-flash";
+    public static final String MODEL_NAME = "gemini-2.5-flash-lite";
 
     @Nested
     class CreateBatchInline {

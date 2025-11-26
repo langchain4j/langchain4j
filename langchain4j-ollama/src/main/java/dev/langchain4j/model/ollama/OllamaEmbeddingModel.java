@@ -59,6 +59,11 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static class OllamaEmbeddingModelBuilder {
 
         private HttpClientBuilder httpClientBuilder;

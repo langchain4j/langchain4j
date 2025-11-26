@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
 import dev.langchain4j.Experimental;
@@ -34,7 +35,7 @@ public final class GoogleAiGeminiBatchChatModel {
     private final ChatRequestPreparer preparer;
 
     GoogleAiGeminiBatchChatModel(final Builder builder) {
-        this(builder, BaseGeminiChatModel.buildGeminiService(builder));
+        this(builder, buildGeminiService(builder));
     }
 
     GoogleAiGeminiBatchChatModel(final Builder builder, final GeminiService geminiService) {
@@ -44,7 +45,7 @@ public final class GoogleAiGeminiBatchChatModel {
         this.modelName = builder.modelName;
     }
 
-    /***
+    /**
      * Creates and enqueues a batch of content generation requests for asynchronous processing.
      *
      * <p> This method submits multiple chat requests as a single batch operation to the Gemini API.
@@ -87,6 +88,20 @@ public final class GoogleAiGeminiBatchChatModel {
 
     /**
      * Retrieves the current state and results of a batch operation.
+     *
+     * <p>This method polls the Gemini API to get the latest state of a previously created batch.
+     * The response can be:
+     * <ul>
+     *   <li>{@link BatchIncomplete} - if the batch is still pending or running</li>
+     *   <li>{@link BatchRequestResponse.BatchSuccess} - if the batch completed successfully, containing all responses</li>
+     *   <li>{@link BatchRequestResponse.BatchError} - if the batch failed, containing error details</li>
+     * </ul>
+     * <p>
+     * Clients should poll this method at intervals to check the operation status until completion.</p>
+     *
+     * @param name the name of the batch operation to retrieve, obtained from the initial
+     *             {@link #createBatchInline} call
+     * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     public BatchResponse<ChatResponse> retrieveBatchResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
@@ -94,13 +109,27 @@ public final class GoogleAiGeminiBatchChatModel {
 
     /**
      * Cancels a batch operation that is currently pending or running.
+     *
+     * <p>This method attempts to cancel a batch job. Cancellation is only possible for batches
+     * that are in {@link BatchRequestResponse.BatchJobState#BATCH_STATE_PENDING} or {@link BatchRequestResponse.BatchJobState#BATCH_STATE_RUNNING}
+     * state. Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
+     *
+     * @param name the name of the batch operation to cancel
+     * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled (e.g., already completed,
+     *                                                 already cancelled, or does not exist)
      */
     public void cancelBatchJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
     /**
-     * Deletes a batch job.
+     * Deletes a batch job from the system.
+     * <p>
+     * This removes the batch job but does not cancel it if still running.
+     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch.
+     *
+     * @param name the name of the batch job to delete
+     * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
     public void deleteBatchJob(BatchName name) {
         batchProcessor.deleteBatchJob(name);
@@ -110,7 +139,9 @@ public final class GoogleAiGeminiBatchChatModel {
      * Lists batch jobs with optional pagination.
      *
      * @param pageSize  the maximum number of batch jobs to return; if null, uses server default
-     * @param pageToken token for retrieving a specific page. If null, returns the first page
+     * @param pageToken token for retrieving a specific page from {@link BatchList#pageToken()};
+     *                  if null, returns the first page
+     * @return a {@link BatchList} containing batch responses and a token for the next page
      * @throws RuntimeException if the server does not support this operation
      */
     public BatchList<ChatResponse> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {

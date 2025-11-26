@@ -79,7 +79,7 @@ public final class GeminiFiles {
      * @param name      optional display name for the file
      */
     public GeminiFile uploadFile(byte[] fileBytes, String mimeType, String name)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
         ensureNotNull(fileBytes, "fileBytes");
         ensureNotNull(mimeType, "mimeType");
         ensureNotNull(name, "name");
