@@ -1,5 +1,12 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -10,18 +17,16 @@ import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 /**
- * This chat memory operates as a sliding window of {@link #maxTokens} tokens.
+ * This chat memory operates as a sliding window whose size is controlled by a {@link #maxTokensProvider}.
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one (or multiple) is evicted.
  * Messages are indivisible. If a message doesn't fit, it is evicted completely.
+ * <p>
+ * The maximum number of tokens can be supplied either statically or dynamically
+ * via the {@code maxTokensProvider}. When supplied dynamically, the effective
+ * window size may change at runtime, and the sliding-window behavior always
+ * respects the latest value returned by the provider.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
  * Only one {@code SystemMessage} can be held at a time.
@@ -38,13 +43,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class TokenWindowChatMemory implements ChatMemory {
 
     private final Object id;
-    private final Integer maxTokens;
+    private final Function<Object, Integer> maxTokensProvider;
     private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
-        this.maxTokens = ensureGreaterThanZero(builder.maxTokens, "maxTokens");
+        this.maxTokensProvider = ensureNotNull(builder.maxTokensProvider, "maxTokensProvider");
+        ensureGreaterThanZero(this.maxTokensProvider.apply(id), "maxTokens");
         this.tokenCountEstimator = ensureNotNull(builder.tokenCountEstimator, "tokenCountEstimator");
         this.store = ensureNotNull(builder.store(), "store");
     }
@@ -58,7 +64,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
         if (message instanceof SystemMessage) {
-            Optional<SystemMessage> maybeSystemMessage = findSystemMessage(messages);
+            Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
             if (maybeSystemMessage.isPresent()) {
                 if (maybeSystemMessage.get().equals(message)) {
                     return; // do not add the same system message
@@ -68,19 +74,16 @@ public class TokenWindowChatMemory implements ChatMemory {
             }
         }
         messages.add(message);
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         store.updateMessages(id, messages);
     }
 
-    private static Optional<SystemMessage> findSystemMessage(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
-                .findAny();
-    }
-
     @Override
     public List<ChatMessage> messages() {
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
@@ -131,7 +134,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Object id = ChatMemoryService.DEFAULT;
-        private Integer maxTokens;
+        private Function<Object, Integer> maxTokensProvider;
         private TokenCountEstimator tokenCountEstimator;
         private ChatMemoryStore store;
 
@@ -153,7 +156,22 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @return builder
          */
         public Builder maxTokens(Integer maxTokens, TokenCountEstimator tokenCountEstimator) {
-            this.maxTokens = maxTokens;
+            this.maxTokensProvider = (id) -> maxTokens;
+            this.tokenCountEstimator = tokenCountEstimator;
+            return this;
+        }
+
+        /**
+         * @param maxTokensProvider A provider that returns the maximum number of tokens to retain.
+         *                          The value returned by this provider may change dynamically at runtime.
+         *                          Chat memory will always respect the latest value supplied by the provider.
+         *                          Messages are indivisible; if an old message doesn't fit under
+         *                          the current limit, it is evicted completely.
+         * @param tokenCountEstimator A {@link TokenCountEstimator} responsible for counting tokens in the messages.
+         * @return builder
+         */
+        public Builder dynamicMaxTokens(Function<Object,Integer> maxTokensProvider, TokenCountEstimator tokenCountEstimator) {
+            this.maxTokensProvider = maxTokensProvider;
             this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }

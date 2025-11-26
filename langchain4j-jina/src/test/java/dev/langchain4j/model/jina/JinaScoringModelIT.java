@@ -52,19 +52,21 @@ class JinaScoringModelIT {
                 .logResponses(true)
                 .build();
 
-        TextSegment catSegment = TextSegment.from("main coon");
-        TextSegment dogSegment = TextSegment.from("labrador retriever");
-        List<TextSegment> segments = asList(catSegment, dogSegment);
+        TextSegment weatherSegment = TextSegment.from("sunny cloudy rainy");
+        TextSegment animalSegment = TextSegment.from("cat dog bird");
+        List<TextSegment> segments = asList(weatherSegment, weatherSegment, animalSegment);
 
-        String query = "tell me about dogs";
+        String query = "animal";
 
         // when
         Response<List<Double>> response = model.scoreAll(segments, query);
 
         // then
         List<Double> scores = response.content();
-        assertThat(scores).hasSize(2);
-        assertThat(scores.get(0)).isLessThan(scores.get(1));
+        assertThat(scores).hasSize(3);
+        assertThat(scores.get(2)).isGreaterThan(scores.get(0));
+        assertThat(scores.get(2)).isGreaterThan(scores.get(1));
+        assertThat(scores.get(0)).isEqualTo(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 

@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.bedrock.BedrockStreamingChatModel;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.bedrock.TestedModels;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -65,6 +67,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
             bedrockStreamingChatModelBuilder.modelId("us.amazon.nova-lite-v1:0");
         }
         return bedrockStreamingChatModelBuilder.build();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return BedrockTokenUsage.class;
     }
 
     protected String customModelName() {
@@ -104,7 +111,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         // Bedrock can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }

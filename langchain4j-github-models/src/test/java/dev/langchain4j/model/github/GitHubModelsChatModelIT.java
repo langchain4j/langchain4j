@@ -16,7 +16,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -306,17 +305,13 @@ class GitHubModelsChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        SystemMessage systemMessage =
-                SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents,last names only.");
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
 
-        ChatResponse response = model.chat(systemMessage, userMessage);
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-        final var jsonResponse = response.aiMessage().text();
-        //noinspection unchecked
-        assertThat(Json.fromJson(jsonResponse, Object.class)).isNotNull();
-        assertThat(jsonResponse).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        String answer = model.chat(userMessage);
+
+        assertThat(answer).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @ParameterizedTest(name = "Testing model {0}")

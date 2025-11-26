@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
@@ -15,10 +16,10 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
-import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -26,56 +27,61 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatModel {
+public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
-        init(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                builder.isAzure,
-                builder.isGitHubModels,
-                null,
-                builder.openAIClientAsync,
-                builder.defaultRequestParameters,
-                builder.modelName,
-                builder.temperature,
-                builder.topP,
-                builder.stop,
-                builder.maxCompletionTokens,
-                builder.presencePenalty,
-                builder.frequencyPenalty,
-                builder.logitBias,
-                builder.responseFormat,
-                builder.strictJsonSchema,
-                builder.seed,
-                builder.user,
-                builder.strictTools,
-                builder.parallelToolCalls,
-                builder.store,
-                builder.metadata,
-                builder.serviceTier,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.tokenCountEstimator,
-                builder.customHeaders,
-                builder.listeners,
-                builder.capabilities,
-                true);
+        if (builder.openAIClientAsync != null) {
+            this.asyncClient = builder.openAIClientAsync;
+        } else {
+            init(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.azureDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isAzure,
+                    builder.isGitHubModels,
+                    builder.defaultRequestParameters,
+                    builder.modelName,
+                    builder.temperature,
+                    builder.topP,
+                    builder.stop,
+                    builder.maxCompletionTokens,
+                    builder.presencePenalty,
+                    builder.frequencyPenalty,
+                    builder.logitBias,
+                    builder.responseFormat,
+                    builder.strictJsonSchema,
+                    builder.seed,
+                    builder.user,
+                    builder.strictTools,
+                    builder.parallelToolCalls,
+                    builder.store,
+                    builder.metadata,
+                    builder.serviceTier,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.tokenCountEstimator,
+                    builder.customHeaders,
+                    builder.listeners,
+                    builder.capabilities,
+                    true);
+        }
+        this.modelName = builder.modelName;
     }
 
     @Override
@@ -90,8 +96,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionStreamOptions.builder().includeUsage(true).build())
                 .build();
 
-        if (modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.AZURE_OPENAI)
-                || modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.GITHUB_MODELS)) {
+        if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
+                || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (!parameters.modelName().equals(this.modelName)) {
                 // The model name can't be changed in Azure OpenAI, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
@@ -104,8 +110,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
             StringBuffer textBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-            asyncClient
+            AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
                     .chat()
                     .completions()
                     .createStreaming(chatCompletionCreateParams)
@@ -116,6 +123,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             manageChatCompletionChunks(
                                     completion,
                                     handler,
+                                    streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
                                     toolCallBuilder);
@@ -123,6 +131,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onComplete(Optional<Throwable> error) {
+                            if (streamingHandle.get().isCancelled()) {
+                                return;
+                            }
+
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {
@@ -146,6 +158,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
                         }
                     });
+
+            streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
             handler.onError(e);
         }
@@ -154,6 +168,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
     private void manageChatCompletionChunks(
             ChatCompletionChunk chatCompletionChunk,
             StreamingChatResponseHandler handler,
+            StreamingHandle streamingHandle,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
             ToolCallBuilder toolCallBuilder) {
@@ -176,13 +191,16 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         chatCompletionChunk.choices().forEach(choice -> {
             if (choice.delta().content().isPresent()
                     && !choice.delta().content().get().isEmpty()) {
-                text.append(choice.delta().content().get());
-                handler.onPartialResponse(choice.delta().content().get());
+                String partialResponse = choice.delta().content().get();
+                text.append(partialResponse);
+                onPartialResponse(handler, partialResponse, streamingHandle);
             }
             if (choice.delta().toolCalls().isPresent()) {
-                for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall : choice.delta().toolCalls().get()) {
+                for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall :
+                        choice.delta().toolCalls().get()) {
                     if (toolCall.function().isPresent()) {
-                        ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
+                        ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
+                                toolCall.function().get();
                         int index = (int) toolCall.index();
                         if (toolCallBuilder.index() != index) {
                             onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
@@ -202,7 +220,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     .name(name)
                                     .partialArguments(partialArguments)
                                     .build();
-                            onPartialToolCall(handler, partialToolRequest);
+                            onPartialToolCall(handler, partialToolRequest, streamingHandle);
                         }
                     }
                 }

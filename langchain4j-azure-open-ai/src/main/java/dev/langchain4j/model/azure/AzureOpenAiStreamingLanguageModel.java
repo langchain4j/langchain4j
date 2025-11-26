@@ -1,7 +1,7 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
@@ -17,6 +17,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
@@ -77,6 +78,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -89,6 +91,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -101,6 +104,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -199,6 +203,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -341,6 +346,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

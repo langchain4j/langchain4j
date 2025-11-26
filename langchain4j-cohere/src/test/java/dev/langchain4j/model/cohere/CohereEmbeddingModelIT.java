@@ -12,7 +12,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "COHERE_API_KEY", matches = ".+")
 class CohereEmbeddingModelIT {
 
     @Test

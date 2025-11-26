@@ -1,15 +1,12 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonArray;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonString;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
@@ -134,6 +131,37 @@ class JsonSchemaElementUtilsTest {
                         .addStringProperty("uuid", "My UUID")
                         .required("uuid")
                         .build());
+    }
+
+    @Test
+    void givenVisitedJsonObjectSchema_whenDescriptionIsDifferent_thenReturnsNewSchemaWithUpdatedDescription() {
+        JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
+                .description("old")
+                .addStringProperty("a")
+                .build();
+        Map<Class<?>, VisitedClassMetadata> visited =
+                Map.of(CustomClass.class, new VisitedClassMetadata(jsonObjectSchema, "ref-object", false));
+
+        JsonSchemaElement result = jsonObjectOrReferenceSchemaFrom(CustomClass.class, "new", false, visited, false);
+
+        assertThat(result).isNotSameAs(jsonObjectSchema);
+        assertThat(result.description()).isEqualTo("new");
+    }
+
+    @Test
+    void givenVisitedJsonObjectSchema_whenDescriptionIsSame_thenReturnsSameInstance() {
+        JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
+                .description("same-desc")
+                .addStringProperty("a")
+                .build();
+        Map<Class<?>, VisitedClassMetadata> visited =
+                Map.of(CustomClass.class, new VisitedClassMetadata(jsonObjectSchema, "ref-object", false));
+
+        JsonSchemaElement result =
+                jsonObjectOrReferenceSchemaFrom(CustomClass.class, "same-desc", false, visited, false);
+
+        assertThat(result).isSameAs(jsonObjectSchema);
+        assertThat(result.description()).isEqualTo("same-desc");
     }
 
     @Test

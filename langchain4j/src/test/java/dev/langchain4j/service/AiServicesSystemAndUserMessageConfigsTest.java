@@ -550,8 +550,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat1' should be annotated "
-                        + "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
@@ -566,7 +565,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat2' should be annotated "
-                        + "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 }
