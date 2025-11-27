@@ -77,6 +77,6 @@ public interface AgentInvoker extends AgentSpecification {
     }
 
     static Optional<String> optionalParameterName(Parameter parameter) {
-        return Optional.of(ParameterNameResolver.name(parameter));
+        return Optional.ofNullable(ParameterNameResolver.name(parameter));
     }
 }
