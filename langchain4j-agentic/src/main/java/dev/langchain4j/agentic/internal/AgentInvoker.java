@@ -5,10 +5,12 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.V;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
 
 public interface AgentInvoker extends AgentSpecification {
 
@@ -54,11 +56,11 @@ public interface AgentInvoker extends AgentSpecification {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name, String agentId) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getParameterTypes()[0], spec.inputKey()));
-        AgentSpecification agentSpecification = new AgentSpecificationImpl(
-                name, agentId, spec.description(), spec.outputKey(), spec.async(), arguments,
+        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getGenericParameterTypes()[0], spec.inputKey()));
+        AgentSpecification agentSpecification = new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
+                name, agentId, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 x -> { }, x -> { });
-        return new MethodAgentInvoker(agenticMethod, agentSpecification, arguments);
+        return new MethodAgentInvoker(agenticMethod, agentSpecification);
     }
 
     static AgentInvoker fromMethod(AgentSpecification spec, Method method) {
@@ -66,23 +68,15 @@ public interface AgentInvoker extends AgentSpecification {
             return new UntypedAgentInvoker(method, spec);
         }
 
-        return new MethodAgentInvoker(method, spec, argumentsFromMethod(method));
+        return new MethodAgentInvoker(method, spec);
     }
 
     static String parameterName(Parameter parameter) {
         return optionalParameterName(parameter)
-                .orElseThrow(() -> new IllegalArgumentException("Parameter name not specified and no @P or @V annotation present: " + parameter));
+                .orElseThrow(() -> new IllegalArgumentException("Parameter name not specified and no @V or @K annotation present: " + parameter));
     }
 
     static Optional<String> optionalParameterName(Parameter parameter) {
-        P p = parameter.getAnnotation(P.class);
-        if (p != null) {
-            return Optional.of(p.value());
-        }
-        V v = parameter.getAnnotation(V.class);
-        if (v != null) {
-            return Optional.of(v.value());
-        }
-        return parameter.isNamePresent() ? Optional.of(parameter.getName()) : java.util.Optional.empty();
+        return Optional.of(ParameterNameResolver.name(parameter));
     }
 }

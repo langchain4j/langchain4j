@@ -6,6 +6,7 @@ import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
+import java.time.Duration;
 
 /**
  * Represents an event that is executed when a guardrail validation occurs.
@@ -26,12 +27,14 @@ public abstract class DefaultGuardrailExecutedEvent<
     private final P request;
     private final R result;
     private final Class<G> guardrailClass;
+    private final Duration duration;
 
     protected DefaultGuardrailExecutedEvent(GuardrailExecutedEventBuilder<P, R, G, E> builder) {
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
         this.result = ensureNotNull(builder.result(), "result");
         this.guardrailClass = ensureNotNull(builder.guardrailClass(), "guardrailClass");
+        this.duration = ensureNotNull(builder.duration(), "duration");
     }
 
     @Override
@@ -47,5 +50,10 @@ public abstract class DefaultGuardrailExecutedEvent<
     @Override
     public Class<G> guardrailClass() {
         return this.guardrailClass;
+    }
+
+    @Override
+    public Duration duration() {
+        return this.duration;
     }
 }

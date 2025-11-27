@@ -37,7 +37,7 @@ public class InternalReflectionVariableResolver {
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
-            String variableName = getVariableName(parameter);
+            String variableName = ParameterNameResolver.name(parameter);
             Object variableValue = args[i];
             variables.put(variableName, variableValue);
         }
@@ -48,15 +48,6 @@ public class InternalReflectionVariableResolver {
         }
 
         return variables;
-    }
-
-    private static String getVariableName(Parameter parameter) {
-        V annotation = parameter.getAnnotation(V.class);
-        if (annotation != null) {
-            return annotation.value();
-        } else {
-            return parameter.getName();
-        }
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {

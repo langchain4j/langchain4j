@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -9,13 +10,14 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -52,7 +54,7 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     private void initService(Method agenticMethod) {
         if (agenticMethod == null) {
-            this.name = "UntypedAgent#" + UUID.randomUUID();
+            this.name = this.serviceType();
             return;
         }
         Agent agent = agenticMethod.getAnnotation(Agent.class);
@@ -70,9 +72,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputKey())) {
-            this.outputKey = agent.outputKey();
-        }
+        this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
+    }
+
+    Type agentReturnType() {
+        return agenticMethod == null ? Object.class : agenticMethod.getGenericReturnType();
     }
 
     public S beforeCall(Consumer<AgenticScope> beforeCall) {
@@ -93,6 +97,10 @@ public abstract class AbstractServiceBuilder<T, S> {
     public S outputKey(String outputKey) {
         this.outputKey = outputKey;
         return (S) this;
+    }
+
+    public S outputKey(Class<? extends TypedKey<?>> outputKey) {
+        return outputKey(stateName(outputKey));
     }
 
     public S output(Function<AgenticScope, Object> output) {
