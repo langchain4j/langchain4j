@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 
@@ -25,6 +25,7 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-3-pro-preview`
 * `gemini-2.5-pro`
 * `gemini-2.5-flash`
 * `gemini-2.5-flash-lite`
@@ -506,6 +507,27 @@ ChatModel model = GoogleAiGeminiChatModel.builder()
         .build();
 ```
 
+### Gemini 3 Pro
+
+With Gemini 3 Pro, the thinking configuration introduces a _thinking level_, either `"low"` or `"high"` (high being the default).
+It's possible to set the level within the thinking configuration:
+```java
+GoogleAiGeminiChatModel modelHigh = GoogleAiGeminiChatModel.builder()
+        .modelName("gemini-3-pro-preview")
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .thinkingConfig(GeminiThinkingConfig.builder()
+                .thinkingLevel(LOW) // or HIGH
+                .build())
+        .sendThinking(true)
+        .returnThinking(true)
+        .build();
+```
+
+You can pass either a string `"high"` / `"low"` or a `GeminiThinkingConfig.GeminiThinkingLevel.HIGH` 
+/ `GeminiThinkingConfig.GeminiThinkingLevel.LOW` enum value. 
+
+When using Gemini 3 Pro, it's mandatory to configure `sendThinking()` and `returnThinking()` to `true`,
+to ensure [thought signatures](https://ai.google.dev/gemini-api/docs/thought-signatures) are properly passed around to the model.
 
 ## GoogleAiBatchChatModel
 

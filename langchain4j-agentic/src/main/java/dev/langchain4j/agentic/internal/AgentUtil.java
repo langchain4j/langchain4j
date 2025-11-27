@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -16,6 +17,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -34,7 +37,41 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
+    private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
+
     private AgentUtil() {}
+
+    private static <T> TypedKey<T> stateInstance(Class<? extends TypedKey<? extends T>> key) {
+        return (TypedKey<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
+            try {
+                return key.getDeclaredConstructor().newInstance();
+            }  catch (NoSuchMethodException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' doesn't have a no-args constructor", e);
+            }  catch (IllegalAccessException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' is not accessible", e);
+            } catch (InstantiationException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static String outputKey(String outputKey, Class<? extends TypedKey<?>> typedOutputKey) {
+        if (isNullOrBlank(outputKey)) {
+            return typedOutputKey != Agent.NoTypedKey.class ? stateName(typedOutputKey) : null;
+        }
+        if (typedOutputKey != Agent.NoTypedKey.class) {
+            throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
+        }
+        return outputKey;
+    }
+
+    public static <T> T stateDefaultValue(Class<? extends TypedKey<T>> key) {
+        return stateInstance(key).defaultValue();
+    }
+
+    public static String stateName(Class<? extends TypedKey<?>> key) {
+        return stateInstance(key).name();
+    }
 
     public static String uniqueAgentName(Class<?> agentClass, String agentName) {
         return agentName + "_" + agentClass.getSimpleName();

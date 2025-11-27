@@ -27,6 +27,7 @@ import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.Planner;
@@ -389,7 +390,7 @@ public class AgenticServices {
                 agentMethod,
                 sequenceAgent.name(),
                 sequenceAgent.description(),
-                sequenceAgent.outputKey(),
+                AgentUtil.outputKey(sequenceAgent.outputKey(), sequenceAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -413,7 +414,7 @@ public class AgenticServices {
                 agentMethod,
                 loopAgent.name(),
                 loopAgent.description(),
-                loopAgent.outputKey(),
+                AgentUtil.outputKey(loopAgent.outputKey(), loopAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -444,7 +445,7 @@ public class AgenticServices {
                 agentMethod,
                 conditionalAgent.name(),
                 conditionalAgent.description(),
-                conditionalAgent.outputKey(),
+                AgentUtil.outputKey(conditionalAgent.outputKey(), conditionalAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -478,7 +479,7 @@ public class AgenticServices {
                 agentMethod,
                 parallelAgent.name(),
                 parallelAgent.description(),
-                parallelAgent.outputKey(),
+                AgentUtil.outputKey(parallelAgent.outputKey(), parallelAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -515,7 +516,7 @@ public class AgenticServices {
                 agentMethod,
                 plannerAgent.name(),
                 plannerAgent.description(),
-                plannerAgent.outputKey(),
+                AgentUtil.outputKey(plannerAgent.outputKey(), plannerAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -576,9 +577,7 @@ public class AgenticServices {
         if (!isNullOrBlank(supervisorAgent.description())) {
             builder.description(supervisorAgent.description());
         }
-        if (!isNullOrBlank(supervisorAgent.outputKey())) {
-            builder.outputKey(supervisorAgent.outputKey());
-        }
+        builder.outputKey(AgentUtil.outputKey(supervisorAgent.outputKey(), supervisorAgent.typedOutputKey()));
 
         selectMethod(
                         agentServiceClass,
@@ -791,7 +790,7 @@ public class AgenticServices {
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
-                .outputKey(a2aClient.outputKey())
+                .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
 
         getAnnotatedMethodOnClass(agentServiceClass, BeforeAgentInvocation.class)

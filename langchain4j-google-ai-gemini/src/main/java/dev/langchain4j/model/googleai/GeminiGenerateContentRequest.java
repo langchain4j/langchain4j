@@ -5,6 +5,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
+        String model,
         List<GeminiContent> contents,
         GeminiTool tools,
         GeminiToolConfig toolConfig,
@@ -17,6 +18,7 @@ record GeminiGenerateContentRequest(
     }
 
     static class GeminiGenerateContentRequestBuilder {
+        private String model;
         private List<GeminiContent> contents;
         private GeminiTool tools;
         private GeminiToolConfig toolConfig;
@@ -25,6 +27,11 @@ record GeminiGenerateContentRequest(
         private GeminiGenerationConfig generationConfig;
 
         GeminiGenerateContentRequestBuilder() {}
+
+        GeminiGenerateContentRequestBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -58,6 +65,7 @@ record GeminiGenerateContentRequest(
 
         public GeminiGenerateContentRequest build() {
             return new GeminiGenerateContentRequest(
+                    this.model,
                     this.contents,
                     this.tools,
                     this.toolConfig,

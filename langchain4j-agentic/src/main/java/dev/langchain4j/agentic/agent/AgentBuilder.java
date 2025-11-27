@@ -2,12 +2,15 @@ package dev.langchain4j.agentic.agent;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
@@ -96,9 +99,9 @@ public class AgentBuilder<T> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputKey())) {
-            this.outputKey = agent.outputKey();
-        }
+
+        this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
+
         this.async = agent.async();
         if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
             this.contextProvidingAgents = agent.summarizedContext();
@@ -303,6 +306,10 @@ public class AgentBuilder<T> {
     public AgentBuilder<T> outputKey(String outputKey) {
         this.outputKey = outputKey;
         return this;
+    }
+
+    public AgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
+        return outputKey(stateName(outputKey));
     }
 
     public AgentBuilder<T> async(boolean async) {
