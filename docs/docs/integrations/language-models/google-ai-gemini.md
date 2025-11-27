@@ -407,7 +407,10 @@ def ackermann(m, n):
 
 print(fibonacci(22) - ackermann(3, 4))
 ```
-Output: 175860
+Output:
+```
+17586
+```
 The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
@@ -416,10 +419,12 @@ Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
 
 If we hadn't asked for the code / output, we would have received only the following text:
 
+```
 The result of `fibonacci(22) - ackermann(3, 4)` is **17586**.
 
 I implemented the Fibonacci and Ackermann functions in Python.
 Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
+```
 
 ## Multimodality
 
@@ -502,7 +507,7 @@ The following parameters also control thinking behaviour:
   callbacks when using `GoogleAiGeminiStreamingChatModel`.
   Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
-  Disabled by default.
+- Disabled by default.
 
 :::note
 Please note that when `returnThinking` is not set (is `null`) and `thinkingConfig` is set,
