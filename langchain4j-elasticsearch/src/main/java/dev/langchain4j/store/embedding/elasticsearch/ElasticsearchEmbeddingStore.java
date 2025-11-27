@@ -41,7 +41,6 @@ import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -424,11 +423,13 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                         .map(document -> new EmbeddingMatch<>(
                                 hit.score(),
                                 hit.id(),
-                                new Embedding(document.getVector()),
+                                document.getVector() == null
+                                        ? null
+                                        : new Embedding(document.getVector()),
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
                         )).orElse(null))
-                .collect(toList());
+                .toList();
     }
 }
