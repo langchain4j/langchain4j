@@ -143,7 +143,7 @@ class InternalOllamaHelper {
         List<ToolCall> toolCalls = getOrDefault(message.getToolCalls(), List.of());
 
         return AiMessage.builder()
-                .text(content)
+                .text(isNullOrEmpty(content) ? null : content)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toToolExecutionRequests(toolCalls))
                 .build();

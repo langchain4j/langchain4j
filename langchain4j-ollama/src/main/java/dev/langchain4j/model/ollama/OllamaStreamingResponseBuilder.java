@@ -77,7 +77,7 @@ class OllamaStreamingResponseBuilder {
         if (toolCallBuilder.hasRequests()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
-                            .text(text)
+                            .text(isNullOrEmpty(text) ? null : text)
                             .thinking(isNullOrEmpty(thinking) ? null : thinking)
                             .toolExecutionRequests(toolCallBuilder.allRequests())
                             .build())
@@ -87,7 +87,7 @@ class OllamaStreamingResponseBuilder {
 
         return ChatResponse.builder()
                 .aiMessage(AiMessage.builder()
-                        .text(text)
+                        .text(isNullOrEmpty(text) ? null : text)
                         .thinking(isNullOrEmpty(thinking) ? null : thinking)
                         .build())
                 .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))

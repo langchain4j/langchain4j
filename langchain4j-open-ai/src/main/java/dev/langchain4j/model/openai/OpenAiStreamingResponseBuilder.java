@@ -221,7 +221,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         return AiMessage.builder()
-                .text(text)
+                .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(buildToolExecutionRequests())
                 .build();

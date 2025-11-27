@@ -141,7 +141,7 @@ class GeminiStreamingResponseBuilder {
         String thought = thoughtBuilder.toString();
 
         return AiMessage.builder()
-                .text(text)
+                .text(text.isEmpty() ? null : text)
                 .thinking(thought.isEmpty() ? null : thought)
                 .toolExecutionRequests(functionCalls)
                 .attributes(attributes)

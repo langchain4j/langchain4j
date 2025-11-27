@@ -110,7 +110,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
 
         AiMessage aiMessage = AiMessage.builder()
-                .text(content)
+                .text(content.isEmpty() ? null : content)
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
 

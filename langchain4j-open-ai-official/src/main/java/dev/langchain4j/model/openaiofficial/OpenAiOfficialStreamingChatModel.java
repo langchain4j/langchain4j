@@ -145,7 +145,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                 String text = textBuilder.toString();
 
                                 AiMessage aiMessage = AiMessage.builder()
-                                        .text(text)
+                                        .text(text.isEmpty() ? null : text)
                                         .toolExecutionRequests(toolCallBuilder.allRequests())
                                         .build();
 

@@ -360,7 +360,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 ChatResponseMetadata chatResponseMetadata = createMetadata(tokenUsage, finishReason);
 
                 AiMessage aiMessage = AiMessage.builder()
-                        .text(text)
+                        .text(isNullOrEmpty(text) ? null : text)
                         .thinking(isNullOrEmpty(thinking) ? null : thinking)
                         .toolExecutionRequests(toolExecutionRequests)
                         .attributes(attributes)
