@@ -112,7 +112,7 @@ public class JdkHttpClient implements HttpClient {
         return new StreamingHttpEventPublisher(delegate, toJdkRequest(request));
     }
 
-    private java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
+    java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
 
@@ -159,7 +159,7 @@ public class JdkHttpClient implements HttpClient {
         }
     }
 
-    private static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> { // TODO name, location
+    static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> { // TODO name, location
 
         private final java.net.http.HttpClient client;
         private final java.net.http.HttpRequest request;
@@ -213,7 +213,7 @@ public class JdkHttpClient implements HttpClient {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     this.subscription = subscription;
-                    subscription.request(?); // TODO request only what was requested
+                    subscription.request(1); // TODO request only what was requested
                 }
 
                 @Override
