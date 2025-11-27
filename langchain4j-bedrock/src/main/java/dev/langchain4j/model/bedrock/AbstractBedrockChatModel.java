@@ -418,7 +418,7 @@ abstract class AbstractBedrockChatModel {
         String text = texts.stream().collect(Collectors.joining("\n\n"));
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(text) ? null : text)
+                .text(text)
                 .thinking(thinking)
                 .attributes(attributes)
                 .toolExecutionRequests(toolExecutionRequests)

@@ -241,7 +241,7 @@ public class AnthropicMapper {
                 .collect(toList());
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(text) ? null : text)
+                .text(text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toolExecutionRequests)
                 .attributes(attributes)

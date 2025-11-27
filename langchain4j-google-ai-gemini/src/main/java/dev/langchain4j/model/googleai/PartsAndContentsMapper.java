@@ -246,7 +246,7 @@ final class PartsAndContentsMapper {
         }
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(text) ? null : text)
+                .text(text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toToolExecutionRequests(functionCalls))
                 .attributes(attributes.isEmpty() ? Map.of() : attributes)
