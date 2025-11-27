@@ -80,4 +80,11 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     protected void ensureStoreIsEmpty() {
         // TODO fix
     }
+
+    @Override
+    protected boolean assertEmbedding() {
+        // Since ES 9.2.0, vector fields are excluded from _source by default.
+        // Ref: https://www.elastic.co/search-labs/blog/elasticsearch-exclude-vectors-from-source
+        return false;
+    }
 }
