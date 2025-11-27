@@ -1,5 +1,10 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -22,6 +27,10 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -33,16 +42,6 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
@@ -74,13 +73,14 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
     @Deprecated(forRemoval = true)
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
-                                       String serverUrl,
-                                       String apiKey,
-                                       String userName,
-                                       String password,
-                                       String indexName,
-                                       Integer dimension) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            String serverUrl,
+            String apiKey,
+            String userName,
+            String password,
+            String indexName,
+            Integer dimension) {
         this(configuration, serverUrl, apiKey, userName, password, indexName);
         log.warn("Setting the dimension is deprecated.");
     }
@@ -98,28 +98,28 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
     @Deprecated(forRemoval = true)
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
-                                       String serverUrl,
-                                       String apiKey,
-                                       String userName,
-                                       String password,
-                                       String indexName) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            String serverUrl,
+            String apiKey,
+            String userName,
+            String password,
+            String indexName) {
 
         this.configuration = configuration;
 
-        RestClientBuilder restClientBuilder = RestClient
-                .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
+        RestClientBuilder restClientBuilder =
+                RestClient.builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
 
         if (!isNullOrBlank(userName)) {
             CredentialsProvider provider = new BasicCredentialsProvider();
             provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
-            restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
+            restClientBuilder.setHttpClientConfigCallback(
+                    httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
         }
 
         if (!isNullOrBlank(apiKey)) {
-            restClientBuilder.setDefaultHeaders(new Header[]{
-                    new BasicHeader("Authorization", "Apikey " + apiKey)
-            });
+            restClientBuilder.setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "Apikey " + apiKey)});
         }
 
         ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
@@ -136,7 +136,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
      */
-    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -157,7 +158,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String password;
         private RestClient restClient;
         private String indexName = "default";
-        private ElasticsearchConfiguration configuration = ElasticsearchConfigurationKnn.builder().build();
+        private ElasticsearchConfiguration configuration =
+                ElasticsearchConfigurationKnn.builder().build();
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -246,7 +248,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (restClient != null) {
                 return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
             } else {
-                log.warn("This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
+                log.warn(
+                        "This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
                 return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);
             }
         }
@@ -273,17 +276,18 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAll(ids, embeddings, null);
         return ids;
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
-        log.debug("search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
-                embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
+        log.debug(
+                "search([...{}...], {}, {})",
+                embeddingSearchRequest.queryEmbedding().vector().length,
+                embeddingSearchRequest.maxResults(),
+                embeddingSearchRequest.minScore());
         try {
             SearchResponse<Document> response = configuration.internalSearch(client, indexName, embeddingSearchRequest);
             log.trace("found [{}] results", response);
@@ -339,7 +343,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+        ensureTrue(
+                embedded == null || embeddings.size() == embedded.size(),
+                "embeddings size is not equal to embedded size");
 
         try {
             bulkIndex(ids, embeddings, embedded);
@@ -348,7 +354,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-    private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) throws IOException {
+    private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded)
+            throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
@@ -357,12 +364,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             Document document = Document.builder()
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
+                    .metadata(
+                            embedded == null ? null : embedded.get(i).metadata().toMap())
                     .build();
-            bulkBuilder.operations(op -> op.index(idx -> idx
-                    .index(indexName)
-                    .id(ids.get(finalI))
-                    .document(document)));
+            bulkBuilder.operations(op ->
+                    op.index(idx -> idx.index(indexName).id(ids.get(finalI)).document(document)));
         }
 
         BulkResponse response = client.bulk(bulkBuilder.build());
@@ -379,15 +385,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private void throwIfError(ErrorCause errorCause) {
         if (errorCause != null) {
-            throw new ElasticsearchRequestFailedException("type: " + errorCause.type() + ", reason: " + errorCause.reason());
+            throw new ElasticsearchRequestFailedException(
+                    "type: " + errorCause.type() + ", reason: " + errorCause.reason());
         }
     }
 
     private void removeByQuery(Query query) {
         try {
-            DeleteByQueryResponse response = client.deleteByQuery(delete -> delete
-                    .index(indexName)
-                    .query(query));
+            DeleteByQueryResponse response =
+                    client.deleteByQuery(delete -> delete.index(indexName).query(query));
             if (!response.failures().isEmpty()) {
                 for (BulkIndexByScrollFailure item : response.failures()) {
                     throwIfError(item.cause());
@@ -409,9 +415,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     private void bulkRemove(Collection<String> ids) throws IOException {
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (String id : ids) {
-            bulkBuilder.operations(op -> op.delete(dlt -> dlt
-                    .index(indexName)
-                    .id(id)));
+            bulkBuilder.operations(op -> op.delete(dlt -> dlt.index(indexName).id(id)));
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
@@ -423,13 +427,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                         .map(document -> new EmbeddingMatch<>(
                                 hit.score(),
                                 hit.id(),
-                                document.getVector() == null
-                                        ? null
-                                        : new Embedding(document.getVector()),
+                                document.getVector() == null ? null : new Embedding(document.getVector()),
                                 document.getText() == null
                                         ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
-                        )).orElse(null))
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
+                        .orElse(null))
                 .toList();
     }
 }
