@@ -95,8 +95,10 @@ jobs:
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
+            -Djunit.jupiter.extensions.autodetection.enabled=true \
             -Dtinylog.writer.level=info
         env:
+          LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
