@@ -78,8 +78,7 @@ public final class GeminiFiles {
      * @param mimeType  mimetype of the file that is being uploaded
      * @param name      optional display name for the file
      */
-    public GeminiFile uploadFile(byte[] fileBytes, String mimeType, String name)
-            throws IOException, InterruptedException {
+    public GeminiFile uploadFile(byte[] fileBytes, String mimeType, String name) throws InterruptedException {
         ensureNotNull(fileBytes, "fileBytes");
         ensureNotNull(mimeType, "mimeType");
         ensureNotNull(name, "name");

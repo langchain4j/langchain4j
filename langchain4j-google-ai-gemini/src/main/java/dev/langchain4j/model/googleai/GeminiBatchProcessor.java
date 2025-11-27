@@ -63,7 +63,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
     }
 
-    public BatchResponse<RESPONSE> createBatchFromFile(
+    BatchResponse<RESPONSE> createBatchFromFile(
             String displayName,
             GeminiFiles.GeminiFile file,
             String modelName,

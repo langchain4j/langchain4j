@@ -324,7 +324,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_set_custom_parameters_and_get_raw_response() throws JsonProcessingException {
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
         String city = "Munich";
@@ -419,5 +419,65 @@ class OpenAiChatModelIT {
 
         SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
         assertThat(rawResponse).isEqualTo(httpResponse);
+    }
+
+    @Test
+    void should_return_empty_string() {
+
+        // given
+        SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(
+                        """
+                        {
+                          "id": "chatcmpl-C9QWFjhlUn7vBERtBTMFbbgoKqTDh",
+                          "object": "chat.completion",
+                          "created": 1756362927,
+                          "model": "gpt-4o-mini-2024-07-18",
+                          "choices": [
+                            {
+                              "index": 0,
+                              "message": {
+                                "role": "assistant",
+                                "content": "",
+                                "refusal": null,
+                                "annotations": []
+                              },
+                              "logprobs": null,
+                              "finish_reason": "stop"
+                            }
+                          ],
+                          "usage": {
+                            "prompt_tokens": 14,
+                            "completion_tokens": 0,
+                            "total_tokens": 14,
+                            "prompt_tokens_details": {
+                              "cached_tokens": 0,
+                              "audio_tokens": 0
+                            },
+                            "completion_tokens_details": {
+                              "reasoning_tokens": 0,
+                              "audio_tokens": 0,
+                              "accepted_prediction_tokens": 0,
+                              "rejected_prediction_tokens": 0
+                            }
+                          },
+                          "service_tier": "default",
+                          "system_fingerprint": "fp_560af6e559"
+                        }
+                        """)
+                .build();
+
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+
+        ChatModel model = OpenAiChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(UserMessage.from("does not matter"));
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("");
     }
 }

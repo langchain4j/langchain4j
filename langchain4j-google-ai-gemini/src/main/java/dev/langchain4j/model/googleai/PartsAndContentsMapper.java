@@ -38,6 +38,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 final class PartsAndContentsMapper {
     private PartsAndContentsMapper() {}
@@ -48,6 +50,9 @@ final class PartsAndContentsMapper {
             "generated_images"; // key for storing generated images in AiMessage attributes
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
+    
+    // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
+    private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
     static GeminiContent.GeminiPart fromContentToGPart(Content content) {
         if (content instanceof TextContent textContent) {
@@ -61,7 +66,12 @@ final class PartsAndContentsMapper {
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
-                if (url.getScheme() != null && url.getScheme().startsWith("http")) {
+                // Handle data URIs (e.g., "data:image/png;base64,iVBORw0KG...")
+                if (url.getScheme() != null && url.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(url))
+                            .build();
+                } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
                     byte[] imageBytes = readBytes(url.toString());
                     String base64Data = Base64.getEncoder().encodeToString(imageBytes);
                     return GeminiContent.GeminiPart.builder()
@@ -81,6 +91,12 @@ final class PartsAndContentsMapper {
         } else if (content instanceof AudioContent audioContent) {
             URI uri = audioContent.audio().url();
             if (uri != null) {
+                // Handle data URIs for audio
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -94,6 +110,12 @@ final class PartsAndContentsMapper {
         } else if (content instanceof VideoContent videoContent) {
             URI uri = videoContent.video().url();
             if (uri != null) {
+                // Handle data URIs for video
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -109,6 +131,12 @@ final class PartsAndContentsMapper {
 
             URI uri = pdfFile.url();
             if (uri != null) {
+                // Handle data URIs for PDF
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -218,7 +246,7 @@ final class PartsAndContentsMapper {
         }
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(text) ? null : text)
+                .text(text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
                 .toolExecutionRequests(toToolExecutionRequests(functionCalls))
                 .attributes(attributes.isEmpty() ? Map.of() : attributes)
@@ -301,6 +329,26 @@ final class PartsAndContentsMapper {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /**
+     * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
+     * 
+     * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
+     * @return a GeminiBlob containing the MIME type and base64 data
+     * @throws IllegalArgumentException if the URI is not a valid data URI
+     */
+    private static GeminiBlob parseDataUri(URI uri) {
+        String urlString = uri.toString();
+        Matcher matcher = DATA_URI_PATTERN.matcher(urlString);
+        
+        if (matcher.matches()) {
+            String mimeType = matcher.group(1);
+            String base64Data = matcher.group(2);
+            return new GeminiBlob(mimeType, base64Data);
+        }
+        
+        throw new IllegalArgumentException("Invalid data URI format: " + urlString);
     }
 
     private static List<GeminiContent.GeminiPart> toGeminiParts(

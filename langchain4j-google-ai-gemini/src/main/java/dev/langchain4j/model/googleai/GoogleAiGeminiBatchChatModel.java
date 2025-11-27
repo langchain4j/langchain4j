@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
 import dev.langchain4j.Experimental;
@@ -34,7 +35,7 @@ public final class GoogleAiGeminiBatchChatModel {
     private final ChatRequestPreparer preparer;
 
     GoogleAiGeminiBatchChatModel(final Builder builder) {
-        this(builder, BaseGeminiChatModel.buildGeminiService(builder));
+        this(builder, buildGeminiService(builder));
     }
 
     GoogleAiGeminiBatchChatModel(final Builder builder, final GeminiService geminiService) {
@@ -44,7 +45,7 @@ public final class GoogleAiGeminiBatchChatModel {
         this.modelName = builder.modelName;
     }
 
-    /***
+    /**
      * Creates and enqueues a batch of content generation requests for asynchronous processing.
      *
      * <p> This method submits multiple chat requests as a single batch operation to the Gemini API.
@@ -73,10 +74,61 @@ public final class GoogleAiGeminiBatchChatModel {
         return batchProcessor.createBatchInline(displayName, priority, requests, modelName, BATCH_GENERATE_CONTENT);
     }
 
+    /**
+     * Creates a batch of chat requests from an uploaded file.
+     *
+     * <p>This method allows you to create a batch job using a JSONL file that has been previously
+     * uploaded to the Gemini Files API. This is useful for larger batches that exceed the 20 MB
+     * inline request limit.</p>
+     *
+     * <p>The file must contain batch requests in JSONL format, where each line is a JSON object
+     * with a "key" and "request" field. You can use {@link #writeBatchToFile(JsonLinesWriter, Iterable)}
+     * to create properly formatted JSONL files.</p>
+     *
+     * @param displayName a user-defined name for the batch, used for identification
+     * @param file the GeminiFile object representing the uploaded file containing batch requests
+     * @return a {@link BatchResponse} representing the initial state of the batch operation,
+     *         typically {@link BatchIncomplete}
+     * @see #writeBatchToFile(JsonLinesWriter, Iterable)
+     * @see GeminiFiles#uploadFile(java.nio.file.Path, String)
+     */
     public BatchResponse<ChatResponse> createBatchFromFile(String displayName, GeminiFile file) {
         return batchProcessor.createBatchFromFile(displayName, file, modelName, BATCH_GENERATE_CONTENT);
     }
 
+    /**
+     * Writes a batch of chat requests to a JSONL file for later upload and processing.
+     *
+     * <p>This method serializes chat requests into JSONL (JSON Lines) format, where each line
+     * contains a single request wrapped in a {@link BatchFileRequest} with a unique key.
+     * The resulting file can be uploaded using the Gemini Files API and then used to create
+     * a batch job via {@link #createBatchFromFile(String, GeminiFile)}.</p>
+     *
+     * <p>Each request is converted to the internal Gemini format before being written to the file.</p>
+     *
+     * <p><strong>Example usage:</strong></p>
+     * <pre>{@code
+     * Path batchFile = Files.createTempFile("batch", ".jsonl");
+     * try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+     *     List<BatchFileRequest<ChatRequest>> requests = List.of(
+     *         new BatchFileRequest<>("request-1", ChatRequest.builder()
+     *             .messages(UserMessage.from("Question 1"))
+     *             .build()),
+     *         new BatchFileRequest<>("request-2", ChatRequest.builder()
+     *             .messages(UserMessage.from("Question 2"))
+     *             .build())
+     *     );
+     *     batchModel.writeBatchToFile(writer, requests);
+     * }
+     * }</pre>
+     *
+     * @param writer the JsonLinesWriter to which the batch requests will be written
+     * @param requests an iterable collection of BatchFileRequest objects containing ChatRequest instances,
+     *                 each with a unique key identifier
+     * @throws IOException if an I/O error occurs while writing to the writer
+     * @see #createBatchFromFile(String, GeminiFile)
+     * @see JsonLinesWriter
+     */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<ChatRequest>> requests)
             throws IOException {
         for (var request : requests) {
@@ -87,6 +139,20 @@ public final class GoogleAiGeminiBatchChatModel {
 
     /**
      * Retrieves the current state and results of a batch operation.
+     *
+     * <p>This method polls the Gemini API to get the latest state of a previously created batch.
+     * The response can be:
+     * <ul>
+     *   <li>{@link BatchIncomplete} - if the batch is still pending or running</li>
+     *   <li>{@link BatchRequestResponse.BatchSuccess} - if the batch completed successfully, containing all responses</li>
+     *   <li>{@link BatchRequestResponse.BatchError} - if the batch failed, containing error details</li>
+     * </ul>
+     * <p>
+     * Clients should poll this method at intervals to check the operation status until completion.</p>
+     *
+     * @param name the name of the batch operation to retrieve, obtained from the initial
+     *             {@link #createBatchInline} call
+     * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     public BatchResponse<ChatResponse> retrieveBatchResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
@@ -94,13 +160,27 @@ public final class GoogleAiGeminiBatchChatModel {
 
     /**
      * Cancels a batch operation that is currently pending or running.
+     *
+     * <p>This method attempts to cancel a batch job. Cancellation is only possible for batches
+     * that are in {@link BatchRequestResponse.BatchJobState#BATCH_STATE_PENDING} or {@link BatchRequestResponse.BatchJobState#BATCH_STATE_RUNNING}
+     * state. Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
+     *
+     * @param name the name of the batch operation to cancel
+     * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled (e.g., already completed,
+     *                                                 already cancelled, or does not exist)
      */
     public void cancelBatchJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
     /**
-     * Deletes a batch job.
+     * Deletes a batch job from the system.
+     * <p>
+     * This removes the batch job but does not cancel it if still running.
+     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch.
+     *
+     * @param name the name of the batch job to delete
+     * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
     public void deleteBatchJob(BatchName name) {
         batchProcessor.deleteBatchJob(name);
@@ -110,7 +190,9 @@ public final class GoogleAiGeminiBatchChatModel {
      * Lists batch jobs with optional pagination.
      *
      * @param pageSize  the maximum number of batch jobs to return; if null, uses server default
-     * @param pageToken token for retrieving a specific page. If null, returns the first page
+     * @param pageToken token for retrieving a specific page from {@link BatchList#pageToken()};
+     *                  if null, returns the first page
+     * @return a {@link BatchList} containing batch responses and a token for the next page
      * @throws RuntimeException if the server does not support this operation
      */
     public BatchList<ChatResponse> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {

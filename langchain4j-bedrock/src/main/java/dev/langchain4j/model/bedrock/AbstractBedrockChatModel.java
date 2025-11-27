@@ -418,7 +418,7 @@ abstract class AbstractBedrockChatModel {
         String text = texts.stream().collect(Collectors.joining("\n\n"));
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(text) ? null : text)
+                .text(text)
                 .thinking(thinking)
                 .attributes(attributes)
                 .toolExecutionRequests(toolExecutionRequests)
@@ -448,6 +448,10 @@ abstract class AbstractBedrockChatModel {
 
         if (stopReason == StopReason.TOOL_USE) {
             return FinishReason.TOOL_EXECUTION;
+        }
+
+        if (stopReason == StopReason.CONTENT_FILTERED) {
+            return FinishReason.CONTENT_FILTER;
         }
 
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);

@@ -341,7 +341,7 @@ public class OpenAiUtils {
         }
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(content) ? null : content)
+                .text(content)
                 .thinking(isNullOrEmpty(reasoningContent) ? null : reasoningContent)
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
