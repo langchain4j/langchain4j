@@ -1,7 +1,3 @@
----
-sidebar_position: 8
----
-
 # Google AI Gemini Embeddings
 
 https://ai.google.dev/gemini-api/docs/embeddings
