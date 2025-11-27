@@ -114,6 +114,11 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
+    protected boolean supportsStreamingCancellation() {
+        return false; // TODO implement
+    }
+
+    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return VertexAiAnthropicStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
