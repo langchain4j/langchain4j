@@ -120,6 +120,11 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
         return GitHubModelsEmbeddingModelName.knownDimension(modelName);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static Builder builder() {
         for (GitHubModelsEmbeddingModelBuilderFactory factory : loadFactories(GitHubModelsEmbeddingModelBuilderFactory.class)) {
             return factory.get();
