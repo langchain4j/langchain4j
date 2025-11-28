@@ -6,12 +6,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta17-SNAPSHOT</version>
+        <version>1.10.0-beta18-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-guardrails</artifactId>
-    <version>1.10.0-beta17-SNAPSHOT</version>
+    <version>1.10.0-beta18-SNAPSHOT</version>
     <name>LangChain4j :: Guardrails</name>
     <description>Input and output out-of-the-box guardrails</description>
 
