@@ -1,17 +1,14 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.service.V;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
@@ -19,8 +16,6 @@ import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
 
 public interface AgentInvoker extends AgentSpecification {
 

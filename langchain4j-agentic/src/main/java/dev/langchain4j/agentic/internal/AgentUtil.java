@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -134,8 +135,16 @@ public class AgentUtil {
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method) {
+        return argumentsFromMethod(method, Map.of());
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
         return Stream.of(method.getParameters())
-                .map(p -> new AgentArgument(p.getParameterizedType(), parameterName(p)))
+                .map(p -> {
+                    String argName = parameterName(p);
+                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
+                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue);
+                })
                 .toList();
     }
 
@@ -150,6 +159,11 @@ public class AgentUtil {
             return AGENTIC_SCOPE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
+    }
+
+    private static Object parameterDefaultValue(Parameter p) {
+        K k = p.getAnnotation(K.class);
+        return k != null ? stateInstance(k.value()).defaultValue() : null;
     }
 
     public static AgentInvocationArguments agentInvocationArguments(
@@ -178,21 +192,25 @@ public class AgentUtil {
                 positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
-            Object argValue = argumentFromAgenticScope(agenticScope, arg.rawType(), argName);
+
+            Object argValue = argumentFromAgenticScope(agenticScope, arg);
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
         return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
-    public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {
-        Object argValue = agenticScope.readState(argName);
+    private static Object argumentFromAgenticScope(AgenticScope agenticScope, AgentArgument arg) {
+        Object argValue = agenticScope.readState(arg.name());
         if (argValue == null) {
-            throw new MissingArgumentException(argName);
+            argValue = arg.defaultValue();
+            if (argValue == null) {
+                throw new MissingArgumentException(arg.name());
+            }
         }
-        Object parsedArgument = adaptValueToType(argValue, argType);
+        Object parsedArgument = adaptValueToType(argValue, arg.rawType());
         if (argValue != parsedArgument) {
-            agenticScope.writeState(argName, parsedArgument);
+            agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;
     }

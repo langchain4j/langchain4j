@@ -35,15 +35,18 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
     final Class<T> agentServiceClass;
+    final Method agenticMethod;
     final Class<?> agentReturnType;
-    final List<AgentArgument> arguments;
+    List<AgentArgument> arguments;
 
     String name;
     String agentId;
@@ -53,6 +56,8 @@ public class AgentBuilder<T> {
 
     Consumer<AgentRequest> beforeListener = request -> {};
     Consumer<AgentResponse> afterListener = response -> {};
+
+    private final Map<String, Object> defaultValues = new HashMap<>();
 
     private ChatModel model;
     private ChatMemory chatMemory;
@@ -81,8 +86,8 @@ public class AgentBuilder<T> {
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agenticMethod = agenticMethod;
         this.agentReturnType = agenticMethod.getReturnType();
-        this.arguments = argumentsFromMethod(agenticMethod);
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
@@ -113,6 +118,8 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
+        this.arguments = argumentsFromMethod(agenticMethod, defaultValues);
+
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
@@ -360,6 +367,11 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
         this.afterListener = this.afterListener.andThen(afterListener);
+        return this;
+    }
+
+    public AgentBuilder<T> keyDefaultValue(String key, Object value) {
+        this.defaultValues.put(key, value);
         return this;
     }
 }
