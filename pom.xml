@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.10.0-beta17-SNAPSHOT</version>
+    <version>1.10.0-beta18-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -122,7 +122,7 @@
 
     <properties>
         <langchain4j.stable.version>1.10.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.10.0-beta17-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
