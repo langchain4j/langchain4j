@@ -48,6 +48,7 @@ import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -636,8 +637,19 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
+    private static boolean hasUserMessageAnnotation(Parameter parameter) {
+        for (Annotation annotation : parameter.getAnnotations()) {
+            if (annotation.annotationType().equals(dev.langchain4j.service.UserMessage.class)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
-        if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
+        if (parameters != null
+                && parameters.length == 1
+                && !hasUserMessageAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
