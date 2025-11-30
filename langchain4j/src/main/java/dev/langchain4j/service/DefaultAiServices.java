@@ -57,7 +57,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +67,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -75,9 +75,17 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
+            dev.langchain4j.service.UserMessage.class,
+            dev.langchain4j.service.V.class,
+            dev.langchain4j.service.MemoryId.class,
+            dev.langchain4j.service.UserName.class
+    );
+
     DefaultAiServices(AiServiceContext context) {
         super(context);
     }
+
 
     static void validateParameters(Class<?> aiServiceClass, Method method) {
         Parameter[] parameters = method.getParameters();
@@ -86,14 +94,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         boolean invocationParametersExist = false;
-
         for (Parameter parameter : parameters) {
-            V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage =
-                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
-            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
-            UserName userName = parameter.getAnnotation(UserName.class);
-
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 if (invocationParametersExist) {
                     throw illegalConfiguration(
@@ -107,17 +108,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                 continue;
             }
 
-            if (userMessage == null && v == null && memoryId == null && userName == null) {
+            if (!hasAnyValidAnnotation(parameter)) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
+                                + "%s or it should be of type %s",
                         parameter.getName(),
                         method.getName(),
                         aiServiceClass.getName(),
-                        dev.langchain4j.service.UserMessage.class.getName(),
-                        V.class.getName(),
-                        MemoryId.class.getName(),
-                        UserName.class.getName(),
+                        VALID_PARAM_ANNOTATIONS.stream().map(Class::getName).sorted().collect(Collectors.joining(", ")), //for test compatability
                         InvocationParameters.class.getName());
             }
         }
@@ -177,9 +175,8 @@ class DefaultAiServices<T> extends AiServices<T> {
         return switch (method.getName()) {
             case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
             case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-            default ->
-                throw new UnsupportedOperationException(
-                        "Unknown method on ChatMemoryAccess class : " + method.getName());
+            default -> throw new UnsupportedOperationException(
+                    "Unknown method on ChatMemoryAccess class : " + method.getName());
         };
     }
 
@@ -188,7 +185,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
-                new Class<?>[] {context.aiServiceClass},
+                new Class<?>[]{context.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -441,16 +438,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
-                                        .content(parsedResponse)
-                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                        .finishReason(toolServiceResult
-                                                .finalResponse()
-                                                .finishReason())
-                                        .toolExecutions(toolServiceResult.toolExecutions())
-                                        .intermediateResponses(toolServiceResult.intermediateResponses())
-                                        .finalResponse(toolServiceResult.finalResponse())
-                                        .build()
+                                .content(parsedResponse)
+                                .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                .finishReason(toolServiceResult
+                                        .finalResponse()
+                                        .finishReason())
+                                .toolExecutions(toolServiceResult.toolExecutions())
+                                .intermediateResponses(toolServiceResult.intermediateResponses())
+                                .finalResponse(toolServiceResult.finalResponse())
+                                .build()
                                 : parsedResponse;
 
                         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
@@ -637,19 +634,22 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    private static boolean hasUserMessageAnnotation(Parameter parameter) {
-        for (Annotation annotation : parameter.getAnnotations()) {
-            if (annotation.annotationType().equals(dev.langchain4j.service.UserMessage.class)) {
+
+
+    private static boolean hasAnyValidAnnotation(Parameter parameter) {
+        for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
+            if (parameter.getAnnotation(a) != null) {
                 return true;
             }
         }
+
         return false;
     }
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null
                 && parameters.length == 1
-                && !hasUserMessageAnnotation(parameters[0])) {
+                && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
@@ -726,7 +726,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-                Scanner s = scanner.useDelimiter("\\A")) {
+             Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }
