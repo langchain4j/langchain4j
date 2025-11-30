@@ -21,9 +21,9 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -79,13 +79,11 @@ class DefaultAiServices<T> extends AiServices<T> {
             dev.langchain4j.service.UserMessage.class,
             dev.langchain4j.service.V.class,
             dev.langchain4j.service.MemoryId.class,
-            dev.langchain4j.service.UserName.class
-    );
+            dev.langchain4j.service.UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
     }
-
 
     static void validateParameters(Class<?> aiServiceClass, Method method) {
         Parameter[] parameters = method.getParameters();
@@ -115,7 +113,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                         parameter.getName(),
                         method.getName(),
                         aiServiceClass.getName(),
-                        VALID_PARAM_ANNOTATIONS.stream().map(Class::getName).sorted().collect(Collectors.joining(", ")), //for test compatibility
+                        VALID_PARAM_ANNOTATIONS.stream()
+                                .map(Class::getName)
+                                .sorted()
+                                .collect(Collectors.joining(", ")), // for test compatibility
                         InvocationParameters.class.getName());
             }
         }
@@ -175,8 +176,9 @@ class DefaultAiServices<T> extends AiServices<T> {
         return switch (method.getName()) {
             case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
             case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-            default -> throw new UnsupportedOperationException(
-                    "Unknown method on ChatMemoryAccess class : " + method.getName());
+            default ->
+                throw new UnsupportedOperationException(
+                        "Unknown method on ChatMemoryAccess class : " + method.getName());
         };
     }
 
@@ -185,7 +187,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
-                new Class<?>[]{context.aiServiceClass},
+                new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -438,16 +440,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
-                                .content(parsedResponse)
-                                .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                .finishReason(toolServiceResult
-                                        .finalResponse()
-                                        .finishReason())
-                                .toolExecutions(toolServiceResult.toolExecutions())
-                                .intermediateResponses(toolServiceResult.intermediateResponses())
-                                .finalResponse(toolServiceResult.finalResponse())
-                                .build()
+                                        .content(parsedResponse)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(toolServiceResult
+                                                .finalResponse()
+                                                .finishReason())
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build()
                                 : parsedResponse;
 
                         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
@@ -634,8 +636,6 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-
-
     private static boolean hasAnyValidAnnotation(Parameter parameter) {
         for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
             if (parameter.getAnnotation(a) != null) {
@@ -647,9 +647,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
-        if (parameters != null
-                && parameters.length == 1
-                && !hasAnyValidAnnotation(parameters[0])) {
+        if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
@@ -726,7 +724,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-             Scanner s = scanner.useDelimiter("\\A")) {
+                Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }

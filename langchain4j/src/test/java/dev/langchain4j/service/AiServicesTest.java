@@ -2,22 +2,21 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
-import static org.mockito.ArgumentMatchers.any;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-
-import org.junit.jupiter.api.Test;
-import org.mockito.NotExtensible;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.junit.jupiter.api.Test;
+import org.mockito.NotExtensible;
 
 class AiServicesTest {
 
@@ -40,9 +39,7 @@ class AiServicesTest {
             AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
     private <T> T buildService(Class<T> type) {
-        return AiServices.builder(type)
-                .chatModel(chatModel)
-                .build();
+        return AiServices.builder(type).chatModel(chatModel).build();
     }
 
     private void stubChatModelToReturnHi() {
@@ -51,6 +48,7 @@ class AiServicesTest {
                         .aiMessage(AiMessage.builder().text("Hi").build())
                         .build());
     }
+
     @Test
     void should_not_call_chatModel_when_Object_methods_are_called() throws Exception {
 
@@ -163,10 +161,11 @@ class AiServicesTest {
 
         assertThat(taskService.task("Hello")).isEqualTo("Hi");
     }
+
     @Test
     void should_use_annotated_user_message_with_multiple_parameters() {
         interface TaskService {
-            String task(@UserMessage String msg, @V("other")  String other);
+            String task(@UserMessage String msg, @V("other") String other);
         }
 
         stubChatModelToReturnHi(); // when(chatModel.chat(any(ChatRequest.class))) → "Hi"
@@ -184,8 +183,7 @@ class AiServicesTest {
         stubChatModelToReturnHi();
         TaskService taskService = buildService(TaskService.class);
 
-        assertThatThrownBy(() -> taskService.task("a", "b"))
-                .isInstanceOf(IllegalConfigurationException.class);
+        assertThatThrownBy(() -> taskService.task("a", "b")).isInstanceOf(IllegalConfigurationException.class);
     }
 
     @Test
@@ -193,7 +191,6 @@ class AiServicesTest {
         interface TaskService {
             String task(@UserMessage String msg);
         }
-
 
         stubChatModelToReturnHi();
         TaskService taskService = buildService(TaskService.class);
