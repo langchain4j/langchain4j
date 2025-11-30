@@ -115,7 +115,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         parameter.getName(),
                         method.getName(),
                         aiServiceClass.getName(),
-                        VALID_PARAM_ANNOTATIONS.stream().map(Class::getName).sorted().collect(Collectors.joining(", ")), //for test compatability
+                        VALID_PARAM_ANNOTATIONS.stream().map(Class::getName).sorted().collect(Collectors.joining(", ")), //for test compatibility
                         InvocationParameters.class.getName());
             }
         }
