@@ -497,7 +497,9 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat7("Hello", new InvocationParameters()))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class " + AiService.class.getName() +
+                        " must be annotated with either " + UserMessage.class.getName() + ", " + V.class.getName() + ", " +
+                        MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " + InvocationParameters.class.getName());
     }
 
     @Test
@@ -513,6 +515,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("There can be at most one parameter of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The method 'illegalChat8' of the class " + AiService.class.getName() +
+                        " has more than one parameter of type " + InvocationParameters.class.getName());
     }
 }
