@@ -13,7 +13,6 @@ import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
-import dev.langchain4j.agentic.Agents.CreativeWriterWithTypedMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -164,37 +163,6 @@ public class WorkflowAgentsIT {
                 "audience", "young adults");
 
         String story = (String) novelCreator.invoke(input);
-        assertThat(story).containsIgnoringCase("dragon");
-
-        verify(audienceEditor).editStory(any(), eq("young adults"));
-        verify(styleEditor).editStory(any(), eq("fantasy"));
-    }
-
-    @Test
-    void agent_with_typed_user_message_test() {
-        // the UserMessage is contained in the default value of the type argument
-
-        CreativeWriterWithTypedMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithTypedMessage.class)
-                .chatModel(baseModel())
-                .outputKey("story")
-                .build();
-
-        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
-                .chatModel(baseModel())
-                .outputKey("story")
-                .build());
-
-        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(baseModel())
-                .outputKey("story")
-                .build());
-
-        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
-                        .subAgents(creativeWriter, audienceEditor, styleEditor)
-                        .outputKey("story")
-                        .build();
-
-        String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
         assertThat(story).containsIgnoringCase("dragon");
 
         verify(audienceEditor).editStory(any(), eq("young adults"));

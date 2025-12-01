@@ -27,8 +27,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.stateDefaultValue;
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
 @Internal
 public class DefaultAgenticScope implements AgenticScope {
@@ -91,7 +91,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public <T> void writeState(Class<? extends TypedKey<T>> key, T value) {
-        writeState(stateName(key), value);
+        writeState(keyName(key), value);
     }
 
     @Override
@@ -110,7 +110,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public boolean hasState(Class<? extends TypedKey<?>> key) {
-        return hasState(stateName(key));
+        return hasState(keyName(key));
     }
 
     @Override
@@ -125,7 +125,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public <T> T readState(Class<? extends TypedKey<T>> key) {
-        return readState(stateName(key), stateDefaultValue(key));
+        return readState(keyName(key), keyDefaultValue(key));
     }
 
     private Object readStateBlocking(String key, Object state) {

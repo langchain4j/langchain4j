@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agentic.Agents.AudienceEditor;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
+import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -14,8 +17,9 @@ import org.junit.jupiter.api.Test;
 import static dev.langchain4j.agentic.AgenticServices.createAgenticSystem;
 import static dev.langchain4j.agentic.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -176,5 +180,57 @@ public class TypedAgentsIT {
     void misconfigured_conditional_typed_agents_tests() {
         assertThrows( AgenticSystemConfigurationException.class,
                 () -> createAgenticSystem(MisconfiguredExpertChatbot.class, baseModel()));
+    }
+
+    public interface CreativeWriterWithTypedMessage {
+
+        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
+        String generateStory(@UserMessage @K(UserMessageArg.class) String userMessage, @K(Topic.class) String topic);
+    }
+
+    public static class UserMessageArg implements TypedKey<String> {
+        @Override
+        public String defaultValue() {
+            return """
+                You are a creative writer.
+                Generate a draft of a story long no more than 3 sentence around the given topic.
+                Return only the story and nothing else.
+                The topic is {{Topic}}.
+                """;
+        }
+    }
+
+    public static class Topic implements TypedKey<String> { }
+
+    @Test
+    void agent_with_typed_user_message_test() {
+        // the UserMessage is contained in the default value of the type argument
+
+        CreativeWriterWithTypedMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithTypedMessage.class)
+                .chatModel(baseModel())
+                .keyDefaultValue(Topic.class, "dragons and wizards")
+                .outputKey("story")
+                .build();
+
+        Agents.AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        Agents.StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        Agents.ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
+
+        String story = novelCreator.writeStory(null, "young adults", "fantasy");
+        assertThat(story).containsIgnoringCase("dragon");
+
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
     }
 }

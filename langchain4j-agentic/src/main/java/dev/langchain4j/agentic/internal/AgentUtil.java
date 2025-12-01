@@ -58,7 +58,7 @@ public class AgentUtil {
 
     public static String outputKey(String outputKey, Class<? extends TypedKey<?>> typedOutputKey) {
         if (isNullOrBlank(outputKey)) {
-            return typedOutputKey != Agent.NoTypedKey.class ? stateName(typedOutputKey) : null;
+            return typedOutputKey != Agent.NoTypedKey.class ? keyName(typedOutputKey) : null;
         }
         if (typedOutputKey != Agent.NoTypedKey.class) {
             throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
@@ -66,11 +66,11 @@ public class AgentUtil {
         return outputKey;
     }
 
-    public static <T> T stateDefaultValue(Class<? extends TypedKey<T>> key) {
+    public static <T> T keyDefaultValue(Class<? extends TypedKey<T>> key) {
         return stateInstance(key).defaultValue();
     }
 
-    public static String stateName(Class<? extends TypedKey<?>> key) {
+    public static String keyName(Class<? extends TypedKey<?>> key) {
         return stateInstance(key).name();
     }
 

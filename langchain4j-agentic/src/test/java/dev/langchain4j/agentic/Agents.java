@@ -1,8 +1,6 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agentic.declarative.K;
-import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
@@ -142,24 +140,6 @@ public class Agents {
 
         @Agent(description = "Generate a story based on the given topic", outputKey = "story")
         String generateStory(@UserMessage @V("userMessage") String userMessage, @V("topic") String topic);
-    }
-
-    public interface CreativeWriterWithTypedMessage {
-
-        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
-        String generateStory(@UserMessage @K(UserMessageArg.class) String userMessage, @V("topic") String topic);
-    }
-
-    public static class UserMessageArg implements TypedKey<String> {
-        @Override
-        public String defaultValue() {
-            return """
-                You are a creative writer.
-                Generate a draft of a story long no more than 3 sentence around the given topic.
-                Return only the story and nothing else.
-                The topic is {{topic}}.
-                """;
-        }
     }
 
     public interface ReviewedWriter {

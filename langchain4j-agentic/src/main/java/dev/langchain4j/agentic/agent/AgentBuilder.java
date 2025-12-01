@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.agent;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -316,7 +316,7 @@ public class AgentBuilder<T> {
     }
 
     public AgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
-        return outputKey(stateName(outputKey));
+        return outputKey(keyName(outputKey));
     }
 
     public AgentBuilder<T> async(boolean async) {
@@ -373,5 +373,9 @@ public class AgentBuilder<T> {
     public AgentBuilder<T> keyDefaultValue(String key, Object value) {
         this.defaultValues.put(key, value);
         return this;
+    }
+
+    public <K> AgentBuilder<T> keyDefaultValue(Class<? extends TypedKey<K>> key, K value) {
+        return keyDefaultValue(keyName(key), value);
     }
 }
