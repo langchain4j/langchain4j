@@ -48,6 +48,7 @@ import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -66,12 +67,19 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
+            dev.langchain4j.service.UserMessage.class,
+            dev.langchain4j.service.V.class,
+            dev.langchain4j.service.MemoryId.class,
+            dev.langchain4j.service.UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -84,14 +92,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         boolean invocationParametersExist = false;
-
         for (Parameter parameter : parameters) {
-            V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage =
-                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
-            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
-            UserName userName = parameter.getAnnotation(UserName.class);
-
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 if (invocationParametersExist) {
                     throw illegalConfiguration(
@@ -105,17 +106,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                 continue;
             }
 
-            if (userMessage == null && v == null && memoryId == null && userName == null) {
+            if (!hasAnyValidAnnotation(parameter)) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
+                                + "%s or it should be of type %s",
                         parameter.getName(),
                         method.getName(),
                         aiServiceClass.getName(),
-                        dev.langchain4j.service.UserMessage.class.getName(),
-                        V.class.getName(),
-                        MemoryId.class.getName(),
-                        UserName.class.getName(),
+                        VALID_PARAM_ANNOTATIONS.stream()
+                                .map(Class::getName)
+                                .sorted()
+                                .collect(Collectors.joining(", ")), // for test compatibility
                         InvocationParameters.class.getName());
             }
         }
@@ -638,8 +639,18 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
+    private static boolean hasAnyValidAnnotation(Parameter parameter) {
+        for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
+            if (parameter.getAnnotation(a) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
-        if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
+        if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
