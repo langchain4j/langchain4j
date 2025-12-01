@@ -43,7 +43,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
-        return new SupervisorAgentServiceImpl<>(SupervisorAgent.class, null);
+        try {
+            Method supervisorMethod = SupervisorAgent.class.getMethod("invoke", String.class);
+            return new SupervisorAgentServiceImpl<>(SupervisorAgent.class, supervisorMethod);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static <T> SupervisorAgentService<T> builder(Class<T> agentServiceClass) {

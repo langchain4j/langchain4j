@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -100,7 +100,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S outputKey(Class<? extends TypedKey<?>> outputKey) {
-        return outputKey(stateName(outputKey));
+        return outputKey(keyName(outputKey));
     }
 
     public S output(Function<AgenticScope, Object> output) {

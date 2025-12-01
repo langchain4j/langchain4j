@@ -105,6 +105,37 @@ public class SupervisorAgentIT {
         verify(medicalExpert).medical(any());
     }
 
+    @Test
+    void supervisor_in_sequence_test() {
+        RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
+                .chatModel(baseModel())
+                .build();
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
+                .chatModel(baseModel())
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .build());
+
+        SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.SCORED)
+                .subAgents(requestClassifierAgent, medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        UntypedAgent askToExpertSequence = AgenticServices.sequenceBuilder()
+                .subAgents(askToExpert)
+                .outputKey("response")
+                .build();
+
+        System.out.println(askToExpertSequence.invoke(Map.of("request", "I broke my leg what should I do")));
+
+        verify(medicalExpert).medical(any());
+    }
+
     public interface BankerAgent {
 
         @UserMessage(
