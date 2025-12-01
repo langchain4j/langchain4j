@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -23,6 +24,7 @@ import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
 import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyledWriter;
@@ -121,6 +123,85 @@ public class WorkflowAgentsIT {
         System.out.println(story);
 
         verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_programmatic_user_message_test() {
+        // the UserMessage is passed as an argument when invoking the agent
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        Map<String, Object> input = Map.of(
+                "userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """,
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        String story = (String) novelCreator.invoke(input);
+        assertThat(story).containsIgnoringCase("dragon");
+
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_default_value_test() {
+        // the UserMessage is set as a default value in the agent builder
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .defaultKeyValue("userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """)
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+        assertThat(story).containsIgnoringCase("dragon");
+
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
