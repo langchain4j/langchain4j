@@ -175,7 +175,7 @@ public class WorkflowAgentsIT {
 
         CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
                 .chatModel(baseModel())
-                .keyDefaultValue("userMessage", """
+                .defaultKeyValue("userMessage", """
                                You are a creative writer.
                                Generate a draft of a story long no more than 3 sentence around the given topic.
                                Return only the story and nothing else.

@@ -8,6 +8,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
@@ -77,7 +78,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     protected void validate() {
         performBasicValidation();
-        context.validate();
+        AiServiceValidation.validate(context);
     }
 
     private Object handleChatMemoryAccess(Method method, Object[] args) {
@@ -124,7 +125,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return handleChatMemoryAccess(method, args);
                         }
 
-                        context.validateParameters(method);
+                        // TODO do it once, when creating AI Service?
+                        validateParameters(context.aiServiceClass, method);
 
                         InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);

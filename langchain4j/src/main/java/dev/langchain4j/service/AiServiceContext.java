@@ -57,8 +57,6 @@ public class AiServiceContext {
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 
-    private final Set<Method> validMethods = new HashSet<>();
-
     protected AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
         this.guardrailServiceBuilder = GuardrailService.builder(aiServiceClass);
@@ -86,104 +84,12 @@ public class AiServiceContext {
         chatMemoryService = new ChatMemoryService(chatMemoryProvider);
     }
 
+    public boolean hasModerationModel() {
+        return moderationModel != null;
+    }
+
     public GuardrailService guardrailService() {
         return this.guardrailService.updateAndGet(
                 service -> (service != null) ? service : guardrailServiceBuilder.build());
-    }
-
-    void validate() {
-        validateContextMemory();
-        validateClass();
-        Stream.of(aiServiceClass.getMethods()).forEach(this::validateMethod);
-    }
-
-    private void validateContextMemory() {
-        if (!hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(aiServiceClass)) {
-            throw illegalConfiguration(
-                    "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
-                    aiServiceClass.getName());
-        }
-    }
-
-    private void validateClass() {
-        if (!aiServiceClass.isInterface()) {
-            throw illegalConfiguration(
-                    "The type implemented by the AI Service must be an interface, found '%s'",
-                    aiServiceClass.getName());
-        }
-    }
-
-    private void validateMethod(Method method) {
-        if (isStatic(method.getModifiers())) {
-            // ignore static methods
-            return;
-        }
-
-        if (method.isAnnotationPresent(Moderate.class) && moderationModel == null) {
-            throw illegalConfiguration(
-                    "The @Moderate annotation is present, but the moderationModel is not set up. "
-                            + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
-        }
-
-        Class<?> returnType = method.getReturnType();
-        if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
-            TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
-        }
-
-        if (!hasChatMemory()) {
-            for (Parameter parameter : method.getParameters()) {
-                if (parameter.isAnnotationPresent(MemoryId.class)) {
-                    throw illegalConfiguration(
-                            "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
-                            aiServiceClass.getName());
-                }
-            }
-        }
-    }
-
-    void validateParameters(Method method) {
-        if (!validMethods.add(method)) {
-            return;
-        }
-
-        Parameter[] parameters = method.getParameters();
-        if (parameters == null || parameters.length < 2) {
-            return;
-        }
-
-        boolean invocationParametersExist = false;
-
-        for (Parameter p : parameters) {
-            if (InvocationParameters.class.isAssignableFrom(p.getType())) {
-                if (invocationParametersExist) {
-                    throw illegalConfiguration(
-                            "The method '%s' of the class %s has more than one parameter of type %s",
-                            method.getName(),
-                            aiServiceClass.getName(),
-                            InvocationParameters.class.getName());
-                }
-                invocationParametersExist = true;
-                continue;
-            }
-
-            if (LangChain4jManaged.class.isAssignableFrom(p.getType())) {
-                continue;
-            }
-
-            if (!ParameterNameResolver.hasName(p) && p.getAnnotation(UserMessage.class) == null &&
-                    p.getAnnotation(MemoryId.class) == null && p.getAnnotation(UserName.class) == null) {
-                throw illegalConfiguration(
-                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
-                        p.getName(),
-                        method.getName(),
-                        aiServiceClass.getName(),
-                        dev.langchain4j.service.UserMessage.class.getName(),
-                        V.class.getName(),
-                        MemoryId.class.getName(),
-                        UserName.class.getName(),
-                        InvocationParameters.class.getName());
-            }
-        }
     }
 }

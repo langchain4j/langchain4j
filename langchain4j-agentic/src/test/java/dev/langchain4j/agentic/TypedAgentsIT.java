@@ -208,7 +208,7 @@ public class TypedAgentsIT {
 
         CreativeWriterWithTypedMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithTypedMessage.class)
                 .chatModel(baseModel())
-                .keyDefaultValue(Topic.class, "dragons and wizards")
+                .defaultKeyValue(Topic.class, "dragons and wizards")
                 .outputKey("story")
                 .build();
 

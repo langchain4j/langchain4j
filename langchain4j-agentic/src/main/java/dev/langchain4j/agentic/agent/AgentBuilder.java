@@ -370,12 +370,12 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> keyDefaultValue(String key, Object value) {
+    public AgentBuilder<T> defaultKeyValue(String key, Object value) {
         this.defaultValues.put(key, value);
         return this;
     }
 
-    public <K> AgentBuilder<T> keyDefaultValue(Class<? extends TypedKey<K>> key, K value) {
-        return keyDefaultValue(keyName(key), value);
+    public <K> AgentBuilder<T> defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
+        return defaultKeyValue(keyName(key), value);
     }
 }
