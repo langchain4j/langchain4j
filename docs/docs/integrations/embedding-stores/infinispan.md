@@ -24,7 +24,7 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-infinispan</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>0.0.002-test-beta2</version>
 </dependency>
 ```
 

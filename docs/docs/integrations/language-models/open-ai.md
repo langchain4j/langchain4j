@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.9.1</version>
+    <version>0.0.002-test</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>0.0.002-test-beta2</version>
 </dependency>
 ```
 
