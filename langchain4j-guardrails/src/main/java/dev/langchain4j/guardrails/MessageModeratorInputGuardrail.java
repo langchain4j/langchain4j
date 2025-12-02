@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
  */
 public class MessageModeratorInputGuardrail implements InputGuardrail {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MessageModeratorInputGuardrail.class);
 
     private final ModerationModel moderationModel;
 
