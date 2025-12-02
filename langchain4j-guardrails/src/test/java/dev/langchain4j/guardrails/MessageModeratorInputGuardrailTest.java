@@ -10,6 +10,7 @@ import dev.langchain4j.service.ModerationException;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -90,6 +91,13 @@ class MessageModeratorInputGuardrailTest {
 
         verify(moderationModel).moderate(textMessage);
         verify(moderationModel).moderate(questionMessage);
+    }
+
+    @Test
+    void should_throw_exception_when_moderation_model_is_null() {
+        assertThatThrownBy(() -> new MessageModeratorInputGuardrail(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("moderationModel cannot be null");
     }
 }
 
