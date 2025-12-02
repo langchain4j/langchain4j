@@ -93,7 +93,7 @@ ChatResponse chatResponse = chatModel.chat(chatRequest);
 ```
 
 ### Types of `ChatMessage`
-There are currently four types of chat messages, one for each "source" of the message:
+There are currently five types of chat messages, one for each "source" of the message:
 
 - `UserMessage`: This is a message from the user.
   The user can be either an end user of your application (a human) or your application itself.
