@@ -37,7 +37,7 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      *                        Must not be null.
      */
     public MessageModeratorInputGuardrail(ModerationModel moderationModel) {
-        this.moderationModel = moderationModel;
+        this.moderationModel = ensureNotNull(moderationModel, "moderationModel");
     }
 
     /**
