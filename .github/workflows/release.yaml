@@ -72,7 +72,7 @@ jobs:
         run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
 
       - name: Remove langchain4j-docu-chatbot-updater module from root POM
-        run: sed -i '/<module>internal/langchain4j-docu-chatbot-updater<\/module>/d' pom.xml
+        run: sed -i '/<module>internal\/langchain4j-docu-chatbot-updater<\/module>/d' pom.xml
 
       - name: release_core_and_parent
         run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
