@@ -9,7 +9,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * Marks a method as a supplier of tools that an agent can utilize during its operation.
  * The annotated method must be static, with no arguments, and return a single Object, an array of Objects,
- * or a Map<ToolSpecifications, ToolExecutors>.
+ * or a Map&lt;ToolSpecifications, ToolExecutors&gt;.
  * <p>
  * Example:
  * <pre>
