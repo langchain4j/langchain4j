@@ -2,15 +2,21 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.StringJoiner;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import java.util.List;
-import java.util.Objects;
-import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -44,10 +50,11 @@ public class MistralAiChatMessage {
         if (content == null || content.isEmpty()) {
             return "";
         }
-        if (content.size() > 1) {
-            throw new UnsupportedOperationException("Cannot convert message with multiple content parts to text");
-        }
-        return content.get(0).asText();
+        return content.stream()
+                .filter(content -> "text".equals(content.type))
+                .findAny()
+                .map(MistralAiMessageContent::asText)
+                .orElse("");
     }
 
     public String getName() {
@@ -119,6 +126,20 @@ public class MistralAiChatMessage {
 
         public MistralAiChatMessageBuilder role(MistralAiRole role) {
             this.role = role;
+            return this;
+        }
+
+        @JsonSetter("content") // handles both 'content' being plain string and 'content' being an array of parts
+        public MistralAiChatMessageBuilder content(JsonNode node) {
+            if (node == null || node.isNull()) {
+                this.content = null;
+            } else if (node.isTextual()) {
+                this.content = Collections.singletonList(new MistralAiTextContent(node.asText()));
+            } else if (node.isArray()) {
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                this.content = mapper.convertValue(node, new TypeReference<>() {});
+            }
             return this;
         }
 

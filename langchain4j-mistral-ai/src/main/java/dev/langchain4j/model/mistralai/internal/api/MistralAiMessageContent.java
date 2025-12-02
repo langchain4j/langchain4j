@@ -1,17 +1,25 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = MistralAiTextContent.class, name = "text"),
+        @JsonSubTypes.Type(value = MistralAiThinkingContent.class, name = "thinking"),
+        @JsonSubTypes.Type(value = MistralAiReferenceContent.class, name = "reference"),
+        @JsonSubTypes.Type(value = MistralAiImageUrlContent.class, name = "image_url")
+})
 public abstract class MistralAiMessageContent {
 
     public String type;

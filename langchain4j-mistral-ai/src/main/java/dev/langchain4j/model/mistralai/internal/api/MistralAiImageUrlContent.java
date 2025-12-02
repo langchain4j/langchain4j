@@ -16,6 +16,10 @@ public class MistralAiImageUrlContent extends MistralAiMessageContent {
 
     public String imageUrl;
 
+    protected MistralAiImageUrlContent() {
+        super("image_url");
+    }
+
     public MistralAiImageUrlContent(String imageUrl) {
         super("image_url");
         this.imageUrl = imageUrl;

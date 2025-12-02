@@ -16,6 +16,10 @@ public class MistralAiImageBase64Content extends MistralAiMessageContent {
 
     public String imageUrl;
 
+    protected MistralAiImageBase64Content() {
+        super("image_url");
+    }
+
     public MistralAiImageBase64Content(String imageUrl) {
         super("image_url");
         this.imageUrl = "data:image/jpeg;base64," + imageUrl;
