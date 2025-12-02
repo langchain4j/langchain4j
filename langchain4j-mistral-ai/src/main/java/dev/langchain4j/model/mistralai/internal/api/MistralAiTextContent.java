@@ -16,6 +16,10 @@ public class MistralAiTextContent extends MistralAiMessageContent {
 
     public String text;
 
+    protected MistralAiTextContent() {
+        super("text");
+    }
+
     public MistralAiTextContent(String text) {
         super("text");
         this.text = text;
