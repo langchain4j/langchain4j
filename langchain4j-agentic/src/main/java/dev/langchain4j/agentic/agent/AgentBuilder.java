@@ -41,6 +41,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -80,6 +81,7 @@ public class AgentBuilder<T> {
 
     private Object[] objectsWithTools;
     private Map<ToolSpecification, ToolExecutor> toolsMap;
+    private Set<String> immediateReturnToolNames;
     private ToolProvider toolProvider;
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
@@ -202,7 +204,11 @@ public class AgentBuilder<T> {
             aiServices.tools(objectsWithTools);
         }
         if (toolsMap != null) {
-            aiServices.tools(toolsMap);
+            if (immediateReturnToolNames != null) {
+                aiServices.tools(toolsMap, immediateReturnToolNames);
+            } else {
+                aiServices.tools(toolsMap);
+            }
         }
         if (toolProvider != null) {
             aiServices.toolProvider(toolProvider);
@@ -250,6 +256,12 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap) {
         this.toolsMap = toolsMap;
+        return this;
+    }
+
+    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
+        this.toolsMap = toolsMap;
+        this.immediateReturnToolNames = immediateReturnToolNames;
         return this;
     }
 
