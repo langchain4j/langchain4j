@@ -23,7 +23,7 @@ jobs:
           echo "$modules"
 
           # number of parallel groups
-          N=7
+          N=10
 
           # round-robin grouping
           matrix=$(echo "$modules" | awk -v N="$N" '
@@ -136,7 +136,7 @@ jobs:
           CI_DELAY_SECONDS_AZURE_OPENAI: 2
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
-          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 1
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 10
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
