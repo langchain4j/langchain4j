@@ -209,7 +209,7 @@ public final class GoogleAiGeminiBatchChatModel {
         }
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
