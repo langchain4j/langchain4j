@@ -57,7 +57,6 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
         Response<Moderation> response = moderationModel.moderate(userMessage);
 
         if (response.content().flagged()) {
-            LOG.debug("User message has been flagged " + response);
             return fatal("User message has been flagged", new ModerationException("User message has been flagged", response.content()));
         } else {
             return success();
