@@ -7,7 +7,9 @@ import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -32,12 +34,14 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -76,6 +80,8 @@ public class AgentBuilder<T> {
     private OutputGuardrail[] outputGuardrails;
 
     private Object[] objectsWithTools;
+    private Map<ToolSpecification, ToolExecutor> toolsMap;
+    private Set<String> immediateReturnToolNames;
     private ToolProvider toolProvider;
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
@@ -197,6 +203,13 @@ public class AgentBuilder<T> {
         if (objectsWithTools != null) {
             aiServices.tools(objectsWithTools);
         }
+        if (toolsMap != null) {
+            if (immediateReturnToolNames != null) {
+                aiServices.tools(toolsMap, immediateReturnToolNames);
+            } else {
+                aiServices.tools(toolsMap);
+            }
+        }
         if (toolProvider != null) {
             aiServices.toolProvider(toolProvider);
         }
@@ -238,6 +251,17 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> tools(Object... objectsWithTools) {
         this.objectsWithTools = objectsWithTools;
+        return this;
+    }
+
+    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap) {
+        this.toolsMap = toolsMap;
+        return this;
+    }
+
+    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
+        this.toolsMap = toolsMap;
+        this.immediateReturnToolNames = immediateReturnToolNames;
         return this;
     }
 

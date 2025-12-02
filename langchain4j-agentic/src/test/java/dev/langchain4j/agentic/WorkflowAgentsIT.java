@@ -541,6 +541,8 @@ public class WorkflowAgentsIT {
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
 
+    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance { }
+
     @Test
     void conditional_agents_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
@@ -576,21 +578,20 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputKey("response")
                 .build();
 
-        AgentInstance rootAgent = (AgentInstance) expertRouterAgent;
-        assertThat(rootAgent.name()).isEqualTo("ask");
-        assertThat(rootAgent.outputType()).isEqualTo(String.class);
-        assertThat(rootAgent.outputKey()).isEqualTo("response");
-        assertThat(rootAgent.arguments()).hasSize(1);
-        assertThat(rootAgent.arguments().get(0).name()).isEqualTo("request");
-        assertThat(rootAgent.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(rootAgent.subagents()).hasSize(2);
+        assertThat(agentInstance.name()).isEqualTo("ask");
+        assertThat(agentInstance.outputType()).isEqualTo(String.class);
+        assertThat(agentInstance.outputKey()).isEqualTo("response");
+        assertThat(agentInstance.arguments()).hasSize(1);
+        assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(agentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(agentInstance.subagents()).hasSize(2);
 
-        AgentInstance routerAgentInstance = rootAgent.subagents().get(0);
+        AgentInstance routerAgentInstance = agentInstance.subagents().get(0);
         assertThat(routerAgentInstance.name()).isEqualTo("classify");
         assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
         assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
@@ -599,7 +600,7 @@ public class WorkflowAgentsIT {
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(routerAgentInstance.subagents()).isEmpty();
 
-        AgentInstance conditionalAgentInstance = rootAgent.subagents().get(1);
+        AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
         assertThat(conditionalAgentInstance.outputKey()).isNull();
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
@@ -609,7 +610,7 @@ public class WorkflowAgentsIT {
         checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
         checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
 
-        System.out.println(expertRouterAgent.ask("I broke my leg what should I do"));
+        System.out.println(agentInstance.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
     }

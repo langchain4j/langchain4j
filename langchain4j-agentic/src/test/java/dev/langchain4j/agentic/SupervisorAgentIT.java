@@ -2,14 +2,20 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
@@ -24,6 +30,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -37,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -435,6 +444,26 @@ public class SupervisorAgentIT {
     }
 
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("exchange")
+                .description("Exchange the given amount of money from the original to the target currency")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("originalCurrency")
+                        .addNumberProperty("amount")
+                        .addStringProperty("targetCurrency")
+                        .build())
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            String originalCurrency = (String) arguments.get("originalCurrency");
+            assertThat(originalCurrency).isEqualTo("EUR");
+            Double amount = ((Number) arguments.get("amount")).doubleValue();
+            String targetCurrency = (String) arguments.get("targetCurrency");
+            assertThat(targetCurrency).isEqualTo("USD");
+            return "" + new ExchangeTool().exchange(originalCurrency, amount, targetCurrency);
+        };
+
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -452,7 +481,7 @@ public class SupervisorAgentIT {
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
-                .tools(new ExchangeTool())
+                .tools(singletonMap(toolSpecification, toolExecutor))
                 .build();
 
         var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
@@ -479,6 +508,14 @@ public class SupervisorAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+    }
+
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
