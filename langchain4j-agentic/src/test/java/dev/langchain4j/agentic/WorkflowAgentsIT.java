@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -23,6 +24,7 @@ import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
 import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyledWriter;
@@ -32,6 +34,8 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -119,6 +123,85 @@ public class WorkflowAgentsIT {
         System.out.println(story);
 
         verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_programmatic_user_message_test() {
+        // the UserMessage is passed as an argument when invoking the agent
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        Map<String, Object> input = Map.of(
+                "userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """,
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        String story = (String) novelCreator.invoke(input);
+        assertThat(story).containsIgnoringCase("dragon");
+
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_default_value_test() {
+        // the UserMessage is set as a default value in the agent builder
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .defaultKeyValue("userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """)
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+        assertThat(story).containsIgnoringCase("dragon");
+
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
@@ -422,13 +505,13 @@ public class WorkflowAgentsIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations(StyleScorer.class);
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
         System.out.println("Score agent invocations: " + scoreAgentCalls);
         assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
                 .isGreaterThanOrEqualTo(0.8);
 
-        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
+        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations(StyleEditor.class);
         assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
@@ -457,6 +540,8 @@ public class WorkflowAgentsIT {
 
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
+
+    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance { }
 
     @Test
     void conditional_agents_tests() {
@@ -493,14 +578,96 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputKey("response")
                 .build();
 
-        System.out.println(expertRouterAgent.ask("I broke my leg what should I do"));
+        assertThat(agentInstance.name()).isEqualTo("ask");
+        assertThat(agentInstance.outputType()).isEqualTo(String.class);
+        assertThat(agentInstance.outputKey()).isEqualTo("response");
+        assertThat(agentInstance.arguments()).hasSize(1);
+        assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(agentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(agentInstance.subagents()).hasSize(2);
+
+        AgentInstance routerAgentInstance = agentInstance.subagents().get(0);
+        assertThat(routerAgentInstance.name()).isEqualTo("classify");
+        assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
+        assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
+        assertThat(routerAgentInstance.arguments()).hasSize(1);
+        assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(routerAgentInstance.subagents()).isEmpty();
+
+        AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
+        assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
+        assertThat(conditionalAgentInstance.outputKey()).isNull();
+        assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
+        assertThat(conditionalAgentInstance.subagents()).hasSize(3);
+
+        checkExpertAgent(conditionalAgentInstance.subagents().get(0), "medical");
+        checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
+        checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
+
+        System.out.println(agentInstance.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
+    }
+
+    private static void checkExpertAgent(AgentInstance medicalAgentInstance, String name) {
+        assertThat(medicalAgentInstance.name()).isEqualTo(name);
+        assertThat(medicalAgentInstance.outputType()).isEqualTo(String.class);
+        assertThat(medicalAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(medicalAgentInstance.arguments()).hasSize(1);
+        assertThat(medicalAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(medicalAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(medicalAgentInstance.subagents()).hasSize(0);
+    }
+
+    @Test
+    void agents_validation_tests() {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build());
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+
+
+        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
+                AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+                    .subAgents(routerAgent, expertsAgent)
+                    .outputKey("response")
+                    .build()))
+            .hasMessageContaining("category");
     }
 
     @Test

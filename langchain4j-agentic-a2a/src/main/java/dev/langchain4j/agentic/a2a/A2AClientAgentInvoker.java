@@ -7,10 +7,12 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +60,16 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public Class<?> type() {
+        return Object.class;
+    }
+
+    @Override
+    public Type outputType() {
+        return Object.class;
+    }
+
+    @Override
     public String outputKey() {
         return a2AClientInstance.outputKey();
     }
@@ -85,6 +97,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public List<AgentArgument> arguments() {
         return Stream.of(inputKeys).map(input -> new AgentArgument(Object.class, input)).toList();
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return List.of();
     }
 
     @Override

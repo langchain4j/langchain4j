@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockCachePointPlacement.AFTER_SYSTEM;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.SystemMessage;
@@ -7,6 +8,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
+import java.time.Instant;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -21,20 +25,28 @@ class BedrockPromptCachingIT {
 
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
 
+    interface Assistant {
+        Result<String> chat(String userMessage);
+    }
+
     @Test
     void should_chat_with_prompt_caching_enabled() {
         // Given
+        BedrockCachePointPlacement cachePointPlacement = AFTER_SYSTEM;
+
         BedrockChatRequestParameters requestParams = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(cachePointPlacement)
                 .temperature(0.7)
                 .maxOutputTokens(200)
                 .build();
 
-        ChatModel model = BedrockChatModel.builder()
+        BedrockChatModel model = BedrockChatModel.builder()
                 .modelId(NOVA_MODEL)
                 .region(Region.US_EAST_1)
                 .defaultRequestParameters(requestParams)
                 .build();
+
+        assertThat(model.defaultRequestParameters().cachePointPlacement()).isEqualTo(cachePointPlacement);
 
         ChatRequest request = ChatRequest.builder()
                 .messages(Arrays.asList(
@@ -50,6 +62,7 @@ class BedrockPromptCachingIT {
         assertThat(response.aiMessage()).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.metadata().tokenUsage()).isNotNull();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
@@ -75,6 +88,7 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterUser).isNotNull();
         assertThat(responseAfterUser.aiMessage().text()).isNotBlank();
         assertThat(responseAfterUser.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
 
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
@@ -97,6 +111,7 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterTools).isNotNull();
         assertThat(responseAfterTools.aiMessage().text()).isNotBlank();
         assertThat(responseAfterTools.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterTools.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
@@ -116,7 +131,7 @@ class BedrockPromptCachingIT {
     void should_override_prompt_caching_parameters() {
         // Given - default parameters with caching enabled
         BedrockChatRequestParameters defaultParams = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .temperature(0.5)
                 .build();
 
@@ -147,7 +162,7 @@ class BedrockPromptCachingIT {
     void should_handle_multiple_messages_with_caching() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .build();
 
         ChatModel model = BedrockChatModel.builder()
@@ -155,34 +170,40 @@ class BedrockPromptCachingIT {
                 .defaultRequestParameters(params)
                 .build();
 
+        String systemMessage = "You are a helpful coding assistant. Time now is " + Instant.now();
+
         // Simulate a conversation with multiple turns
         ChatRequest request1 = ChatRequest.builder()
-                .messages(Arrays.asList(
-                        SystemMessage.from("You are a helpful coding assistant."), UserMessage.from("What is Java?")))
+                .messages(Arrays.asList(SystemMessage.from(systemMessage), UserMessage.from("What is Java?")))
                 .build();
 
         ChatResponse response1 = model.chat(request1);
         assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
 
         // Second request with same system message (should benefit from caching)
         ChatRequest request2 = ChatRequest.builder()
-                .messages(Arrays.asList(
-                        SystemMessage.from("You are a helpful coding assistant."), UserMessage.from("What is Python?")))
+                .messages(Arrays.asList(SystemMessage.from(systemMessage), UserMessage.from("What is Python?")))
                 .build();
 
         ChatResponse response2 = model.chat(request2);
         assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
 
         // Verify both responses are valid
         assertThat(response1.metadata().tokenUsage()).isNotNull();
+        assertThat(response1.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
         assertThat(response2.metadata().tokenUsage()).isNotNull();
+        assertThat(response2.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
     }
 
     @Test
     void should_combine_prompt_caching_with_other_parameters() {
         // Given
         BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
-                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .promptCaching(AFTER_SYSTEM)
                 .temperature(0.3)
                 .maxOutputTokens(150)
                 .topP(0.9)
@@ -201,5 +222,67 @@ class BedrockPromptCachingIT {
         assertThat(response).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.metadata().tokenUsage()).isNotNull();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+    }
+
+    @Test
+    void should_persist_bedrock_params_on_default_parameters() {
+        // Given
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .temperature(0.3)
+                .maxOutputTokens(150)
+                .topP(0.9)
+                .stopSequences(Arrays.asList("END", "STOP"))
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .defaultRequestParameters(params)
+                .build();
+
+        // When
+        BedrockChatRequestParameters defaultRequestParameters =
+                (BedrockChatRequestParameters) model.defaultRequestParameters();
+
+        // Then
+        assertThat(defaultRequestParameters).isNotNull();
+        assertThat(defaultRequestParameters.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
+    }
+
+    @Test
+    void aiservice_should_handle_multiple_messages_with_caching() {
+        // Given
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .defaultRequestParameters(params)
+                .build();
+
+        String systemMessage = "You are a helpful coding assistant. Time now is " + Instant.now();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessageProvider(id -> systemMessage)
+                .build();
+
+        // Simulate a conversation with multiple turns
+        ChatResponse response1 = assistant.chat("What is Java?").finalResponse();
+
+        assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
+
+        ChatResponse response2 = assistant.chat("What is Python?").finalResponse();
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
+
+        // Verify both responses are valid
+        assertThat(response1.metadata().tokenUsage()).isNotNull();
+        assertThat(response2.metadata().tokenUsage()).isNotNull();
     }
 }
