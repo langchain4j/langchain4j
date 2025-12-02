@@ -168,7 +168,7 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapInExpression(InExpression inExpression) {
-        String key = ((Column) inExpression.getLeftExpression()).getColumnName();
+        String key = getKey(inExpression.getLeftExpression());
 
         Collection<Object> comparisonValues = new ArrayList<>();
         inExpression.getRightExpression().accept(new ExpressionVisitorAdapter() {
@@ -197,14 +197,33 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapBetween(Between between) {
-        String key = ((Column) between.getLeftExpression()).getColumnName();
+        String key = getKey(between.getLeftExpression());
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
         return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
     }
 
     private String getKey(BinaryExpression binaryExpression) {
-        return ((Column) binaryExpression.getLeftExpression()).getColumnName();
+        return getKey(binaryExpression.getLeftExpression());
+    }
+
+    private String getKey(Expression expression) {
+        if (expression instanceof Column column) {
+            return column.getColumnName();
+        } else if (expression instanceof Function function) {
+            String name = function.getName();
+            if (name.equalsIgnoreCase("YEAR") || name.equalsIgnoreCase("MONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters != null && parameters.size() == 1) {
+                    Expression parameter = parameters.get(0);
+                    if (parameter instanceof Column parameterColumn) {
+                        return parameterColumn.getColumnName();
+                    }
+                }
+            }
+        }
+        throw illegalArgument("Unsupported expression: '%s'%s", 
+                expression, createGithubIssueLink(expression));
     }
 
     private Comparable<?> getValue(BinaryExpression binaryExpression) {

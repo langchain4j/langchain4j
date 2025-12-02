@@ -1689,5 +1689,16 @@ class SqlFilterParserTest {
         assertThat(filter).isEqualTo(metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThanOrEqualTo(1999L)));
     }
 
-    // TODO SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama') ORDER BY RAND() LIMIT 1
+    @Test
+    void should_support_YEAR_function_in_WHERE_clause() {
+        // given
+        String sql = "SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama')";
+
+        // when
+        Filter filter = parser.parse(sql);
+        
+        // then
+        assertThat(filter).isEqualTo(metadataKey("year").isEqualTo(2024L).and(metadataKey("genre").isIn("comedy", "drama")));
+    }
+
 }
