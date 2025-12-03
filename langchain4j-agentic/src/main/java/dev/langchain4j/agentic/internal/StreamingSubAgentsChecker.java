@@ -10,5 +10,5 @@ public interface StreamingSubAgentsChecker {
      * @param plannerAgentOutputKey the planner agent outputKey
      * @return `true` is streaming or `false` is not
      */
-    boolean checkSubAgents(List<AgentInstance> subAgents, String plannerAgentOutputKey);
+    boolean isStreaming(List<AgentInstance> subAgents, String plannerAgentOutputKey);
 }

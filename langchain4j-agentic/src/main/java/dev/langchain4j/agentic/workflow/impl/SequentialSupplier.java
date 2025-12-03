@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 public class SequentialSupplier implements Supplier<Planner>, StreamingSubAgentsChecker {
 
     @Override
-    public boolean checkSubAgents(List<AgentInstance> subAgents, String plannerAgentOutputKey) {
+    public boolean isStreaming(List<AgentInstance> subAgents, String plannerAgentOutputKey) {
         if (hasStreamingAgent(subAgents)) {
             if (isOnlyLastStreamingAgent(subAgents)) {
                 AgentInstance lastAgent = getLastAgent(subAgents);

@@ -15,7 +15,7 @@ import java.util.function.Supplier;
 public record ConditionalSupplier(List<ConditionalPlanner.ConditionalAgent> conditionalAgents)
         implements Supplier<Planner>, StreamingSubAgentsChecker {
     @Override
-    public boolean checkSubAgents(final List<AgentInstance> subAgents, final String plannerAgentOutputKey) {
+    public boolean isStreaming(final List<AgentInstance> subAgents, final String plannerAgentOutputKey) {
         List<AgentInstance> list = new ArrayList<>();
         for (ConditionalPlanner.ConditionalAgent conditionalAgent : this.conditionalAgents) {
             list.addAll(conditionalAgent.agentInstances());

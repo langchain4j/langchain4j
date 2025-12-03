@@ -102,7 +102,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
             throw new IllegalArgumentException("Agent cannot be used as a sub-agent because it returns TokenStream.");
         }
         if (plannerSupplier instanceof StreamingSubAgentsChecker) {
-            return ((StreamingSubAgentsChecker) plannerSupplier).checkSubAgents(subAgents, plannerAgentOutputKey);
+            return ((StreamingSubAgentsChecker) plannerSupplier).isStreaming(subAgents, plannerAgentOutputKey);
         }
         return false;
     }
