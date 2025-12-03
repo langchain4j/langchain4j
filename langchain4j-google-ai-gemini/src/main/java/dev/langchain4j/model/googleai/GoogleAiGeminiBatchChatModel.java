@@ -204,7 +204,7 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     private static void validateModelInChatRequests(String modelName, List<ChatRequest> requests) {
-        Set<String> modelNames = Stream.concat(requests.stream().map(ChatRequest::modelName), Stream.of(modelName))
+        var modelNames = Stream.concat(requests.stream().map(ChatRequest::modelName), Stream.of(modelName))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
