@@ -157,8 +157,7 @@ public class EmbeddingSearchRequest {
         }
 
         public EmbeddingSearchRequest build() {
-            return new EmbeddingSearchRequest(
-                    this.query, this.queryEmbedding, this.maxResults, this.minScore, this.filter);
+            return new EmbeddingSearchRequest(this);
         }
     }
 }
