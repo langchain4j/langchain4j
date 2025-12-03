@@ -39,51 +39,6 @@ public class TestPublisher {
                                 """)
                 .build();
 
-        // when
-//        record StreamingResult(
-//                SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {}
-//
-//        CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-//
-//        ServerSentEventListener listener = new ServerSentEventListener() {
-//
-//            private final AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
-//            private final List<ServerSentEvent> events = new ArrayList<>();
-//            private final Set<Thread> threads = new HashSet<>();
-//
-//            @Override
-//            public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-//                threads.add(Thread.currentThread());
-//                response.set(successfulHttpResponse);
-//            }
-//
-//            @Override
-//            public void onEvent(ServerSentEvent event) {
-//                threads.add(Thread.currentThread());
-//                events.add(event);
-//            }
-//
-//            @Override
-//            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-//                threads.add(Thread.currentThread());
-//                events.add(event);
-//            }
-//
-//            @Override
-//            public void onError(Throwable throwable) {
-//                threads.add(Thread.currentThread());
-//                completableFuture.completeExceptionally(throwable);
-//            }
-//
-//            @Override
-//            public void onClose() {
-//                threads.add(Thread.currentThread());
-//                completableFuture.complete(new StreamingResult(response.get(), events, threads));
-//            }
-//        };
-//        ServerSentEventListener spyListener = spy(listener);
-
-
         Publisher<StreamingHttpEvent> publisher = client.executeWithPublisher(request);
 
         publisher.subscribe(new Flow.Subscriber<>() {
@@ -116,33 +71,9 @@ public class TestPublisher {
         });
 
         try {
-            Thread.sleep(3_000);
+            Thread.sleep(30_000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
-//        // then
-//        StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
-//
-//        assertThat(streamingResult.response()).isNotNull();
-//        assertThat(streamingResult.response().statusCode()).isEqualTo(200);
-//        assertThat(streamingResult.response().headers()).isNotEmpty();
-//        assertThat(streamingResult.response().body()).isNull();
-//
-//        assertThat(streamingResult.events()).isNotEmpty();
-//        assertThat(streamingResult.events().stream()
-//                .map(ServerSentEvent::data)
-//                .collect(joining("")))
-//                .contains("Berlin");
-//
-//        assertThat(streamingResult.threads()).hasSize(1);
-//        assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
-//
-//        InOrder inOrder = inOrder(spyListener);
-//        inOrder.verify(spyListener, times(1)).onOpen(any());
-//        inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
-//        inOrder.verify(spyListener, times(1)).onClose();
-//        inOrder.verifyNoMoreInteractions();
-//        verifyNoMoreInteractions(spyListener);
     }
 }

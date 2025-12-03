@@ -6,6 +6,8 @@ import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.Flow.Publisher;
 
 /**
@@ -72,6 +74,10 @@ public interface HttpClient {
 
     // TODO name
     default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
+        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
+    }
+
+    default Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) { // TODO remove
         throw new UnsupportedOperationException("Not implemented"); // TODO implement?
     }
 

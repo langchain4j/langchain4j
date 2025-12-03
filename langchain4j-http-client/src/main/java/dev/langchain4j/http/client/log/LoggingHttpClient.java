@@ -16,6 +16,8 @@ import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.Flow;
 
 @Internal
@@ -152,5 +154,10 @@ public class LoggingHttpClient implements HttpClient {
     public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
         // TODO log, etc
         return delegateHttpClient.executeWithPublisher(request);
+    }
+
+    @Override
+    public Flow.Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) { // TODO
+        return delegateHttpClient.executeWithPublisherRaw(request);
     }
 }

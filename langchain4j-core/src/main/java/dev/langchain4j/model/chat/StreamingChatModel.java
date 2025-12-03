@@ -140,6 +140,7 @@ public interface StreamingChatModel {
         return Set.of();
     }
 
+    // TODO return publisher or completableFuture with publisher?
     default Publisher<StreamingEvent> chat(ChatRequest chatRequest) {
         throw new UnsupportedOperationException("Not implemented"); // TODO implement?
     }

@@ -112,6 +112,11 @@ public class JdkHttpClient implements HttpClient {
         return new StreamingHttpEventPublisher(delegate, toJdkRequest(request));
     }
 
+    @Override
+    public Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) {
+        return null; // TODO
+    }
+
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
@@ -189,7 +194,7 @@ public class JdkHttpClient implements HttpClient {
             if (!isSuccessful(jdkResponse)) {
                 String errorMessage = "Request failed";
                 try {
-                    errorMessage = readBody(jdkResponse.body());
+                    errorMessage = readErrorBody(jdkResponse.body());
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -202,7 +207,7 @@ public class JdkHttpClient implements HttpClient {
             jdkResponse.body().subscribe(new SSEBodySubscriber(subscriber, response));
         }
 
-        private String readBody(Publisher<List<ByteBuffer>> publisher) throws Exception { // TODO reimplement
+        private String readErrorBody(Publisher<List<ByteBuffer>> publisher) throws Exception { // TODO reimplement
             var future = new CompletableFuture<String>();
 
             publisher.subscribe(new Subscriber<>() {
@@ -213,7 +218,7 @@ public class JdkHttpClient implements HttpClient {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     this.subscription = subscription;
-                    subscription.request(1); // TODO request only what was requested
+                    subscription.request(Long.MAX_VALUE);
                 }
 
                 @Override
@@ -241,7 +246,7 @@ public class JdkHttpClient implements HttpClient {
                 }
             });
 
-            return future.get(10, TimeUnit.SECONDS);
+            return future.get(30, TimeUnit.SECONDS);
         }
 
         private void handleException(Throwable throwable, Subscriber<? super StreamingHttpEvent> subscriber) {
@@ -278,7 +283,7 @@ public class JdkHttpClient implements HttpClient {
                         openEventSent = true;
                         downstream.onNext(response);
                     }
-                    subscription.request(n);
+                    subscription.request(n); // TODO n or n-1 if response was sent?
                 }
 
                 @Override
@@ -298,7 +303,7 @@ public class JdkHttpClient implements HttpClient {
                 }
 
                 parseAndEmitEvents();
-                subscription.request(1);
+//                subscription.request(1); // TODO?
 
             } catch (Exception e) {
                 subscription.cancel();
