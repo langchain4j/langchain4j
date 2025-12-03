@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -23,6 +24,7 @@ import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
 import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyledWriter;
@@ -121,6 +123,85 @@ public class WorkflowAgentsIT {
         System.out.println(story);
 
         verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_programmatic_user_message_test() {
+        // the UserMessage is passed as an argument when invoking the agent
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        Map<String, Object> input = Map.of(
+                "userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """,
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        String story = (String) novelCreator.invoke(input);
+        assertThat(story).containsIgnoringCase("dragon");
+
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_default_value_test() {
+        // the UserMessage is set as a default value in the agent builder
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .defaultKeyValue("userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """)
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+        assertThat(story).containsIgnoringCase("dragon");
+
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
@@ -460,6 +541,8 @@ public class WorkflowAgentsIT {
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
 
+    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance { }
+
     @Test
     void conditional_agents_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
@@ -495,21 +578,20 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputKey("response")
                 .build();
 
-        AgentInstance rootAgent = (AgentInstance) expertRouterAgent;
-        assertThat(rootAgent.name()).isEqualTo("ask");
-        assertThat(rootAgent.outputType()).isEqualTo(String.class);
-        assertThat(rootAgent.outputKey()).isEqualTo("response");
-        assertThat(rootAgent.arguments()).hasSize(1);
-        assertThat(rootAgent.arguments().get(0).name()).isEqualTo("request");
-        assertThat(rootAgent.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(rootAgent.subagents()).hasSize(2);
+        assertThat(agentInstance.name()).isEqualTo("ask");
+        assertThat(agentInstance.outputType()).isEqualTo(String.class);
+        assertThat(agentInstance.outputKey()).isEqualTo("response");
+        assertThat(agentInstance.arguments()).hasSize(1);
+        assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(agentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(agentInstance.subagents()).hasSize(2);
 
-        AgentInstance routerAgentInstance = rootAgent.subagents().get(0);
+        AgentInstance routerAgentInstance = agentInstance.subagents().get(0);
         assertThat(routerAgentInstance.name()).isEqualTo("classify");
         assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
         assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
@@ -518,7 +600,7 @@ public class WorkflowAgentsIT {
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(routerAgentInstance.subagents()).isEmpty();
 
-        AgentInstance conditionalAgentInstance = rootAgent.subagents().get(1);
+        AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
         assertThat(conditionalAgentInstance.outputKey()).isNull();
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
@@ -528,7 +610,7 @@ public class WorkflowAgentsIT {
         checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
         checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
 
-        System.out.println(expertRouterAgent.ask("I broke my leg what should I do"));
+        System.out.println(agentInstance.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
     }

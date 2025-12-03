@@ -14,6 +14,18 @@ import dev.langchain4j.service.V;
 
 public class Agents {
 
+    public interface CreativeWriter {
+
+        @UserMessage("""
+                You are a creative writer.
+                Generate a draft of a story long no more than 3 sentence around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
+        String generateStory(@V("topic") String topic);
+    }
+
     public interface StyleEditor {
 
         @UserMessage(

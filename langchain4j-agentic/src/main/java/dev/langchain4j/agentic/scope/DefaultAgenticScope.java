@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.data.message.AiMessage;
@@ -25,6 +26,9 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
 @Internal
 public class DefaultAgenticScope implements AgenticScope {
@@ -86,6 +90,11 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    public <T> void writeState(Class<? extends TypedKey<T>> key, T value) {
+        writeState(keyName(key), value);
+    }
+
+    @Override
     public void writeStates(Map<String, Object> newState) {
         withReadLock(() -> state.putAll(newState));
     }
@@ -100,6 +109,11 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    public boolean hasState(Class<? extends TypedKey<?>> key) {
+        return hasState(keyName(key));
+    }
+
+    @Override
     public Object readState(String key) {
         return readStateBlocking(key, state.get(key));
     }
@@ -107,6 +121,11 @@ public class DefaultAgenticScope implements AgenticScope {
     @Override
     public <T> T readState(String key, T defaultValue) {
         return (T) readStateBlocking(key, state.getOrDefault(key, defaultValue));
+    }
+
+    @Override
+    public <T> T readState(Class<? extends TypedKey<T>> key) {
+        return readState(keyName(key), keyDefaultValue(key));
     }
 
     private Object readStateBlocking(String key, Object state) {

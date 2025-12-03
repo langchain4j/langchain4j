@@ -1,13 +1,14 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
 import static dev.langchain4j.model.googleai.common.GoogleAiGeminiChatModelIT.GOOGLE_AI_GEMINI_CHAT_MODEL;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override

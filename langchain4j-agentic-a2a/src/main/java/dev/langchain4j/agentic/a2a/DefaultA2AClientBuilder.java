@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.service.output.ServiceOutputParser;
 import io.a2a.A2A;
 import io.a2a.client.Client;
 import io.a2a.client.ClientEvent;
@@ -26,6 +27,7 @@ import io.a2a.spec.TextPart;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
+
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
     private final Class<T> agentServiceClass;
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
@@ -130,14 +134,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                             };
                         }
 
-                        return invokeAgent(args);
+                        return invokeAgent(method.getGenericReturnType(), args);
                     }
                 });
 
         return (T) agent;
     }
 
-    private Object invokeAgent(Object[] args) throws A2AClientException {
+    private Object invokeAgent(Type returnType, Object[] args) throws A2AClientException {
         List<Part<?>> parts = new ArrayList<>();
 
         if (agentServiceClass == UntypedAgent.class) {
@@ -192,7 +196,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         try {
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
-            return responseText;
+            return serviceOutputParser.parseText(returnType, responseText);
         } catch (InterruptedException | ExecutionException e) {
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);

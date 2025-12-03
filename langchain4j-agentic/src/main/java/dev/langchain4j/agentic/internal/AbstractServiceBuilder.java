@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -9,6 +10,7 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -70,9 +72,7 @@ public abstract class AbstractServiceBuilder<T, S> {
         } else if (!isNullOrBlank(agent.value())) {
             this.description = agent.value();
         }
-        if (!isNullOrBlank(agent.outputKey())) {
-            this.outputKey = agent.outputKey();
-        }
+        this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
     }
 
     Type agentReturnType() {
@@ -97,6 +97,10 @@ public abstract class AbstractServiceBuilder<T, S> {
     public S outputKey(String outputKey) {
         this.outputKey = outputKey;
         return (S) this;
+    }
+
+    public S outputKey(Class<? extends TypedKey<?>> outputKey) {
+        return outputKey(keyName(outputKey));
     }
 
     public S output(Function<AgenticScope, Object> output) {

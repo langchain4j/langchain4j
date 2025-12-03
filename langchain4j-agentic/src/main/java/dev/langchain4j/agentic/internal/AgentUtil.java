@@ -6,6 +6,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.K;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -16,6 +18,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -34,7 +38,41 @@ public class AgentUtil {
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
+    private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
+
     private AgentUtil() {}
+
+    private static <T> TypedKey<T> stateInstance(Class<? extends TypedKey<? extends T>> key) {
+        return (TypedKey<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
+            try {
+                return key.getDeclaredConstructor().newInstance();
+            }  catch (NoSuchMethodException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' doesn't have a no-args constructor", e);
+            }  catch (IllegalAccessException e) {
+                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' is not accessible", e);
+            } catch (InstantiationException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static String outputKey(String outputKey, Class<? extends TypedKey<?>> typedOutputKey) {
+        if (isNullOrBlank(outputKey)) {
+            return typedOutputKey != Agent.NoTypedKey.class ? keyName(typedOutputKey) : null;
+        }
+        if (typedOutputKey != Agent.NoTypedKey.class) {
+            throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
+        }
+        return outputKey;
+    }
+
+    public static <T> T keyDefaultValue(Class<? extends TypedKey<T>> key) {
+        return stateInstance(key).defaultValue();
+    }
+
+    public static String keyName(Class<? extends TypedKey<?>> key) {
+        return stateInstance(key).name();
+    }
 
     public static String uniqueAgentName(Class<?> agentClass, String agentName) {
         return agentName + "_" + agentClass.getSimpleName();
@@ -97,8 +135,16 @@ public class AgentUtil {
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method) {
+        return argumentsFromMethod(method, Map.of());
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
         return Stream.of(method.getParameters())
-                .map(p -> new AgentArgument(p.getParameterizedType(), parameterName(p)))
+                .map(p -> {
+                    String argName = parameterName(p);
+                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
+                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue);
+                })
                 .toList();
     }
 
@@ -113,6 +159,11 @@ public class AgentUtil {
             return AGENTIC_SCOPE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
+    }
+
+    private static Object parameterDefaultValue(Parameter p) {
+        K k = p.getAnnotation(K.class);
+        return k != null ? stateInstance(k.value()).defaultValue() : null;
     }
 
     public static AgentInvocationArguments agentInvocationArguments(
@@ -141,21 +192,25 @@ public class AgentUtil {
                 positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
-            Object argValue = argumentFromAgenticScope(agenticScope, arg.rawType(), argName);
+
+            Object argValue = argumentFromAgenticScope(agenticScope, arg);
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
         return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
-    public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {
-        Object argValue = agenticScope.readState(argName);
+    private static Object argumentFromAgenticScope(AgenticScope agenticScope, AgentArgument arg) {
+        Object argValue = agenticScope.readState(arg.name());
         if (argValue == null) {
-            throw new MissingArgumentException(argName);
+            argValue = arg.defaultValue();
+            if (argValue == null) {
+                throw new MissingArgumentException(arg.name());
+            }
         }
-        Object parsedArgument = adaptValueToType(argValue, argType);
+        Object parsedArgument = adaptValueToType(argValue, arg.rawType());
         if (argValue != parsedArgument) {
-            agenticScope.writeState(argName, parsedArgument);
+            agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;
     }
