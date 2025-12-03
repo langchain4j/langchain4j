@@ -45,6 +45,7 @@ class GoogleAiGeminiBatchChatModelIT {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest("What is the capital of France?"),
+                    createChatRequest("What is the capital of Finland?"),
                     createChatRequest("What is the capital of Germany?"));
 
             // when

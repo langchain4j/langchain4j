@@ -87,6 +87,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest(MODEL_NAME, "What is the capital of France?"),
+                    createChatRequest(MODEL_NAME, "What is the capital of Finland?"),
                     createChatRequest(MODEL_NAME, "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
@@ -110,7 +111,7 @@ class GoogleAiGeminiBatchChatModelTest {
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
             assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
-                    .hasSize(2);
+                    .hasSize(3);
         }
 
         @Test

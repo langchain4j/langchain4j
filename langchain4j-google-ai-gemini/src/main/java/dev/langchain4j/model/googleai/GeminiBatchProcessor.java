@@ -127,6 +127,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                         extractBatchState(operation.metadata()),
                         operation.error().details());
             } else {
+                System.out.println("Got: " + operation.response());
                 return new BatchSuccess<>(
                         new BatchName(operation.name()), preparer.extractResponses(operation.response()));
             }
