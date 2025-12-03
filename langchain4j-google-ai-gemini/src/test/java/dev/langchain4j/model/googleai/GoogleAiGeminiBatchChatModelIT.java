@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -45,7 +46,6 @@ class GoogleAiGeminiBatchChatModelIT {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest("What is the capital of France?"),
-                    createChatRequest("What is the capital of Finland?"),
                     createChatRequest("What is the capital of Germany?"));
 
             // when
@@ -307,6 +307,14 @@ class GoogleAiGeminiBatchChatModelIT {
             return error.batchName();
         } else {
             return null;
+        }
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }
