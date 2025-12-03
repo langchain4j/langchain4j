@@ -5,11 +5,9 @@ import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BA
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse.InlinedResponseWrapper;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
@@ -18,10 +16,11 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -33,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 @Experimental
 public final class GoogleAiGeminiBatchChatModel {
     private final GeminiBatchProcessor<
-            ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+                    ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final BaseGeminiChatModel chatModel;
     private final String modelName;
@@ -205,12 +204,14 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     private static void validateModelInChatRequests(String modelName, List<ChatRequest> requests) {
-        var modelNames = requests.stream().map(ChatRequest::modelName).collect(Collectors.toUnmodifiableSet());
+        Set<String> modelNames = Stream.concat(requests.stream().map(ChatRequest::modelName), Stream.of(modelName))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        if (modelNames.size() != 1 || !modelNames.contains(modelName)) {
+        if (modelNames.size() != 1) {
             throw new IllegalArgumentException(
                     "Batch requests cannot contain ChatRequest objects with different models; "
-                            + "all requests must use the same model: " + modelName);
+                            + "all requests must use the same model: " + modelNames);
         }
     }
 
@@ -219,8 +220,7 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
-        private Builder() {
-        }
+        private Builder() {}
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
@@ -229,7 +229,7 @@ public final class GoogleAiGeminiBatchChatModel {
 
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+                    ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
         private ObjectMapper objectMapper = new ObjectMapper();
 
         @Override
@@ -250,78 +250,10 @@ public final class GoogleAiGeminiBatchChatModel {
             if (response == null || response.inlinedResponses() == null) {
                 return List.of();
             }
-
             return response.inlinedResponses().inlinedResponses().stream()
                     .map(wrapper -> objectMapper.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
                     .map(chatModel::processResponse)
                     .toList();
-        }
-    }
-
-    public static void main(String[] args) throws Exception {
-        GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
-                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash-lite")
-                .build();
-        //createBatchModel();
-
-
-        List<ChatRequest> requests = List.of(
-                ChatRequest.builder()
-                        .modelName("gemini-2.5-flash-lite")
-                        .messages(UserMessage.from("What is the capital of France?"))
-                        .build(),
-                ChatRequest.builder()
-                        .modelName("gemini-2.5-flash-lite")
-                        .messages(UserMessage.from("What is the capital of Japan?"))
-                        .build(),
-                ChatRequest.builder()
-                        .modelName("gemini-2.5-flash-lite")
-                        .messages(UserMessage.from("What is the capital of Brazil?"))
-                        .build()
-        );
-
-        System.out.println("Submitting batch with " + requests.size() + " requests...");
-
-        BatchResponse<?> response = batchModel.createBatchInline("capitals-batch", 0L, requests);
-        BatchName batchName = getBatchName(response);
-
-        System.out.println("Batch created: " + batchName.value());
-        System.out.println("Polling for completion...");
-
-        // Poll until complete
-        do {
-            Thread.sleep(5000);
-            response = batchModel.retrieveBatchResults(batchName);
-            System.out.println("  Status: " + response.getClass().getSimpleName());
-        } while (response instanceof BatchIncomplete);
-
-        // Process results
-        if (response instanceof BatchRequestResponse.BatchSuccess<?> success) {
-            System.out.println("\nBatch completed successfully!");
-            System.out.println("Results:");
-
-            var results = success.responses();
-            for (int i = 0; i < results.size(); i++) {
-                var chatResponse = (dev.langchain4j.model.chat.response.ChatResponse) results.get(i);
-                System.out.println("  " + (i + 1) + ". " + chatResponse.aiMessage().text());
-            }
-        } else {
-            System.err.println("Batch failed: " + response);
-        }
-
-        // Clean up
-        batchModel.deleteBatchJob(batchName);
-        System.out.println("\nBatch job deleted.");
-    }
-
-    private static BatchName getBatchName(BatchResponse<?> response) {
-        if (response instanceof BatchRequestResponse.BatchSuccess<?> success) {
-            return success.batchName();
-        } else if (response instanceof BatchIncomplete incomplete) {
-            return incomplete.batchName();
-        } else {
-            throw new IllegalStateException("Unexpected response type: " + response);
         }
     }
 }

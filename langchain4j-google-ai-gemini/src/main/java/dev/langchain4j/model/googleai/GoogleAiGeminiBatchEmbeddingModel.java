@@ -3,11 +3,13 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
@@ -73,7 +75,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
      *                    defaults to 0 if null
      * @param segments    the list of {@link TextSegment}s to generate embeddings for
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchRequestResponse.BatchIncomplete}
+     * typically {@link BatchIncomplete}
      */
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
@@ -170,6 +172,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+        private ObjectMapper objectMapper = new ObjectMapper();
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -201,7 +204,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
             }
 
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
+                    .map(wrapper -> objectMapper.convertValue(wrapper.response(), GeminiEmbeddingResponse.class))
                     .map(GeminiEmbeddingResponse::embedding)
                     .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
                     .toList();
