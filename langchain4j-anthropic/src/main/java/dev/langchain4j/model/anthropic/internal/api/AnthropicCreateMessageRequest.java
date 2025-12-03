@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +16,9 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicCreateMessageRequest {
+
+    // TODO https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+    // TODO strict tools
 
     public String model;
     public List<AnthropicMessage> messages;
@@ -24,7 +29,7 @@ public class AnthropicCreateMessageRequest {
     public Double temperature;
     public Double topP;
     public Integer topK;
-    public List<AnthropicTool> tools;
+    public List<Object> tools;
     public AnthropicToolChoice toolChoice;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
@@ -73,7 +78,7 @@ public class AnthropicCreateMessageRequest {
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
-        this.tools = tools;
+        this.tools = tools == null ? null : new ArrayList<>(tools);
         this.toolChoice = toolChoice;
         this.thinking = thinking;
         this.metadata = metadata;
@@ -151,11 +156,11 @@ public class AnthropicCreateMessageRequest {
         this.topK = topK;
     }
 
-    public List<AnthropicTool> getTools() {
+    public List<Object> getTools() {
         return tools;
     }
 
-    public void setTools(List<AnthropicTool> tools) {
+    public void setTools(List<Object> tools) {
         this.tools = tools;
     }
 
@@ -225,7 +230,7 @@ public class AnthropicCreateMessageRequest {
         private Double temperature;
         private Double topP;
         private Integer topK;
-        private List<AnthropicTool> tools;
+        private List<Object> tools;
         private AnthropicToolChoice toolChoice;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
@@ -276,7 +281,7 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
-        public Builder tools(List<AnthropicTool> tools) {
+        public Builder tools(List<Object> tools) {
             this.tools = tools;
             return this;
         }

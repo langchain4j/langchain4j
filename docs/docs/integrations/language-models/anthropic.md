@@ -112,6 +112,31 @@ by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
 By default, Anthropic Claude may use multiple tools to answer a user query,
 but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#parallel-tool-use) by setting `disableParallelToolUse(true)`.
 
+## Server Tools
+
+Anthropic's [server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview#server-tools)
+are supported, here is an example of using a [web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool):
+```java
+Map<String, Object> webSearchTool = Map.of(
+    "type", "web_search_20250305",
+    "name", "web_search",
+    "max_uses", 5,
+    "allowed_domains", List.of("accuweather.com")
+);
+
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .serverTools(webSearchTool)
+    .logRequests(true)
+    .logResponses(true)
+    .build();
+
+String answer = model.chat("What is the weather in Munich?");
+```
+
+Tools specified via `serverTools` will be included in every request to Anthropic API.
+
 ## Caching
 
 `AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.

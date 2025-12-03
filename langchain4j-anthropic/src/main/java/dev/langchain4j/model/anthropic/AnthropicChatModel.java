@@ -34,8 +34,11 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.slf4j.Logger;
 
 /**
@@ -70,6 +73,8 @@ public class AnthropicChatModel implements ChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
+    private final List<Map<String, Object>> serverTools;
+    private final Set<String> sendToolMetadataKeys;
     private final String userId;
     private final Map<String, Object> customParameters;
 
@@ -96,6 +101,8 @@ public class AnthropicChatModel implements ChatModel {
         this.listeners = copy(builder.listeners);
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
+        this.serverTools = copy(builder.serverTools);
+        this.sendToolMetadataKeys = copy(builder.sendToolMetadataKeys);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
 
@@ -141,6 +148,8 @@ public class AnthropicChatModel implements ChatModel {
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
+        private List<Map<String, Object>> serverTools;
+        private Set<String> sendToolMetadataKeys;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -239,6 +248,50 @@ public class AnthropicChatModel implements ChatModel {
         public AnthropicChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
             this.disableParallelToolUse = disableParallelToolUse;
             return this;
+        }
+
+        /**
+         * Specifies server tools to be included in the request. For example:
+         * <pre>
+         * Map<String, Object> webSearchTool = Map.of(
+         *     "type", "web_search_20250305",
+         *     "name", "web_search",
+         *     "max_uses", 5
+         * );
+         * </pre>
+         */
+        public  AnthropicChatModelBuilder serverTools(List<Map<String, Object>> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        /**
+         * Specifies server tools to be included in the request. For example:
+         * <pre>
+         * Map<String, Object> webSearchTool = Map.of(
+         *     "type", "web_search_20250305",
+         *     "name", "web_search",
+         *     "max_uses", 5
+         * );
+         * </pre>
+         */
+        public  AnthropicChatModelBuilder serverTools(Map<String, Object>... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicChatModelBuilder sendToolMetadataKeys(Set<String> toolMetadataKeys) {
+            this.sendToolMetadataKeys = toolMetadataKeys;
+            return this;
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicChatModelBuilder sendToolMetadataKeys(String... toolMetadataKeys) {
+            return sendToolMetadataKeys(new HashSet<>(asList(toolMetadataKeys)));
         }
 
         public AnthropicChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
@@ -378,6 +431,8 @@ public class AnthropicChatModel implements ChatModel {
                 false,
                 toolChoiceName,
                 disableParallelToolUse,
+                serverTools,
+                sendToolMetadataKeys,
                 userId,
                 customParameters);
 

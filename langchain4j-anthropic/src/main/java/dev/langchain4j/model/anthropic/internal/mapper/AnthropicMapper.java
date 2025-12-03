@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Internal
 public class AnthropicMapper {
@@ -294,21 +295,35 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
+        return toAnthropicTools(toolSpecifications, cacheToolsPrompt, Set.of());
+    }
+
+    public static List<AnthropicTool> toAnthropicTools(
+            List<ToolSpecification> toolSpecifications,
+            AnthropicCacheType cacheToolsPrompt,
+            Set<String> sendToolMetadataKeys) {
         ToolSpecification lastToolSpecification =
                 toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(toolSpecification, cacheToolsPrompt);
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, sendToolMetadataKeys);
                     }
-                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, sendToolMetadataKeys);
                 })
                 .collect(toList());
     }
 
     public static AnthropicTool toAnthropicTool(
             ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of());
+    }
+
+    public static AnthropicTool toAnthropicTool(
+            ToolSpecification toolSpecification,
+            AnthropicCacheType cacheToolsPrompt,
+            Set<String> sendToolMetadataKeys) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
@@ -323,6 +338,20 @@ public class AnthropicMapper {
             return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
         }
 
+        if (!sendToolMetadataKeys.isEmpty()) {
+            toolBuilder.customParameters(retainKeys(toolSpecification.metadata(), sendToolMetadataKeys));
+        }
+
         return toolBuilder.build();
+    }
+
+    private static Map<String, Object> retainKeys(Map<String, Object> map, Set<String> keys) {
+        Map<String, Object> result = new HashMap<>(map);
+        for (String key : keys) {
+            if (map.containsKey(key)) {
+                result.put(key, map.get(key));
+            }
+        }
+        return result;
     }
 }
