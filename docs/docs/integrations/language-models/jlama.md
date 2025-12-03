@@ -43,6 +43,13 @@ implementation 'dev.langchain4j:langchain4j:1.9.1'
 implementation 'dev.langchain4j:langchain4j-jlama:1.9.1-beta17'
 ```
 
+Jlama uses Java 21 preview features. You can enable the features globally with:
+
+`export JDK_JAVA_OPTIONS="--add-modules jdk.incubator.vector --enable-preview"`
+
+or enable the preview features by configuring maven compiler and failsafe plugins.
+
+
 ### Model Selection
 You can use most safetensor models on [HuggingFace](https://huggingface.co/models?library=safetensors&sort=trending) and specify them using the `owner/model-name` format.
 Jlama maintains a list of pre-quantized popular models under http://huggingface.co/tjake

@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 public class OpenAiOfficialSetupIT {
 
@@ -206,6 +207,7 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
     void should_work_with_explicit_azureOpenAIServiceVersion() {
         // Given: Create a chat model with explicit azureOpenAIServiceVersion
         ChatModel model = OpenAiOfficialChatModel.builder()
@@ -228,6 +230,7 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
     void should_work_with_explicit_azureOpenAIServiceVersion_and_azureDeploymentName() {
         // Given: Create a chat model with both azureOpenAIServiceVersion and azureDeploymentName
         ChatModel model = OpenAiOfficialChatModel.builder()
@@ -250,6 +253,7 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
     void should_work_with_isAzure_flag_and_azureOpenAIServiceVersion() {
         // Given: Create a chat model with isAzure flag explicitly set
         ChatModel model = OpenAiOfficialChatModel.builder()

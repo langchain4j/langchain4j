@@ -2,12 +2,14 @@ package dev.langchain4j.agentic.agent;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentSpecification;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -32,18 +34,23 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
     final Class<T> agentServiceClass;
+    final Method agenticMethod;
     final Class<?> agentReturnType;
-    final List<AgentArgument> arguments;
+    List<AgentArgument> arguments;
 
     String name;
     String agentId;
@@ -53,6 +60,8 @@ public class AgentBuilder<T> {
 
     Consumer<AgentRequest> beforeListener = request -> {};
     Consumer<AgentResponse> afterListener = response -> {};
+
+    private final Map<String, Object> defaultValues = new HashMap<>();
 
     private ChatModel model;
     private ChatMemory chatMemory;
@@ -71,6 +80,8 @@ public class AgentBuilder<T> {
     private OutputGuardrail[] outputGuardrails;
 
     private Object[] objectsWithTools;
+    private Map<ToolSpecification, ToolExecutor> toolsMap;
+    private Set<String> immediateReturnToolNames;
     private ToolProvider toolProvider;
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
@@ -81,8 +92,8 @@ public class AgentBuilder<T> {
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
+        this.agenticMethod = agenticMethod;
         this.agentReturnType = agenticMethod.getReturnType();
-        this.arguments = argumentsFromMethod(agenticMethod);
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
         if (agent == null) {
@@ -113,6 +124,8 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
+        this.arguments = argumentsFromMethod(agenticMethod, defaultValues);
+
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null) {
@@ -190,6 +203,13 @@ public class AgentBuilder<T> {
         if (objectsWithTools != null) {
             aiServices.tools(objectsWithTools);
         }
+        if (toolsMap != null) {
+            if (immediateReturnToolNames != null) {
+                aiServices.tools(toolsMap, immediateReturnToolNames);
+            } else {
+                aiServices.tools(toolsMap);
+            }
+        }
         if (toolProvider != null) {
             aiServices.toolProvider(toolProvider);
         }
@@ -231,6 +251,17 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> tools(Object... objectsWithTools) {
         this.objectsWithTools = objectsWithTools;
+        return this;
+    }
+
+    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap) {
+        this.toolsMap = toolsMap;
+        return this;
+    }
+
+    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
+        this.toolsMap = toolsMap;
+        this.immediateReturnToolNames = immediateReturnToolNames;
         return this;
     }
 
@@ -309,7 +340,7 @@ public class AgentBuilder<T> {
     }
 
     public AgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
-        return outputKey(stateName(outputKey));
+        return outputKey(keyName(outputKey));
     }
 
     public AgentBuilder<T> async(boolean async) {
@@ -361,5 +392,14 @@ public class AgentBuilder<T> {
     public AgentBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
         this.afterListener = this.afterListener.andThen(afterListener);
         return this;
+    }
+
+    public AgentBuilder<T> defaultKeyValue(String key, Object value) {
+        this.defaultValues.put(key, value);
+        return this;
+    }
+
+    public <K> AgentBuilder<T> defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
+        return defaultKeyValue(keyName(key), value);
     }
 }
