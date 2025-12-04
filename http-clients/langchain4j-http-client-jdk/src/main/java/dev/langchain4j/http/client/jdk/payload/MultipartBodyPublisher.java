@@ -13,16 +13,19 @@ public class MultipartBodyPublisher {
 
     private final List<byte[]> parts = new ArrayList<>();
 
-    public MultipartBodyPublisher addFormField(String name, String value) {
+    List<byte[]> parts() {
+        return parts;
+    }
+
+    public void addFormField(String name, String value) {
         String part = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\""
                 + name + "\"" + CRLF + CRLF
                 + value
                 + CRLF;
         parts.add(part.getBytes(StandardCharsets.UTF_8));
-        return this;
     }
 
-    public MultipartBodyPublisher addFile(String name, MultipartFile multipartFile) {
+    public void addFile(String name, MultipartFile multipartFile) {
         String header = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\""
                 + name + "\"; filename=\"" + multipartFile.filename() + "\"" + CRLF + "Content-Type: "
                 + multipartFile.contentType() + CRLF + CRLF;
@@ -31,7 +34,6 @@ public class MultipartBodyPublisher {
         parts.add(multipartFile.content());
         parts.add(CRLF.getBytes(StandardCharsets.UTF_8));
 
-        return this;
     }
 
     public HttpRequest.BodyPublisher build() {
