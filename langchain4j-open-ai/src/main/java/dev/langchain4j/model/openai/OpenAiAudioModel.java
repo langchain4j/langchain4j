@@ -81,7 +81,7 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
                 .language(request.language())
                 .prompt(request.prompt())
                 .temperature(request.temperature())
-                .prompt(request.prompt());
+                .temperature(request.temperature());
     }
 
     @Override
