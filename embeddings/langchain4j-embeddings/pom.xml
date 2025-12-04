@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-embeddings</artifactId>
-    <name>langchain4j-embeddings</name>
+    <name>LangChain4j :: Embeddings</name>
     <description>Common functionality for other langchain4j-embeddings-xxx modules</description>
 
     <properties>

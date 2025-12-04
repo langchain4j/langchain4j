@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <name>langchain4j-embeddings-all-minilm-l6-v2</name>
+    <name>LangChain4j :: Embeddings :: all-minilm-l6-v2</name>
     <description>In-process all-minilm-l6-v2 embedding model</description>
 
     <dependencies>

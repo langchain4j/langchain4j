@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-embeddings-bge-small-zh-v15</artifactId>
-    <name>langchain4j-embeddings-bge-small-zh-v15</name>
+    <name>LangChain4j :: Embeddings :: bge-small-zh-v15</name>
     <description>In-process bge-small-zh-v1.5 embedding model</description>
 
     <dependencies>

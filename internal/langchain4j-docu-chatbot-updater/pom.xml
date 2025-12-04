@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>langchain4j-docu-chatbot-updater</artifactId>
+    <name>LangChain4j :: Internal :: Documentation Chatbot Updater</name>
 
     <properties>
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>

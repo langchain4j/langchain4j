@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-embeddings-e5-small-v2-q</artifactId>
-    <name>langchain4j-embeddings-e5-small-v2-q</name>
+    <name>LangChain4j :: Embeddings :: e5-small-v2 (quantized)</name>
     <description>In-process e5-small-v2 (quantized) embedding model</description>
 
     <dependencies>
