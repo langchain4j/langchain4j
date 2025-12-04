@@ -69,7 +69,7 @@ public class PromptTemplate {
      * @param clock    the clock to use for the special variables.
      */
     public PromptTemplate(String template, Clock clock) {
-    	this(template, null, clock);
+        this(template, null, clock);
     }
 
     /**
@@ -82,9 +82,9 @@ public class PromptTemplate {
     public PromptTemplate(String template, String name, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
         if (name == null) {
-          this.template = FACTORY.create(() -> template);
+            this.template = FACTORY.create(() -> template);
         } else {
-        	this.template = FACTORY.create(new PromptTemplateFactory.Input() {
+            this.template = FACTORY.create(new PromptTemplateFactory.Input() {
 
                 @Override
                 public String getTemplate() {
@@ -149,7 +149,7 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template) {
-        return from(template, null);
+        return from(template, null, null);
     }
 
     /**
@@ -160,6 +160,29 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template, String name) {
-        return new PromptTemplate(template, name);
+        return from(template, name, null);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param clock    the clock to use for the special variables.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, Clock clock) {
+        return from(template, null, clock);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name the template name of the prompt.
+     * @param clock    the clock to use for the special variables.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, String name, Clock clock) {
+        return new PromptTemplate(template, name, clock != null ? clock : Clock.systemDefaultZone());
     }
 }

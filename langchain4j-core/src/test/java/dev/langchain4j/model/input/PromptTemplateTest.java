@@ -1,8 +1,9 @@
 package dev.langchain4j.model.input;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -12,11 +13,9 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PromptTemplateTest {
 
@@ -146,7 +145,7 @@ class PromptTemplateTest {
         // given
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_time}}", clock);
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and now is {{current_time}}", clock);
 
         // when
         Prompt prompt = promptTemplate.apply("Klaus");
@@ -161,7 +160,8 @@ class PromptTemplateTest {
         // given
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{name}} and now is {{current_date_time}}", clock);
+        PromptTemplate promptTemplate =
+                PromptTemplate.from("My name is {{name}} and now is {{current_date_time}}", clock);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("name", "Klaus");
@@ -174,23 +174,24 @@ class PromptTemplateTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "$",
-            "$$",
-            "{",
-            "{{",
-            "}",
-            "}}",
-            "{}",
-            "{{}}",
-            "*",
-            "**",
-            "\\",
-            "\\\\",
-            "${}*\\",
-            "${ *hello* }",
-            "\\$\\{ \\*hello\\* \\}"
-    })
+    @ValueSource(
+            strings = {
+                "$",
+                "$$",
+                "{",
+                "{{",
+                "}",
+                "}}",
+                "{}",
+                "{{}}",
+                "*",
+                "**",
+                "\\",
+                "\\\\",
+                "${}*\\",
+                "${ *hello* }",
+                "\\$\\{ \\*hello\\* \\}"
+            })
     void should_support_special_characters(String s) {
 
         // given
