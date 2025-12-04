@@ -1,5 +1,12 @@
 package dev.langchain4j.model.embedding.onnx;
 
+import static ai.onnxruntime.OnnxTensor.createTensor;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.nio.LongBuffer.wrap;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
+
 import ai.djl.huggingface.tokenizers.Encoding;
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
 import ai.onnxruntime.OnnxTensor;
@@ -7,19 +14,11 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import ai.onnxruntime.OrtSession.Result;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.*;
-
-import static ai.onnxruntime.OnnxTensor.createTensor;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.nio.LongBuffer.wrap;
-import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.toList;
 
 public class OnnxBertBiEncoder {
 
@@ -55,7 +54,8 @@ public class OnnxBertBiEncoder {
         }
     }
 
-    public OnnxBertBiEncoder(OrtEnvironment environment, OrtSession session, InputStream tokenizer, PoolingMode poolingMode) {
+    public OnnxBertBiEncoder(
+            OrtEnvironment environment, OrtSession session, InputStream tokenizer, PoolingMode poolingMode) {
         try {
             this.environment = environment;
             this.session = session;
@@ -93,9 +93,7 @@ public class OnnxBertBiEncoder {
             }
         }
 
-        List<Integer> weights = partitions.stream()
-                .map(List::size)
-                .collect(toList());
+        List<Integer> weights = partitions.stream().map(List::size).collect(toList());
 
         float[] embedding = normalize(weightedAverage(embeddings, weights));
 
@@ -136,11 +134,9 @@ public class OnnxBertBiEncoder {
 
         long[] shape = {1, inputIds.length};
 
-        try (
-                OnnxTensor inputIdsTensor = createTensor(environment, wrap(inputIds), shape);
+        try (OnnxTensor inputIdsTensor = createTensor(environment, wrap(inputIds), shape);
                 OnnxTensor attentionMaskTensor = createTensor(environment, wrap(attentionMask), shape);
-                OnnxTensor tokenTypeIdsTensor = createTensor(environment, wrap(tokenTypeIds), shape)
-        ) {
+                OnnxTensor tokenTypeIdsTensor = createTensor(environment, wrap(tokenTypeIds), shape)) {
             Map<String, OnnxTensor> inputs = new HashMap<>();
             inputs.put("input_ids", inputIdsTensor);
             inputs.put("attention_mask", attentionMaskTensor);
@@ -256,10 +252,8 @@ public class OnnxBertBiEncoder {
     }
 
     private byte[] loadModel(InputStream modelInputStream) {
-        try (
-                InputStream inputStream = modelInputStream;
-                ByteArrayOutputStream buffer = new ByteArrayOutputStream()
-        ) {
+        try (InputStream inputStream = modelInputStream;
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
             int nRead;
             byte[] data = new byte[1024];
 

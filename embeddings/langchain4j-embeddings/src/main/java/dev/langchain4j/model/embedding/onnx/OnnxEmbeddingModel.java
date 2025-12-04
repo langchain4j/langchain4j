@@ -1,10 +1,10 @@
 package dev.langchain4j.model.embedding.onnx;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * An embedding model that runs within your Java application's process

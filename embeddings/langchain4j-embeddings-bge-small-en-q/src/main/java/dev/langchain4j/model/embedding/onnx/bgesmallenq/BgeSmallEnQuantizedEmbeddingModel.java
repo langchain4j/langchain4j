@@ -1,13 +1,11 @@
 package dev.langchain4j.model.embedding.onnx.bgesmallenq;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.model.embedding.onnx.AbstractInProcessEmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder;
 import dev.langchain4j.model.embedding.onnx.PoolingMode;
-
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Quantized BAAI bge-small-en embedding model that runs within your Java application's process.
@@ -28,11 +26,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class BgeSmallEnQuantizedEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL = loadFromJar(
-            "bge-small-en-q.onnx",
-            "bge-small-en-q-tokenizer.json",
-            PoolingMode.CLS
-    );
+    private static final OnnxBertBiEncoder MODEL =
+            loadFromJar("bge-small-en-q.onnx", "bge-small-en-q-tokenizer.json", PoolingMode.CLS);
 
     /**
      * Creates an instance of an {@code BgeSmallEnQuantizedEmbeddingModel}.

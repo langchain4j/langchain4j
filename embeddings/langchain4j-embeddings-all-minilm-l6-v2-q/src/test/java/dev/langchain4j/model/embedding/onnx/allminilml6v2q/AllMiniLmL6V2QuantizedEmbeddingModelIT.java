@@ -1,5 +1,12 @@
 package dev.langchain4j.model.embedding.onnx.allminilml6v2q;
 
+import static dev.langchain4j.internal.Utils.repeat;
+import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,20 +14,12 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static dev.langchain4j.internal.Utils.repeat;
-import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
+import org.junit.jupiter.api.Test;
 
 class AllMiniLmL6V2QuantizedEmbeddingModelIT {
 
@@ -111,10 +110,8 @@ class AllMiniLmL6V2QuantizedEmbeddingModelIT {
 
         String oneToken = "hello ";
 
-        assertThat(magnitudeOf(model.embed(oneToken).content()))
-                .isCloseTo(1, withPercentage(0.01));
-        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content()))
-                .isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(oneToken).content())).isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content())).isCloseTo(1, withPercentage(0.01));
     }
 
     @Test

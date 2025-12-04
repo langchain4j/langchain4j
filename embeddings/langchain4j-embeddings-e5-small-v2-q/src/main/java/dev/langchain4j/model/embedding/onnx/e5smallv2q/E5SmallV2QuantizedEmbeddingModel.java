@@ -1,13 +1,11 @@
 package dev.langchain4j.model.embedding.onnx.e5smallv2q;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.model.embedding.onnx.AbstractInProcessEmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder;
 import dev.langchain4j.model.embedding.onnx.PoolingMode;
-
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Quantized Microsoft E5-small-v2 embedding model that runs within your Java application's process.
@@ -28,11 +26,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class E5SmallV2QuantizedEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL = loadFromJar(
-            "e5-small-v2-q.onnx",
-            "e5-small-v2-q-tokenizer.json",
-            PoolingMode.MEAN
-    );
+    private static final OnnxBertBiEncoder MODEL =
+            loadFromJar("e5-small-v2-q.onnx", "e5-small-v2-q-tokenizer.json", PoolingMode.MEAN);
 
     /**
      * Creates an instance of an {@code E5SmallV2QuantizedEmbeddingModel}.

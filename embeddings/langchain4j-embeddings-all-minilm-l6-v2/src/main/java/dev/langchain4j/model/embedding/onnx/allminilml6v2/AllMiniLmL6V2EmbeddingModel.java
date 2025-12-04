@@ -1,12 +1,11 @@
 package dev.langchain4j.model.embedding.onnx.allminilml6v2;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.model.embedding.onnx.AbstractInProcessEmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder;
 import dev.langchain4j.model.embedding.onnx.PoolingMode;
-
 import java.util.concurrent.Executor;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * SentenceTransformers all-MiniLM-L6-v2 embedding model that runs within your Java application's process.
@@ -27,11 +26,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class AllMiniLmL6V2EmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL = loadFromJar(
-            "all-minilm-l6-v2.onnx",
-            "all-minilm-l6-v2-tokenizer.json",
-            PoolingMode.MEAN
-    );
+    private static final OnnxBertBiEncoder MODEL =
+            loadFromJar("all-minilm-l6-v2.onnx", "all-minilm-l6-v2-tokenizer.json", PoolingMode.MEAN);
 
     /**
      * Creates an instance of an {@code AllMiniLmL6V2EmbeddingModel}.

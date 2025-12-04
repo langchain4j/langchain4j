@@ -1,17 +1,16 @@
 package dev.langchain4j.model.embedding.onnx;
 
+import static java.nio.file.Files.newInputStream;
+
 import ai.djl.huggingface.tokenizers.Encoding;
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.TokenCountEstimator;
-
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.nio.file.Files.newInputStream;
 
 /**
  * A token count estimator for models that can be found on <a href="https://huggingface.co/">HuggingFace</a>.
@@ -85,8 +84,7 @@ public class HuggingFaceTokenCountEstimator implements TokenCountEstimator {
         }
     }
 
-    private static HuggingFaceTokenizer createFrom(InputStream tokenizer,
-                                                   Map<String, String> options) {
+    private static HuggingFaceTokenizer createFrom(InputStream tokenizer, Map<String, String> options) {
         try {
             return HuggingFaceTokenizer.newInstance(tokenizer, options);
         } catch (Exception e) {

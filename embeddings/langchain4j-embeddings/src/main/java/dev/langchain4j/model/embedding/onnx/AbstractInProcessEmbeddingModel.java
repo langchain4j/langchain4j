@@ -1,24 +1,23 @@
 package dev.langchain4j.model.embedding.onnx;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder.EmbeddingAndTokenCount;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-
-import java.io.InputStream;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder.EmbeddingAndTokenCount;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.io.InputStream;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbeddingModel {
 
@@ -30,16 +29,14 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
 
     private Executor createDefaultExecutor() {
         int threadPoolSize = Runtime.getRuntime().availableProcessors();
-        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
-                threadPoolSize, threadPoolSize,
-                1, SECONDS,
-                new LinkedBlockingQueue<>()
-        );
+        ThreadPoolExecutor threadPoolExecutor =
+                new ThreadPoolExecutor(threadPoolSize, threadPoolSize, 1, SECONDS, new LinkedBlockingQueue<>());
         threadPoolExecutor.allowCoreThreadTimeOut(true);
         return threadPoolExecutor;
     }
 
-    protected static OnnxBertBiEncoder loadFromJar(String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
+    protected static OnnxBertBiEncoder loadFromJar(
+            String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
         InputStream model = Thread.currentThread().getContextClassLoader().getResourceAsStream(modelFileName);
         InputStream tokenizer = Thread.currentThread().getContextClassLoader().getResourceAsStream(tokenizerFileName);
         return new OnnxBertBiEncoder(model, tokenizer, poolingMode);
@@ -66,7 +63,7 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
         return Response.from(
                 singletonList(Embedding.from(embeddingAndTokenCount.embedding)),
                 new TokenUsage(embeddingAndTokenCount.tokenCount - 2) // do not count special tokens [CLS] and [SEP])
-        );
+                );
     }
 
     private Response<List<Embedding>> parallelizeEmbedding(List<TextSegment> segments) {

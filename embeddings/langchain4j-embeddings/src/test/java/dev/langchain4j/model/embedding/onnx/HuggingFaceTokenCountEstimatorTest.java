@@ -1,10 +1,10 @@
 package dev.langchain4j.model.embedding.onnx;
 
-import dev.langchain4j.model.TokenCountEstimator;
-import org.junit.jupiter.api.Test;
-
 import static dev.langchain4j.internal.Utils.repeat;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.model.TokenCountEstimator;
+import org.junit.jupiter.api.Test;
 
 class HuggingFaceTokenCountEstimatorTest {
 

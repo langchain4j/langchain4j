@@ -1,5 +1,14 @@
 package dev.langchain4j.model.embedding.onnx;
 
+import static dev.langchain4j.internal.Utils.repeat;
+import static dev.langchain4j.model.embedding.onnx.PoolingMode.MEAN;
+import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,10 +16,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -20,15 +25,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static dev.langchain4j.internal.Utils.repeat;
-import static dev.langchain4j.model.embedding.onnx.PoolingMode.MEAN;
-import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class OnnxEmbeddingModelIT {
 
@@ -40,11 +39,13 @@ class OnnxEmbeddingModelIT {
     @BeforeAll
     static void initModel() throws IOException {
 
-        URL modelUrl = new URL("https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx?download=true");
+        URL modelUrl = new URL(
+                "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx?download=true");
         Path modelPath = tempDir.resolve("model_quantized.onnx");
         Files.copy(modelUrl.openStream(), modelPath, REPLACE_EXISTING);
 
-        URL tokenizerUrl = new URL("https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json?download=true");
+        URL tokenizerUrl =
+                new URL("https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json?download=true");
         Path tokenizerPath = tempDir.resolve("tokenizer.json");
         Files.copy(tokenizerUrl.openStream(), tokenizerPath, REPLACE_EXISTING);
 
@@ -127,10 +128,8 @@ class OnnxEmbeddingModelIT {
 
         String oneToken = "hello ";
 
-        assertThat(magnitudeOf(model.embed(oneToken).content()))
-                .isCloseTo(1, withPercentage(0.01));
-        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content()))
-                .isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(oneToken).content())).isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content())).isCloseTo(1, withPercentage(0.01));
     }
 
     @Test

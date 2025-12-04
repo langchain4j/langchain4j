@@ -1,15 +1,15 @@
 package dev.langchain4j.model.embedding.onnx.bgesmallenv15;
 
+import static dev.langchain4j.internal.Utils.repeat;
+import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.internal.Utils.repeat;
-import static dev.langchain4j.model.embedding.onnx.internal.VectorUtils.magnitudeOf;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
 
 class BgeSmallEnV15EmbeddingModelIT {
 
@@ -77,10 +77,8 @@ class BgeSmallEnV15EmbeddingModelIT {
 
         String oneToken = "hello ";
 
-        assertThat(magnitudeOf(model.embed(oneToken).content()))
-                .isCloseTo(1, withPercentage(0.01));
-        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content()))
-                .isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(oneToken).content())).isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(model.embed(repeat(oneToken, 999)).content())).isCloseTo(1, withPercentage(0.01));
     }
 
     @Test
