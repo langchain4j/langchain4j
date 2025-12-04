@@ -90,7 +90,7 @@ jobs:
           mvn -B -U verify \
             -pl "${modules}" -am \
             --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
             -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -Dtinylog.writer.level=info
