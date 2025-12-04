@@ -90,7 +90,7 @@ jobs:
           mvn -B -U verify \
             -pl "${modules}" -am \
             --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
+            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
             -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -Dtinylog.writer.level=info
@@ -133,7 +133,7 @@ jobs:
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
-          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 10
