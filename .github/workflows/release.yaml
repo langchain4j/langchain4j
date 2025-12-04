@@ -110,9 +110,7 @@ jobs:
           echo "Excluding modules: $EXCLUDES"
     
           mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs -DskipAnthropicITs \
-            -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
-            -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
+            -DskipTests -DskipITs \
             -pl "$EXCLUDES" \
             -Psign clean deploy
         env:
