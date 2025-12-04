@@ -27,6 +27,7 @@ import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.Planner;
@@ -42,7 +43,6 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.SubAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
@@ -390,7 +390,7 @@ public class AgenticServices {
                 agentMethod,
                 sequenceAgent.name(),
                 sequenceAgent.description(),
-                sequenceAgent.outputKey(),
+                AgentUtil.outputKey(sequenceAgent.outputKey(), sequenceAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -414,7 +414,7 @@ public class AgenticServices {
                 agentMethod,
                 loopAgent.name(),
                 loopAgent.description(),
-                loopAgent.outputKey(),
+                AgentUtil.outputKey(loopAgent.outputKey(), loopAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -445,17 +445,17 @@ public class AgenticServices {
                 agentMethod,
                 conditionalAgent.name(),
                 conditionalAgent.description(),
-                conditionalAgent.outputKey(),
+                AgentUtil.outputKey(conditionalAgent.outputKey(), conditionalAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
         buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
-        for (SubAgent subagent : conditionalAgent.subAgents()) {
+        for (Class<?> subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
                         ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
                         return activationCondition != null
-                                && Arrays.asList(activationCondition.value()).contains(subagent.type());
+                                && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
                     .map(AgenticServices::agenticScopePredicate)
                     .ifPresent(condition ->
@@ -479,7 +479,7 @@ public class AgenticServices {
                 agentMethod,
                 parallelAgent.name(),
                 parallelAgent.description(),
-                parallelAgent.outputKey(),
+                AgentUtil.outputKey(parallelAgent.outputKey(), parallelAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -516,7 +516,7 @@ public class AgenticServices {
                 agentMethod,
                 plannerAgent.name(),
                 plannerAgent.description(),
-                plannerAgent.outputKey(),
+                AgentUtil.outputKey(plannerAgent.outputKey(), plannerAgent.typedOutputKey()),
                 builder);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
@@ -577,9 +577,7 @@ public class AgenticServices {
         if (!isNullOrBlank(supervisorAgent.description())) {
             builder.description(supervisorAgent.description());
         }
-        if (!isNullOrBlank(supervisorAgent.outputKey())) {
-            builder.outputKey(supervisorAgent.outputKey());
-        }
+        builder.outputKey(AgentUtil.outputKey(supervisorAgent.outputKey(), supervisorAgent.typedOutputKey()));
 
         selectMethod(
                         agentServiceClass,
@@ -694,25 +692,21 @@ public class AgenticServices {
     }
 
     private static List<AgentExecutor> createSubagents(
-            SubAgent[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
+            Class<?>[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         return Stream.of(subAgents)
                 .map(subagent -> createSubagent(subagent, chatModel, agentConfigurator))
                 .toList();
     }
 
     private static AgentExecutor createSubagent(
-            SubAgent subagent, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
-        AgentExecutor agentExecutor = createBuiltInAgentExecutor(subagent.type(), chatModel, agentConfigurator);
+            Class<?> subgentClass, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
+        AgentExecutor agentExecutor = createBuiltInAgentExecutor(subgentClass, chatModel, agentConfigurator);
         if (agentExecutor != null) {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subagent.type()).outputKey(subagent.outputKey());
-        configureAgent(subagent.type(), chatModel, agentBuilder, agentConfigurator);
-
-        if (subagent.summarizedContext() != null && subagent.summarizedContext().length > 0) {
-            agentBuilder.summarizedContext(subagent.summarizedContext());
-        }
+        AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
+        configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor((AgentSpecification) agentBuilder.build());
     }
@@ -796,7 +790,7 @@ public class AgenticServices {
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
-                .outputKey(a2aClient.outputKey())
+                .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
 
         getAnnotatedMethodOnClass(agentServiceClass, BeforeAgentInvocation.class)

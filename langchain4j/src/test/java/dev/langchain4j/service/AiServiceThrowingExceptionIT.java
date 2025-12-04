@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 class AiServiceThrowingExceptionIT {
+
     interface ThrowingService {
         Result<AiMessage> chat(String userMessage);
     }
@@ -99,6 +100,7 @@ class AiServiceThrowingExceptionIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
     void with_wrong_url() {
         ChatModel chatModel = OpenAiChatModel.builder()
                 .baseUrl("https://api.openai.com/v0")
@@ -119,6 +121,7 @@ class AiServiceThrowingExceptionIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "OPENAI_BASE_URL", matches = ".+")
     void with_wrong_key() {
         ChatModel chatModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

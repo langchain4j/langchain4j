@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
@@ -133,6 +134,49 @@ public class A2AAgentIT {
         AgenticScope agenticScope = result.agenticScope();
         assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
         assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    public interface A2AStyleScorer {
+
+        @Agent
+        double scoreStyle(@V("story") String story, @V("style") String style);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_structured_output_tests() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        A2AStyleScorer styleScorer = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2AStyleScorer.class)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }

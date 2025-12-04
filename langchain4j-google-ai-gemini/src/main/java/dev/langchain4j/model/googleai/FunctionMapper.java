@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Objects;
 
 class FunctionMapper {
-
     static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications, boolean allowCodeExecution) {
         if (isNullOrEmpty(specifications)) {
             if (allowCodeExecution) {
@@ -27,7 +26,7 @@ class FunctionMapper {
 
         List<GeminiFunctionDeclaration> functionDeclarations = specifications.stream()
                 .map(specification -> {
-                    GeminiFunctionDeclaration.GeminiFunctionDeclarationBuilder fnBuilder =
+                    GeminiFunctionDeclaration.Builder fnBuilder =
                             GeminiFunctionDeclaration.builder().name(specification.name());
 
                     if (specification.description() != null) {

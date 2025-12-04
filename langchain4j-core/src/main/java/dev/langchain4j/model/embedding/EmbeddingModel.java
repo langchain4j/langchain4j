@@ -53,4 +53,17 @@ public interface EmbeddingModel {
     default int dimension() {
         return embed("test").content().dimension();
     }
+
+    /**
+     * Returns the name of the underlying embedding model.
+     * <p>
+     * Implementations are encouraged to override this method and provide the actual model name.
+     * The default implementation returns {@code "unknown"}, which indicates
+     * that the model name is unknown.
+     *
+     * @return the model name or a fallback value if not provided
+     */
+    default String modelName() {
+        return "unknown";
+    }
 }

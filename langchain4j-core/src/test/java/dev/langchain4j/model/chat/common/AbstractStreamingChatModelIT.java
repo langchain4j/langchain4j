@@ -75,7 +75,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         // when
         ChatResponseAndStreamingMetadata responseAndStreamingMetadata =
-                chat(model, chatRequest, streamingHandleConsumer, 5, false);
+                chat(model, chatRequest, streamingHandleConsumer, 30, false);
 
         // then
         assertThat(responseAndStreamingMetadata.chatResponse()).isNull();

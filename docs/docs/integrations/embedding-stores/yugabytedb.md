@@ -9,14 +9,14 @@ sidebar_position: 25
 ## Maven Dependency
 
 :::note
-Since YugabyteDB support is part of `langchain4j-community`, it will be available starting from version `1.8.0-beta15` or later.
+Since YugabyteDB support is part of `langchain4j-community`, it will be available starting from version `1.9.1-beta17` or later.
 :::
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-yugabytedb</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -372,6 +372,7 @@ YugabyteDBEmbeddingStore smartStore = YugabyteDBEmbeddingStore.builder()
 
 ## Examples
 
-:::note
-Code examples demonstrating YugabyteDB integration will be added soon.
-:::
+- [YugabyteDBEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBEmbeddingStoreExample.java) - Basic example with Testcontainers
+- [YugabyteDBEmbeddingStoreWithMetadataExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBEmbeddingStoreWithMetadataExample.java) - Metadata filtering with JSONB storage
+- [YugabyteDBWithPostgreSQLDriverExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBWithPostgreSQLDriverExample.java) - Using PostgreSQL JDBC driver
+- [YugabyteDBWithSmartDriverExample](https://github.com/langchain4j/langchain4j-examples/blob/main/yugabytedb-example/src/main/java/YugabyteDBWithSmartDriverExample.java) - Using YugabyteDB Smart Driver
