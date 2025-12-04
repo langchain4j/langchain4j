@@ -171,8 +171,8 @@ Therefore, we can easily load it into memory and run it in the same process usin
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
 in the same JVM process.
-LangChain4j offers 5 popular embedding models
-[out-of-the-box](https://github.com/langchain4j/langchain4j-embeddings).
+LangChain4j offers some popular embedding models
+[out-of-the-box](/integrations/embedding-models/in-process).
 :::
 
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.
