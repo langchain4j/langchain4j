@@ -86,7 +86,7 @@
 
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-server-testdriver-core</artifactId>
+            <artifactId>testcontainers-infinispan</artifactId>
             <scope>test</scope>
         </dependency>
 
