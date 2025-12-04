@@ -50,6 +50,19 @@
         <module>langchain4j-voyage-ai</module>
         <module>langchain4j-watsonx</module>
 
+        <!-- in-process embeddings -->
+        <module>embeddings/langchain4j-embeddings</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2-q</module>
+
         <!-- embedding / chat memory stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>

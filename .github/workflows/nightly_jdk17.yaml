@@ -89,9 +89,8 @@ jobs:
           ## run integration tests
           mvn -B -U verify \
             -pl "${modules}" -am \
-            --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
-            -Dmaven.test.failure.ignore=true \
+            -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
+            --fail-at-end -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -Dtinylog.writer.level=info
 

@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <skipMilvusITs>false</skipMilvusITs>
+        <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -96,7 +96,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipMilvusITs}</skipTests>
+                    <skipITs>${skipMilvusITs}</skipITs>
                 </configuration>
             </plugin>
         </plugins>

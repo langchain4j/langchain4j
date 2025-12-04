@@ -12,10 +12,6 @@
     <artifactId>langchain4j-watsonx</artifactId>
     <name>LangChain4j :: Integration :: Watsonx</name>
 
-    <properties>
-        <skipWatsonxITs>false</skipWatsonxITs>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -91,17 +87,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipWatsonxITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
