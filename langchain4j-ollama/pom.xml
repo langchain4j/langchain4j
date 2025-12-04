@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>
-        <skipOllamaITs>false</skipOllamaITs>
+        <skipOllamaITs>${skipITs}</skipOllamaITs>
     </properties>
 
     <dependencies>
@@ -144,7 +144,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipOllamaITs}</skipTests>
+                    <skipITs>${skipOllamaITs}</skipITs>
                 </configuration>
             </plugin>
         </plugins>
