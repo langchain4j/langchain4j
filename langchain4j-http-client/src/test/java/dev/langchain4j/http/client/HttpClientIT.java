@@ -38,7 +38,7 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public abstract class HttpClientIT {
 
-    public static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+    private static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
 
     protected abstract List<HttpClient> clients();
 

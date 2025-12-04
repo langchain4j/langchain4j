@@ -17,8 +17,9 @@ import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
-import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionRequest;
-import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.shared.AudioFile;
 import dev.langchain4j.model.openai.spi.OpenAiAudioModelBuilderFactory;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -75,9 +76,10 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
     }
 
     private OpenAiAudioTranscriptionRequest.Builder requestBuilder(AudioTranscriptionRequest request) {
+
         return OpenAiAudioTranscriptionRequest.builder()
                 .model(modelName)
-                .file(request.audio())
+                .file(AudioFile.from(request.audio()))
                 .language(request.language())
                 .prompt(request.prompt())
                 .temperature(request.temperature())

@@ -1,13 +1,12 @@
 package dev.langchain4j.http.client.jdk.payload;
 
-import dev.langchain4j.http.client.MultipartFile;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
+import dev.langchain4j.http.client.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class MultipartBodyPublisherTest {
 
@@ -20,7 +19,8 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected = """
+        String expected =
+                """
                 ------langChain4j
                 Content-Disposition: form-data; name="field1"
 
@@ -35,18 +35,15 @@ class MultipartBodyPublisherTest {
     void should_build_body_with_file() {
         MultipartBodyPublisher publisher = new MultipartBodyPublisher();
 
-        MultipartFile file = new MultipartFile(
-                "test.txt",
-                "text/plain",
-                "hello".getBytes(StandardCharsets.UTF_8)
-        );
+        MultipartFile file = new MultipartFile("test.txt", "text/plain", "hello".getBytes(StandardCharsets.UTF_8));
 
         publisher.addFile("file", file);
         publisher.build();
 
         String body = bodyAsString(publisher.parts());
 
-        String expected = """
+        String expected =
+                """
                 ------langChain4j
                 Content-Disposition: form-data; name="file"; filename="test.txt"
                 Content-Type: text/plain
@@ -62,11 +59,7 @@ class MultipartBodyPublisherTest {
     void should_build_body_with_field_then_file() {
         MultipartBodyPublisher publisher = new MultipartBodyPublisher();
 
-        MultipartFile file = new MultipartFile(
-                "test.txt",
-                "text/plain",
-                "hello".getBytes(StandardCharsets.UTF_8)
-        );
+        MultipartFile file = new MultipartFile("test.txt", "text/plain", "hello".getBytes(StandardCharsets.UTF_8));
 
         publisher.addFormField("field1", "value1");
         publisher.addFile("file", file);
@@ -74,7 +67,8 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected = """
+        String expected =
+                """
                 ------langChain4j
                 Content-Disposition: form-data; name="field1"
 

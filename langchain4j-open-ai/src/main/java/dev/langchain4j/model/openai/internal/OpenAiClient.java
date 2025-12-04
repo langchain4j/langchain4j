@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionRequest;
-import dev.langchain4j.model.openai.internal.audio.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;

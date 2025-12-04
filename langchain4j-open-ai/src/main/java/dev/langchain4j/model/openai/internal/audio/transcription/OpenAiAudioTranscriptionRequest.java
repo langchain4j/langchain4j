@@ -1,10 +1,6 @@
-package dev.langchain4j.model.openai.internal.audio;
+package dev.langchain4j.model.openai.internal.audio.transcription;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.openai.internal.shared.AudioFile;
 
 /**
  * Represents the audio request.
@@ -17,7 +13,7 @@ public class OpenAiAudioTranscriptionRequest {
      * The audio file object (not file name) to transcribe,
      * in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
      */
-    private final Audio file;
+    private final AudioFile file;
 
     /**
      * ID of the model to use. The options are
@@ -38,7 +34,7 @@ public class OpenAiAudioTranscriptionRequest {
         this.temperature = builder.temperature;
     }
 
-    public Audio file() {
+    public AudioFile file() {
         return file;
     }
 
@@ -62,18 +58,15 @@ public class OpenAiAudioTranscriptionRequest {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Builder {
 
-        private Audio file;
+        private AudioFile file;
         private String model;
         private String language;
         private String prompt;
         private Double temperature = 0.0;
 
-        public Builder file(Audio file) {
+        public Builder file(AudioFile file) {
             this.file = file;
             return this;
         }

@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.internal.audio;
+package dev.langchain4j.model.openai.internal.audio.transcription;
 
 import static dev.langchain4j.internal.Utils.quoted;
 

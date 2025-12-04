@@ -33,7 +33,6 @@ public class MultipartBodyPublisher {
         parts.add(header.getBytes(StandardCharsets.UTF_8));
         parts.add(multipartFile.content());
         parts.add(CRLF.getBytes(StandardCharsets.UTF_8));
-
     }
 
     public HttpRequest.BodyPublisher build() {

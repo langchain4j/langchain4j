@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.internal.audio;
+package dev.langchain4j.model.openai.internal.audio.transcription;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
