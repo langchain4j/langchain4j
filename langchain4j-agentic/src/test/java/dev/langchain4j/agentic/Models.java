@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -15,7 +17,7 @@ public class Models {
         OLLAMA
     }
 
-    private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OPENAI;
+    private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OLLAMA;
 
     private static final String OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
     private static final String OLLAMA_ENV_URL = System.getenv("OLLAMA_BASE_URL");
@@ -76,6 +78,15 @@ public class Models {
             case OPENAI -> OPENAI_PLANNER_MODEL;
             case OLLAMA -> OLLAMA_PLANNER_MODEL;
             case GEMINI -> GEMINI_PLANNER_MODEL;
+        };
+    }
+
+    public static ChatModel throwingModel() {
+        return new ChatModel() {
+            @Override
+            public ChatResponse chat(final ChatRequest chatRequest) {
+                throw new RuntimeException("ERROR");
+            }
         };
     }
 }

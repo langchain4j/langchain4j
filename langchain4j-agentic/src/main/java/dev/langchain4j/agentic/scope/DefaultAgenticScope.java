@@ -6,8 +6,9 @@ import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AsyncResponse;
+import dev.langchain4j.agentic.observability.AgenticListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -41,6 +42,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private final Map<String, Object> state = new ConcurrentHashMap<>();
     private final List<AgentInvocation> agentInvocations = Collections.synchronizedList(new ArrayList<>());
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
+    private transient AgenticListener agenticListener;
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
 
@@ -161,7 +163,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
-            registry.evict(memoryId);
+            registry.evict(memoryId, agenticListener);
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
@@ -215,8 +217,8 @@ public class DefaultAgenticScope implements AgenticScope {
     @Override
     public String contextAsConversation(Object... agents) {
         Predicate<String> agentFilter = agents != null && agents.length > 0 ?
-                Arrays.stream(agents).filter(AgentSpecification.class::isInstance).map(AgentSpecification.class::cast)
-                        .map(AgentSpecification::name).toList()::contains :
+                Arrays.stream(agents).filter(AgentInstance.class::isInstance).map(AgentInstance.class::cast)
+                        .map(AgentInstance::name).toList()::contains :
                 agent -> true;
         return contextAsConversation(agentFilter);
     }
@@ -293,5 +295,21 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
+    }
+
+    public AgenticListener replaceListener(AgenticListener agenticListener) {
+        AgenticListener oldListener = this.agenticListener;
+        if (agenticListener != null) {
+            this.agenticListener = agenticListener;
+        }
+        return oldListener;
+    }
+
+    public void resetListener(AgenticListener agenticListener) {
+        this.agenticListener = agenticListener;
+    }
+
+    public AgenticListener listener() {
+        return agenticListener;
     }
 }

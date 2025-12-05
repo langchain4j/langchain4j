@@ -1,9 +1,9 @@
 package dev.langchain4j.agentic.agent;
 
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -80,27 +80,15 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "outputKey" -> builder.outputKey;
                 case "arguments" -> builder.arguments;
                 case "subagents" -> List.of();
+                case "async" -> builder.async;
                 default ->
                         throw new UnsupportedOperationException(
-                                "Unknown method on AgentInstance class : " + method.getName());
+                                "Unknown method on agentInstance class : " + method.getName());
             };
         }
 
-        if (method.getDeclaringClass() == AgentSpecification.class) {
-            return switch (method.getName()) {
-                case "async" -> builder.async;
-                case "beforeInvocation" -> {
-                    builder.beforeListener.accept((AgentRequest) args[0]);
-                    yield null;
-                }
-                case "afterInvocation" -> {
-                    builder.afterListener.accept((AgentResponse) args[0]);
-                    yield null;
-                }
-                default ->
-                    throw new UnsupportedOperationException(
-                            "Unknown method on AgentSpecification class : " + method.getName());
-            };
+        if (method.getDeclaringClass() == AgentListenerProvider.class) {
+            return builder.agenticListener;
         }
 
         if (method.getDeclaringClass() == Object.class) {

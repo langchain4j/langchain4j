@@ -3,8 +3,8 @@ package dev.langchain4j.agentic.a2a;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -23,12 +23,12 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     private final String agentId;
     private final String[] inputKeys;
 
-    private final A2AClientSpecification a2AClientInstance;
+    private final A2AClientInstance a2AClientInstance;
 
     private final AgentCard agentCard;
     private final Method method;
 
-    public A2AClientAgentInvoker(A2AClientSpecification a2AClientInstance, Method method) {
+    public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
         this.agentCard = a2AClientInstance.agentCard();
@@ -36,7 +36,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.inputKeys = inputKeys(a2AClientInstance);
     }
 
-    private String[] inputKeys(A2AClientSpecification a2AClientInstance) {
+    private String[] inputKeys(A2AClientInstance a2AClientInstance) {
         return isUntyped()
                 ? a2AClientInstance.inputKeys()
                 : Stream.of(method.getParameters())
@@ -80,16 +80,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public void beforeInvocation(AgentRequest request) {
-        a2AClientInstance.beforeInvocation(request);
-    }
-
-    @Override
-    public void afterInvocation(AgentResponse response) {
-        a2AClientInstance.afterInvocation(response);
-    }
-
-    @Override
     public Method method() {
         return method;
     }
@@ -126,5 +116,10 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private boolean isUntyped() {
         return method.getDeclaringClass() == UntypedAgent.class;
+    }
+
+    @Override
+    public AgenticListener listener() {
+        return ((AgentListenerProvider) a2AClientInstance).listener();
     }
 }

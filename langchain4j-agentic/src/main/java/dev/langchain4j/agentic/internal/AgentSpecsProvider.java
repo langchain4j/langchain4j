@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.observability.AgenticListener;
+
 public interface AgentSpecsProvider {
 
     String inputKey();
@@ -9,4 +11,6 @@ public interface AgentSpecsProvider {
     String description();
 
     boolean async();
+
+    AgenticListener listener();
 }
