@@ -55,7 +55,6 @@
             <version>${jtokkit.version}</version>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
