@@ -41,13 +41,13 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName("Multiple text segments to score, using Jina scoring model: jina-reranker-v2-base-multilingual")
+    @DisplayName("Multiple text segments to score, using Jina scoring model: jina-reranker-v3")
     void should_score_multiple_segments_with_all_parameters() {
 
         // given
         ScoringModel model = JinaScoringModel.builder()
                 .apiKey(System.getenv("JINA_API_KEY"))
-                .modelName("jina-reranker-v2-base-multilingual")
+                .modelName("jina-reranker-v3")
                 .timeout(Duration.ofSeconds(10))
                 .logResponses(true)
                 .build();
@@ -66,7 +66,6 @@ class JinaScoringModelIT {
         assertThat(scores).hasSize(3);
         assertThat(scores.get(2)).isGreaterThan(scores.get(0));
         assertThat(scores.get(2)).isGreaterThan(scores.get(1));
-        assertThat(scores.get(0)).isEqualTo(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 
