@@ -20,4 +20,8 @@ public interface AgentInstance {
     List<AgentArgument> arguments();
 
     List<AgentInstance> subagents();
+
+    default boolean isStreaming() {
+        return false;
+    }
 }
