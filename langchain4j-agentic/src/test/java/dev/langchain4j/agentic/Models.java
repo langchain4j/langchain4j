@@ -17,7 +17,7 @@ public class Models {
         OLLAMA
     }
 
-    private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OLLAMA;
+    private static final MODEL_PROVIDER modelProvider = MODEL_PROVIDER.OPENAI;
 
     private static final String OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
     private static final String OLLAMA_ENV_URL = System.getenv("OLLAMA_BASE_URL");
