@@ -18,6 +18,8 @@ import static java.util.stream.Collectors.toList;
 @Internal
 public class TypeUtils {
 
+    private TypeUtils() { }
+
     public static Class<?> getRawClass(Type type) {
         if (type == null) {
             throw new NullPointerException("Type should not be null.");

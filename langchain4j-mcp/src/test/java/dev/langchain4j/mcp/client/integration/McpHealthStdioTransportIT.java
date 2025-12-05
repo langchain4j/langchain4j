@@ -41,6 +41,9 @@ class McpHealthStdioTransportIT {
         if (mcpClient != null) {
             mcpClient.close();
         }
+        if (process != null && process.isAlive()) {
+            process.destroyForcibly();
+        }
     }
 
     @Test

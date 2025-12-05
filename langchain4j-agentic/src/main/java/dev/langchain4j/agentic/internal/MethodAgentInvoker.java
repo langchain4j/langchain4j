@@ -3,13 +3,19 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.List;
 
-public record MethodAgentInvoker(
-        Method method, AgentSpecification agentSpecification, List<AgentUtil.AgentArgument> arguments)
-        implements AgentInvoker {
+public record MethodAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
+
+    @Override
+    public Class<?> type() {
+        return agentSpecification.type();
+    }
 
     @Override
     public String name() {
@@ -17,8 +23,8 @@ public record MethodAgentInvoker(
     }
 
     @Override
-    public String uniqueName() {
-        return agentSpecification.uniqueName();
+    public String agentId() {
+        return agentSpecification.agentId();
     }
 
     @Override
@@ -27,8 +33,23 @@ public record MethodAgentInvoker(
     }
 
     @Override
+    public Type outputType() {
+        return agentSpecification.outputType();
+    }
+
+    @Override
     public String outputKey() {
         return agentSpecification.outputKey();
+    }
+
+    @Override
+    public List<AgentArgument> arguments() {
+        return agentSpecification.arguments();
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return agentSpecification.subagents();
     }
 
     @Override
@@ -47,16 +68,7 @@ public record MethodAgentInvoker(
     }
 
     @Override
-    public String toCard() {
-        List<String> agentArguments = arguments.stream()
-                .map(AgentUtil.AgentArgument::name)
-                .filter(a -> !a.equals("@MemoryId"))
-                .toList();
-        return "{" + uniqueName() + ": " + description() + ", " + agentArguments + "}";
-    }
-
-    @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
-        return AgentUtil.agentInvocationArguments(agenticScope, arguments);
+        return AgentUtil.agentInvocationArguments(agenticScope, arguments());
     }
 }

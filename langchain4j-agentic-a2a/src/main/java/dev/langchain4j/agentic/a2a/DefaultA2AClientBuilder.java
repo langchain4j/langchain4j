@@ -7,6 +7,8 @@ import dev.langchain4j.agentic.agent.AgentRequest;
 import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.service.output.ServiceOutputParser;
 import io.a2a.A2A;
 import io.a2a.client.Client;
 import io.a2a.client.ClientEvent;
@@ -25,6 +27,7 @@ import io.a2a.spec.TextPart;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,8 @@ import org.slf4j.LoggerFactory;
 
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
 
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+
     private final Class<T> agentServiceClass;
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
@@ -45,7 +50,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private final Client a2aClient;
 
     private String name;
-    private String uniqueName;
+    private String agentId;
     private String[] inputKeys;
     private String outputKey;
     private boolean async;
@@ -56,7 +61,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
-        this.uniqueName = uniqueAgentName(this.name);
+        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         try {
             this.a2aClient = Client.builder(agentCard)
                     .clientConfig(new ClientConfig.Builder()
@@ -90,12 +95,20 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                 new InvocationHandler() {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-                        if (method.getDeclaringClass() == AgentSpecification.class) {
+                        if (method.getDeclaringClass() == AgentInstance.class) {
                             return switch (method.getName()) {
                                 case "name" -> name;
-                                case "uniqueName" -> uniqueName;
+                                case "agentId" -> agentId;
                                 case "description" -> agentCard.description();
                                 case "outputKey" -> outputKey;
+                                default ->
+                                        throw new UnsupportedOperationException(
+                                                "Unknown method on AgentInstance class : " + method.getName());
+                            };
+                        }
+
+                        if (method.getDeclaringClass() == AgentSpecification.class) {
+                            return switch (method.getName()) {
                                 case "async" -> async;
                                 case "beforeInvocation" -> {
                                     beforeListener.accept((AgentRequest) args[0]);
@@ -107,7 +120,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 }
                                 default ->
                                     throw new UnsupportedOperationException(
-                                            "Unknown method on AgentInstance class : " + method.getName());
+                                            "Unknown method on AgentSpecification class : " + method.getName());
                             };
                         }
 
@@ -121,14 +134,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                             };
                         }
 
-                        return invokeAgent(args);
+                        return invokeAgent(method.getGenericReturnType(), args);
                     }
                 });
 
         return (T) agent;
     }
 
-    private Object invokeAgent(Object[] args) throws A2AClientException {
+    private Object invokeAgent(Type returnType, Object[] args) throws A2AClientException {
         List<Part<?>> parts = new ArrayList<>();
 
         if (agentServiceClass == UntypedAgent.class) {
@@ -183,7 +196,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
         try {
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
-            return responseText;
+            return serviceOutputParser.parseText(returnType, responseText);
         } catch (InterruptedException | ExecutionException e) {
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);

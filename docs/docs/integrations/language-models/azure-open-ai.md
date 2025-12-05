@@ -33,7 +33,7 @@ The `langchain4j-azure-open-ai` library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -94,6 +94,7 @@ langchain4j.azure-open-ai.chat-model.max-retries=...
 langchain4j.azure-open-ai.chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.chat-model.user-agent-suffix=
 langchain4j.azure-open-ai.chat-model.custom-headers=...
+langchain4j.azure-open-ai.chat-model.reasoningEffort=...
 ```
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
@@ -342,6 +343,7 @@ langchain4j.azure-open-ai.streaming-chat-model.max-retries=...
 langchain4j.azure-open-ai.streaming-chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
+langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
 
 
@@ -357,7 +359,7 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 

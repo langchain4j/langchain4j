@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
@@ -159,5 +161,98 @@ class ParsingUtilsTest {
         // when/then
         assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "String"))
                 .isInstanceOf(OutputParsingException.class);
+    }
+
+    @Test
+    void should_handle_parser_exception_in_collection_parsing() {
+        // given
+        String text = "item1\nitem2";
+        Function<String, Integer> parser = s -> {
+            throw new IllegalArgumentException("Cannot parse: " + s);
+        };
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "Integer"))
+                .isInstanceOf(OutputParsingException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_return_empty_collection_for_empty_multiline_string() {
+        // given
+        String text = "\n\n  \n  ";
+        Function<String, String> parser = Function.identity();
+
+        // when
+        List<String> result = ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "String");
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void should_use_custom_collection_supplier() {
+        // given
+        String text = "item1\nitem2";
+        Function<String, String> parser = String::toUpperCase;
+
+        // when
+        Set<String> result = ParsingUtils.parseAsStringOrJson(text, parser, LinkedHashSet::new, "String");
+
+        // then
+        assertThat(result).isInstanceOf(LinkedHashSet.class).containsExactly("ITEM1", "ITEM2");
+    }
+
+    @Test
+    void should_throw_for_null_or_blank_text_in_single_parsing() {
+        // given
+        Function<String, String> parser = Function.identity();
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(null, parser, String.class))
+                .isInstanceOf(OutputParsingException.class);
+
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson("", parser, String.class))
+                .isInstanceOf(OutputParsingException.class);
+
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson("  ", parser, String.class))
+                .isInstanceOf(OutputParsingException.class);
+    }
+
+    @Test
+    void should_throw_for_empty_json_object() {
+        // given
+        String text = "{}";
+        Function<String, String> parser = Function.identity();
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, String.class))
+                .isInstanceOf(OutputParsingException.class);
+    }
+
+    @Test
+    void should_handle_json_with_whitespace_prefix() {
+        // given
+        String text = "   {\"value\": \"test\"}";
+        Function<String, String> parser = Function.identity();
+
+        // when
+        String result = ParsingUtils.parseAsStringOrJson(text, parser, String.class);
+
+        // then
+        assertThat(result).isEqualTo("test");
+    }
+
+    @Test
+    void should_parse_numeric_values_from_json() {
+        // given
+        String text = "{\"value\": 1}";
+        Function<String, Integer> parser = Integer::valueOf;
+
+        // when
+        Integer result = ParsingUtils.parseAsStringOrJson(text, parser, Integer.class);
+
+        // then
+        assertThat(result).isEqualTo(1);
     }
 }
