@@ -10,8 +10,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_VERTEXAI_ENDPOINT", matches = ".+")
 class VertexAiScoringModelIT {
+
     @Test
     void should_rank_multiple() {
         // given
