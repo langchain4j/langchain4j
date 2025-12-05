@@ -7,9 +7,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.McpToolProviderRequest;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -103,6 +106,32 @@ class MultipleMcpToolsIT {
                         "getImage",
                         "wasCancellationReceived",
                         "structuredContent");
+    }
+
+    @Test
+    void filterToolsPerRequest() {
+        McpToolProviderRequest toolProviderRequest = McpToolProviderRequest.builder()
+                .toolFilter((mcpClient, tool) -> tool.name().startsWith("getWeather"))
+                // invocationContext and userMessage don't matter at all but are required
+                .invocationContext(InvocationContext.builder().build())
+                .userMessage(UserMessage.userMessage("blabla"))
+                .build();
+        McpToolProvider mcpToolProvider = McpToolProvider.builder()
+                .mcpClients(mcpBaseClient, mcpNumericClient)
+                // we also specify a filter at the provider level to verify that
+                // the request-level filter takes precedence
+                .filter((mcpClient, tool) -> !tool.name().startsWith("echo"))
+                .build();
+        ToolProviderResult toolProviderResult = mcpToolProvider.provideTools(toolProviderRequest);
+
+        Set<ToolSpecification> tools = toolProviderResult.tools().keySet();
+        assertThat(tools).hasSize(3);
+        assertThat(tools)
+                .extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder(
+                        "getWeatherThrowingException",
+                        "getWeatherThrowingExceptionWithoutMessage",
+                        "getWeather");
     }
 
     @Test

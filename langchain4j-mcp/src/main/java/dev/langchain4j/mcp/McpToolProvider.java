@@ -3,6 +3,7 @@ package dev.langchain4j.mcp;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.McpToolProviderRequest;
 import dev.langchain4j.mcp.resourcesastools.McpResourcesAsToolsPresenter;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -139,6 +140,13 @@ public class McpToolProvider implements ToolProvider {
 
     protected ToolProviderResult provideTools(
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+        if(request instanceof McpToolProviderRequest) {
+            // if the request has a specific tool filter, use it instead of the default one
+            BiPredicate<McpClient, ToolSpecification> requestSpecificFilter = ((McpToolProviderRequest) request).getToolFilter();
+            if(requestSpecificFilter != null) {
+                mcpToolsFilter = requestSpecificFilter;
+            }
+        }
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
             try {
