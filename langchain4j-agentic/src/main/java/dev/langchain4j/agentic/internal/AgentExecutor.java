@@ -107,4 +107,9 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     public List<AgentInstance> subagents() {
         return agentInvoker.subagents();
     }
+
+    @Override
+    public boolean async() {
+        return agentInvoker.async();
+    }
 }

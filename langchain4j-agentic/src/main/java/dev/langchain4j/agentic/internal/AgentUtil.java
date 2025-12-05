@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -86,8 +87,8 @@ public class AgentUtil {
         if (agent instanceof Class c) {
             agent = AgenticServices.agentBuilder(c).build();
         }
-        return agent instanceof AgentSpecification agentSpecification
-                ? agentToExecutor(agentSpecification)
+        return agent instanceof AgentInstance agentInstance
+                ? agentToExecutor(agentInstance)
                 : nonAiAgentToExecutor(agent);
     }
 
@@ -104,14 +105,14 @@ public class AgentUtil {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
-                        new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
+                        new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                                 name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
                                 argumentsFromMethod(agenticMethod),
-                                x -> {},x -> {}),
+                                x -> {},x -> {}, null),
                 agenticMethod);
     }
 
-    public static AgentExecutor agentToExecutor(AgentSpecification agent) {
+    public static AgentExecutor agentToExecutor(AgentInstance agent) {
         for (Method method : agent.getClass().getMethods()) {
             Optional<AgentExecutor> executor = A2AService.get().isPresent()
                     ? A2AService.get().methodToAgentExecutor(agent, method)
@@ -129,7 +130,7 @@ public class AgentUtil {
                 .findFirst();
     }
 
-    private static Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
+    private static Optional<AgentExecutor> methodToAgentExecutor(AgentInstance agent, Method method) {
         return getAnnotatedMethod(method, Agent.class)
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
@@ -267,7 +268,7 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                new Class<?>[] { agentServiceClass, AgentInstance.class, AgentListenerProvider.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
                 invocationHandler);
     }
 

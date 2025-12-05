@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -9,26 +9,26 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
 
-public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecification) implements AgentInvoker {
+public record UntypedAgentInvoker(Method method, AgentInstance agentInstance) implements AgentInvoker {
 
     @Override
     public Class<?> type() {
-        return agentSpecification.type();
+        return agentInstance.type();
     }
 
     @Override
     public String name() {
-        return agentSpecification.name();
+        return agentInstance.name();
     }
 
     @Override
     public String agentId() {
-        return agentSpecification.agentId();
+        return agentInstance.agentId();
     }
 
     @Override
     public String description() {
-        return agentSpecification.description();
+        return agentInstance.description();
     }
 
     @Override
@@ -38,27 +38,17 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
 
     @Override
     public List<AgentInstance> subagents() {
-        return agentSpecification.subagents();
+        return agentInstance.subagents();
     }
 
     @Override
     public String outputKey() {
-        return agentSpecification.outputKey();
+        return agentInstance.outputKey();
     }
 
     @Override
     public boolean async() {
-        return agentSpecification.async();
-    }
-
-    @Override
-    public void beforeInvocation(final AgentRequest request) {
-        agentSpecification.beforeInvocation(request);
-    }
-
-    @Override
-    public void afterInvocation(final AgentResponse response) {
-        agentSpecification.afterInvocation(response);
+        return agentInstance.async();
     }
 
     @Override
@@ -69,5 +59,10 @@ public record UntypedAgentInvoker(Method method, AgentSpecification agentSpecifi
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         return new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()});
+    }
+
+    @Override
+    public AgenticListener listener() {
+        return ((AgentListenerProvider) agentInstance).listener();
     }
 }

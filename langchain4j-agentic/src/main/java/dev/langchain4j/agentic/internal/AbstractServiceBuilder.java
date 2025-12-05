@@ -6,11 +6,11 @@ import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.ComposedAgenticListener;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -37,8 +37,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected String outputKey;
     protected Function<AgenticScope, Object> output;
 
-    protected Consumer<AgentRequest> beforeListener = request -> {};
-    protected Consumer<AgentResponse> afterListener = response -> {};
+    protected AgenticListener agenticListener;
 
     private List<AgentExecutor> agentExecutors;
 
@@ -122,13 +121,14 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    public S beforeAgentInvocation(Consumer<AgentRequest> invocationListener) {
-        this.beforeListener = this.beforeListener.andThen(invocationListener);
-        return (S) this;
-    }
-
-    public S afterAgentInvocation(Consumer<AgentResponse> afterListener) {
-        this.afterListener = this.afterListener.andThen(afterListener);
+    public S listener(AgenticListener agenticListener) {
+        if (this.agenticListener == null) {
+            this.agenticListener = agenticListener;
+        } else if (this.agenticListener instanceof ComposedAgenticListener composed) {
+            composed.addListeners(agenticListener);
+        } else {
+            this.agenticListener = new ComposedAgenticListener(this.agenticListener, agenticListener);
+        }
         return (S) this;
     }
 

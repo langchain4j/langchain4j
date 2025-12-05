@@ -17,6 +17,8 @@ public interface AgentInstance {
 
     String outputKey();
 
+    boolean async();
+
     List<AgentArgument> arguments();
 
     List<AgentInstance> subagents();

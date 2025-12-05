@@ -4,8 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.observability.AgenticListener;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -97,18 +96,10 @@ public class DeclarativeUtil {
                             agentBuilder.chatModel(chatModel);
                         });
 
-        getAnnotatedMethodOnClass(agentType, BeforeAgentInvocation.class)
-                .ifPresent(method -> {
-                    checkArguments(method, AgentRequest.class);
-                    checkReturnType(method, void.class);
-                    agentBuilder.beforeAgentInvocation(request -> invokeStatic(method, request));
-                });
-
-        getAnnotatedMethodOnClass(agentType, AfterAgentInvocation.class)
-                .ifPresent(method -> {
-                    checkArguments(method, AgentResponse.class);
-                    checkReturnType(method, void.class);
-                    agentBuilder.afterAgentInvocation(response -> invokeStatic(method, response));
+        getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class)
+                .ifPresent(listenerMethod -> {
+                    checkReturnType(listenerMethod, AgenticListener.class);
+                    agentBuilder.listener(invokeStatic(listenerMethod));
                 });
 
         agentConfigurator.accept(new AgenticServices.DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
