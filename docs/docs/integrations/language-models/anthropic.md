@@ -137,6 +137,13 @@ String answer = model.chat("What is the weather in Munich?");
 
 Tools specified via `serverTools` will be included in every request to Anthropic API.
 
+## Tool Search Tool
+
+Anthropic's [tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool)
+is supported, here is an example:
+
+TODO
+
 ## Caching
 
 `AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
