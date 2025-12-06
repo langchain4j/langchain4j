@@ -1,7 +1,10 @@
 package dev.langchain4j.model.audio;
 
+import static dev.langchain4j.model.ModelProvider.OTHER;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.ModelProvider;
 
 /**
  * A model that can transcribe audio into text.
@@ -10,12 +13,21 @@ import dev.langchain4j.data.audio.Audio;
 public interface AudioTranscriptionModel {
 
     /**
-     * Given an audio file, generates a transcription.
+     * Given a transcription request file, generates a transcription.
      *
      * @param request The transcription request containing the audio file and optional parameters
      * @return The generated transcription response
      */
     AudioTranscriptionResponse transcribe(AudioTranscriptionRequest request);
+
+    default AudioTranscriptionResponse transcribe(Audio audioMessage) {
+        return transcribe(
+                AudioTranscriptionRequest.builder().audio(audioMessage).build());
+    }
+
+    default ModelProvider provider() {
+        return OTHER;
+    }
 
     /**
      * Convenience method for simple transcription needs.

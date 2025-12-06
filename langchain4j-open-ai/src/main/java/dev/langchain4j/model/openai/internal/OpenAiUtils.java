@@ -37,6 +37,7 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -458,6 +459,12 @@ public class OpenAiUtils {
     public static void validate(ChatRequestParameters parameters) {
         if (parameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
+        }
+    }
+
+    public static void validate(AudioTranscriptionRequest request) {
+        if (request.audio() == null) {
+            throw new IllegalArgumentException("Audio file is required.");
         }
     }
 
