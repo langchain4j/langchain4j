@@ -102,6 +102,7 @@ abstract class WatsonxChat {
                 .timeout(timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 

@@ -59,6 +59,7 @@ public class WatsonxScoringModelTest {
         when(mockRerankServiceBuilder.logResponses(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.authenticator(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.apiKey(any())).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.httpClient(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.build()).thenReturn(mockRerankService);
     }
 

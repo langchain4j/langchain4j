@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.auth.Authenticator;
 import java.net.URI;
+import java.net.http.HttpClient;
 import java.time.Duration;
 
 @SuppressWarnings("unchecked")
@@ -17,6 +18,7 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
     protected Boolean logResponses;
     protected Duration timeout;
     protected Authenticator authenticator;
+    protected HttpClient httpClient;
 
     public T baseUrl(CloudRegion baseUrl) {
         return baseUrl(baseUrl.getMlEndpoint());
@@ -68,6 +70,11 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
 
     public T authenticator(Authenticator authenticator) {
         this.authenticator = authenticator;
+        return (T) this;
+    }
+
+    public T httpClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
         return (T) this;
     }
 }

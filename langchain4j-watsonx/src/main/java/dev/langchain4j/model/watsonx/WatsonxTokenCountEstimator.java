@@ -55,6 +55,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 

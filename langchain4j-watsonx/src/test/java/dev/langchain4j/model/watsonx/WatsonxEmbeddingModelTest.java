@@ -58,6 +58,7 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingServiceBuilder.logResponses(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.authenticator(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.apiKey(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.httpClient(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.build()).thenReturn(mockEmbeddingService);
     }
 

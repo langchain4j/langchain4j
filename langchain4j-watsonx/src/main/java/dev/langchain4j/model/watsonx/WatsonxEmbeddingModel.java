@@ -49,6 +49,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
         this.modelName = builder.modelName;
     }

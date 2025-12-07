@@ -60,6 +60,7 @@ public class WatsonxModerationModel implements ModerationModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 

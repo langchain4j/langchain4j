@@ -29,8 +29,6 @@ public class WatsonxModerationModelIT {
             .apiKey(API_KEY)
             .projectId(PROJECT_ID)
             .detectors(Hap.ofDefaults())
-            .logRequests(true)
-            .logResponses(true)
             .build();
 
     @Test

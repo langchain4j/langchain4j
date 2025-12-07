@@ -71,6 +71,7 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationServiceBuilder.logResponses(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.authenticator(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.apiKey(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.httpClient(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.build()).thenReturn(mockTokenizationService);
     }
 

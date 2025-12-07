@@ -61,6 +61,7 @@ public class WatsonxModerationTest {
         when(mockDetectionServiceBuilder.logRequests(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.logResponses(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.apiKey(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.httpClient(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.build()).thenReturn(mockDetectionService);
     }
 

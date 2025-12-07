@@ -85,6 +85,7 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         var chatUsage = new ChatUsage(10, 10, 20);
