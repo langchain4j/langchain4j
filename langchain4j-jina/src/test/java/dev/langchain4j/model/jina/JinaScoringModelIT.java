@@ -9,7 +9,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class JinaScoringModelIT {
 
     @Test
-    @DisplayName("Single text to score, using Jina scoring model: jina-reranker-v2-base-multilingual")
     void should_score_single_text() {
 
         // given
@@ -41,13 +39,12 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName("Multiple text segments to score, using Jina scoring model: jina-reranker-v3")
     void should_score_multiple_segments_with_all_parameters() {
 
         // given
         ScoringModel model = JinaScoringModel.builder()
                 .apiKey(System.getenv("JINA_API_KEY"))
-                .modelName("jina-reranker-v3")
+                .modelName("jina-reranker-v2-base-multilingual")
                 .timeout(Duration.ofSeconds(10))
                 .logResponses(true)
                 .build();
@@ -73,8 +70,6 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName(
-            "Multiple text segments to score, using Jina scoring model: jina-reranker-v1-turbo-en. Note: latency could be quite high for v1, adjusted the timeout")
     void should_score_multiple_segments_with_all_parameters_v1_reranker() {
 
         // given
