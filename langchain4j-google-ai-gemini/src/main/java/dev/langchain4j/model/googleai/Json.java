@@ -41,4 +41,8 @@ class Json {
             throw new RuntimeException(e);
         }
     }
+
+    static <T, U> U convertValue(T fromValue, Class<U> toValue) {
+        return OBJECT_MAPPER.convertValue(fromValue, toValue);
+    }
 }

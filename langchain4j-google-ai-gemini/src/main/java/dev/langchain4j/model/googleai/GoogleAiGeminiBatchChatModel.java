@@ -229,7 +229,6 @@ public final class GoogleAiGeminiBatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
-        private ObjectMapper objectMapper = new ObjectMapper();
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -250,7 +249,7 @@ public final class GoogleAiGeminiBatchChatModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> objectMapper.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
                     .map(chatModel::processResponse)
                     .toList();
         }

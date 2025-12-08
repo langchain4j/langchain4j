@@ -171,8 +171,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
 
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-                    TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
-        private ObjectMapper objectMapper = new ObjectMapper();
+            TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -204,7 +203,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
             }
 
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> objectMapper.convertValue(wrapper.response(), GeminiEmbeddingResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiEmbeddingResponse.class))
                     .map(GeminiEmbeddingResponse::embedding)
                     .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
                     .toList();
