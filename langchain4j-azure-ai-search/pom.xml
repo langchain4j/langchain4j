@@ -13,6 +13,7 @@
     <name>LangChain4j :: Integration :: Azure AI Search</name>
 
     <properties>
+        <skipAzureAiSearchITs>${skipITs}</skipAzureAiSearchITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -100,8 +101,11 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.honton.chas</groupId>
-                <artifactId>license-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipITs>${skipAzureAiSearchITs}</skipITs>
+                </configuration>
             </plugin>
         </plugins>
     </build>

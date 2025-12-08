@@ -37,8 +37,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiStreamingChatModelIT {
 
     public static final String MODEL_NAME = "gemini-2.5-flash";

@@ -6,9 +6,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
@@ -416,10 +416,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return userMessage;
                         }
 
-                        String newText = userMessage.singleText() + outputFormatInstructions;
-                        return userMessage.toBuilder()
-                                .contents(List.of(TextContent.from(newText)))
-                                .build();
+                        List<Content> contents = new ArrayList<>(userMessage.contents());
+
+                        boolean appended = false;
+                        for (int i = contents.size() - 1; i >= 0; i--) {
+                            if (contents.get(i) instanceof TextContent lastTextContent) {
+                                String newText = lastTextContent.text() + outputFormatInstructions;
+                                contents.set(i, TextContent.from(newText));
+                                appended = true;
+                                break;
+                            }
+                        }
+
+                        if (!appended) {
+                            contents.add(TextContent.from(outputFormatInstructions));
+                        }
+
+                        return userMessage.toBuilder().contents(contents).build();
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

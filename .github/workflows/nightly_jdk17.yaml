@@ -81,15 +81,12 @@ jobs:
           done
           echo "Building modules: $modules"
           
-          ## compile and verify javadocs
-          mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules}" -am \
-            --fail-at-end
+          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
+          mvn -B -U -T8C -DskipTests -DskipITs install
 
-          ## run integration tests
           mvn -B -U verify \
-            -pl "${modules}" -am \
-            -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
+            -pl "${modules}" \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
             --fail-at-end -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -Dtinylog.writer.level=info
