@@ -4,9 +4,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static java.util.Collections.singletonList;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
@@ -18,13 +20,14 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
     @Override
     protected String modelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.5-flash-lite";
     }
 
     @Override
@@ -33,7 +36,8 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .apiKey("banana")
                 .maxRetries(0)
                 .listeners(singletonList(listener))
-                .logRequestsAndResponses(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 

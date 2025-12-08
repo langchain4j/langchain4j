@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
@@ -8,11 +9,11 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
-import java.util.List;
-
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -55,5 +56,31 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return OpenAiOfficialTokenUsage.class;
+    }
+
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
+    @Test
+    void should_work_with_o_models() {
+
+        // given
+        ChatModel model = OpenAiOfficialChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("o4-mini")
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Germany?");
+
+        // then
+        assertThat(answer).contains("Berlin");
     }
 }

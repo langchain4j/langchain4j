@@ -2,9 +2,11 @@ package dev.langchain4j.model.bedrock.common;
 
 import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -54,6 +56,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return BedrockTokenUsage.class;
+    }
+
+    @Override
     protected boolean supportsToolChoiceRequired() {
         // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
         // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
@@ -67,6 +74,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // output format not supported
     }
 
@@ -92,7 +104,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the
+    // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
     // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override

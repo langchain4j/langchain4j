@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,22 +9,25 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiStreamingFimModelIT {
-
-    StreamingLanguageModel codestralStream = MistralAiStreamingFimModel.builder()
-            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
 
     @Test
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {
 
         // Given
+        StreamingLanguageModel codestralStream = MistralAiStreamingFimModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+                .maxTokens(100)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         String codePrompt = "public static void main(";
 
         // When
@@ -41,7 +45,7 @@ class MistralAiStreamingFimModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test

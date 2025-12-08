@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -20,7 +21,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.*;
+
 class ToolSpecificationHelper {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Converts the 'tools' element from a ListToolsResult MCP message
@@ -35,6 +40,15 @@ class ToolSpecificationHelper {
                 builder.description(tool.get("description").asText());
             }
             builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(tool.get("inputSchema")));
+            if (tool.has("annotations")) {
+                processMcpToolAnnotations(tool.get("annotations"), builder);
+            }
+            if (tool.has("_meta")) {
+                processMcpToolMetadata(tool.get("_meta"), builder);
+            }
+            if (tool.has("title")) {
+                builder.addMetadata(TITLE, tool.get("title").asText());
+            }
             result.add(builder.build());
         }
         return result;
@@ -51,6 +65,9 @@ class ToolSpecificationHelper {
                     .map(ToolSpecificationHelper::jsonNodeToJsonSchemaElement)
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
+            if (node.has("description")) {
+                anyOf.description(node.get("description").asText());
+            }
             return anyOf.build();
         }
         JsonNode typeNode = node.get("type");
@@ -115,7 +132,17 @@ class ToolSpecificationHelper {
                 if (node.has("description")) {
                     builder.description(node.get("description").asText());
                 }
-                builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
+                if (node.has("items")) {
+                    // if 'items' is an empty array, or missing altogether,
+                    // we leave the "items" field unset,
+                    // which means it will be serialized as "items": {},
+                    // which means "any value"
+                    if (!node.get("items").isArray()
+                            || (node.get("items").isArray()
+                                    && !node.get("items").isEmpty())) {
+                        builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
+                    }
+                }
                 return builder.build();
             } else if (nodeType.equals("null")) {
                 return new JsonNullSchema();
@@ -186,4 +213,39 @@ class ToolSpecificationHelper {
         }
         return result;
     }
+
+    private static void processMcpToolAnnotations(JsonNode annotations,
+                                                  ToolSpecification.Builder builder) {
+        if(annotations.has(DESTRUCTIVE_HINT)) {
+            builder.addMetadata(DESTRUCTIVE_HINT,
+                    annotations.get(DESTRUCTIVE_HINT).asBoolean());
+        }
+        if(annotations.has(IDEMPOTENT_HINT)) {
+            builder.addMetadata(IDEMPOTENT_HINT,
+                    annotations.get(IDEMPOTENT_HINT).asBoolean());
+        }
+        if(annotations.has(OPEN_WORLD_HINT)) {
+            builder.addMetadata(OPEN_WORLD_HINT,
+                    annotations.get(OPEN_WORLD_HINT).asBoolean());
+        }
+        if(annotations.has(READ_ONLY_HINT)) {
+            builder.addMetadata(READ_ONLY_HINT,
+                    annotations.get(READ_ONLY_HINT).asBoolean());
+        }
+        // note that the TITLE_ANNOTATION constant doesn't contain 'title' to disambiguate it with the other title that is
+        // stored directly in the Tool object
+        if(annotations.has("title")) {
+            builder.addMetadata(TITLE_ANNOTATION,
+                    annotations.get("title").asText());
+        }
+    }
+
+    private static void processMcpToolMetadata(JsonNode meta,
+                                               ToolSpecification.Builder builder) {
+        for (Map.Entry<String, JsonNode> property : meta.properties()) {
+            // convert the value to a nested Map (independent of Jackson) and store it in the metadata
+            builder.addMetadata(property.getKey(), OBJECT_MAPPER.convertValue(property.getValue(), Object.class));
+        }
+    }
+
 }

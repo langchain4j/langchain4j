@@ -6,10 +6,12 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -27,6 +29,7 @@ public class LocalAiLanguageModel implements LanguageModel {
     private final Integer maxTokens;
     private final Integer maxRetries;
 
+    @Deprecated(forRemoval = true, since = "1.5.0")
     public LocalAiLanguageModel(String baseUrl,
                                 String modelName,
                                 Double temperature,
@@ -55,6 +58,21 @@ public class LocalAiLanguageModel implements LanguageModel {
         this.maxRetries = maxRetries;
     }
 
+    public LocalAiLanguageModel(LocalAiLanguageModelBuilder builder) {
+        this.client = OpenAiClient.builder()
+                .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = getOrDefault(builder.temperature, 0.7);
+        this.topP = builder.topP;
+        this.maxTokens = builder.maxTokens;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+    }
     @Override
     public Response<String> generate(String prompt) {
 
@@ -92,6 +110,7 @@ public class LocalAiLanguageModel implements LanguageModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public LocalAiLanguageModelBuilder() {
             // This is public so it can be extended
@@ -143,8 +162,17 @@ public class LocalAiLanguageModel implements LanguageModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public LocalAiLanguageModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public LocalAiLanguageModel build() {
-            return new LocalAiLanguageModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new LocalAiLanguageModel(this);
         }
 
         public String toString() {

@@ -1,9 +1,13 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
+import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
+
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +25,12 @@ import java.util.stream.Collectors;
  */
 public non-sealed class OutputGuardrailExecutor
         extends AbstractGuardrailExecutor<
-                OutputGuardrailsConfig, OutputGuardrailRequest, OutputGuardrailResult, OutputGuardrail, Failure> {
+                OutputGuardrailsConfig,
+                OutputGuardrailRequest,
+                OutputGuardrailResult,
+                OutputGuardrail,
+                OutputGuardrailExecutedEvent,
+                Failure> {
 
     public static final String MAX_RETRIES_MESSAGE_TEMPLATE =
             """
@@ -38,13 +47,13 @@ public non-sealed class OutputGuardrailExecutor
     /**
      * Executes the {@link OutputGuardrail}s on the given {@link OutputGuardrailRequest}.
      *
-     * @param params     The {@link OutputGuardrailRequest} to validate
+     * @param request     The {@link OutputGuardrailRequest} to validate
      * @return The {@link OutputGuardrailResult} of the validation
      */
     @Override
-    public OutputGuardrailResult execute(OutputGuardrailRequest params) {
+    public OutputGuardrailResult execute(OutputGuardrailRequest request) {
         OutputGuardrailResult result = null;
-        var accumulatedParams = params;
+        var accumulatedRequest = request;
         var attempt = 0;
         var maxAttempts = config().maxRetries();
 
@@ -55,7 +64,7 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = executeGuardrails(accumulatedParams);
+            result = rewriteResult(request, accumulatedRequest, executeGuardrails(accumulatedRequest));
 
             if (result.isSuccess()) {
                 return result;
@@ -67,24 +76,24 @@ public non-sealed class OutputGuardrailExecutor
                 throw new OutputGuardrailException(result.toString(), result.getFirstFailureException());
             }
 
-            // If we get here we know it is some kind of retry
-            // We don't want to add intermediary UserMessages to the memory
-            var chatMessages = Optional.ofNullable(
-                            accumulatedParams.requestParams().chatMemory())
-                    .map(ChatMemory::messages)
-                    .orElseGet(ArrayList::new);
-            result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
+            if (++attempt < maxAttempts) {
+                // If we get here we know it is some kind of retry
+                // We don't want to add intermediary UserMessages to the memory
+                var chatMessages = Optional.ofNullable(
+                                accumulatedRequest.requestParams().chatMemory())
+                        .map(ChatMemory::messages)
+                        .orElseGet(ArrayList::new);
+                result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-            // Re-execute the request with the appended message
-            // But don't add it or the resulting message to the memory
-            var response = accumulatedParams.chatExecutor().execute(chatMessages);
-
-            attempt++;
-            accumulatedParams = OutputGuardrailRequest.builder()
-                    .responseFromLLM(response)
-                    .chatExecutor(accumulatedParams.chatExecutor())
-                    .requestParams(accumulatedParams.requestParams())
-                    .build();
+                // Re-execute the request with the appended message
+                // But don't add it or the resulting message to the memory
+                var response = accumulatedRequest.chatExecutor().execute(chatMessages);
+                accumulatedRequest = OutputGuardrailRequest.builder()
+                        .responseFromLLM(response)
+                        .chatExecutor(accumulatedRequest.chatExecutor())
+                        .requestParams(accumulatedRequest.requestParams())
+                        .build();
+            }
         }
 
         if (attempt == maxAttempts) {
@@ -95,6 +104,19 @@ public non-sealed class OutputGuardrailExecutor
             throw new OutputGuardrailException(MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages));
         }
 
+        return result;
+    }
+
+    private OutputGuardrailResult rewriteResult(OutputGuardrailRequest originalRequest, OutputGuardrailRequest validatedRequest, OutputGuardrailResult result) {
+        if (result.isSuccess() && !result.hasRewrittenResult()) {
+            String originalText = originalRequest.responseFromLLM().aiMessage().text();
+            String validatedText = validatedRequest.responseFromLLM().aiMessage().text();
+            if (!originalText.equals(validatedText)) {
+                // The text validated by the output guardrail is different form the original one because of a
+                // successful reprompt, so we need to create a new success result with the new text
+                return successWith(originalRequest.responseFromLLM().aiMessage().withText(validatedText));
+            }
+        }
         return result;
     }
 
@@ -126,6 +148,11 @@ public non-sealed class OutputGuardrailExecutor
     protected OutputGuardrailResult handleFatalResult(
             OutputGuardrailResult accumulatedResult, OutputGuardrailResult result) {
         return accumulatedResult.hasRewrittenResult() ? result.blockRetry() : result;
+    }
+
+    @Override
+    protected OutputGuardrailExecutedEventBuilder createEmptyObservabilityEventBuilderInstance() {
+        return OutputGuardrailExecutedEvent.builder();
     }
 
     /**
@@ -160,6 +187,7 @@ public non-sealed class OutputGuardrailExecutor
                     OutputGuardrailResult,
                     OutputGuardrailRequest,
                     OutputGuardrail,
+                    OutputGuardrailExecutedEvent,
                     OutputGuardrailExecutorBuilder> {
 
         protected OutputGuardrailExecutorBuilder() {

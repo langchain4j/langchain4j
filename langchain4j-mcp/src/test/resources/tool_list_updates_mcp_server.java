@@ -1,7 +1,8 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.20.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.1.0
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.1.0
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.27.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-websocket:1.7.2
 
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;

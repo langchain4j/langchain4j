@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiEmbeddingModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
@@ -22,7 +24,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -43,7 +46,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(false) // embeddings are huge in logs
+                .logResponses(false)
                 .titleMetadataKey("title")
                 .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
                 .build();
@@ -68,7 +72,8 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .logRequestsAndResponses(false) // embeddings are huge in logs
+                .logRequests(false) // embeddings are huge in logs
+                .logResponses(false)
                 .outputDimensionality(outputDimensionality)
                 .build();
 

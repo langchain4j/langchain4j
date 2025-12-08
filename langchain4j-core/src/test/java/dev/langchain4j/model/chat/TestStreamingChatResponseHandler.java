@@ -3,13 +3,18 @@ package dev.langchain4j.model.chat;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 public class TestStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
@@ -23,9 +28,25 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     }
 
     @Override
+    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+        responseBuilder.append(partialResponse.text());
+    }
+
+    @Override
     public void onPartialThinking(PartialThinking partialThinking) {
         thinkingBuilder.append(partialThinking.text());
     }
+
+    @Override
+    public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+        thinkingBuilder.append(partialThinking.text());
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {}
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {

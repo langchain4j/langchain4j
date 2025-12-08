@@ -43,26 +43,6 @@ public class AzureModelBuilders {
                 .logRequestsAndResponses(true);
     }
 
-    public static AzureOpenAiLanguageModel.Builder languageModelBuilder() {
-        return AzureOpenAiLanguageModel.builder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName("gpt-35-turbo-instruct-0914")
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
-                .logRequestsAndResponses(false);
-    }
-
-    public static AzureOpenAiStreamingLanguageModel.Builder streamingLanguageModelBuilder() {
-        return AzureOpenAiStreamingLanguageModel.builder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName("gpt-35-turbo-instruct-0914")
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
-                .logRequestsAndResponses(true);
-    }
-
     public static AzureOpenAiEmbeddingModel.Builder embeddingModelBuilder() {
         return AzureOpenAiEmbeddingModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
@@ -79,5 +59,13 @@ public class AzureModelBuilders {
                 .size("128x128")
                 .quality("low")
                 .logRequestsAndResponses(false); // images are huge in logs;
+    }
+
+    public static AzureOpenAiAudioTranscriptionModel.Builder audioTranscriptionModelBuilder() {
+        return AzureOpenAiAudioTranscriptionModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(System.getenv("AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME"))
+                .logRequestsAndResponses(true);
     }
 }

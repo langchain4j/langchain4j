@@ -15,6 +15,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.azure.spi.AzureOpenAiEmbeddingModelBuilderFactory;
@@ -68,6 +69,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -80,6 +82,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -92,6 +95,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -131,8 +135,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
             EmbeddingsOptions options = new EmbeddingsOptions(batch).setDimensions(dimensions);
 
-            Embeddings response = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                    client.getEmbeddings(deploymentName, options));
+            Embeddings response = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                    () -> client.getEmbeddings(deploymentName, options));
 
             for (EmbeddingItem embeddingItem : response.getData()) {
                 Embedding embedding = from(embeddingItem.getEmbedding());
@@ -173,6 +177,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String deploymentName;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -266,6 +271,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

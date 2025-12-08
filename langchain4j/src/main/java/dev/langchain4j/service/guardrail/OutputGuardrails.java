@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * An annotation to apply guardrails to the output of the model using the declarative {@link dev.langchain4j.service.AiServices AiServices}
  * approach.
  * <p>
- *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+ *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
  *     certain expectations.
  * </p>
  * <p>

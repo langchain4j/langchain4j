@@ -21,13 +21,13 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 
-@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
+@Disabled("Run manually before release. Expensive to run very often.")
 class BedrockStreamingChatModelThinkingIT {
 
     @ParameterizedTest
@@ -69,8 +69,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
@@ -91,8 +91,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -146,8 +146,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
@@ -171,8 +171,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -229,8 +229,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
@@ -253,7 +253,7 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -277,8 +277,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
-        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
         inOrder3.verifyNoMoreInteractions();
@@ -301,7 +301,7 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder4 = inOrder(spyHandler4);
         inOrder4.verify(spyHandler4).get();
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
@@ -360,8 +360,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
@@ -386,8 +386,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -413,8 +413,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any(), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
         inOrder3.verifyNoMoreInteractions();
@@ -439,8 +439,8 @@ class BedrockStreamingChatModelThinkingIT {
 
         InOrder inOrder4 = inOrder(spyHandler4);
         inOrder4.verify(spyHandler4).get();
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any());
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
