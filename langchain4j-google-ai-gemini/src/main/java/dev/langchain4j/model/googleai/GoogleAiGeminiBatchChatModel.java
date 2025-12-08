@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;

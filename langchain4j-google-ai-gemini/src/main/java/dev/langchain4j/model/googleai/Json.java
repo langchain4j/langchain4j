@@ -1,12 +1,12 @@
 package dev.langchain4j.model.googleai;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 @Internal
 class Json {
