@@ -2,11 +2,21 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
+import org.mockito.NotExtensible;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 class AiServicesTest {
 
@@ -27,7 +37,16 @@ class AiServicesTest {
 
     private final Assistant assistant =
             AiServices.builder(Assistant.class).chatModel(chatModel).build();
+    private <T> T buildService(Class<T> type) {
+        return AiServices.builder(type).chatModel(chatModel).build();
+    }
 
+    private void stubChatModelToReturnHi() {
+        when(chatModel.chat((ChatRequest) any()))
+                .thenReturn(ChatResponse.builder()
+                        .aiMessage(AiMessage.builder().text("Hi").build())
+                        .build());
+    }
     @Test
     void should_not_call_chatModel_when_Object_methods_are_called() throws Exception {
 
@@ -120,5 +139,94 @@ class AiServicesTest {
     void should_preserve_interface_type() {
         assertThat(assistant).isInstanceOf(Assistant.class);
         assertThat(Assistant.class.isAssignableFrom(assistant.getClass())).isTrue();
+    }
+
+
+    /**
+     * Regression test for https://github.com/langchain4j/langchain4j/issues/3091
+     * Verifies that single-argument defaulting still works when a non-langchain4j
+     * annotation is present on the parameter.
+     */
+    @Test
+    void should_detect_single_parameter_as_user_message_even_with_other_annotations() {
+        interface TaskService {
+            // Using @NotExtensible here on purpose as a non-langchain4j annotation.
+            // It is already available on the classpath; no additional dependency is added for this test.
+            String task(@NotExtensible String msg);
+        }
+
+        stubChatModelToReturnHi();
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThat(taskService.task("Hello")).isEqualTo("Hi");
+    }
+
+    @Test
+    void should_use_annotated_user_message_with_multiple_parameters() {
+        interface TaskService {
+            String task(@UserMessage String msg, @V("other") String other);
+        }
+
+        stubChatModelToReturnHi(); // when(chatModel.chat(any(ChatRequest.class))) → "Hi"
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThat(taskService.task("Hello", "ignored")).isEqualTo("Hi");
+    }
+
+    @Test
+    void should_fail_when_no_user_message_and_multiple_parameters() {
+        interface TaskService {
+            String task(String a, String b);
+        }
+
+        stubChatModelToReturnHi();
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThatThrownBy(() -> taskService.task("a", "b")).isInstanceOf(IllegalConfigurationException.class);
+    }
+
+    @Test
+    void should_use_annotated_user_message_when_present() {
+        interface TaskService {
+            String task(@UserMessage String msg);
+        }
+
+        stubChatModelToReturnHi();
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThat(taskService.task("Hello")).isEqualTo("Hi");
+    }
+
+    @Test
+    void should_detect_single_parameter_as_user_message_without_annotations() {
+        interface TaskService {
+            String task(String msg);
+        }
+
+        stubChatModelToReturnHi();
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThat(taskService.task("Hello")).isEqualTo("Hi");
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    private @interface ExternalAnnotation1 {}
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    private @interface ExternalAnnotation2 {}
+
+    @Test
+    void should_detect_single_parameter_as_user_message_with_multiple_external_annotations() {
+        interface TaskService {
+            // Multiple non-langchain4j annotations used intentionally for this test case.
+            String task(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
+        }
+
+        stubChatModelToReturnHi();
+        TaskService taskService = buildService(TaskService.class);
+
+        assertThat(taskService.task("Hello")).isEqualTo("Hi");
     }
 }

@@ -48,6 +48,7 @@ import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -61,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -71,6 +73,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
+            dev.langchain4j.service.UserMessage.class,
+            dev.langchain4j.service.V.class,
+            dev.langchain4j.service.MemoryId.class,
+            dev.langchain4j.service.UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -560,9 +568,17 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
         return Optional.empty();
     }
+    private static boolean hasAnyValidAnnotation(Parameter parameter) {
+        for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
+            if (parameter.getAnnotation(a) != null) {
+                return true;
+            }
+        }
 
+        return false;
+    }
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
-        if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
+        if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
