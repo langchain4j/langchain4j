@@ -15,7 +15,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
@@ -609,7 +609,7 @@ public class AgenticServices {
     private static void buildListener(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgenticListener.class);
+                    checkReturnType(listenerMethod, AgentListener.class);
                     builder.listener(invokeStatic(listenerMethod));
                 });
     }
@@ -780,7 +780,7 @@ public class AgenticServices {
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
-                    checkReturnType(method, AgenticListener.class);
+                    checkReturnType(method, AgentListener.class);
                     a2aClientBuilder.listener(invokeStatic(method));
                 });
 
@@ -811,7 +811,7 @@ public class AgenticServices {
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgenticListener.class);
+                    checkReturnType(listenerMethod, AgentListener.class);
                     humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
                 });
 

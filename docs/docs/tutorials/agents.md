@@ -539,17 +539,17 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgenticListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
 
 ```java
-public interface AgenticListener {
+public interface AgentListener {
 
     default void beforeAgentInvocation(AgentRequest agentRequest) { }
     default void afterAgentInvocation(AgentResponse agentResponse) { }
     default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
 
-    default void onAgenticScopeCreated(AgenticScope agenticScope) { }
-    default void onAgenticScopeDestroyed(AgenticScope agenticScope) { }
+    default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
+    default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 }
 ```
 
@@ -577,7 +577,9 @@ CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.clas
 
 These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
 
-Listeners are composable, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered. They are also hierarchical, meaning that they are inherited by subagents, so that if you register a listener to a top level agent, that listener will also be notified of the invocations of all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
+`AgentListener`s have 2 important properties, they are:
+- **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
+- **hierarchical**, meaning that they are inherited by subagents, so that if you register a listener to a top level agent, that listener will also be notified of the invocations of all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
 
 ### Monitoring
 
@@ -644,7 +646,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgenticMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent call. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+the `AgenticMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
 
 ```java
 MonitoredExecution execution = monitor.successfulExecutions().get(0);
@@ -654,12 +656,12 @@ System.out.println(execution);
 so it will reveal the nested sequence of agents invocations necessary to generate and refine the story, like it follows:
 
 ```
-AgentCall{agent=Sequential, startTime=2025-12-04T17:23:45.684601233, finishTime=2025-12-04T17:25:31.310476077, duration=105625 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In the shadowy ...}
-|=> AgentCall{agent=generateStory, startTime=2025-12-04T17:23:45.687031946, finishTime=2025-12-04T17:23:53.216629832, duration=7529 ms, inputs={topic=dragons and wiz...}, output=In the shadowed...}
-|=> AgentCall{agent=reviewLoop, startTime=2025-12-04T17:23:53.218004760, finishTime=2025-12-04T17:25:31.310442197, duration=98092 ms, inputs={score=0.85, topic=dragons and wiz..., style=comedy, story=In the shadowy ...}, output=null}
-    |=> AgentCall{agent=scoreStyle, startTime=2025-12-04T17:23:53.218606335, finishTime=2025-12-04T17:23:58.900747685, duration=5682 ms, inputs={style=comedy, story=In the shadowed...}, output=0.25}
-    |=> AgentCall{agent=editStory, startTime=2025-12-04T17:23:58.901041911, finishTime=2025-12-04T17:24:58.130857588, duration=59229 ms, inputs={style=comedy, story=In the shadowed...}, output=In the shadowy ...}
-    |=> AgentCall{agent=scoreStyle, startTime=2025-12-04T17:24:58.130980855, finishTime=2025-12-04T17:25:31.310076714, duration=33179 ms, inputs={style=comedy, story=In the shadowy ...}, output=0.85}
+AgentInvocation{agent=Sequential, startTime=2025-12-04T17:23:45.684601233, finishTime=2025-12-04T17:25:31.310476077, duration=105625 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In the shadowy ...}
+|=> AgentInvocation{agent=generateStory, startTime=2025-12-04T17:23:45.687031946, finishTime=2025-12-04T17:23:53.216629832, duration=7529 ms, inputs={topic=dragons and wiz...}, output=In the shadowed...}
+|=> AgentInvocation{agent=reviewLoop, startTime=2025-12-04T17:23:53.218004760, finishTime=2025-12-04T17:25:31.310442197, duration=98092 ms, inputs={score=0.85, topic=dragons and wiz..., style=comedy, story=In the shadowy ...}, output=null}
+    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:23:53.218606335, finishTime=2025-12-04T17:23:58.900747685, duration=5682 ms, inputs={style=comedy, story=In the shadowed...}, output=0.25}
+    |=> AgentInvocation{agent=editStory, startTime=2025-12-04T17:23:58.901041911, finishTime=2025-12-04T17:24:58.130857588, duration=59229 ms, inputs={style=comedy, story=In the shadowed...}, output=In the shadowy ...}
+    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:24:58.130980855, finishTime=2025-12-04T17:25:31.310076714, duration=33179 ms, inputs={style=comedy, story=In the shadowy ...}, output=0.85}
 ```
 
 ## Declarative API

@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
 import java.util.List;
@@ -32,5 +32,5 @@ public interface AgenticService<T, A> {
 
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
-    T listener(AgenticListener listeners);
+    T listener(AgentListener listeners);
 }

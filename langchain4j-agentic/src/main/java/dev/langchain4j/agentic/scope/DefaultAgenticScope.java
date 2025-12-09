@@ -8,7 +8,7 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AsyncResponse;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -42,7 +42,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private final Map<String, Object> state = new ConcurrentHashMap<>();
     private final List<AgentInvocation> agentInvocations = Collections.synchronizedList(new ArrayList<>());
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
-    private transient AgenticListener agenticListener;
+    private transient AgentListener agentListener;
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
 
@@ -163,7 +163,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
-            registry.evict(memoryId, agenticListener);
+            registry.evict(memoryId, agentListener);
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
@@ -297,19 +297,19 @@ public class DefaultAgenticScope implements AgenticScope {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
     }
 
-    public AgenticListener replaceListener(AgenticListener agenticListener) {
-        AgenticListener oldListener = this.agenticListener;
-        if (agenticListener != null) {
-            this.agenticListener = agenticListener;
+    public AgentListener replaceListener(AgentListener agentListener) {
+        AgentListener oldListener = this.agentListener;
+        if (agentListener != null) {
+            this.agentListener = agentListener;
         }
         return oldListener;
     }
 
-    public void resetListener(AgenticListener agenticListener) {
-        this.agenticListener = agenticListener;
+    public void resetListener(AgentListener agentListener) {
+        this.agentListener = agentListener;
     }
 
-    public AgenticListener listener() {
-        return agenticListener;
+    public AgentListener listener() {
+        return agentListener;
     }
 }

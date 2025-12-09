@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.patterns.goap.writer;
 
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
 import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
 import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
@@ -24,7 +24,7 @@ public class GoapWriterIT {
 
     @Test
     void goap_tests() {
-        class GoapListener implements AgenticListener {
+        class GoapListener implements AgentListener {
             AtomicBoolean styleEditorCalled = new AtomicBoolean(false);
 
             @Override

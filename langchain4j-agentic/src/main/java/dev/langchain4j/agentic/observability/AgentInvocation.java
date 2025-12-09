@@ -9,9 +9,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class AgentCall {
+public class AgentInvocation {
 
-    private final List<AgentCall> nestedCalls = Collections.synchronizedList(new ArrayList<>());
+    private final List<AgentInvocation> nestedInvocations = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
     private final LocalDateTime startTime;
@@ -19,7 +19,7 @@ public class AgentCall {
     private AgentResponse agentResponse;
     private LocalDateTime finishTime;
 
-    AgentCall(AgentRequest agentRequest) {
+    AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
         this.startTime = LocalDateTime.now();
     }
@@ -29,8 +29,8 @@ public class AgentCall {
         this.finishTime = LocalDateTime.now();
     }
 
-    void addNestedCall(AgentCall agentCall) {
-        this.nestedCalls.add(agentCall);
+    void addNestedInvocation(AgentInvocation agentInvocation) {
+        this.nestedInvocations.add(agentInvocation);
     }
 
     public boolean done() {
@@ -71,8 +71,8 @@ public class AgentCall {
         return agentResponse.output();
     }
 
-    public List<AgentCall> nestedCalls() {
-        return nestedCalls;
+    public List<AgentInvocation> nestedInvocations() {
+        return nestedInvocations;
     }
 
     @Override
@@ -81,7 +81,7 @@ public class AgentCall {
     }
 
     private String toString(String prefix) {
-        StringBuilder sb = new StringBuilder(prefix + "AgentCall{" +
+        StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
@@ -89,9 +89,9 @@ public class AgentCall {
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');
-        if (!nestedCalls.isEmpty()) {
+        if (!nestedInvocations.isEmpty()) {
             prefix = prefix.isEmpty() ? "|=> " : "    " + prefix;
-            for (AgentCall nestedCall : nestedCalls) {
+            for (AgentInvocation nestedCall : nestedInvocations) {
                 sb.append("\n").append(nestedCall.toString(prefix));
             }
         }

@@ -2,38 +2,63 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 public class ListenerNotifierUtil {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ListenerNotifierUtil.class);
+
     private ListenerNotifierUtil() { }
 
-    public static void beforeAgentInvocation(AgenticListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs) {
+    public static void beforeAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs) {
         if (listener != null) {
-            listener.beforeAgentInvocation(new AgentRequest(agenticScope, agent, inputs));
+            try {
+                listener.beforeAgentInvocation(new AgentRequest(agenticScope, agent, inputs));
+            } catch (Exception e) {
+                LOG.error("beforeAgentInvocation listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
         }
     }
 
-    public static void afterAgentInvocation(AgenticListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Object output) {
+    public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Object output) {
         if (listener != null) {
-            listener.afterAgentInvocation(new AgentResponse(agenticScope, agent, inputs, output));
+            try {
+                listener.afterAgentInvocation(new AgentResponse(agenticScope, agent, inputs, output));
+            } catch (Exception e) {
+                LOG.error("afterAgentInvocation listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
         }
     }
 
-    public static void agentError(AgenticListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Throwable error) {
+    public static void agentError(AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Throwable error) {
         if (listener != null) {
-            listener.onAgentInvocationError(new AgentInvocationError(agenticScope, agent, inputs, error));
+            try {
+                listener.onAgentInvocationError(new AgentInvocationError(agenticScope, agent, inputs, error));
+            } catch (Exception e) {
+                LOG.error("agentError listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
         }
     }
 
-    public static void onAgenticScopeCreated(AgenticListener listener, AgenticScope agenticScope) {
+    public static void afterAgenticScopeCreated(AgentListener listener, AgenticScope agenticScope) {
         if (listener != null) {
-            listener.onAgenticScopeCreated(agenticScope);
+            try {
+                listener.afterAgenticScopeCreated(agenticScope);
+            } catch (Exception e) {
+                LOG.error("afterAgenticScopeCreated listener failed: " + e.getMessage(), e);
+            }
         }
     }
 
-    public static void onAgenticScopeDestroyed(AgenticListener listener, AgenticScope agenticScope) {
+    public static void beforeAgenticScopeDestroyed(AgentListener listener, AgenticScope agenticScope) {
         if (listener != null) {
-            listener.onAgenticScopeDestroyed(agenticScope);
+            try {
+                listener.beforeAgenticScopeDestroyed(agenticScope);
+            } catch (Exception e) {
+                LOG.error("beforeAgenticScopeDestroyed listener failed: " + e.getMessage(), e);
+            }
         }
     }
 }

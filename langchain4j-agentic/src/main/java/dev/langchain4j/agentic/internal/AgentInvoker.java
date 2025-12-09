@@ -2,9 +2,9 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
-import dev.langchain4j.agentic.observability.ComposedAgenticListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -12,8 +12,6 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
@@ -26,44 +24,30 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeA
 
 public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
 
-    Logger LOG = LoggerFactory.getLogger(AgentInvoker.class);
-
     Method method();
 
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
-        AgenticListener listener = listener(agenticScope);
-
-        try {
-            beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
-        } catch (Exception e) {
-            LOG.error("Before agent invocation listener for agent " + agentId() + " failed: " + e.getMessage(), e);
-        }
-
+        AgentListener listener = listener(agenticScope);
+        beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
-
-        try {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
-        } catch (Exception e) {
-            LOG.error("After agent invocation listener for agent " + name() + " failed: " + e.getMessage(), e);
-        }
-
+        afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
         return result;
     }
 
-    private AgenticListener listener(DefaultAgenticScope agenticScope) {
-        AgenticListener localListener = listener();
+    private AgentListener listener(DefaultAgenticScope agenticScope) {
+        AgentListener localListener = listener();
         if (localListener == null) {
             return agenticScope.listener();
         }
         if (agenticScope.listener() == null) {
             return localListener;
         }
-        return new ComposedAgenticListener(localListener, agenticScope.listener());
+        return new ComposedAgentListener(localListener, agenticScope.listener());
     }
 
-    private Object internalInvoke(DefaultAgenticScope agenticScope, AgenticListener listener, Object agent, AgentInvocationArguments args) {
+    private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args) {
         LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
         try {
             return method().invoke(agent, args.positionalArgs());

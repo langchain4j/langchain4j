@@ -6,17 +6,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Internal
-public class ComposedAgenticListener implements AgenticListener {
+public class ComposedAgentListener implements AgentListener {
 
-    private final List<AgenticListener> listeners = new ArrayList<>();
+    private final List<AgentListener> listeners = new ArrayList<>();
 
-    public ComposedAgenticListener(AgenticListener... listeners) {
+    public ComposedAgentListener(AgentListener... listeners) {
         addListeners(listeners);
     }
 
-    public void addListeners(AgenticListener... listeners) {
-        for (AgenticListener listener : listeners) {
-            if (listener instanceof ComposedAgenticListener composed) {
+    public void addListeners(AgentListener... listeners) {
+        for (AgentListener listener : listeners) {
+            if (listener instanceof ComposedAgentListener composed) {
                 this.listeners.addAll(composed.listeners);
             } else {
                 this.listeners.add(listener);
@@ -26,36 +26,36 @@ public class ComposedAgenticListener implements AgenticListener {
 
     @Override
     public void beforeAgentInvocation(final AgentRequest agentRequest) {
-        for (AgenticListener listener : listeners) {
+        for (AgentListener listener : listeners) {
             listener.beforeAgentInvocation(agentRequest);
         }
     }
 
     @Override
     public void afterAgentInvocation(final AgentResponse agentResponse) {
-        for (AgenticListener listener : listeners) {
+        for (AgentListener listener : listeners) {
             listener.afterAgentInvocation(agentResponse);
         }
     }
 
     @Override
     public void onAgentInvocationError(final AgentInvocationError agentInvocationError) {
-        for (AgenticListener listener : listeners) {
+        for (AgentListener listener : listeners) {
             listener.onAgentInvocationError(agentInvocationError);
         }
     }
 
     @Override
-    public void onAgenticScopeCreated(final AgenticScope agenticScope) {
-        for (AgenticListener listener : listeners) {
-            listener.onAgenticScopeCreated(agenticScope);
+    public void afterAgenticScopeCreated(final AgenticScope agenticScope) {
+        for (AgentListener listener : listeners) {
+            listener.afterAgenticScopeCreated(agenticScope);
         }
     }
 
     @Override
-    public void onAgenticScopeDestroyed(final AgenticScope agenticScope) {
-        for (AgenticListener listener : listeners) {
-            listener.onAgenticScopeDestroyed(agenticScope);
+    public void beforeAgenticScopeDestroyed(final AgenticScope agenticScope) {
+        for (AgentListener listener : listeners) {
+            listener.beforeAgenticScopeDestroyed(agenticScope);
         }
     }
 }

@@ -35,15 +35,14 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.observability.AgentCall;
-import dev.langchain4j.agentic.observability.AgenticMonitor;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
@@ -369,7 +368,7 @@ public class WorkflowAgentsIT {
 
                     return "young adults";
                 })
-                .listener(new AgenticListener() {
+                .listener(new AgentListener() {
                     @Override
                     public void afterAgentInvocation(final AgentResponse agentResponse) {
                         hitlResult.set(agentResponse.output().toString());
@@ -408,7 +407,7 @@ public class WorkflowAgentsIT {
 
     @Test
     void loop_agents_tests() {
-        class TopLevelListener implements AgenticListener {
+        class TopLevelListener implements AgentListener {
             double finalScore;
             Object createdScopeId;
             Object destroyedScopeId;
@@ -421,17 +420,17 @@ public class WorkflowAgentsIT {
             }
 
             @Override
-            public void onAgenticScopeCreated(AgenticScope agenticScope) {
+            public void afterAgenticScopeCreated(AgenticScope agenticScope) {
                 createdScopeId = agenticScope.memoryId();
             }
 
             @Override
-            public void onAgenticScopeDestroyed(AgenticScope agenticScope) {
+            public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
                 destroyedScopeId = agenticScope.memoryId();
             }
         }
 
-        class WriterListener implements AgenticListener {
+        class WriterListener implements AgentListener {
             Object requestedTopic;
 
             @Override
@@ -442,7 +441,7 @@ public class WorkflowAgentsIT {
 
         TopLevelListener topLevelListener = new TopLevelListener();
         WriterListener writerListener = new WriterListener();
-        AgenticMonitor monitor = new AgenticMonitor();
+        AgentMonitor monitor = new AgentMonitor();
 
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .listener(writerListener)
@@ -498,20 +497,20 @@ public class WorkflowAgentsIT {
         assertThat(monitor.successfulExecutionsFor(agenticScope)).hasSize(1);
         MonitoredExecution execution = monitor.successfulExecutionsFor(agenticScope).get(0);
         assertThat(execution.done()).isTrue();
-        assertThat(execution.ongoingCalls()).isEmpty();
-        AgentCall topLevelCall = execution.topLevelCall();
+        assertThat(execution.ongoingInvocations()).isEmpty();
+        AgentInvocation topLevelCall = execution.topLevelInvocations();
         assertThat(topLevelCall.inputs()).containsKey("topic").containsKey("style");
 
-        assertThat(topLevelCall.nestedCalls()).hasSize(2);
-        assertThat(topLevelCall.nestedCalls().get(0).agent().name()).isEqualTo("generateStory");
-        assertThat(topLevelCall.nestedCalls().get(1).agent().name()).isEqualTo("reviewLoop");
+        assertThat(topLevelCall.nestedInvocations()).hasSize(2);
+        assertThat(topLevelCall.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelCall.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
     }
 
     @Test
     void loop_agents_with_error_tests() {
-        AgenticMonitor monitor = new AgenticMonitor();
+        AgentMonitor monitor = new AgentMonitor();
 
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
@@ -613,14 +612,14 @@ public class WorkflowAgentsIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations(StyleScorer.class);
-        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
-        System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations(StyleScorer.class);
+        assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
+        System.out.println("Score agent invocations: " + scoreAgentInvocations);
+        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
                 .isGreaterThanOrEqualTo(0.8);
 
-        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations(StyleEditor.class);
-        assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations(StyleEditor.class);
+        assertThat(styleEditorAgentInvocations).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
     @Test
@@ -778,7 +777,7 @@ public class WorkflowAgentsIT {
 
     @Test
     void memory_agents_tests() {
-        AgenticMonitor monitor = new AgenticMonitor();
+        AgentMonitor monitor = new AgentMonitor();
 
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(baseModel())
@@ -869,14 +868,14 @@ public class WorkflowAgentsIT {
         AgenticScopePersister.setStore(null);
     }
 
-    private static void checkMonitoredExecution(AgenticMonitor monitor, Object memoryId, String expertName) {
+    private static void checkMonitoredExecution(AgentMonitor monitor, Object memoryId, String expertName) {
         List<MonitoredExecution> executions1 = monitor.successfulExecutionsFor(memoryId);
         assertThat(executions1).hasSize(1);
-        List<AgentCall> sequenceCalls = executions1.get(0).topLevelCall().nestedCalls();
+        List<AgentInvocation> sequenceCalls = executions1.get(0).topLevelInvocations().nestedInvocations();
         assertThat(sequenceCalls).hasSize(2);
         assertThat(sequenceCalls.get(0).agent().name()).isEqualTo("classify");
         assertThat(sequenceCalls.get(1).agent().name()).isEqualTo("router");
-        List<AgentCall> routerCalls = sequenceCalls.get(1).nestedCalls();
+        List<AgentInvocation> routerCalls = sequenceCalls.get(1).nestedInvocations();
         assertThat(routerCalls).hasSize(1);
         assertThat(routerCalls.get(0).agent().name()).isEqualTo(expertName);
     }

@@ -12,7 +12,7 @@ import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
 import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -31,7 +31,7 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
-        class WriterListener implements AgenticListener {
+        class WriterListener implements AgentListener {
             Object requestedTopic;
 
             @Override

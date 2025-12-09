@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -70,7 +70,7 @@ public record MethodAgentInvoker(Method method, AgentInstance agentInstance) imp
     }
 
     @Override
-    public AgenticListener listener() {
+    public AgentListener listener() {
         return ((AgentListenerProvider) agentInstance).listener();
     }
 }

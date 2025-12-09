@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AgenticMonitor implements AgenticListener {
+public class AgentMonitor implements AgentListener {
 
     private final Map<Object, List<MonitoredExecution>> successfulExecutions = new ConcurrentHashMap<>();
     private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();

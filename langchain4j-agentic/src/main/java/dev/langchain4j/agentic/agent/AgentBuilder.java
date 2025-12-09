@@ -10,9 +10,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
-import dev.langchain4j.agentic.observability.ComposedAgenticListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -88,7 +88,7 @@ public class AgentBuilder<T> {
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
-    AgenticListener agenticListener;
+    AgentListener agentListener;
 
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
@@ -392,13 +392,13 @@ public class AgentBuilder<T> {
         return defaultKeyValue(keyName(key), value);
     }
 
-    public AgentBuilder<T> listener(AgenticListener agenticListener) {
-        if (this.agenticListener == null) {
-            this.agenticListener = agenticListener;
-        } else if (this.agenticListener instanceof ComposedAgenticListener composed) {
-            composed.addListeners(agenticListener);
+    public AgentBuilder<T> listener(AgentListener agentListener) {
+        if (this.agentListener == null) {
+            this.agentListener = agentListener;
+        } else if (this.agentListener instanceof ComposedAgentListener composed) {
+            composed.addListeners(agentListener);
         } else {
-            this.agenticListener = new ComposedAgenticListener(this.agenticListener, agenticListener);
+            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
         }
         return this;
     }

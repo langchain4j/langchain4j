@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 
 public interface A2AClientBuilder<T> {
 
@@ -10,7 +10,7 @@ public interface A2AClientBuilder<T> {
 
     A2AClientBuilder<T> async(boolean async);
 
-    A2AClientBuilder<T> listener(AgenticListener agenticListener);
+    A2AClientBuilder<T> listener(AgentListener agentListener);
 
     T build();
 }

@@ -88,7 +88,7 @@ public class AgentInvocationHandler implements InvocationHandler {
         }
 
         if (method.getDeclaringClass() == AgentListenerProvider.class) {
-            return builder.agenticListener;
+            return builder.agentListener;
         }
 
         if (method.getDeclaringClass() == Object.class) {

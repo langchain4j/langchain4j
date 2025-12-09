@@ -3,7 +3,7 @@ package dev.langchain4j.agentic.a2a;
 import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -54,7 +54,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private String outputKey;
     private boolean async;
 
-    private AgenticListener agenticListener;
+    private AgentListener agentListener;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
@@ -107,7 +107,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                         }
 
                         if (method.getDeclaringClass() == AgentListenerProvider.class) {
-                            return agenticListener;
+                            return agentListener;
                         }
 
                         if (method.getDeclaringClass() == A2AClientInstance.class) {
@@ -213,8 +213,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> listener(AgenticListener agenticListener) {
-        this.agenticListener = agenticListener;
+    public DefaultA2AClientBuilder<T> listener(AgentListener agentListener) {
+        this.agentListener = agentListener;
         return this;
     }
 }

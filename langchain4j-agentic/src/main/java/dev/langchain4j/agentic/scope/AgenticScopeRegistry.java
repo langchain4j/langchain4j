@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.Set;
 
-import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticScopeDestroyed;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgenticScopeDestroyed;
 
 /**
  * Singleton registry for managing AgenticScope instances.
@@ -67,12 +67,12 @@ public class AgenticScopeRegistry {
         update(agenticScope);
     }
 
-    public boolean evict(Object memoryId, AgenticListener listener) {
+    public boolean evict(Object memoryId, AgentListener listener) {
         AgenticScopeKey key = new AgenticScopeKey(agentId, memoryId);
         DefaultAgenticScope agenticScope = inMemoryAgenticScope.remove(key);
         boolean removed = agenticScope != null;
         if (removed) {
-            onAgenticScopeDestroyed(listener, agenticScope);
+            beforeAgenticScopeDestroyed(listener, agenticScope);
         }
         if (hasStore()) {
             return store.delete(key) || removed;

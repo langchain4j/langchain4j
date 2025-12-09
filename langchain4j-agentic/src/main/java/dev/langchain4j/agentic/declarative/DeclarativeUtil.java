@@ -4,7 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.agentic.observability.AgenticListener;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -98,7 +98,7 @@ public class DeclarativeUtil {
 
         getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgenticListener.class);
+                    checkReturnType(listenerMethod, AgentListener.class);
                     agentBuilder.listener(invokeStatic(listenerMethod));
                 });
 
