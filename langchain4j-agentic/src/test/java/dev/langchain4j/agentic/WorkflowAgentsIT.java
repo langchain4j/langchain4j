@@ -498,12 +498,12 @@ public class WorkflowAgentsIT {
         MonitoredExecution execution = monitor.successfulExecutionsFor(agenticScope).get(0);
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
-        AgentInvocation topLevelCall = execution.topLevelInvocations();
-        assertThat(topLevelCall.inputs()).containsKey("topic").containsKey("style");
+        AgentInvocation topLevelInvocation = execution.topLevelInvocations();
+        assertThat(topLevelInvocation.inputs()).containsKey("topic").containsKey("style");
 
-        assertThat(topLevelCall.nestedInvocations()).hasSize(2);
-        assertThat(topLevelCall.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
-        assertThat(topLevelCall.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
+        assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
+        assertThat(topLevelInvocation.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
     }
@@ -871,13 +871,13 @@ public class WorkflowAgentsIT {
     private static void checkMonitoredExecution(AgentMonitor monitor, Object memoryId, String expertName) {
         List<MonitoredExecution> executions1 = monitor.successfulExecutionsFor(memoryId);
         assertThat(executions1).hasSize(1);
-        List<AgentInvocation> sequenceCalls = executions1.get(0).topLevelInvocations().nestedInvocations();
-        assertThat(sequenceCalls).hasSize(2);
-        assertThat(sequenceCalls.get(0).agent().name()).isEqualTo("classify");
-        assertThat(sequenceCalls.get(1).agent().name()).isEqualTo("router");
-        List<AgentInvocation> routerCalls = sequenceCalls.get(1).nestedInvocations();
-        assertThat(routerCalls).hasSize(1);
-        assertThat(routerCalls.get(0).agent().name()).isEqualTo(expertName);
+        List<AgentInvocation> sequenceInvocations = executions1.get(0).topLevelInvocations().nestedInvocations();
+        assertThat(sequenceInvocations).hasSize(2);
+        assertThat(sequenceInvocations.get(0).agent().name()).isEqualTo("classify");
+        assertThat(sequenceInvocations.get(1).agent().name()).isEqualTo("router");
+        List<AgentInvocation> routerInvocations = sequenceInvocations.get(1).nestedInvocations();
+        assertThat(routerInvocations).hasSize(1);
+        assertThat(routerInvocations.get(0).agent().name()).isEqualTo(expertName);
     }
 
     @Test

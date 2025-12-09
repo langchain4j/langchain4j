@@ -432,10 +432,10 @@ public class DeclarativeAgentIT {
         System.out.println(execution);
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
-        AgentInvocation topLevelCall = execution.topLevelInvocations();
-        assertThat(topLevelCall.agent().name()).isEqualTo("plan");
-        assertThat(topLevelCall.inputs()).containsKey("mood").containsValue("romantic");
-        assertThat(topLevelCall.nestedInvocations()).hasSize(2);
+        AgentInvocation topLevelInvocation = execution.topLevelInvocations();
+        assertThat(topLevelInvocation.agent().name()).isEqualTo("plan");
+        assertThat(topLevelInvocation.inputs()).containsKey("mood").containsValue("romantic");
+        assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
     }
 
     public interface SupervisorStoryCreator {
