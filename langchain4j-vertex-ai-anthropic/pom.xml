@@ -70,14 +70,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Retry flaky tests -->
-        <dependency>
-            <groupId>org.junit-pioneer</groupId>
-            <artifactId>junit-pioneer</artifactId>
-            <version>1.9.1</version>
-            <scope>test</scope>
-        </dependency>
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
