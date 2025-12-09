@@ -11,12 +11,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.Test;
-import org.mockito.NotExtensible;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.junit.jupiter.api.Test;
+import org.mockito.NotExtensible;
 
 class AiServicesTest {
 
@@ -37,6 +37,7 @@ class AiServicesTest {
 
     private final Assistant assistant =
             AiServices.builder(Assistant.class).chatModel(chatModel).build();
+
     private <T> T buildService(Class<T> type) {
         return AiServices.builder(type).chatModel(chatModel).build();
     }
@@ -47,6 +48,7 @@ class AiServicesTest {
                         .aiMessage(AiMessage.builder().text("Hi").build())
                         .build());
     }
+
     @Test
     void should_not_call_chatModel_when_Object_methods_are_called() throws Exception {
 
@@ -140,7 +142,6 @@ class AiServicesTest {
         assertThat(assistant).isInstanceOf(Assistant.class);
         assertThat(Assistant.class.isAssignableFrom(assistant.getClass())).isTrue();
     }
-
 
     /**
      * Regression test for https://github.com/langchain4j/langchain4j/issues/3091

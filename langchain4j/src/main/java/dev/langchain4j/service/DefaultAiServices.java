@@ -568,6 +568,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
         return Optional.empty();
     }
+
     private static boolean hasAnyValidAnnotation(Parameter parameter) {
         for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
             if (parameter.getAnnotation(a) != null) {
@@ -577,6 +578,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         return false;
     }
+
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
