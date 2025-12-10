@@ -272,8 +272,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
          * <p>
          * Defaults to "reasoning_content" (snake_case).
          * <p>
-         * Note: Currently, only "reasoning_content" is fully supported. Custom field names may require
-         * additional serialization configuration.
          */
         public Builder reasoningContentFieldName(String reasoningContentFieldName) {
             this.reasoningContentFieldName = reasoningContentFieldName;
