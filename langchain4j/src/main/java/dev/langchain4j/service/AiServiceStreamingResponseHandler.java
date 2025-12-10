@@ -110,6 +110,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             TokenUsage tokenUsage,
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
+            Integer executionsLeft,
             ToolArgumentsErrorHandler toolArgumentsErrorHandler,
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
@@ -142,7 +143,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.executionsLeft = new AtomicInteger(context.toolService.maxSequentialToolsInvocations());
+        this.executionsLeft = new AtomicInteger(executionsLeft);
     }
 
     @Override
@@ -240,6 +241,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (aiMessage.hasToolExecutionRequests()) {
 
+            final int toolExecutionRequestSize =
+                    aiMessage.toolExecutionRequests().size();
+            if (executionsLeft.get() < toolExecutionRequestSize) {
+                throw runtime(
+                        "Something is wrong, exceeded %s sequential tool executions",
+                        context.toolService.maxSequentialToolsInvocations());
+            } else {
+                executionsLeft.set(executionsLeft.get() - toolExecutionRequestSize);
+            }
+
             if (intermediateResponseHandler != null) {
                 intermediateResponseHandler.accept(chatResponse);
             }
@@ -311,6 +322,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors,
+                    executionsLeft.get(),
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
                     toolExecutor,
@@ -379,11 +391,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleBeforeTool(ToolExecutionRequest request) {
-        if (executionsLeft.getAndDecrement() <= 0) {
-            throw runtime(
-                    "Something is wrong, exceeded %s sequential tool executions",
-                    context.toolService.maxSequentialToolsInvocations());
-        }
         if (beforeToolExecutionHandler != null) {
             BeforeToolExecution beforeToolExecution =
                     BeforeToolExecution.builder().request(request).build();

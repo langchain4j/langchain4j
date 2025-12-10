@@ -1361,7 +1361,23 @@ class StreamingAiServicesWithToolsIT {
                                 A: The sum is 5.
                                 """)
         public Integer add(Integer a, Integer b) {
+            System.out.println("计算了 add " + a + " and " + b);
             return a + b;
+        }
+
+        @Tool(
+                name = "subtract",
+                value =
+                        """
+                                Subtract two numbers. The result should be like this:
+                                The difference is {result}.
+                                e.g.
+                                Q: subtract 2 and 3
+                                A: The difference is -1.
+                                """)
+        public Integer subtract(Integer a, Integer b) {
+            System.out.println("计算了 subtract " + a + " and " + b);
+            return a - b;
         }
     }
 
@@ -1416,7 +1432,7 @@ class StreamingAiServicesWithToolsIT {
         try {
             CompletableFuture<ChatResponse> future = new CompletableFuture<>();
             demoService
-                    .chat("calculate the sum of 1 and 2, 3 and 4, 5 and 6.")
+                    .chat("calculate the result of (1+5)-(2+6)")
                     .beforeToolExecution(toolExecutionRequest -> {
                         System.out.println("beforeToolExecution: " + toolExecutionRequest);
                         final int index = n.incrementAndGet();
