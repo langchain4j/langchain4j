@@ -51,6 +51,16 @@ public interface InvocationContext {
     InvocationParameters invocationParameters();
 
     /**
+     * The number of executions left
+     */
+    Integer executionsLeft();
+
+    /**
+     * Decreases the number of executions left
+     */
+    void decreaseExecutionsLeft();
+
+    /**
      * LangChain4j managed parameters
      * @since 1.8.0
      */
@@ -92,6 +102,7 @@ public interface InvocationContext {
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
+        private Integer executionsLeft;
 
         protected Builder() {}
 
@@ -104,6 +115,7 @@ public interface InvocationContext {
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
+            executionsLeft(invocationContext.executionsLeft());
         }
 
         /**
@@ -173,7 +185,8 @@ public interface InvocationContext {
         /**
          * Sets the LC4j managed parameters for the builder.
          */
-        public Builder managedParameters(Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
+        public Builder managedParameters(
+                Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
             this.managedParameters = managedParameters;
             return this;
         }
@@ -183,6 +196,14 @@ public interface InvocationContext {
          */
         public Builder timestamp(Instant timestamp) {
             this.timestamp = timestamp;
+            return this;
+        }
+
+        /**
+         * Sets the number of executions left for the builder.
+         */
+        public Builder executionsLeft(Integer executionsLeft) {
+            this.executionsLeft = executionsLeft;
             return this;
         }
 
@@ -232,6 +253,10 @@ public interface InvocationContext {
 
         public Instant timestamp() {
             return timestamp;
+        }
+
+        public Integer executionsLeft() {
+            return executionsLeft;
         }
     }
 }

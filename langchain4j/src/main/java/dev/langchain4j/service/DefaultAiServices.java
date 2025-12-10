@@ -140,6 +140,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .invocationParameters(invocationParameters)
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
+                                .executionsLeft(context.toolService.maxSequentialToolsInvocations())
                                 .build();
                         try {
                             return invoke(method, args, invocationContext);

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @since 1.6.0
@@ -20,6 +21,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
+    private final AtomicInteger executionsLeft;
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
@@ -30,6 +32,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
+        this.executionsLeft = new AtomicInteger(builder.executionsLeft());
     }
 
     @Override
@@ -63,6 +66,16 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
+    public Integer executionsLeft() {
+        return executionsLeft.get();
+    }
+
+    @Override
+    public void decreaseExecutionsLeft() {
+        executionsLeft.decrementAndGet();
+    }
+
+    @Override
     public Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters() {
         return managedParameters;
     }
@@ -84,7 +97,8 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
-                && Objects.equals(timestamp, that.timestamp);
+                && Objects.equals(timestamp, that.timestamp)
+                && Objects.equals(executionsLeft, that.executionsLeft);
     }
 
     @Override
@@ -97,20 +111,21 @@ public class DefaultInvocationContext implements InvocationContext {
                 chatMemoryId,
                 invocationParameters,
                 managedParameters,
-                timestamp);
+                timestamp,
+                executionsLeft);
     }
 
     @Override
     public String toString() {
-        return "DefaultInvocationContext{" +
-                "invocationId=" + invocationId +
-                ", interfaceName='" + interfaceName + '\'' +
-                ", methodName='" + methodName + '\'' +
-                ", methodArguments=" + methodArguments +
-                ", chatMemoryId=" + chatMemoryId +
-                ", invocationParameters=" + invocationParameters +
-                ", managedParameters=" + managedParameters +
-                ", timestamp=" + timestamp +
-                '}';
+        return "DefaultInvocationContext{" + "invocationId="
+                + invocationId + ", interfaceName='"
+                + interfaceName + '\'' + ", methodName='"
+                + methodName + '\'' + ", methodArguments="
+                + methodArguments + ", chatMemoryId="
+                + chatMemoryId + ", invocationParameters="
+                + invocationParameters + ", managedParameters="
+                + managedParameters + ", timestamp="
+                + timestamp + ", executionsLeft="
+                + executionsLeft + '}';
     }
 }

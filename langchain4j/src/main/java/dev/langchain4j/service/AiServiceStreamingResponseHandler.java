@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -373,6 +374,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleBeforeTool(ToolExecutionRequest request) {
+        if (invocationContext.executionsLeft() == 0) {
+            throw Exceptions.runtime(
+                    "Something is wrong, exceeded %s sequential tool executions",
+                    context.toolService.maxSequentialToolsInvocations());
+        }
         if (beforeToolExecutionHandler != null) {
             BeforeToolExecution beforeToolExecution =
                     BeforeToolExecution.builder().request(request).build();
@@ -381,6 +387,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleAfterTool(ToolExecutionRequest request, ToolExecutionResult result) {
+        invocationContext.decreaseExecutionsLeft();
         if (toolExecutionHandler != null) {
             ToolExecution toolExecution =
                     ToolExecution.builder().request(request).result(result).build();
