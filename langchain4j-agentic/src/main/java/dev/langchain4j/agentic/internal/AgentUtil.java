@@ -25,7 +25,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,18 +99,27 @@ public class AgentUtil {
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+        return new AgentExecutor(
+                nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
     }
 
-    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+    private static AgentInvoker nonAiAgentInvoker(
+            Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
                 : AgentInvoker.fromMethod(
-                        new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
-                                name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
+                        new NonAiAgentSpecification(
+                                agenticMethod.getDeclaringClass(),
+                                name,
+                                agentId,
+                                description,
+                                agenticMethod.getGenericReturnType(),
+                                annotation.outputKey(),
+                                annotation.async(),
                                 argumentsFromMethod(agenticMethod),
-                                x -> {},x -> {}),
-                agenticMethod);
+                                x -> {},
+                                x -> {}),
+                        agenticMethod);
     }
 
     public static AgentExecutor agentToExecutor(AgentSpecification agent) {
@@ -267,8 +278,46 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                new Class<?>[] {
+                    agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class
+                },
                 invocationHandler);
+    }
+
+    public static boolean hasStreamingAgent(Collection<AgentInstance> agentInstances) {
+        for (AgentInstance instance : agentInstances) {
+            if (instance.isStreaming()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean allHaveSameOutput(Collection<AgentInstance> agentInstances) {
+        HashSet<String> set = new HashSet<>();
+        for (AgentInstance instance : agentInstances) {
+            set.add(instance.outputKey());
+        }
+        return set.size() == 1;
+    }
+
+    public static boolean isAllStreamingAgent(Collection<AgentInstance> agentInstances) {
+        for (AgentInstance instance : agentInstances) {
+            if (!instance.isStreaming()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean isOnlyLastStreamingAgent(List<AgentInstance> agentInstances) {
+        List<AgentInstance> instances = agentInstances.subList(0, agentInstances.size() - 1);
+        return !hasStreamingAgent(instances)
+                && agentInstances.get(agentInstances.size() - 1).isStreaming();
+    }
+
+    public static AgentInstance getLastAgent(List<AgentInstance> agentInstances) {
+        return agentInstances.get(agentInstances.size() - 1);
     }
 
     public static Map<String, Class<?>> agenticSystemDataTypes(AgentInstance rootAgent) {
@@ -300,9 +349,8 @@ public class AgentUtil {
             } else if (keyClass.isAssignableFrom(existingType)) {
                 dataTypes.put(name, keyClass);
             } else {
-                throw new AgenticSystemConfigurationException(
-                        "Conflicting types for key '" + name + "': " +
-                                existingType.getName() + " and " + keyClass.getName());
+                throw new AgenticSystemConfigurationException("Conflicting types for key '" + name + "': "
+                        + existingType.getName() + " and " + keyClass.getName());
             }
         }
     }
