@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -24,6 +25,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -67,11 +71,11 @@ public class SupervisorAgentIT {
 
         @UserMessage(
                 """
-            Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
-            and nothing else, avoiding any explanation.
+                        Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
+                        and nothing else, avoiding any explanation.
 
-            The user request is: '{{request}}'.
-            """)
+                        The user request is: '{{request}}'.
+                        """)
         @Agent("An agent that categorizes the user request")
         String categorizeRequest(@V("request") String request);
     }
@@ -109,23 +113,23 @@ public class SupervisorAgentIT {
 
         @UserMessage(
                 """
-            You are a banker that executes user request crediting or withdrawing US dollars (USD) from an account,
-            using the tools provided and returning the final balance.
+                        You are a banker that executes user request crediting or withdrawing US dollars (USD) from an account,
+                        using the tools provided and returning the final balance.
 
-            The user request is: '{{it}}'.
-            """)
+                        The user request is: '{{it}}'.
+                        """)
         String execute(@P("request") String request);
     }
 
     public interface WithdrawAgent {
         @SystemMessage(
                 """
-            You are a banker that can only withdraw US dollars (USD) from a user account.
-            """)
+                        You are a banker that can only withdraw US dollars (USD) from a user account.
+                        """)
         @UserMessage(
                 """
-            Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
-            """)
+                        Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
+                        """)
         @Agent("A banker that withdraw USD from an account")
         String withdraw(@V("withdrawUser") String withdrawUser, @V("amountInUSD") Double amountInUSD);
     }
@@ -133,12 +137,12 @@ public class SupervisorAgentIT {
     public interface CreditAgent {
         @SystemMessage(
                 """
-            You are a banker that can only credit US dollars (USD) to a user account.
-            """)
+                        You are a banker that can only credit US dollars (USD) to a user account.
+                        """)
         @UserMessage(
                 """
-            Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
-            """)
+                        Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
+                        """)
         @Agent("A banker that credit USD to an account")
         String credit(@V("creditUser") String creditUser, @V("amountInUSD") Double amountInUSD);
     }
@@ -233,10 +237,10 @@ public class SupervisorAgentIT {
     public interface ExchangeAgent {
         @UserMessage(
                 """
-            You are an operator exchanging money in different currencies.
-            Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
-            returning only the final amount provided by the tool as it is and nothing else.
-            """)
+                        You are an operator exchanging money in different currencies.
+                        Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
+                        returning only the final amount provided by the tool as it is and nothing else.
+                        """)
         @Agent(outputKey = "exchange")
         Double exchange(
                 @V("originalCurrency") String originalCurrency,
@@ -385,7 +389,8 @@ public class SupervisorAgentIT {
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
     }
 
-    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {}
+    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {
+    }
 
     public interface TypedBankerAgent {
 
@@ -594,7 +599,7 @@ public class SupervisorAgentIT {
                 .map(AiMessage::text)
                 .map(text -> {
                     int start = text.indexOf("\"agentName\":") + "agentName:".length();
-                    int agentNameStart = text.indexOf('"', start + 1)+1;
+                    int agentNameStart = text.indexOf('"', start + 1) + 1;
                     return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
                 }).collect(Collectors.toSet());
 
@@ -622,4 +627,42 @@ public class SupervisorAgentIT {
         String result = colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
         assertThat(result).containsIgnoringCase("purple");
     }
+
+
+    static class PlannerModelReturningDoneWithoutResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {}
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void supervisor_should_not_throw_when_done_has_no_response_argument() {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithoutResponse())
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .build();
+
+        assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
 }
