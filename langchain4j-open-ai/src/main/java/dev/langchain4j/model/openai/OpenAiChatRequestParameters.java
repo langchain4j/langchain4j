@@ -23,6 +23,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, String> metadata;
     private final String serviceTier;
     private final String reasoningEffort;
+    private final Boolean includeReasoningContentInRequests;
+    private final String reasoningContentFieldName;
     private final Map<String, Object> customParameters;
 
     private OpenAiChatRequestParameters(Builder builder) {
@@ -36,6 +38,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
         this.reasoningEffort = builder.reasoningEffort;
+        this.includeReasoningContentInRequests = builder.includeReasoningContentInRequests;
+        this.reasoningContentFieldName = builder.reasoningContentFieldName;
         this.customParameters = copy(builder.customParameters);
     }
 
@@ -75,6 +79,14 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         return reasoningEffort;
     }
 
+    public Boolean includeReasoningContentInRequests() {
+        return includeReasoningContentInRequests;
+    }
+
+    public String reasoningContentFieldName() {
+        return reasoningContentFieldName;
+    }
+
     public Map<String, Object> customParameters() {
         return customParameters;
     }
@@ -102,6 +114,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(metadata, that.metadata)
                 && Objects.equals(serviceTier, that.serviceTier)
                 && Objects.equals(reasoningEffort, that.reasoningEffort)
+                && Objects.equals(includeReasoningContentInRequests, that.includeReasoningContentInRequests)
+                && Objects.equals(reasoningContentFieldName, that.reasoningContentFieldName)
                 && Objects.equals(customParameters, that.customParameters);
     }
 
@@ -118,6 +132,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata,
                 serviceTier,
                 reasoningEffort,
+                includeReasoningContentInRequests,
+                reasoningContentFieldName,
                 customParameters);
     }
 
@@ -143,7 +159,9 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 + store + ", metadata="
                 + metadata + ", serviceTier="
                 + quoted(serviceTier) + ", reasoningEffort="
-                + quoted(reasoningEffort) + ", customParameters="
+                + quoted(reasoningEffort) + ", includeReasoningContentInRequests="
+                + includeReasoningContentInRequests + ", reasoningContentFieldName="
+                + quoted(reasoningContentFieldName) + ", customParameters="
                 + customParameters + '}';
     }
 
@@ -162,6 +180,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
+        private Boolean includeReasoningContentInRequests;
+        private String reasoningContentFieldName;
         private Map<String, Object> customParameters;
 
         @Override
@@ -177,6 +197,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
+                includeReasoningContentInRequests(getOrDefault(openAiParameters.includeReasoningContentInRequests(), includeReasoningContentInRequests));
+                reasoningContentFieldName(getOrDefault(openAiParameters.reasoningContentFieldName(), reasoningContentFieldName));
                 customParameters(getOrDefault(openAiParameters.customParameters(), customParameters));
             }
             return this;
@@ -228,6 +250,33 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Controls whether to include reasoning_content in assistant messages when sending requests to the API.
+         * This is required for some APIs (like DeepSeek) when using thinking mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link dev.langchain4j.data.message.AiMessage#thinking()})
+         * will be included in the request when converting messages to API format.
+         */
+        public Builder includeReasoningContentInRequests(Boolean includeReasoningContentInRequests) {
+            this.includeReasoningContentInRequests = includeReasoningContentInRequests;
+            return this;
+        }
+
+        /**
+         * Sets the field name to use for reasoning content in API requests.
+         * <p>
+         * Defaults to "reasoning_content" (snake_case).
+         * <p>
+         * Note: Currently, only "reasoning_content" is fully supported. Custom field names may require
+         * additional serialization configuration.
+         */
+        public Builder reasoningContentFieldName(String reasoningContentFieldName) {
+            this.reasoningContentFieldName = reasoningContentFieldName;
             return this;
         }
 
