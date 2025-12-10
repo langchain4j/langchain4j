@@ -525,16 +525,17 @@ public class OpenAiUtils {
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
             Boolean strictJsonSchema) {
-        Boolean includeReasoningContent = parameters.includeReasoningContentInRequests();
+        Boolean sendThinking = parameters.sendThinking();
         String reasoningContentFieldName = parameters.reasoningContentFieldName();
         // Default to "reasoning_content" if not specified
         if (reasoningContentFieldName == null) {
             reasoningContentFieldName = "reasoning_content";
         }
+
         return ChatCompletionRequest.builder()
                 .messages(toOpenAiMessages(
                         chatRequest.messages(),
-                        includeReasoningContent,
+                        sendThinking,
                         reasoningContentFieldName))
                 // common parameters
                 .model(parameters.modelName())

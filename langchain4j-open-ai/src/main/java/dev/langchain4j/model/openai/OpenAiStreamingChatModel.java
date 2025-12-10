@@ -117,7 +117,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
-                .includeReasoningContentInRequests(getOrDefault(builder.includeReasoningContentInRequests, openAiParameters.includeReasoningContentInRequests()))
+                .sendThinking(getOrDefault(builder.sendThinking, openAiParameters.sendThinking()))
                 .reasoningContentFieldName(getOrDefault(builder.reasoningContentFieldName, openAiParameters.reasoningContentFieldName()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
@@ -276,7 +276,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
-        private Boolean includeReasoningContentInRequests;
+        private Boolean sendThinking;
         private String reasoningContentFieldName;
         private Boolean returnThinking;
         private Duration timeout;
@@ -462,8 +462,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
          * will be included in the request when converting messages to API format.
          */
-        public OpenAiStreamingChatModelBuilder includeReasoningContentInRequests(Boolean includeReasoningContentInRequests) {
-            this.includeReasoningContentInRequests = includeReasoningContentInRequests;
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 
