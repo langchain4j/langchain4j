@@ -46,10 +46,10 @@ class McpResourcesAsToolsHttpTransportIT extends McpResourcesAsToolsTestBase {
             mcpClientBob.close();
         }
         if (processAlice != null && processAlice.isAlive()) {
-            processAlice.destroyForcibly();
+            destroyProcessTree(processAlice);
         }
         if (processBob != null && processBob.isAlive()) {
-            processBob.destroyForcibly();
+            destroyProcessTree(processBob);
         }
     }
 }
