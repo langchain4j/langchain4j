@@ -15,10 +15,15 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.NotExtensible;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -39,6 +44,14 @@ class AiServicesUserMessageConfigTest {
     }
 
     static class MyInvocationParameters extends InvocationParameters {}
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    private @interface ExternalAnnotation1 {}
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    private @interface ExternalAnnotation2 {}
 
     interface AiService {
 
@@ -82,6 +95,11 @@ class AiServicesUserMessageConfigTest {
 
         String chat15(@UserMessage String userMessage, @UserMessage Content content);
 
+        String chat16(@NotExtensible String msg);
+
+        String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
+        
+        
         // illegal configuration
 
         String illegalChat1();
@@ -399,6 +417,40 @@ class AiServicesUserMessageConfigTest {
                 .messages(userMessage(TextContent.from("Hello!"), TextContent.from("How are you?")))
                 .build());
         verify(chatModel).supportedCapabilities();
+    }
+
+    /**
+     * Regression test for https://github.com/langchain4j/langchain4j/issues/3091
+     * Verifies that single-argument defaulting still works when a non-langchain4j
+     * annotation is present on the parameter.
+     *
+     *  Using @NotExtensible here on purpose as a non-langchain4j annotation.
+     * It is already available on the classpath; no additional dependency is added for this test.
+     */
+    @Test
+    void user_message_configuration_16() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat16("What is the capital of Germany?")).containsIgnoringCase("Berlin");
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+
+    }
+
+    @Test
+    void user_message_configuration_17() {
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(aiService.chat17("What is the capital of Germany?")).containsIgnoringCase("Berlin");
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+
     }
 
     @Test
