@@ -71,11 +71,11 @@ public class SupervisorAgentIT {
 
         @UserMessage(
                 """
-                        Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
-                        and nothing else, avoiding any explanation.
+            Categorize the user request returning only one word among 'legal', 'medical' or 'technical',
+            and nothing else, avoiding any explanation.
 
-                        The user request is: '{{request}}'.
-                        """)
+            The user request is: '{{request}}'.
+            """)
         @Agent("An agent that categorizes the user request")
         String categorizeRequest(@V("request") String request);
     }
@@ -113,23 +113,23 @@ public class SupervisorAgentIT {
 
         @UserMessage(
                 """
-                        You are a banker that executes user request crediting or withdrawing US dollars (USD) from an account,
-                        using the tools provided and returning the final balance.
+            You are a banker that executes user request crediting or withdrawing US dollars (USD) from an account,
+            using the tools provided and returning the final balance.
 
-                        The user request is: '{{it}}'.
-                        """)
+            The user request is: '{{it}}'.
+            """)
         String execute(@P("request") String request);
     }
 
     public interface WithdrawAgent {
         @SystemMessage(
                 """
-                        You are a banker that can only withdraw US dollars (USD) from a user account.
-                        """)
+            You are a banker that can only withdraw US dollars (USD) from a user account.
+            """)
         @UserMessage(
                 """
-                        Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
-                        """)
+            Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
+            """)
         @Agent("A banker that withdraw USD from an account")
         String withdraw(@V("withdrawUser") String withdrawUser, @V("amountInUSD") Double amountInUSD);
     }
@@ -137,12 +137,12 @@ public class SupervisorAgentIT {
     public interface CreditAgent {
         @SystemMessage(
                 """
-                        You are a banker that can only credit US dollars (USD) to a user account.
-                        """)
+            You are a banker that can only credit US dollars (USD) to a user account.
+            """)
         @UserMessage(
                 """
-                        Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
-                        """)
+            Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
+            """)
         @Agent("A banker that credit USD to an account")
         String credit(@V("creditUser") String creditUser, @V("amountInUSD") Double amountInUSD);
     }
@@ -237,10 +237,10 @@ public class SupervisorAgentIT {
     public interface ExchangeAgent {
         @UserMessage(
                 """
-                        You are an operator exchanging money in different currencies.
-                        Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
-                        returning only the final amount provided by the tool as it is and nothing else.
-                        """)
+            You are an operator exchanging money in different currencies.
+            Use the tool to exchange {{amount}} {{originalCurrency}} into {{targetCurrency}}
+            returning only the final amount provided by the tool as it is and nothing else.
+            """)
         @Agent(outputKey = "exchange")
         Double exchange(
                 @V("originalCurrency") String originalCurrency,
@@ -389,8 +389,7 @@ public class SupervisorAgentIT {
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
     }
 
-    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {
-    }
+    public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {}
 
     public interface TypedBankerAgent {
 
@@ -599,7 +598,7 @@ public class SupervisorAgentIT {
                 .map(AiMessage::text)
                 .map(text -> {
                     int start = text.indexOf("\"agentName\":") + "agentName:".length();
-                    int agentNameStart = text.indexOf('"', start + 1) + 1;
+                    int agentNameStart = text.indexOf('"', start + 1)+1;
                     return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
                 }).collect(Collectors.toSet());
 
