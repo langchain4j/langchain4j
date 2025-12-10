@@ -421,10 +421,8 @@ public class OpenAiChatModel implements ChatModel {
         /**
          * Sets the field name to use for reasoning content in API requests.
          * <p>
-         * Defaults to "reasoning_content" (snake_case).
+         * Defaults to "reasoning_content".
          * <p>
-         * Note: Currently, only "reasoning_content" is fully supported. Custom field names may require
-         * additional serialization configuration.
          */
         public OpenAiChatModelBuilder reasoningContentFieldName(String reasoningContentFieldName) {
             this.reasoningContentFieldName = reasoningContentFieldName;
