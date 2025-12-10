@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.9.0-beta16-SNAPSHOT</version>
+    <version>1.10.0-beta18-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <langchain4j.beta.version>1.9.0-beta16-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
@@ -44,7 +44,7 @@
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
         <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1761317321</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1764328820</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.1.0-Beta</dokka.version>
@@ -58,7 +58,7 @@
         <elastic.version>8.15.3</elastic.version>
         <github-api.version>1.329</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
-        <infinispan.version>16.0.1</infinispan.version>
+        <infinispan.version>16.0.3</infinispan.version>
         <jackson.version>2.20.1</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
@@ -73,7 +73,7 @@
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.19.0</mockito.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <openai-java.version>4.0.0</openai-java.version>
+        <openai-java.version>4.8.0</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <retrofit.version>2.9.0</retrofit.version>
@@ -342,12 +342,6 @@
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit-pioneer</groupId>
-            <artifactId>junit-pioneer</artifactId>
-            <version>2.3.0</version>
             <scope>test</scope>
         </dependency>
         <!-- Kotlin test dependencies -->

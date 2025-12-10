@@ -561,10 +561,8 @@ For instance the `EveningPlannerAgent` implementing the parallel workflow progra
 ```java
 public interface EveningPlannerAgent {
 
-    @ParallelAgent(outputKey = "plans", subAgents = {
-            @SubAgent(type = FoodExpert.class, outputKey = "meals"),
-            @SubAgent(type = MovieExpert.class, outputKey = "movies")
-    })
+    @ParallelAgent( outputKey = "plans", 
+            subAgents = { FoodExpert.class, MovieExpert.class })
     List<EveningPlan> plan(@V("mood") String mood);
 
     @ParallelExecutor
@@ -608,7 +606,7 @@ public interface FoodExpert {
         For each meal, just give the name of the meal.
         Provide a list with the 3 items and nothing else.
         """)
-    @Agent
+    @Agent(outputKey = "meals")
     List<String> findMeal(@V("mood") String mood);
 
     @ChatModelSupplier
@@ -637,11 +635,8 @@ To give another example of this declarative API, let's redefine through it the `
 ```java
 public interface ExpertsAgent {
 
-    @ConditionalAgent(outputKey = "response", subAgents = {
-            @SubAgent(type = MedicalExpert.class, outputKey = "response"),
-            @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
-            @SubAgent(type = LegalExpert.class, outputKey = "response")
-    })
+    @ConditionalAgent(outputKey = "response", 
+            subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class })
     String askExpert(@V("request") String request);
 
     @ActivationCondition(MedicalExpert.class)
@@ -716,6 +711,92 @@ Map<String, Object> input = Map.of(
 
 String story = (String) novelCreator.invoke(input);
 ```
+
+## Strongly typed inputs and outputs
+
+Up to this point, all input and output keys used to pass data to and from agents have been identified by a simple `String`. However, this approach can be error-prone, as it relies on the correct spelling of those keys. Also in this way it is not possible to strongly bind these variables to a specific types, thus obliging to type checks and casts when reading their values from the `AgenticScope`. To avoid these issues, it is optionally allowed to define strongly typed input and output keys using the `TypedKey` interface.
+
+For instance, following this approach the input and output keys used in the experts routing example discussed when presenting the conditional workflow can be defined as follows:
+
+```java
+public static class UserRequest implements TypedKey<String> { }
+
+public static class ExpertResponse implements TypedKey<String> { }
+
+public static class Category implements TypedKey<RequestCategory> {
+    @Override
+    public Category defaultValue() {
+        return Category.UNKNOWN;
+    }
+}
+```
+
+Here both the `UserRequest` and `ExpertResponse` keys are strongly typed as `String`, while the `Category` key is typed as `RequestCategory` enum, and also provides a default value to be used when that key is not present in the `AgenticScope`. Using these typed keys, the `CategoryRouter` agent, used to classify the user's request, can be redefined as follows:
+
+```java
+public interface CategoryRouter {
+
+    @UserMessage("""
+        Analyze the following user request and categorize it as 'legal', 'medical' or 'technical'.
+        In case the request doesn't belong to any of those categories categorize it as 'unknown'.
+        Reply with only one of those words and nothing else.
+        The user request is: '{{UserRequest}}'.
+        """)
+    @Agent(description = "Categorizes a user request", typedOutputKey = Category.class)
+    RequestCategory classify(@K(UserRequest.class) String request);
+}
+```
+
+The argument of the `classify` method is now annotated with the `@K` annotation, indicating that its value must be taken from the `AgenticScope` variable identified by the `UserRequest` typed key. Similarly, the output of this agent is written to the `AgenticScope` variable identified by the `Category` typed key. Note that the prompt template has also been updated to use the name of the typed key, which by default corresponds to the simple name of the class implementing the `TypedKey` interface, `{{UserRequest}}` in this case, but this convention can be overridden also implementing the `name()` method of the `TypedKey` interface. In a similar way, one of the 3 expert agents, the `MedicalExpert` one, can be redefined as follows:
+
+```java
+public interface MedicalExpert {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{UserRequest}}.
+        """)
+    @Agent("A medical expert")
+    String medical(@K(UserRequest.class) String request);
+}
+```
+
+At this point it is possible to create the whole agentic system using these typed keys to identify the input and output variables in the `AgenticScope`.
+
+```java
+CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+        .chatModel(baseModel())
+        .build();
+
+MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+
+UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+        .subAgents(scope -> scope.readState(Category.class) == Category.MEDICAL, medicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == Category.LEGAL, legalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == Category.TECHNICAL, technicalExpert)
+        .build();
+
+ExpertChatbot expertChatbot = AgenticServices.sequenceBuilder(ExpertChatbot.class)
+        .subAgents(routerAgent, expertsAgent)
+        .outputKey(ExpertResponse.class)
+        .build();
+
+String response = expertChatbot.ask("I broke my leg what should I do");
+```
+
+The `routerAgent` doesn't need to programmatically specify the output key, since it is already defined in its interface through the `typedOutputKey` attribute of the `@Agent` annotation, while the 3 expert agents still need to specify it programmatically, since their interfaces don't define it, so as usual it is possible to use either one of the 2 approaches. Also, it worth to note that, when reading the values from the `AgenticScope`, like in the conditional workflow definition, there is no need to perform any type check or cast, since the typed keys already provide the necessary type information.
 
 ## Memory and context engineering
 

@@ -83,6 +83,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         GeminiCountTokensRequest countTokensRequestWithDummyContent = new GeminiCountTokensRequest(
                 null,
                 GeminiGenerateContentRequest.builder()
+                        .model("models/" + this.modelName)
                         .contents(singletonList(dummyContent))
                         .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false))
                         .build());

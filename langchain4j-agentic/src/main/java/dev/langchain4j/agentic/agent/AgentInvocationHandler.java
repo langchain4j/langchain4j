@@ -9,6 +9,7 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.List;
 
 public class AgentInvocationHandler implements InvocationHandler {
 
@@ -71,10 +72,14 @@ public class AgentInvocationHandler implements InvocationHandler {
 
         if (method.getDeclaringClass() == AgentInstance.class) {
             return switch (method.getName()) {
+                case "type" -> builder.agentServiceClass;
                 case "name" -> builder.name;
                 case "agentId" -> builder.agentId;
                 case "description" -> builder.description;
+                case "outputType" -> builder.agentReturnType;
                 case "outputKey" -> builder.outputKey;
+                case "arguments" -> builder.arguments;
+                case "subagents" -> List.of();
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on AgentInstance class : " + method.getName());

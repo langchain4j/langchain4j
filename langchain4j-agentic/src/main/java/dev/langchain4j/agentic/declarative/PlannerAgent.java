@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
+import dev.langchain4j.agentic.Agent;
+
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -8,21 +10,14 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of an agent based on a custom planner.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
  * {@code
  *     public interface PlannerBasedStoryCreator {
  *
- *         @PlannerAgent(
- *                 outputKey = "story",
- *                 subAgents = {
- *                     @SubAgent(type = CreativeWriter.class, outputKey = "story"),
- *                     @SubAgent(type = AudienceEditor.class, outputKey = "story"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *                 })
+ *         @PlannerAgent( outputKey = "story",
+ *                        subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *
  *         @PlannerSupplier
@@ -60,9 +55,18 @@ public @interface PlannerAgent {
     String outputKey() default "";
 
     /**
+     * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.
+     * It enforces type safety when retrieving the output from the agent's state and can be used in alternative
+     * to the {@code outputKey()} attribute. Note that only one of those two attributes can be used at a time.
+     *
+     * @return class representing the typed output variable.
+     */
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
+
+    /**
      * Array of sub-agents that will be invoked in sequence.
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }

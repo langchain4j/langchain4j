@@ -43,26 +43,6 @@ public class AzureModelBuilders {
                 .logRequestsAndResponses(true);
     }
 
-    public static AzureOpenAiLanguageModel.Builder languageModelBuilder() {
-        return AzureOpenAiLanguageModel.builder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName("gpt-35-turbo-instruct-0914")
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
-                .logRequestsAndResponses(false);
-    }
-
-    public static AzureOpenAiStreamingLanguageModel.Builder streamingLanguageModelBuilder() {
-        return AzureOpenAiStreamingLanguageModel.builder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName("gpt-35-turbo-instruct-0914")
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
-                .logRequestsAndResponses(true);
-    }
-
     public static AzureOpenAiEmbeddingModel.Builder embeddingModelBuilder() {
         return AzureOpenAiEmbeddingModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
