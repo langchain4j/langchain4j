@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
@@ -43,6 +44,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -86,6 +88,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
+
+    private final AtomicInteger executionsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -137,6 +141,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutor = toolExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
+
+        this.executionsLeft = new AtomicInteger(context.toolService.maxSequentialToolsInvocations());
     }
 
     @Override
@@ -373,6 +379,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleBeforeTool(ToolExecutionRequest request) {
+        if (executionsLeft.getAndDecrement() <= 0) {
+            throw runtime(
+                    "Something is wrong, exceeded %s sequential tool executions",
+                    context.toolService.maxSequentialToolsInvocations());
+        }
         if (beforeToolExecutionHandler != null) {
             BeforeToolExecution beforeToolExecution =
                     BeforeToolExecution.builder().request(request).build();
