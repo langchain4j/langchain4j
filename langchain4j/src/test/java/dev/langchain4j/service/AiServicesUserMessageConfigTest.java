@@ -7,11 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
-import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -98,8 +98,7 @@ class AiServicesUserMessageConfigTest {
         String chat16(@NotExtensible String msg);
 
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
-        
-        
+
         // illegal configuration
 
         String illegalChat1();
@@ -141,9 +140,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat1("What is the capital of Germany?")).containsIgnoringCase("Berlin");
@@ -155,9 +153,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_2() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
@@ -170,9 +167,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_2_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat2_1("What is the capital of Germany?", new InvocationParameters()))
@@ -187,9 +183,8 @@ class AiServicesUserMessageConfigTest {
         // given
         InvocationParameters invocationParameters = null;
 
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.chat2_1("does not matter", invocationParameters))
@@ -201,9 +196,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_2_2() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat2_2("What is the capital of Germany?", new MyInvocationParameters()))
@@ -216,9 +210,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_3() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat3("What is the capital of {{country}}?", "Germany"))
@@ -231,9 +224,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_4() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat4()).containsIgnoringCase("Berlin");
@@ -245,9 +237,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_5() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
@@ -259,9 +250,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_6() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat6("Germany")).containsIgnoringCase("Berlin");
@@ -273,9 +263,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_7() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat7("capital", "Germany")).containsIgnoringCase("Berlin");
@@ -287,9 +276,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_8() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
@@ -301,17 +289,18 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_9() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat9("Count the number of lamas in this image", imageContent);
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
+                        .build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -319,17 +308,18 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_10() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat10(List.of(imageContent));
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(userMessage(TextContent.from("How many lamas are there in this image?"), imageContent))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                userMessage(TextContent.from("How many lamas are there in this image?"), imageContent))
+                        .build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -337,17 +327,20 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_11() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat11(imageContent, "Count the number of lamas in this image", imageContent);
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(userMessage(imageContent, TextContent.from("Count the number of lamas in this image"), imageContent))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(
+                                imageContent,
+                                TextContent.from("Count the number of lamas in this image"),
+                                imageContent))
+                        .build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -355,9 +348,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_12() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat12(new MyObject("test123"));
@@ -371,9 +363,8 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_13() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat13(new MyObject("test123"));
@@ -387,17 +378,18 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_14() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat14(new MyObject("Count the number of lamas in this image"), imageContent);
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
+                        .build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -405,17 +397,17 @@ class AiServicesUserMessageConfigTest {
     void user_message_configuration_15() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when
         aiService.chat15("Hello!", TextContent.from("How are you?"));
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(userMessage(TextContent.from("Hello!"), TextContent.from("How are you?")))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(TextContent.from("Hello!"), TextContent.from("How are you?")))
+                        .build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -430,36 +422,31 @@ class AiServicesUserMessageConfigTest {
     @Test
     void user_message_configuration_16() {
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         assertThat(aiService.chat16("What is the capital of Germany?")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
-
     }
 
     @Test
     void user_message_configuration_17() {
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         assertThat(aiService.chat17("What is the capital of Germany?")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
-
     }
 
     @Test
     void illegal_user_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(aiService::illegalChat1)
@@ -471,9 +458,8 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_2() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("Germany"))
@@ -485,37 +471,36 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_3() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage(
+                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
     void illegal_user_message_configuration_4() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage(
+                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
     }
 
     @Test
     void illegal_user_message_configuration_5() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(aiService::illegalChat5)
@@ -527,9 +512,8 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_6() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat6("Hello"))
@@ -542,32 +526,32 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_7() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat7("Hello", new InvocationParameters()))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class " + AiService.class.getName() +
-                        " must be annotated with either " + UserMessage.class.getName() + ", " + V.class.getName() + ", " +
-                        MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " + InvocationParameters.class.getName());
+                .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class "
+                        + AiService.class.getName() + " must be annotated with either "
+                        + UserMessage.class.getName() + ", " + V.class.getName() + ", " + MemoryId.class.getName()
+                        + ", or " + UserName.class.getName() + ", or it should be of type "
+                        + InvocationParameters.class.getName());
     }
 
     @Test
     void illegal_user_message_configuration_8() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         InvocationParameters invocationParameters = new InvocationParameters();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The method 'illegalChat8' of the class " + AiService.class.getName() +
-                        " has more than one parameter of type " + InvocationParameters.class.getName());
+                .hasMessage("The method 'illegalChat8' of the class " + AiService.class.getName()
+                        + " has more than one parameter of type " + InvocationParameters.class.getName());
     }
 }
