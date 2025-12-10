@@ -32,7 +32,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
-        this.executionsLeft = new AtomicInteger(builder.executionsLeft());
+        this.executionsLeft = new AtomicInteger(Objects.requireNonNullElse(builder.executionsLeft(), -1));
     }
 
     @Override
@@ -98,7 +98,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
                 && Objects.equals(timestamp, that.timestamp)
-                && Objects.equals(executionsLeft, that.executionsLeft);
+                && Objects.equals(executionsLeft.get(), that.executionsLeft.get());
     }
 
     @Override
@@ -112,7 +112,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 invocationParameters,
                 managedParameters,
                 timestamp,
-                executionsLeft);
+                executionsLeft.get());
     }
 
     @Override
