@@ -121,7 +121,7 @@ class AwsDocumentConverter {
             schemaMap.put("properties", propertiesMap);
 
             List<String> required =
-                    new ArrayList<>(toolSpecification.parameters().properties().keySet());
+                    new ArrayList<>(toolSpecification.parameters().required());
             schemaMap.put("required", required);
         }
 
