@@ -577,6 +577,41 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_support_code_execution_tool() {
+
+        // given
+        Map<String, Object> codeExecutionTool = Map.of(
+                "type", "code_execution_20250825",
+                "name", "code_execution"
+        );
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("code-execution-2025-08-25")
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(codeExecutionTool)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Calculate the average of [1, 2, 3, 4, 5]"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body()).contains(codeExecutionTool.get("type").toString());
+
+        assertThat(chatResponse.aiMessage().text()).contains("3");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
     void should_support_web_search_tool() {
 
         // given
@@ -670,6 +705,8 @@ class AnthropicChatModelIT {
          assertThat(toolExecutionRequests).hasSize(1);
          assertThat(toolExecutionRequests.get(0).name()).isEqualTo(weatherTool.name());
      }
+
+     // TODO test programmatic tool calling
 
     static String randomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

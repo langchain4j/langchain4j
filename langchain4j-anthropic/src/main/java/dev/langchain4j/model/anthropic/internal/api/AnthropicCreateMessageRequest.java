@@ -17,7 +17,6 @@ import java.util.Map;
 @JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicCreateMessageRequest {
 
-    // TODO https://platform.claude.com/docs/en/build-with-claude/structured-outputs
     // TODO strict tools
 
     public String model;
