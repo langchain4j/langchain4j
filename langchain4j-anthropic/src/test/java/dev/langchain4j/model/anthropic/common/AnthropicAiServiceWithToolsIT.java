@@ -103,6 +103,88 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Test
+    void should_support_programmatic_tool_calling() { // TODO document
+
+        // given
+        Map<String, Object> codeExecutionTool = Map.of(
+                "type", "code_execution_20250825",
+                "name", "code_execution"
+        );
+
+        class Tools {
+
+            static final String DESCRIPTION = """
+                    Returns daily minimum and maximum temperatures recorded
+                    for a specified city for a specified number of previous days.
+                    Response format: [{"min":0.0,"max":10.0},{"min":0.0,"max":20.0},{"min":0.0,"max":30.0}]
+                    """;
+            static final String METADATA = "{\"allowed_callers\": [\"code_execution_20250825\"]}";
+
+            record TemperatureRange(double min, double max) {}
+
+            @Tool(value = DESCRIPTION, metadata = METADATA)
+            List<TemperatureRange> getMaxDailyTemperatures(String city, int days) {
+                if ("Munich".equals(city) && days == 5) {
+                    return List.of(
+                            new TemperatureRange(0.0, 1.0),
+                            new TemperatureRange(0.0, 2.0),
+                            new TemperatureRange(0.0, 3.0),
+                            new TemperatureRange(0.0, 4.0),
+                            new TemperatureRange(0.0, 5.0)
+                    );
+                }
+
+                throw new IllegalArgumentException("Unknown city: " + city + " or days: " + days);
+            }
+
+            @Tool(value = "Calculates the average of the specified list of numbers", metadata = METADATA)
+            Double average(List<Double> numbers) {
+                return numbers.stream()
+                        .mapToDouble(Double::doubleValue)
+                        .average()
+                        .orElseThrow();
+            }
+        }
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel chatModel = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .beta("advanced-tool-use-2025-11-20")
+                .serverTools(codeExecutionTool)
+                .sendToolMetadataKeys("allowed_callers")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        interface Assistant {
+
+            String chat(String userMessage);
+        }
+
+        Tools tools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("What was the average max temperature in Munich in the last 5 days?");
+
+        // then
+        assertThat(spyingHttpClient.requests().get(0).body())
+                .contains(codeExecutionTool.get("type").toString())
+                .contains("allowed_callers");
+
+        verify(tools).getMaxDailyTemperatures("Munich", 5);
+        verify(tools).average(List.of(1.0, 2.0, 3.0, 4.0, 5.0));
+        verifyNoMoreInteractions(tools);
+    }
+
+    @Test
     void should_support_tool_examples() { // TODO document
 
         // given

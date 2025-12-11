@@ -706,8 +706,6 @@ class AnthropicChatModelIT {
          assertThat(toolExecutionRequests.get(0).name()).isEqualTo(weatherTool.name());
      }
 
-     // TODO test programmatic tool calling
-
     static String randomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         Random random = new Random();

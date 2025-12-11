@@ -17,8 +17,6 @@ import java.util.Map;
 @JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicCreateMessageRequest {
 
-    // TODO strict tools
-
     public String model;
     public List<AnthropicMessage> messages;
     public List<AnthropicTextContent> system;
