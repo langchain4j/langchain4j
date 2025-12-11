@@ -225,7 +225,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
-                .toolMetadataKeysToSend("input_examples") // TODO name, everywhere
+                .toolMetadataKeysToSend("input_examples")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
