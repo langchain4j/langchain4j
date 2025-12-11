@@ -117,22 +117,22 @@ but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-an
 ## Server Tools
 
 Anthropic's [server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview#server-tools)
-are supported, here is an example of using a [web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool):
+are supported via `serverTools` parameter, here is an example of using a [web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool):
 ```java
 Map<String, Object> webSearchTool = Map.of(
-    "type", "web_search_20250305",
-    "name", "web_search",
-    "max_uses", 5,
-    "allowed_domains", List.of("accuweather.com")
+        "type", "web_search_20250305",
+        "name", "web_search",
+        "max_uses", 5,
+        "allowed_domains", List.of("accuweather.com")
 );
 
 ChatModel model = AnthropicChatModel.builder()
-    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-    .modelName("claude-sonnet-4-5")
-    .serverTools(webSearchTool)
-    .logRequests(true)
-    .logResponses(true)
-    .build();
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-sonnet-4-5")
+        .serverTools(webSearchTool)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
 String answer = model.chat("What is the weather in Munich?");
 ```
@@ -142,12 +142,14 @@ Tools specified via `serverTools` will be included in every request to Anthropic
 ## Tool Search Tool
 
 Anthropic's [tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool)
-is supported, here is an example when using high-level AI Service and `@Tool` APIs:
+is supported via `serverTools`, tool `metadata` and `toolMetadataKeysToSend` parameters.
+
+Here is an example when using high-level AI Service and `@Tool` APIs:
 
 ```java
 Map<String, Object> toolSearchTool = Map.of(
-    "type", "tool_search_tool_regex_20251119",
-    "name", "tool_search_tool_regex"
+        "type", "tool_search_tool_regex_20251119",
+        "name", "tool_search_tool_regex"
 );
 
 class Tools {
@@ -190,8 +192,8 @@ assistant.chat("What is the weather in Munich?");
 Here is an example when using low-level `ChatModel` and `ToolSpecification` APIs:
 ```java
 Map<String, Object> toolSearchTool = Map.of(
-    "type", "tool_search_tool_regex_20251119",
-    "name", "tool_search_tool_regex"
+        "type", "tool_search_tool_regex_20251119",
+        "name", "tool_search_tool_regex"
 );
 
 Map<String, Object> toolMetadata = Map.of("defer_loading", true);
@@ -230,6 +232,147 @@ ChatRequest chatRequest = ChatRequest.builder()
 
 ChatResponse chatResponse = model.chat(chatRequest);
 ```
+
+### Programmatic Tool Calling
+
+Anthropic's [programmatic tool calling](https://www.anthropic.com/engineering/advanced-tool-use)
+is supported via `serverTools`, tool `metadata` and `toolMetadataKeysToSend` parameters.
+
+Here is an example when using high-level AI Service and `@Tool` APIs:
+
+```java
+Map<String, Object> codeExecutionTool = Map.of(
+        "type", "code_execution_20250825",
+        "name", "code_execution"
+);
+
+class Tools {
+
+    static final String DESCRIPTION = """
+            Returns daily minimum and maximum temperatures recorded
+            for a specified city for a specified number of previous days.
+            Response format: [{"min":0.0,"max":10.0},{"min":0.0,"max":20.0},{"min":0.0,"max":30.0}]
+            """;
+    static final String METADATA = "{\"allowed_callers\": [\"code_execution_20250825\"]}";
+
+    record TemperatureRange(double min, double max) {}
+
+    @Tool(value = DESCRIPTION, metadata = METADATA)
+    List<TemperatureRange> getMaxDailyTemperatures(String city, int days) {
+        if ("Munich".equals(city) && days == 5) {
+            return List.of(
+                    new TemperatureRange(0.0, 1.0),
+                    new TemperatureRange(0.0, 2.0),
+                    new TemperatureRange(0.0, 3.0),
+                    new TemperatureRange(0.0, 4.0),
+                    new TemperatureRange(0.0, 5.0)
+            );
+        }
+
+        throw new IllegalArgumentException("Unknown city: " + city + " or days: " + days);
+    }
+
+    @Tool(value = "Calculates the average of the specified list of numbers", metadata = METADATA)
+    Double average(List<Double> numbers) {
+        return numbers.stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElseThrow();
+    }
+}
+
+ChatModel chatModel = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_SONNET_4_5_20250929)
+        .beta("advanced-tool-use-2025-11-20")
+        .serverTools(codeExecutionTool)
+        .toolMetadataKeysToSend("allowed_callers") // need to specify it explicitly
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+interface Assistant {
+
+    String chat(String userMessage);
+}
+
+Tools tools = spy(new Tools());
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .build();
+
+assistant.chat("What was the average max temperature in Munich in the last 5 days?");
+```
+
+Check [Tool Search Tool](/integrations/language-models/anthropic#tool-search-tool) section
+to see an example of specifying tool `metadata` in the low-level `ToolSpecification` API.
+
+### Tool Use Examples
+
+Anthropic's [tool use examples](https://www.anthropic.com/engineering/advanced-tool-use)
+are supported via tool `metadata` and `toolMetadataKeysToSend` parameters.
+
+Here is an example when using high-level AI Service and `@Tool` APIs:
+
+```java
+enum Unit {
+    CELSIUS, FAHRENHEIT
+}
+
+class Tools {
+
+    // NOTE: if javac "-parameters" option is not enabled, you need to change "location" to "arg0"
+    // and "unit" to "arg1" inside the TOOL_METADATA to make it work.
+    public static final String TOOL_METADATA = """
+            {
+                "input_examples": [
+                    {
+                        "location": "San Francisco, CA",
+                        "unit": "FAHRENHEIT"
+                    },
+                    {
+                        "location": "Tokyo, Japan",
+                        "unit": "CELSIUS"
+                    },
+                    {
+                        "location": "New York, NY"
+                    }
+                ]
+            }
+            """;
+
+    @Tool(metadata = TOOL_METADATA)
+    String getWeather(String location, @P(value = "temperature unit", required = false) Unit unit) {
+        return "sunny";
+    }
+}
+
+ChatModel chatModel = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_SONNET_4_5_20250929)
+        .beta("advanced-tool-use-2025-11-20")
+        .toolMetadataKeysToSend("input_examples") // need to specify it explicitly
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+interface Assistant {
+
+    String chat(String userMessage);
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new Tools())
+        .build();
+
+assistant.chat("What is the weather in Munich in Fahrenheit?");
+```
+
+Check [Tool Search Tool](/integrations/language-models/anthropic#tool-search-tool) section
+to see an example of specifying tool `metadata` in the low-level `ToolSpecification` API.
 
 ## Caching
 

@@ -103,7 +103,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Test
-    void should_support_programmatic_tool_calling() { // TODO document
+    void should_support_programmatic_tool_calling() {
 
         // given
         Map<String, Object> codeExecutionTool = Map.of(
@@ -185,7 +185,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Test
-    void should_support_tool_examples() { // TODO document
+    void should_support_tool_use_examples() {
 
         // given
         enum Unit {

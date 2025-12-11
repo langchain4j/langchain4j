@@ -143,6 +143,12 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 - The `name` of the tool
 - The `description` of the tool
 - The `parameters` of the tool and their descriptions
+- The `metadata` of the tool.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
+When tools are provided by the [McpToolProvider](/tutorials/mcp#mcp-tool-provider),
+`metadata` can contain MCP-specific entries.
 
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
@@ -488,7 +494,9 @@ The `@Tool` annotation has these fields:
 - `value`: the tool's description.
 - `returnBehavior`: see [this](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) for more details
 - `metadata`: a valid JSON string that contains LLM-provider-specific tool metadata entries.
-Currently supported only by the `langchain4j-anthropic` module.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
 
 Depending on the tool, the LLM might understand it well even without any description
 (for example, `add(a, b)` is obvious),
