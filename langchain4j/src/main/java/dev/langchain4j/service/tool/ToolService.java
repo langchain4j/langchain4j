@@ -20,7 +20,6 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -55,7 +54,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -97,9 +97,25 @@ public class ToolService {
                 throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
             }
 
+            if (objectWithTool instanceof Iterable) {
+                throw illegalConfiguration(
+                        "Tool '%s' is an Iterable (likely a nested collection). "
+                                + "Please pass tool objects directly, not wrapped in collections.",
+                        objectWithTool.getClass().getName());
+            }
+
+            boolean hasToolMethod = false;
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class)
-                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
+                if (getAnnotatedMethod(method, Tool.class).isPresent()) {
+                    hasToolMethod = true;
+                    processToolMethod(objectWithTool, method);
+                }
+            }
+
+            if (!hasToolMethod) {
+                throw illegalConfiguration(
+                        "Object '%s' does not have any methods annotated with @Tool",
+                        objectWithTool.getClass().getName());
             }
         }
     }
