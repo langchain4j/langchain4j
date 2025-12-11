@@ -37,7 +37,7 @@ public @interface Tool {
      *
      * @return description of the tool.
      */
-    String[] value() default ""; // TODO mirror "description"
+    String[] value() default "";
 
     /**
      * Return behavior of the tool.

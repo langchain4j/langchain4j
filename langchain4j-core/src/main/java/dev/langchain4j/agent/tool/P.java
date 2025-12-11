@@ -17,7 +17,7 @@ public @interface P {
      * Description of a parameter
      * @return the description of a parameter
      */
-    String value(); // TODO mirror "description"
+    String value();
 
     /**
      * Whether the parameter is required

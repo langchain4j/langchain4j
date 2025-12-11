@@ -189,7 +189,7 @@ public class UserMessage implements ChatMessage {
     public Builder toBuilder() {
         return builder()
                 .name(name)
-                .contents(contents) // TODO copy
+                .contents(mutableCopy(contents))
                 .attributes(attributes);
     }
 
