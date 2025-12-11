@@ -565,7 +565,7 @@ For instance the following configuration of the `CreativeWriter` agent will log 
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
         .chatModel(baseModel())
         .outputKey("story")
-        .listener(new AgenticListener() {
+        .listener(new AgentListener() {
             @Override
             public void beforeAgentInvocation(AgentRequest request) {
                 System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
@@ -595,7 +595,7 @@ To provide a more comprehensive example, let's reconsider the loop workflow inte
 AgentMonitor monitor = new AgentMonitor();
 
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-        .listener(new AgenticListener() {
+        .listener(new AgentListener() {
             @Override
             public void beforeAgentInvocation(AgentRequest request) {
                 System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
