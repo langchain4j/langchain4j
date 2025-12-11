@@ -195,6 +195,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         if (method.getParameterCount() == 1 && Map.class.isAssignableFrom(method.getParameters()[0].getType())) {
             return (Map<String, Object>) args[0];
         }
+        if (args == null || args.length == 0) {
+            return Map.of();
+        }
         Map<String, Object> namedArgs = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
             namedArgs.put(ParameterNameResolver.name(method.getParameters()[i]), args[i]);
