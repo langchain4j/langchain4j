@@ -334,7 +334,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Specifies server tools to be included in the request. For example:
          * <pre>
-         * Map<String, Object> webSearchTool = Map.of(
+         * Map&lt;String, Object&gt; webSearchTool = Map.of(
          *     "type", "web_search_20250305",
          *     "name", "web_search",
          *     "max_uses", 5
@@ -349,7 +349,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Specifies server tools to be included in the request. For example:
          * <pre>
-         * Map<String, Object> webSearchTool = Map.of(
+         * Map&lt;String, Object&gt; webSearchTool = Map.of(
          *     "type", "web_search_20250305",
          *     "name", "web_search",
          *     "max_uses", 5
