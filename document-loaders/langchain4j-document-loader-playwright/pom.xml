@@ -45,12 +45,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>io.orange-buffalo</groupId>
             <artifactId>testcontainers-playwright</artifactId>
             <version>0.12.0</version>
