@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
 @Experimental
 public final class GoogleAiGeminiBatchChatModel {
     private final GeminiBatchProcessor<
-            ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+                    ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final BaseGeminiChatModel chatModel;
     private final String modelName;
@@ -219,8 +219,7 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
-        private Builder() {
-        }
+        private Builder() {}
 
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
@@ -229,7 +228,7 @@ public final class GoogleAiGeminiBatchChatModel {
 
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+                    ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -250,10 +249,12 @@ public final class GoogleAiGeminiBatchChatModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper, new TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>() {
-                    }))
-                    .map(wrapper -> Json.convertValue(wrapper.response(), new TypeReference<GeminiGenerateContentResponse>() {
-                    }))
+                    .map(wrapper -> Json.convertValue(
+                            wrapper,
+                            new TypeReference<
+                                    BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>() {}))
+                    .map(wrapper -> Json.convertValue(
+                            wrapper.response(), new TypeReference<GeminiGenerateContentResponse>() {}))
                     .map(chatModel::processResponse)
                     .toList();
         }
