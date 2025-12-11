@@ -1,4 +1,4 @@
-package dev.langchain4j.agentic.agent;
+package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
